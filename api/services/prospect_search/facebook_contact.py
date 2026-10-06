@@ -132,6 +132,8 @@ class FacebookContactRecorder:
             CandidateVerifier.note_directory_unanswered(facts, exc)
             return
         CandidateVerifier.take_directory_asterisk(facts, entry)
+        if entry is None:
+            CandidateVerifier.take_zip_asterisk(facts, await swiss_directory.zip_listing_with_asterisk(facts.phone))
 
 
 facebook_contact_recorder = FacebookContactRecorder()

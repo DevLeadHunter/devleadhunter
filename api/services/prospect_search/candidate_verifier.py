@@ -371,6 +371,8 @@ class CandidateVerifier:
             self.note_directory_unanswered(facts, exc)
             return None
         self.take_directory_asterisk(facts, entry)
+        if entry is None:
+            self.take_zip_asterisk(facts, await self._directory.zip_listing_with_asterisk(facts.phone))
         return entry
 
     @staticmethod
@@ -379,6 +381,13 @@ class CandidateVerifier:
         if entry is not None and entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
+
+    @staticmethod
+    def take_zip_asterisk(facts: CandidateFacts, zip_page_url: str | None) -> None:
+        """Mark the candidate as refusing advertising when zip.ch keeps the asterisk of a number search.ch dropped."""
+        if zip_page_url is not None and not facts.refuses_advertising:
+            facts.refuses_advertising = True
+            facts.add_evidence("no_advertising", "*", source="zip.ch", url=zip_page_url)
 
     @staticmethod
     def note_directory_unanswered(facts: CandidateFacts, error: SwissDirectoryUnavailableError) -> None:

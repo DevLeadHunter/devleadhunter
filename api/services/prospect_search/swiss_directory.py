@@ -7,7 +7,8 @@ advertising. Swiss law forbids advertising to such a subscriber (LCD art. 3 al. 
 let. u), so a search reads the asterisk before proposing the business. The directory
 is read the way a person checks a listing: by the number the business already showed,
 or by its name in its town, or its owner's name at its address, when that number is not
-listed; it is never listed in bulk.
+listed; it is never listed in bulk. A number search.ch does not list is looked up on
+zip.ch too, which keeps the entries the directory dropped, asterisk included.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from services.website_liveness_service import website_liveness_service
 logger = logging.getLogger(__name__)
 
 _BASE_URL: str = "https://search.ch"
+_ZIP_RESULTS_URL: str = "https://zip.ch/fr/results/"
 _SWISS_DIAL_CODE: str = "+41"
 _TIMEOUT_SECONDS: float = 10.0
 _ENTRY_PATH_RE: re.Pattern[str] = re.compile(
@@ -109,6 +111,41 @@ class SwissDirectory:
             raise SwissDirectoryUnavailableError(f"search.ch lookup of {national_number} failed: {exc}") from exc
         vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
+
+    async def zip_listing_with_asterisk(self, phone: str | None) -> str | None:
+        """
+        The zip.ch page that prints the asterisk after a number, for a number search.ch does not list.
+
+        zip.ch copies the directory and keeps the entries it dropped, with the asterisk their
+        subscriber asked for. A page that does not answer proves nothing either way.
+
+        Args:
+            phone: The number as the business wrote it.
+
+        Returns:
+            The address of the zip.ch results page showing the starred number, else ``None``.
+        """
+        national_number = self.national_number(phone)
+        if national_number is None:
+            return None
+        try:
+            async with httpx.AsyncClient(
+                timeout=_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers=website_liveness_service.REQUEST_HEADERS,
+            ) as http:
+                page = await http.get(_ZIP_RESULTS_URL, params={"q": national_number})
+        except httpx.HTTPError as exc:
+            logger.info("zip.ch lookup of %s failed: %s", national_number, exc)
+            return None
+        international_number = f"{_SWISS_DIAL_CODE}{national_number[1:]}"
+        starred_number = re.compile(
+            rf'href="tel:{re.escape(international_number)}"[^>]*>.*?</a>\s*<span[^>]*>(?:&nbsp;|\s)*\*\s*</span>',
+            re.DOTALL,
+        )
+        if page.status_code != 200 or starred_number.search(page.text) is None:
+            return None
+        return str(page.url)
 
     @staticmethod
     def _raise_unless_answered(page: httpx.Response) -> None:

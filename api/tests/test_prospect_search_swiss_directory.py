@@ -91,9 +91,11 @@ class _ScriptedDirectory(SwissDirectory):
         entry_pages: dict[str, SwissDirectoryEntry] | None = None,
         entries_by_address: list[SwissDirectoryEntry] | None = None,
         listed_phone: str | None = None,
+        zip_starred_phone: str | None = None,
     ) -> None:
         self._entry = entry
         self._listed_phone = listed_phone
+        self._zip_starred_phone = zip_starred_phone
         self._entries_by_name = entries_by_name or []
         self._entry_pages = entry_pages or {}
         self._entries_by_address = entries_by_address or []
@@ -117,6 +119,10 @@ class _ScriptedDirectory(SwissDirectory):
     async def entries_at_address(self, name_word: str, address: str) -> list[SwissDirectoryEntry]:
         self.asked_addresses.append((name_word, address))
         return self._entries_by_address
+
+    async def zip_listing_with_asterisk(self, phone: str | None) -> str | None:
+        is_starred = phone is not None and phone == self._zip_starred_phone
+        return f"https://zip.ch/fr/results/?q={phone}" if is_starred else None
 
     async def entry_at(self, entry_url: str) -> SwissDirectoryEntry:
         listed_entries = [*self._entries_by_name, *self._entries_by_address]
@@ -623,6 +629,38 @@ def test_the_notice_a_site_copying_the_directory_prints_refuses_advertising(
     )
 
     assert facts.refuses_advertising is True
+
+
+def test_the_asterisk_zip_ch_keeps_for_a_number_search_ch_dropped_refuses_advertising() -> None:
+    facts = _facts(name="Rochat Electricité Sàrl", city="Fribourg", phone="026 000 00 70", trade_key="electricien")
+
+    _verify(facts, _ScriptedDirectory(None, zip_starred_phone="026 000 00 70"))
+
+    assert facts.refuses_advertising is True
+    assert [line["source"] for line in facts.evidence if line["fact"] == "no_advertising"] == ["zip.ch"]
+
+
+@pytest.mark.parametrize(
+    ("asterisk", "expected"),
+    [('<span class="text-muted">&nbsp;*</span>', True), ("", False)],
+)
+def test_a_zip_ch_results_page_tells_whether_the_number_is_starred(
+    monkeypatch: pytest.MonkeyPatch, asterisk: str, expected: bool
+) -> None:
+    page = (
+        '<p class="phone"><a aria-label="TEL" href="tel:+41260000070" rel="nofollow">'
+        '<span class="tel"></span><span> 026 000 00 70 </span></a> ' + asterisk + "</p>"
+    )
+    transport = _directory_answering({"/fr/results/": (200, page)})
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=transport, **kwargs)
+
+    monkeypatch.setattr(swiss_directory_module.httpx, "AsyncClient", client_with_transport)
+    zip_page = asyncio.run(SwissDirectory().zip_listing_with_asterisk("026 000 00 70"))
+
+    assert (zip_page is not None) is expected
 
 
 def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:
