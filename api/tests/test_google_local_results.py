@@ -89,6 +89,17 @@ def test_a_quebec_card_reads_the_north_american_phone_and_drops_the_province() -
     assert listing.locality == "Trois-Rivières"
 
 
+def test_a_card_without_category_keeps_its_phone_and_its_street_out_of_the_category() -> None:
+    page = _card("Garage Lanaudière", ["4,6 (12) · (450) 755-6599", "Joliette, QC"]) + _card(
+        "Mécanique Firestone", ["Aucun avis · 1475 Bd Firestone", "Joliette, QC"]
+    )
+
+    first, second = GoogleLocalResultsParser.parse_html(page, country="CA")
+
+    assert (first.category, first.phone) == (None, "(450) 755-6599")
+    assert second.category is None
+
+
 def test_an_unrecognised_layout_yields_nothing_so_the_caller_falls_back() -> None:
     assert GoogleLocalResultsParser.parse_html("<html><body><div>Autre page</div></body></html>") == []
 

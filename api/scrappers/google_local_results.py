@@ -147,7 +147,7 @@ class GoogleLocalResultsParser:
         for position, line in enumerate(lines):
             segments = [segment.strip() for segment in line.split("·") if segment.strip()]
             if position == 0:
-                cls._read_rating_line(listing, segments)
+                cls._read_rating_line(listing, segments, country)
                 continue
             for segment in segments:
                 if listing.phone is None and cls._is_phone(segment, country):
@@ -163,9 +163,13 @@ class GoogleLocalResultsParser:
         cls._read_links(listing, card, country)
         return listing
 
-    @staticmethod
-    def _read_rating_line(listing: LocalListing, segments: list[str]) -> None:
-        """Read « 5,0 (17) · Paysagiste » (or « Aucun avis · Paysagiste ») into the listing."""
+    @classmethod
+    def _read_rating_line(cls, listing: LocalListing, segments: list[str], country: str) -> None:
+        """
+        Read « 5,0 (17) · Paysagiste » (or « Aucun avis · Paysagiste ») into the listing.
+
+        A card without a category shows its phone or its street there instead (« 4,6 (12) · (450) 755-6599 »).
+        """
         if not segments:
             return
         match = _RATING_LINE_RE.match(segments[0])
@@ -173,10 +177,13 @@ class GoogleLocalResultsParser:
             listing.rating = float(match.group(1).replace(",", "."))
             digits = re.sub(r"\D", "", match.group(2))
             listing.reviews_count = int(digits) if digits else None
-        if len(segments) > 1:
-            listing.category = segments[-1]
-        elif not match and not segments[0].lower().startswith(("aucun avis", "no reviews")):
-            listing.category = segments[0]
+        category_segments: list[str] = []
+        for segment in segments[1:] if match else segments:
+            if cls._is_phone(segment, country):
+                listing.phone = listing.phone or segment
+            elif not _STREET_SEGMENT_RE.match(segment) and not segment.lower().startswith(("aucun avis", "no reviews")):
+                category_segments.append(segment)
+        listing.category = category_segments[-1] if category_segments else None
 
     @staticmethod
     def _is_phone(segment: str, country: str) -> bool:
