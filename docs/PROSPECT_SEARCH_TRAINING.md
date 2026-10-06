@@ -261,7 +261,7 @@ quotidien épuisé) : 24 gardés en 51 minutes, 529 requêtes.
 
 | Écart | Cause | Correction |
 |---|---|---|
-| Un email lu sur un site italien gardé pour un garage français | Le fixe romain « 06 7720 5613 » a les mêmes chiffres que le portable français « 06 77 20 56 13 » | Une page d'un autre pays (domaine national) ne prouve rien par le numéro |
+| Un email lu sur un site italien gardé pour un garage français | Un fixe romain (indicatif 06) avait les mêmes dix chiffres que le portable français du garage | Une page d'un autre pays (domaine national) ne prouve rien par le numéro |
 | Un email lu dans un appel d'offres | Un document liste plusieurs entreprises : un numéro et un email s'y côtoient par hasard | Aucun email n'est pris dans un document téléchargé |
 | Un email pris sous une publication de groupe Facebook, par la recherche du numéro | La règle des groupes ne couvrait que la recherche par email | Elle couvre aussi la recherche par le numéro |
 

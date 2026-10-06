@@ -54,7 +54,7 @@ _RESULT_LIST_PAGE = (
 _VCARD = (
     "BEGIN:VCARD\r\n"
     "TEL;TYPE=WORK,pref:+41277444748\r\n"
-    "TEL;TYPE=WORK,CELL:+41764354460\r\n"
+    "TEL;TYPE=WORK,CELL:+41760000013\r\n"
     "EMAIL:GarageDuValais@Hotmail.com\r\n"
     "URL:http://www.garage-du-valais-saxon-entretien-et-reparation-de-toutes-marq\r\n"
     " ues.ch/\r\n"
@@ -182,7 +182,7 @@ def test_the_vcard_gives_the_email_the_website_and_the_mobiles() -> None:
 
     assert entry.emails == ("garageduvalais@hotmail.com",)
     assert entry.websites == ("http://www.garage-du-valais-saxon-entretien-et-reparation-de-toutes-marques.ch/",)
-    assert entry.mobile_phones == ("+41764354460",)
+    assert entry.mobile_phones == ("+41760000013",)
 
 
 def test_only_a_swiss_number_is_looked_up() -> None:
@@ -219,7 +219,7 @@ def test_the_directory_email_of_the_business_keeps_it_for_an_email_search() -> N
 
 
 def test_the_website_the_directory_knows_discards_the_business() -> None:
-    facts = _facts(name="Solis Solutions Tech Sàrl", city="Payerne", phone="079 579 84 97")
+    facts = _facts(name="Solis Solutions Tech Sàrl", city="Payerne", phone="079 000 00 14")
 
     _verify(
         facts,
@@ -281,14 +281,14 @@ def test_a_business_entry_found_by_the_number_gives_its_email_whatever_its_wordi
         facts,
         _ScriptedDirectory(
             _entry(
-                name="Atelier E SA - Stéphane Juilliand, Electriciens, installateurs à Martigny",
+                name="Atelier E SA - Paul Rochat, Electriciens, installateurs à Martigny",
                 is_business=True,
-                emails=("stephane@atelier-e.swiss",),
+                emails=("paul@atelier-e.swiss",),
             )
         ),
     )
 
-    assert (facts.email, facts.email_proof_level) == ("stephane@atelier-e.swiss", EmailProofLevel.DIRECTORY.value)
+    assert (facts.email, facts.email_proof_level) == ("paul@atelier-e.swiss", EmailProofLevel.DIRECTORY.value)
 
 
 def test_a_marketplace_page_given_as_the_listing_s_website_is_not_its_website() -> None:
@@ -369,14 +369,14 @@ def test_an_unlisted_number_has_no_entry(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_the_asterisk_of_a_local_ch_extract_refuses_advertising_without_the_directory() -> None:
-    facts = _facts(name="Garage des Adonis Lambiel Sàrl", city="Saxon", phone="027 744 20 05")
+    facts = _facts(name="Garage des Alpes Rochat Sàrl", city="Saxon", phone="027 744 00 05")
     page = {
         "organic": [
             {
-                "link": "https://www.local.ch/fr/d/saxon/1907/garage/garage-des-adonis-lambiel-sarl-rsl0p",
-                "title": "Garage des Adonis Lambiel Sàrl - Saxon",
-                "description": "Adresse: Route du Léman 55, 1907 Saxon ; Numéro de téléphone: 027 744 20 05* ; "
-                "Email: garageadonis.lambiel@netplus.ch",
+                "link": "https://www.local.ch/fr/d/saxon/1907/garage/garage-des-alpes-rochat-sarl-rsl0p",
+                "title": "Garage des Alpes Rochat Sàrl - Saxon",
+                "description": "Adresse: Route du Léman 55, 1907 Saxon ; Numéro de téléphone: 027 744 00 05* ; "
+                "Email: garagedesalpes.rochat@netplus.ch",
             }
         ]
     }
@@ -487,24 +487,24 @@ def test_an_entry_of_another_business_found_by_name_brings_nothing() -> None:
 
 
 def test_the_page_of_an_entry_found_by_name_gives_the_asterisk_the_list_left_out() -> None:
-    facts = _facts(name="Dumoulin Michel & Fils", city="Savièse", phone="079 219 16 30", trade_key="paysagiste")
+    facts = _facts(name="Rochat Paul & Fils", city="Savièse", phone="079 000 00 15", trade_key="paysagiste")
     listed = _entry(
-        url="https://search.ch/tel/saviese/chemin-de-pradzere-54/dumoulin-michel-fils.fr.html",
-        name="Dumoulin Michel & Fils",
+        url="https://search.ch/tel/saviese/chemin-de-pradzere-54/rochat-paul-fils.fr.html",
+        name="Rochat Paul & Fils",
         is_business=True,
     )
     page = _entry(
         url=listed.url,
-        name="Dumoulin Michel & Fils, Paysagistes à Savièse",
+        name="Rochat Paul & Fils, Paysagistes à Savièse",
         is_business=True,
         refuses_advertising=True,
-        emails=("info@dumoulin-paysagiste.ch",),
+        emails=("info@rochat-paysagiste.ch",),
     )
 
     _verify(facts, _ScriptedDirectory(None, entries_by_name=[listed], entry_pages={listed.url: page}))
 
     assert facts.refuses_advertising is True
-    assert facts.email == "info@dumoulin-paysagiste.ch"
+    assert facts.email == "info@rochat-paysagiste.ch"
 
 
 def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -550,7 +550,7 @@ def test_a_comparison_site_or_a_network_page_is_never_a_website(link: str) -> No
 def test_the_directory_is_asked_the_name_without_its_legal_form() -> None:
     directory = _ScriptedDirectory(None)
 
-    _verify(_facts(name="Conthey Centre Automobile Sàrl", city="Conthey", phone="078 870 68 80"), directory)
+    _verify(_facts(name="Conthey Centre Automobile Sàrl", city="Conthey", phone="078 000 00 16"), directory)
 
     assert directory.asked_names == ["Conthey Centre Automobile"]
 

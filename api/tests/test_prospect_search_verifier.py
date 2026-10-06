@@ -129,7 +129,7 @@ def test_a_closed_listing_is_flagged_with_its_proof() -> None:
 
 
 def test_a_register_writing_the_company_in_liquidation_closes_it() -> None:
-    facts = _facts(name="ZTD électricité", city="Vernayaz", trade_key="electricien", phone="076 631 23 41")
+    facts = _facts(name="ZTD électricité", city="Vernayaz", trade_key="electricien", phone="076 000 00 17")
 
     _verify(
         facts,
@@ -543,14 +543,14 @@ def test_a_short_name_is_searched_word_for_word() -> None:
 
 
 def test_a_name_inside_a_longer_word_does_not_name_the_business() -> None:
-    facts = _facts(name="André & Jardin", city="Diesse", phone="076 216 58 47")
+    facts = _facts(name="André & Jardin", city="Diesse", phone="076 000 00 18")
 
     assert CandidateVerifier.names_business("Jardins Alexandre SA - Corminboeuf", facts, _LANDSCAPER) is False
     assert CandidateVerifier.names_business("André & Jardin, paysagiste à Diesse", facts, _LANDSCAPER) is True
 
 
 def test_a_post_of_another_page_naming_the_business_is_not_its_page() -> None:
-    facts = _facts(name="Jardin-Création", city="Aigle", phone="079 433 44 30")
+    facts = _facts(name="Jardin-Création", city="Aigle", phone="079 000 00 19")
     magazine_post = SearchResultLine(
         link="https://www.facebook.com/ZEmag36/posts/daniel-moquet-signe-vos-jardins-creation-paysagere-123/",
         host="facebook.com",
@@ -569,7 +569,7 @@ def test_a_post_of_another_page_naming_the_business_is_not_its_page() -> None:
 
 
 def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
-    facts = _facts(name="Les jardins de Valentin", city="Bienne", phone="078 600 40 24")
+    facts = _facts(name="Les jardins de Valentin", city="Bienne", phone="078 000 00 20")
     page = {
         "organic": [
             _result(
@@ -595,7 +595,7 @@ def test_a_listing_named_after_its_website_has_that_website() -> None:
 
 def test_the_site_publishing_the_email_under_a_name_from_that_address_is_the_website() -> None:
     facts = _facts(
-        name="Plaisir Paysage", city="Dijon", country="FR", phone="06 98 39 14 26", email="passion.paysage21@gmail.com"
+        name="Plaisir Paysage", city="Dijon", country="FR", phone="06 00 00 00 21", email="passion.paysage21@gmail.com"
     )
     facts.add_evidence(
         "email", facts.email or "", source="passion-paysage-dijon.fr", url="https://passion-paysage-dijon.fr/contact"
@@ -653,24 +653,24 @@ def test_an_email_under_a_facebook_group_post_is_a_stranger_s() -> None:
         (
             "https://turismoroma.it/de/node/116484",
             "Casa per Ferie Suore",
-            "Casa per Ferie Suore 0677205613. Email: casaferie.roma@gmail.com",
+            "Casa per Ferie Suore 0600000022. Email: casaferie.roma@gmail.com",
         ),
         (
             "https://www.facebook.com/groups/1283255909671137/posts/1647369846593073/",
             "Entraide Pau",
-            "Votre extérieur, notre métier 06 77 20 56 13 servicepau@gmail.com",
+            "Votre extérieur, notre métier 06 00 00 00 22 servicepau@gmail.com",
         ),
         (
             "https://paysdenay.fr/item/download/2002_986807a36e4a7ecec877bf2c515dad94",
             "Décision du président",
-            "Lot 13 : 06 77 20 56 13. Lot 14 : entreprise voisine sgr.voisin@orange.fr",
+            "Lot 13 : 06 00 00 00 22. Lot 14 : entreprise voisine sgr.voisin@orange.fr",
         ),
     ],
 )
 def test_the_phone_search_takes_no_email_from_a_foreign_page_a_group_or_a_document(
     link: str, title: str, description: str
 ) -> None:
-    facts = _facts(name="Garage Négoce Auto Paloise", city="Pau", country="FR", phone="06 77 20 56 13")
+    facts = _facts(name="Garage Négoce Auto Paloise", city="Pau", country="FR", phone="06 00 00 00 22")
     page = {"organic": [_result(link, title, description)]}
 
     asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, TradeCatalog.resolve("garage")))  # type: ignore[arg-type]

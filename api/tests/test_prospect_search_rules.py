@@ -217,9 +217,9 @@ class TestKnownBusinessIndex:
 
     def test_a_second_listing_of_a_business_the_run_proposed_is_not_proposed_again(self) -> None:
         index = KnownBusinessIndex()
-        index.remember_proposed(["tel:+41794491915", "name:ducret paysagiste|servion"])
+        index.remember_proposed(["tel:+41790000012", "name:ducret paysagiste|servion"])
 
-        second_listing = index.match(["tel:+41794491915", "name:ducret paysagiste|jongny"])
+        second_listing = index.match(["tel:+41790000012", "name:ducret paysagiste|jongny"])
 
         assert second_listing is not None and second_listing.reason is CandidateRejectReason.AWAITING_DECISION
         assert index.match(["name:ducret paysagiste|servion"]) is None
@@ -438,7 +438,7 @@ class TestCandidateDecision:
 
         assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.TO_CONFIRM
 
-        facts.phone = "079 842 33 64"
+        facts.phone = "079 000 00 11"
         assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.KEPT
 
 
