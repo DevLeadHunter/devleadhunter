@@ -386,6 +386,14 @@ _OG_LIKES_PREFIX_RE = re.compile(
     r"^[^.]*\.\s*\d[\d\s ]*j['’]aime\s*·\s*\d[\d\s ]*en parlent\.\s*",
     re.IGNORECASE,
 )
+# « Vuille Paysagiste, Morges. 91 followers. Découvrez… » — the page's name, town and audience lead
+# og:description before its presentation.
+_OG_AUDIENCE_PREFIX_RE = re.compile(
+    r"^[^.]*\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)\.\s*",
+    re.IGNORECASE,
+)
+# A fuller text completes a cut Intro when it opens with the Intro's first characters.
+_INTRO_OPENING_CHARS: int = 40
 
 
 def _rating_from_pct(pct: int | None) -> float | None:
@@ -460,6 +468,7 @@ def _parse_og_description(og_description: str | None) -> str | None:
     if not (og_description or "").strip():
         return None
     text = _OG_LIKES_PREFIX_RE.sub("", og_description.strip()).strip()
+    text = _OG_AUDIENCE_PREFIX_RE.sub("", text).strip()
     # Weak pages give « {name}. {X} J'aime. {category} » with no « en parlent » — strip that shape too,
     # so what's left is real copy (or nothing). Spaces cover the French thin/no-break number separators.
     text = re.sub(r"^[^.]*\.\s*\d[\d\s  ]*j['’]aime\.\s*", "", text, flags=re.IGNORECASE).strip()
@@ -942,18 +951,36 @@ def _pick_description(
     og_description: str | None,
     embedded_texts: list[str] | None = None,
 ) -> str | None:
-    """Prefer Intro card / embedded bio, then og:description, then about text."""
-    candidates = [
-        _parse_intro_description(intro_text),
-        _parse_bio_from_embedded_texts(embedded_texts or []),
-        _parse_og_description(og_description),
-        _parse_intro_description(about_text),
+    """The page's own presentation: its Intro card, else og:description, else its about text, else a bio.
+
+    The presentation wins even when a post is longer (an old « we are moving » post became a garage's
+    description, 7 Oct 2026); when it is cut short, a fuller text opening the same way completes it,
+    otherwise it ends on its last whole sentence. An embedded bio is the last resort: posts read alike.
+    """
+    presentations = [
+        item
+        for item in (
+            _parse_intro_description(intro_text),
+            _parse_og_description(og_description),
+            _parse_intro_description(about_text),
+        )
+        if item
     ]
-    # Longest non-empty wins — og:description is often truncated with « … ».
-    picked = [item for item in candidates if item]
-    if not picked:
-        return None
-    return max(picked, key=len)
+    bio = _parse_bio_from_embedded_texts(embedded_texts or [])
+    if not presentations:
+        return bio
+    presentation = presentations[0]
+    opening = presentation[:_INTRO_OPENING_CHARS]
+    fuller = [item for item in [*presentations, bio] if item and len(item) > len(presentation) and opening in item]
+    return max(fuller, key=len) if fuller else _whole_sentences(presentation)
+
+
+def _whole_sentences(text: str) -> str:
+    """The text cut after its last whole sentence when it stops mid-sentence (« J'interviens à tous »)."""
+    if re.search(r"[.!?…)»]\s*$", text):
+        return text
+    last_end = max(text.rfind(mark) for mark in ".!?")
+    return text[: last_end + 1].strip() if last_end > 0 else text
 
 
 class FacebookEnrichmentScraper:

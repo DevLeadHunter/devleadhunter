@@ -7,7 +7,9 @@ from scrappers.facebook_enrichment_scraper import (
     FacebookEnrichmentScraper,
     _clean_social_url,
     _parse_city_postal,
+    _parse_og_description,
     _parse_phone,
+    _pick_description,
     _website_belongs_to_business,
 )
 from services.sms.phone_normalizer import to_e164
@@ -194,3 +196,44 @@ class TestFacebookScrapeEmptyGuard:
     def test_google_sourced_payload_not_guarded(self) -> None:
         prospect = SimpleNamespace(facebook_url="https://www.facebook.com/PizzaFlam44")
         assert self._is_empty(prospect, EnrichmentData(source="google")) is False
+
+
+class TestPageDescription:
+    """The description is the page's own presentation (first enrichment round, 7 Oct 2026)."""
+
+    _INTRO = "Intro\nL'accueil et la qualité de notre service sont irréprochables. Contactez-nous!\nPage · Garage"
+    _OLD_POST = (
+        "Veuillez noter que nous serons fermés ce vendredi afin de procéder à notre déménagement. Nos "
+        "opérations reprendront lundi dès 7h30 à nos nouveaux locaux, rue de l'Exemple."
+    )
+
+    def test_the_intro_wins_over_a_longer_old_post(self) -> None:
+        """A garage's 2017 « we are moving » post had become its description."""
+        description = _pick_description(
+            intro_text=self._INTRO, about_text="", og_description=None, embedded_texts=[self._OLD_POST]
+        )
+
+        assert description == "L'accueil et la qualité de notre service sont irréprochables. Contactez-nous!"
+
+    def test_a_cut_intro_ends_on_its_last_whole_sentence(self) -> None:
+        """« … paysagiste. J'interviens à tous » stops mid-sentence: the half sentence goes."""
+        intro = "Intro\nDécouvrez mes créations de jardinier paysagiste.\nJ’interviens à tous\nPage · Jardinier"
+
+        description = _pick_description(intro_text=intro, about_text="", og_description=None, embedded_texts=[])
+
+        assert description == "Découvrez mes créations de jardinier paysagiste."
+
+    def test_a_fuller_text_completes_a_cut_intro(self) -> None:
+        """A text opening like the intro and going further is the uncut presentation."""
+        intro = "Intro\nDécouvrez mes créations de jardinier paysagiste.\nJ’interviens à tous\nPage · Jardinier"
+        full = "Découvrez mes créations de jardinier paysagiste. J’interviens à tous les étages du jardin."
+
+        description = _pick_description(intro_text=intro, about_text="", og_description=None, embedded_texts=[full])
+
+        assert description == full
+
+    def test_og_description_loses_its_name_town_and_audience(self) -> None:
+        """« Exemple Paysagiste, Morges. 91 followers. Découvrez… » keeps only the presentation."""
+        og = "Exemple Paysagiste, Morges. 91 followers. Découvrez mes créations de jardinier paysagiste."
+
+        assert _parse_og_description(og) == "Découvrez mes créations de jardinier paysagiste."
