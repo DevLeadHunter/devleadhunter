@@ -33,17 +33,19 @@
           </p>
         </BaseTableTd>
 
-        <BaseTableTd label="Raison">
+        <BaseTableTd label="Raison" is-long-text>
           <span class="block text-sm text-[var(--app-ink)] md:max-w-[420px]">{{ prospect.dismissal_reason }}</span>
         </BaseTableTd>
 
         <BaseTableTd label="Écarté" class="whitespace-nowrap">
-          <span class="font-label block text-xs text-[var(--app-ink-soft)]">
-            {{ formatRelativeTime(prospect.dismissed_at) }}
-          </span>
-          <span class="mt-0.5 block text-[11px] text-[var(--app-ink-soft)]">
-            {{ prospect.dismissed_by_user_id === null ? "Par l'app" : 'À la main' }}
-          </span>
+          <div>
+            <span class="font-label block text-xs text-[var(--app-ink-soft)]">
+              {{ formatRelativeTime(prospect.dismissed_at) }}
+            </span>
+            <span class="mt-0.5 block text-[11px] text-[var(--app-ink-soft)]">
+              {{ prospect.dismissed_by_user_id === null ? "Par l'app" : 'À la main' }}
+            </span>
+          </div>
         </BaseTableTd>
 
         <BaseTableTd align="right">

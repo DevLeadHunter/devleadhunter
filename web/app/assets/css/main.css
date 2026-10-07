@@ -670,6 +670,14 @@ html {
     text-align: left;
     white-space: nowrap;
   }
+  .dlh-card-table td[data-label].dlh-card-table__long-text {
+    display: block;
+    text-align: left;
+  }
+  .dlh-card-table td[data-label].dlh-card-table__long-text::before {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
 }
 
 /* iPad tenu droit : un tableau trop large pour 820 px (`dlh-card-table--touch`) passe aussi en cartes, plutôt que
@@ -717,6 +725,14 @@ html {
     color: var(--app-ink-soft);
     text-align: left;
     white-space: nowrap;
+  }
+  .dlh-card-table--touch td[data-label].dlh-card-table__long-text {
+    display: block;
+    text-align: left;
+  }
+  .dlh-card-table--touch td[data-label].dlh-card-table__long-text::before {
+    display: block;
+    margin-bottom: 0.25rem;
   }
 }
 

@@ -14,4 +14,5 @@ export type BaseTableThProps = {
 export type BaseTableTdProps = {
   align?: BaseTableAlign
   label?: string
+  isLongText?: boolean
 }
