@@ -21,6 +21,10 @@ _MINIMUM_NAME_WORDS: int = 2
 # Letters, digits, spaces and punctuation make a name; pictographs and trademark signs decorate it.
 _NAME_CHARACTER_CATEGORIES: frozenset[str] = frozenset({"L", "N", "Z", "P"})
 _KEPT_SYMBOLS: frozenset[str] = frozenset({"+", "|"})
+_LEGAL_FORM_RE: re.Pattern[str] = re.compile(
+    r"(?<!\w)(s\.?\s?[aà]\.?\s?r\.?\s?l\.?|s\.?\s?a\.?|gmbh|ag|sagl|snc|eurl|sasu?|inc\.?|enr\.?|lt[ée]e)(?!\w)",
+    re.IGNORECASE,
+)
 
 
 class BusinessName:
@@ -45,6 +49,11 @@ class BusinessName:
             name = head
         name = _SPACES_RE.sub(" ", name).strip(_EDGE_PUNCTUATION)
         return name or listing_name.strip()
+
+    @staticmethod
+    def without_legal_form(name: str) -> str:
+        """The name without its legal form (« Rochat » for « Rochat Sàrl »), or the name itself when nothing else remains."""
+        return " ".join(_LEGAL_FORM_RE.sub(" ", name).split()) or name
 
     @staticmethod
     def _without_decoration(name: str) -> str:

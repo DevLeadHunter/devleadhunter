@@ -46,10 +46,6 @@ _EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9à-öø-ÿ.-]+\.
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
 _SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch", "zip.ch")
-_LEGAL_FORM_RE: re.Pattern[str] = re.compile(
-    r"(?<!\w)(s\.?\s?[aà]\.?\s?r\.?\s?l\.?|s\.?\s?a\.?|gmbh|ag|sagl|snc|eurl|sasu?|inc\.?|enr\.?|lt[ée]e)(?!\w)",
-    re.IGNORECASE,
-)
 _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
     r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
 )
@@ -435,8 +431,9 @@ class CandidateVerifier:
         A business entry naming it, by its own name or by the owner on its extra line, is its entry;
         its page is read whole, since the list leaves out the asterisk of a second number.
         """
-        name_without_legal_form = " ".join(_LEGAL_FORM_RE.sub(" ", facts.name).split()) or facts.name
-        for listed_entry in await self._directory.entries_for_name(name_without_legal_form, facts.town):
+        for listed_entry in await self._directory.entries_for_name(
+            BusinessName.without_legal_form(facts.name), facts.town
+        ):
             is_entry_of_business = listed_entry.is_business and self.names_business(
                 f"{listed_entry.name} {listed_entry.extra_line}", facts, trade
             )
@@ -754,7 +751,7 @@ class CandidateVerifier:
     def _is_domain_named_after(domain: str, facts: CandidateFacts) -> bool:
         """Whether a domain spells the business name, give or take a letter (« bcp-paysagiste.com » for « Bcp Paysagistes »)."""
         compact_label = re.sub(r"[^a-z0-9]", "", fold(domain.rsplit(".", 1)[0]))
-        compact_name = re.sub(r"[^a-z0-9]", "", fold(_LEGAL_FORM_RE.sub(" ", facts.name)))
+        compact_name = re.sub(r"[^a-z0-9]", "", fold(BusinessName.without_legal_form(facts.name)))
         similarity = difflib.SequenceMatcher(None, compact_label, compact_name).ratio()
         return bool(compact_label) and similarity >= _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY
 
