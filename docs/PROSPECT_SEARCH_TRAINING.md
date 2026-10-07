@@ -326,7 +326,7 @@ Le 7 octobre à 9 h 30 : Suisse 28/40 (17 garages, 8 paysagistes, 3 électricien
 |---|---|---|---|
 | n° 11 reprise, 12 villes de plus par métier (376 requêtes, 57 appels au juge) | 10 | 4 (prospects 342 à 345) | 6 : un email sur un faux domaine Gmail, un astérisque sur zip.ch, une centrale hydroélectrique, un site derrière une page anti-robots, un email sur le domaine d'une autre entreprise, un électricien français itinérant |
 | n° 12, 5 par métier (1 h, 242 requêtes, 23 appels au juge) | 6 | 3 (prospects 346 à 348) | 3 : la page Facebook d'une association de commerces, un astérisque sur un portable, une agence d'emploi |
-| n° 13, 3 par métier (en cours à 10 h 40) | 4 | 4 (prospects 349 à 352) | aucun |
+| n° 13, 3 par métier (46 minutes, 173 requêtes, 17 appels au juge) | 5 | 5 (prospects 349 à 353) | aucun |
 
 « Contrôlés à la main » = les fiches gardées et les fiches « à confirmer » qui avaient un email. Le prospect 342 était « à confirmer » : son email figure sur la liste des entreprises de sa commune, il a été gardé à la main. Le prospect 344 est un homme à tout faire qui entretient des jardins : cas limite, gardé.
 
@@ -342,11 +342,35 @@ La règle de la manche 9 « email sur le domaine d'un site en ligne qui ne nomme
 | Le nom d'une page Facebook gardait son identifiant (« … (@…) ») jusque dans la fiche du prospect (corrigé à la main) | Le titre de la page n'était coupé qu'à « \| Facebook » | L'identifiant est retiré du nom (`911407e4`) |
 | Un électricien à confirmer : son portable porte l'astérisque dans l'extrait Google de sa fiche d'annuaire | L'extrait arrivait derrière un lien de redirection Google, et l'astérisque n'était lu que sur les liens des annuaires | Un numéro étoilé précédé de « téléphone », « mobile », « portable », « natel » ou « fax » est lu sur tout résultat (`d7cca9c5`) |
 | Un « électricien » gardé était la page Facebook d'une association de commerces de la région | Une page trouvée par la recherche Facebook était crue sur le métier cherché | Une page Facebook dont le nom ne dit pas le métier passe « à confirmer » (`94f22911`) |
-| Un paysagiste gardé : son seul email est sur « gmail.ch » | gmail.ch n'est pas Gmail : le domaine a son propre serveur de courrier, il passe tous les contrôles | Pas corrigé : un seul cas, et pas de filtre agressif sur les emails ; le contrôle à la main l'attrape |
-| Un électricien français itinérant gardé en Suisse | Rien sur sa fiche ne le disait | Pas corrigé (cas isolé) |
+| Un paysagiste à confirmer : son seul email est sur « gmail.ch » | gmail.ch n'est pas Gmail : le domaine a son propre serveur de courrier, il passe tous les contrôles | Pas corrigé : la fiche attendait déjà une confirmation, et pas de filtre agressif sur les emails |
+| Un électricien français itinérant, à confirmer (page Facebook sans téléphone) | Sa page est sortie de la recherche Facebook de la ville | Pas corrigé : la fiche attendait déjà une confirmation |
+| Trouvé en relisant le code : un fax étoilé dans un extrait arrivé par une redirection n'était pas lu | La liste des mots devant le numéro oubliait « fax », alors qu'un fax étoilé sur une page d'annuaire écarte déjà la fiche | « fax » ajouté à la liste (`280b2c4b`) |
 
 Groq : la recherche n° 11 a épuisé le quota gratuit du jour (200 000 jetons sur gpt-oss-120b). Le juge passe désormais sur gpt-oss-20b, qui a son propre quota, quand celui du modèle principal est épuisé (`d4fbbbaa`).
 
 ### Résultat
 
-Le 7 octobre à 10 h 40 : Suisse 39/40 (17 paysagistes, 18 garages, 4 électriciens). Les électriciens suisses restent la case la plus dure : 1 bon sur 24 villes dans la n° 11, aucun sur 12 villes dans la n° 12, 1 à Genève dans la n° 13 ; dans chaque ville, la plupart ont un site ou refusent la publicité.
+Le 7 octobre à 10 h 55 : Suisse 40/40 (18 garages, 17 paysagistes, 5 électriciens). Le sourcing de la vague 4 est fini : France email 40/40, Québec 25/20, SMS France 15/15. Les électriciens suisses restent la case la plus dure : 1 bon sur 24 villes dans la n° 11, aucun sur 12 villes dans la n° 12, 2 sur 12 villes dans la n° 13 (Genève, Montreux) ; dans chaque ville, la plupart ont un site ou refusent la publicité.
+
+## Bilan de l'entraînement (7 octobre)
+
+Précision de l'app = bons prospects parmi les fiches qu'elle a gardées (les « à confirmer » sont à part : c'est l'app qui demande un contrôle).
+
+| Recherche | Pays | Gardés | Bons | Précision |
+|---|---|---|---|---|
+| n° 3 (manche 1) | Suisse | 10 | 5 | 50 % |
+| n° 4 (manche 2) | Suisse | 15 | 3 | 20 % |
+| n° 5 (manche 3) | Suisse | 7 | 4 | 57 % |
+| n° 6 (manche 4) | France | 25 | 9 | 36 % |
+| n° 7 (manche 5) | Québec | 25 | 16 | 64 % |
+| n° 8 (manche 6) | France | 24 | 17 | 71 % |
+| n° 9 (manche 7) | Suisse | 11 | 5 | 45 % |
+| n° 10 (manche 8) | Québec | 10 | 9 | 90 % |
+| n° 11 (manches 9 et 10) | Suisse | 22 | 15 | 68 % |
+| n° 12 (manche 10) | Suisse | 4 | 3 | 75 % |
+| n° 13 (manche 10) | Suisse | 5 | 5 | 100 % |
+
+- La Suisse passe de 20 à 57 % les premiers jours à 68-100 % sur les trois dernières recherches ; la France de 36 à 71 %, le Québec de 64 à 90 %. À la main, la manche 1 donnait 75 % (6 bons sur 8) : l'app fait maintenant aussi bien, seule.
+- Les fiches « à confirmer » rapportent peu (1 bon sur 5 dans la reprise de la n° 11) : l'app a raison de les montrer à part.
+- Coût : 35 requêtes par prospect dans la n° 13, environ 80 dans les n° 11 et 12 (électriciens, grandes villes), soit 0,05 à 0,12 $ par prospect (0,0015 $ la requête).
+- Ce qui demande encore un humain : les fiches « à confirmer » (Google sans réponse, email sans preuve franche, page Facebook sans téléphone ou sans le métier dans son nom) et les cas limites (un homme à tout faire qui entretient des jardins).
