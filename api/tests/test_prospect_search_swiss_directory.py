@@ -728,6 +728,19 @@ def test_a_refused_lookup_raises_while_an_unlisted_number_has_no_entry(monkeypat
         _read_directory(monkeypatch, {"/tel/": (429, "")}, "021 925 36 66")
 
 
+def test_a_lookup_refused_for_too_many_requests_is_asked_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    answers = iter([httpx.Response(429), httpx.Response(200, text=_PAGE_WITH_ASTERISK)])
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=httpx.MockTransport(lambda request: next(answers)), **kwargs)
+
+    monkeypatch.setattr(swiss_directory_module.httpx, "AsyncClient", client_with_transport)
+    entry = asyncio.run(SwissDirectory().entry_for_phone("021 000 00 80"))
+
+    assert entry is not None and entry.refuses_advertising is True
+
+
 def test_an_entry_page_without_vcard_still_gives_its_asterisk(monkeypatch: pytest.MonkeyPatch) -> None:
     entry = _read_directory(
         monkeypatch,

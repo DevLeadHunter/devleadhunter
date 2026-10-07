@@ -392,7 +392,7 @@ class CandidateVerifier:
     @staticmethod
     def note_directory_unanswered(facts: CandidateFacts, error: SwissDirectoryUnavailableError) -> None:
         """Record that search.ch did not answer, so the candidate's asterisk stays unread."""
-        logger.info("Swiss directory unanswered for %s: %s", facts.name, error)
+        logger.warning("Swiss directory unanswered for %s: %s", facts.name, error)
         facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
 
     def _read_swiss_directory_entry(

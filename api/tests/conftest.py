@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import models
+import services.prospect_search.swiss_directory as swiss_directory_module
 from core.config import settings
 from core.database import Base
 from scrappers.google_website_button import google_website_button
@@ -52,6 +53,8 @@ def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(swiss_directory, "entries_at_address", no_entries_at_address)
     monkeypatch.setattr(swiss_directory, "entry_at", no_entry_page)
     monkeypatch.setattr(swiss_directory, "zip_listing_with_asterisk", no_zip_asterisk)
+    monkeypatch.setattr(swiss_directory_module, "_SECONDS_BETWEEN_REQUESTS", 0.0)
+    monkeypatch.setattr(swiss_directory_module, "_SECONDS_AFTER_REFUSAL", 0.0)
 
 
 @pytest.fixture(autouse=True)

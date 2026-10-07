@@ -13,10 +13,13 @@ zip.ch too, which keeps the entries the directory dropped, asterisk included.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import logging
 import re
+import time
 from dataclasses import dataclass
+from typing import ClassVar
 
 import httpx
 
@@ -29,6 +32,10 @@ _BASE_URL: str = "https://search.ch"
 _ZIP_RESULTS_URL: str = "https://zip.ch/fr/results/"
 _SWISS_DIAL_CODE: str = "+41"
 _TIMEOUT_SECONDS: float = 10.0
+_SECONDS_BETWEEN_REQUESTS: float = 1.0
+_REFUSED_STATUSES: frozenset[int] = frozenset({429, 503})
+_SECONDS_AFTER_REFUSAL: float = 20.0
+_ATTEMPTS_AFTER_REFUSAL: int = 2
 _ENTRY_PATH_RE: re.Pattern[str] = re.compile(
     r'href="(/tel/(?!edit|extended|itjs|vcard|opensearch|s/)[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+)"'
 )
@@ -70,6 +77,8 @@ class SwissDirectoryUnavailableError(Exception):
 class SwissDirectory:
     """Reads one search.ch entry, found by the phone number a business already showed, by its name or at its address."""
 
+    _next_request_slot: ClassVar[float] = 0.0
+
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         """
         The directory entry that lists a Swiss phone number.
@@ -95,7 +104,7 @@ class SwissDirectory:
                 follow_redirects=True,
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
-                page = await http.get(f"{_BASE_URL}/tel/", params={"was": national_number, "lang": "fr"})
+                page = await self._get(http, f"{_BASE_URL}/tel/", params={"was": national_number, "lang": "fr"})
                 if page.status_code == _NOT_LISTED_STATUS:
                     return None
                 self._raise_unless_answered(page)
@@ -103,10 +112,12 @@ class SwissDirectory:
                 entry_path = None if _VCARD_PATH_RE.search(page.text) else _ENTRY_PATH_RE.search(page.text)
                 if entry_path is not None:
                     entry_url = f"{_BASE_URL}{entry_path.group(1)}.fr.html"
-                    page = await http.get(entry_url)
+                    page = await self._get(http, entry_url)
                     self._raise_unless_answered(page)
                 vcard_path = _VCARD_PATH_RE.search(page.text)
-                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+                vcard = (
+                    await self._get(http, f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+                )
         except httpx.HTTPError as exc:
             raise SwissDirectoryUnavailableError(f"search.ch lookup of {national_number} failed: {exc}") from exc
         vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
@@ -147,6 +158,34 @@ class SwissDirectory:
             return None
         return str(page.url)
 
+    @classmethod
+    async def _get(cls, http: httpx.AsyncClient, url: str, *, params: dict[str, str] | None = None) -> httpx.Response:
+        """
+        One request to search.ch, spaced from the previous one, asked again after a refusal.
+
+        search.ch answers a burst of lookups with « too many requests »: a refused page is asked
+        again after a pause, a couple of times, before the lookup is given up.
+        """
+        await cls._wait_for_turn()
+        page = await http.get(url, params=params)
+        for _ in range(_ATTEMPTS_AFTER_REFUSAL):
+            if page.status_code not in _REFUSED_STATUSES:
+                return page
+            await asyncio.sleep(_SECONDS_AFTER_REFUSAL)
+            await cls._wait_for_turn()
+            page = await http.get(url, params=params)
+        if page.status_code in _REFUSED_STATUSES:
+            logger.warning("search.ch still refuses %s (status %s)", url, page.status_code)
+        return page
+
+    @classmethod
+    async def _wait_for_turn(cls) -> None:
+        """Wait for the next free slot: the lookups of candidates verified side by side take turns."""
+        now = time.monotonic()
+        slot = max(now, cls._next_request_slot)
+        cls._next_request_slot = slot + _SECONDS_BETWEEN_REQUESTS
+        await asyncio.sleep(slot - now)
+
     @staticmethod
     def _raise_unless_answered(page: httpx.Response) -> None:
         """Stop a lookup the directory refused (rate limit, outage): an unread page proves nothing."""
@@ -172,10 +211,12 @@ class SwissDirectory:
                 follow_redirects=True,
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
-                page = await http.get(entry_url)
+                page = await self._get(http, entry_url)
                 self._raise_unless_answered(page)
                 vcard_path = _VCARD_PATH_RE.search(page.text)
-                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+                vcard = (
+                    await self._get(http, f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+                )
         except httpx.HTTPError as exc:
             raise SwissDirectoryUnavailableError(f"search.ch entry {entry_url} failed: {exc}") from exc
         vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
@@ -231,7 +272,7 @@ class SwissDirectory:
                 follow_redirects=True,
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
-                page = await http.get(f"{_BASE_URL}/tel/", params={**query, "lang": "fr"})
+                page = await self._get(http, f"{_BASE_URL}/tel/", params={**query, "lang": "fr"})
         except httpx.HTTPError as exc:
             raise SwissDirectoryUnavailableError(f"search.ch lookup of {lookup} failed: {exc}") from exc
         if page.status_code == _NOT_LISTED_STATUS:
