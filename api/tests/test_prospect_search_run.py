@@ -446,6 +446,38 @@ def test_a_town_google_did_not_answer_is_read_again_before_the_search_ends(
     assert any("Sion : Google n'a pas répondu" in line["message"] for line in search.journal)
 
 
+class _GoogleSilentForOneBusinessClient(_CannedSearchClient):
+    """Google answers nothing for one business a few times in a row, then answers."""
+
+    silent_answers_left = 2
+
+    async def google_parsed(
+        self, query: str, *, country: str = "FR", start: int = 0, local: bool = False
+    ) -> dict[str, Any] | None:
+        if query == '"Tendance Nature" Sion' and type(self).silent_answers_left > 0:
+            type(self).silent_answers_left -= 1
+            self.request_count += 1
+            return None
+        return await super().google_parsed(query, country=country, start=start, local=local)
+
+
+@pytest.mark.parametrize(("silent_answers", "expected_status"), [(2, "kept"), (3, "to_confirm")])
+def test_a_candidate_google_left_unanswered_twice_gets_a_last_try_at_the_end_of_the_trade(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch, silent_answers: int, expected_status: str
+) -> None:
+    monkeypatch.setattr(runner_module, "BrightDataClient", _GoogleSilentForOneBusinessClient)
+    monkeypatch.setattr(_GoogleSilentForOneBusinessClient, "silent_answers_left", silent_answers)
+    monkeypatch.setattr(runner_module, "_DEFERRED_RETRY_PAUSE_SECONDS", 0.0)
+    search_id = _create_search(db, count=2)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    search = db.get(ProspectSearch, search_id)
+
+    assert _candidates(db, search_id)["Tendance Nature"].status == expected_status
+    assert any("sans réponse de Google, nouvel essai" in line["message"] for line in search.journal)
+
+
 def test_a_town_google_never_answered_is_not_counted_as_scanned(
     canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

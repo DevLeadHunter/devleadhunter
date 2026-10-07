@@ -76,6 +76,8 @@ _REQUEST_BUDGET_PER_PROSPECT: int = 45
 _WEBSITE_LISTING_BUDGET_SHARE: float = 0.7
 # A candidate waiting for its Facebook page counts for half a prospect: about one page in two gives an email.
 _WAITING_CANDIDATE_WEIGHT: float = 0.5
+# Bright Data can go silent for minutes: the last try of a trade's unanswered candidates waits this long.
+_DEFERRED_RETRY_PAUSE_SECONDS: float = 60.0
 
 
 @dataclass
@@ -113,6 +115,8 @@ class ProspectSearchRunner:
         self._new_journal_lines: list[dict[str, str]] = []
         self._unanswered_candidate_ids: list[int] = []
         self._retried_candidate_ids: set[int] = set()
+        self._deferred_candidate_ids: dict[str, list[int]] = {}
+        self._last_try_candidate_ids: set[int] = set()
         self._stored_request_count: int = 0
         self._stored_judge_call_count: int = 0
 
@@ -212,6 +216,36 @@ class ProspectSearchRunner:
             )
 
     async def _fill_trade(self, state: _RunState, profile: TradeProfile) -> None:
+        """Walk the towns of a trade, then give its candidates Google twice left unanswered a last try."""
+        await self._walk_towns(state, profile)
+        await self._verify_deferred_candidates(state, profile)
+
+    async def _verify_deferred_candidates(self, state: _RunState, profile: TradeProfile) -> None:
+        """
+        Verify once more, after a pause, the candidates of a trade Google answered nothing for twice.
+
+        Until then they wait unverified instead of going to the user as « à confirmer »: a pause of
+        a minute is often enough for Bright Data to answer again. Left as they are when the trade
+        already has its count, like the candidates the walk did not reach.
+        """
+        candidate_ids = self._deferred_candidate_ids.pop(profile.key, [])
+        self._reload_counts()
+        if not candidate_ids or self._is_filled(state, profile) or self._is_over_budget(state) or self._is_cancelled():
+            return
+        self._log(
+            f"{profile.label} : {len(candidate_ids)} fiche(s) sans réponse de Google, nouvel essai dans une minute."
+        )
+        self._flush()
+        await asyncio.sleep(_DEFERRED_RETRY_PAUSE_SECONDS)
+        for candidate_id in candidate_ids:
+            self._last_try_candidate_ids.add(candidate_id)
+            await self._verify_and_place_candidate(state, profile, candidate_id)
+        self._reload_counts()
+        if self._is_filled(state, profile):
+            self._progress.setdefault("trades", {}).setdefault(profile.key, {})["stop_reason"] = None
+        self._flush()
+
+    async def _walk_towns(self, state: _RunState, profile: TradeProfile) -> None:
         """Go through the towns until the trade has its count, the towns run out or the budget is spent."""
         trade_progress = self._progress.setdefault("trades", {}).setdefault(
             profile.key, {"towns": [], "stop_reason": None}
@@ -490,7 +524,8 @@ class ProspectSearchRunner:
         """
         Verify several candidates at once, then once more, one by one, those whose search did not answer.
 
-        The ones not reached before the count is met stay for a later round.
+        The ones not reached before the count is met stay for a later round; the ones still unanswered
+        wait for the last try at the end of the trade.
         """
         if not candidate_ids:
             return
@@ -519,6 +554,9 @@ class ProspectSearchRunner:
                 if has_no_answer and candidate_id not in self._retried_candidate_ids:
                     # Bright Data answers nothing now and then under load: one calmer retry settles it.
                     self._unanswered_candidate_ids.append(candidate_id)
+                    return
+                if has_no_answer and candidate_id not in self._last_try_candidate_ids:
+                    self._deferred_candidate_ids.setdefault(profile.key, []).append(candidate_id)
                     return
                 verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 is_final_rejection = (
