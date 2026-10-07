@@ -14,6 +14,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from enums.contact_name_status import ContactNameStatus, ProposedContactState
@@ -389,10 +390,11 @@ class EnrichmentService:
         monitoring diagnostic — a broken resolution must never break
         enrichment or sending.
         """
-        if record.contact_name_manual or record.contact_name_status in (
-            ContactNameStatus.MANUAL.value,
-            ContactNameStatus.CONFIRMED.value,
-        ):
+        registry_number = self._searched_registry_number(db, prospect)
+        if (prospect.country or "FR") == "CH":
+            await self._read_swiss_register(db, prospect, record, uid=registry_number)
+            return
+        if self._has_settled_contact(record):
             return
         # The cascade reads FRENCH registries (SIRENE, Pappers): outside France it can only produce a French homonym.
         if (prospect.country or "FR") != "FR":
@@ -403,7 +405,9 @@ class EnrichmentService:
                 decision_maker_resolver,
             )
 
-            resolution = await decision_maker_resolver.resolve(context_from_prospect(prospect, record))
+            resolution = await decision_maker_resolver.resolve(
+                context_from_prospect(prospect, record, registry_number=registry_number)
+            )
             record.name_candidates = [candidate.to_persistable() for candidate in resolution.candidates]
 
             # Shared entity check: the registry match and the Maps place must
@@ -413,14 +417,20 @@ class EnrichmentService:
             check_status, check_detail = self._identity_check(record, candidate)
             record.identity_check_status = check_status
             record.identity_check_detail = check_detail
-            if status_to_apply == NameResolution.AUTO and check_status == IdentityCheckStatus.CONFLICT.value:
+            # The company the search tied to the business by its number is it: the checks below catch homonyms.
+            is_anchored = candidate is not None and candidate.anchored
+            if (
+                status_to_apply == NameResolution.AUTO
+                and check_status == IdentityCheckStatus.CONFLICT.value
+                and not is_anchored
+            ):
                 status_to_apply = NameResolution.PROPOSED
 
             # Activity check: a same-département homonym clears the identity check
             # (same postal zone) yet can still be the wrong person when its
             # registered activity is unrelated to the prospect's trade. A positive
             # mismatch demotes to « à confirmer » and records why in the provenance.
-            if status_to_apply == NameResolution.AUTO and candidate is not None:
+            if status_to_apply == NameResolution.AUTO and candidate is not None and not is_anchored:
                 activity_ok, activity_detail = self._activity_check(prospect, candidate)
                 if activity_ok is False:
                     status_to_apply = NameResolution.PROPOSED
@@ -467,6 +477,95 @@ class EnrichmentService:
                 html_snapshot=None,
                 user_id=prospect.user_id,
             )
+
+    @staticmethod
+    def _has_settled_contact(record: ProspectEnrichment) -> bool:
+        """Whether a person set or confirmed the contact name: the machine never touches it then."""
+        return bool(record.contact_name_manual) or record.contact_name_status in (
+            ContactNameStatus.MANUAL.value,
+            ContactNameStatus.CONFIRMED.value,
+        )
+
+    @staticmethod
+    def _searched_registry_number(db: Session, prospect: ProspectDB) -> str | None:
+        """The company number the prospect search read for the business (a SIRET, an IDE…), when it read one."""
+        from models.prospect_search_candidate import ProspectSearchCandidate
+
+        return db.execute(
+            select(ProspectSearchCandidate.registry_number)
+            .where(
+                ProspectSearchCandidate.prospect_id == prospect.id,
+                ProspectSearchCandidate.registry_number.is_not(None),
+            )
+            .order_by(ProspectSearchCandidate.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+    async def _read_swiss_register(
+        self, db: Session, prospect: ProspectDB, record: ProspectEnrichment, *, uid: str | None
+    ) -> None:
+        """
+        Read the federal register for a Swiss prospect: a closed company is no longer contacted, its head is the contact.
+
+        A firm in liquidation or struck off lately sets « Ne plus contacter » with the reason (a landscaper
+        ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
+        from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
+        role, the firm was matched away from its seat, or the publication leaves the first name unsure.
+
+        Args:
+            db: Active database session.
+            prospect: The Swiss prospect.
+            record: Its enrichment, completed in place.
+            uid: The company number the search read (« CHE-… »), when it read one.
+        """
+        from services.decision_maker.normalize import infer_gender
+        from services.decision_maker.swiss_register_people import lead_people, registered_people
+        from services.prospect_search.swiss_registry import swiss_registry
+
+        try:
+            firm = await swiss_registry.firm_of(name=prospect.name, town=prospect.city, uid=uid)
+            closing = swiss_registry.closing_words(firm) if firm is not None else None
+            if closing is not None and not prospect.do_not_contact:
+                from services.prospect_service import prospect_service
+
+                await prospect_service.set_do_not_contact(
+                    db,
+                    prospect.id,
+                    user_id=prospect.user_id,
+                    enabled=True,
+                    reason=f"Entreprise {closing} au registre du commerce (Zefix)",
+                )
+                return
+            if self._has_settled_contact(record):
+                return
+            is_firm_matched_exactly = firm is not None
+            firm = firm or await swiss_registry.firm_of(
+                name=prospect.name, town=prospect.city, uid=uid, allow_unique_name=True
+            )
+            if firm is None or swiss_registry.closing_words(firm) is not None:
+                return
+            leads = lead_people(registered_people(await swiss_registry.publications(firm)))
+            if not leads:
+                return
+            lead = leads[0]
+            candidate = NameCandidate(
+                first=lead.first_name,
+                last=lead.last_name,
+                gender=infer_gender(lead.first_name),
+                source="registre_ch",
+                confidence=0.9,
+                primary=True,
+                geo_confirmed=is_firm_matched_exactly,
+                evidence_group="registry",
+                provenance=f"Registre du commerce (Zefix) : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
+            )
+            if len(leads) == 1 and lead.is_name_certain and is_firm_matched_exactly:
+                self._store_trusted_contact(record, candidate)
+            else:
+                self._store_proposed_contact(record, candidate)
+            db.commit()
+        except Exception as exc:
+            logger.warning("Swiss register read failed for prospect %s: %s", prospect.id, exc)
 
     @staticmethod
     def _store_trusted_contact(record: ProspectEnrichment, candidate: NameCandidate) -> None:

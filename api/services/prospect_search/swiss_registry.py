@@ -22,6 +22,8 @@ from services.prospect_search.candidate_facts import CandidateFacts
 logger = logging.getLogger(__name__)
 
 _SEARCH_URL: str = "https://www.zefix.ch/ZefixREST/api/v1/firm/search.json"
+_FIRM_URL: str = "https://www.zefix.ch/ZefixREST/api/v1/firm/{register_id}.json"
+_UID_RE: re.Pattern[str] = re.compile(r"^CHE-\d{3}\.\d{3}\.\d{3}$")
 _TIMEOUT_SECONDS: float = 15.0
 _MAX_FIRMS: int = 10
 _ACTIVE_STATUS: str = "EXISTIEREND"
@@ -45,6 +47,7 @@ class SwissRegisterFirm:
     status: str
     uid: str
     struck_off_on: date | None = None
+    register_id: int | None = None
 
 
 class SwissRegistry:
@@ -74,7 +77,7 @@ class SwissRegistry:
                 facts.registry_number = active.uid
                 facts.add_evidence("registry", active.uid, source=_REGISTER_SOURCE)
             return
-        closing = next((words for firm in firms if (words := self._closing_words(firm)) is not None), None)
+        closing = next((words for firm in firms if (words := self.closing_words(firm)) is not None), None)
         if closing is not None:
             facts.is_closed = True
             facts.add_evidence("closed", closing, source=_REGISTER_SOURCE)
@@ -107,9 +110,69 @@ class SwissRegistry:
                 status=str(firm.get("status") or ""),
                 uid=str(firm.get("uidFormatted") or ""),
                 struck_off_on=date.fromisoformat(firm["deleteDate"]) if firm.get("deleteDate") else None,
+                register_id=int(firm["ehraid"]) if str(firm.get("ehraid") or "").isdigit() else None,
             )
             for firm in response.json().get("list") or []
         ]
+
+    async def firm_of(
+        self, *, name: str, town: str | None, uid: str | None = None, allow_unique_name: bool = False
+    ) -> SwissRegisterFirm | None:
+        """
+        The register's firm for a business: the one of its company number, else the one of its name at its seat.
+
+        A business works in a village while its firm sits in the commune (« Le Châble », seat « Val de
+        Bagnes »): with ``allow_unique_name``, the only active firm of that name in Switzerland is it too.
+
+        Args:
+            name: The business name.
+            town: The business's town, the seat a name match must share.
+            uid: Its company number (« CHE-123.456.789 ») when the search read one.
+            allow_unique_name: Whether the single active firm of the name counts away from the seat.
+
+        Returns:
+            The firm, an active one first when several match; ``None`` when the register lists none.
+        """
+        if uid and _UID_RE.match(uid):
+            firms = [firm for firm in await self.firms_named(uid) if firm.uid == uid]
+        else:
+            named = [
+                firm
+                for firm in await self.firms_named(self.register_name(name))
+                if self._compact(firm.name) == self._compact(name)
+            ]
+            firms = [firm for firm in named if town and fold(firm.seat) == fold(town)]
+            active_named = [firm for firm in named if firm.status == _ACTIVE_STATUS]
+            if not firms and allow_unique_name and len(active_named) == 1:
+                firms = active_named
+        return next((firm for firm in firms if firm.status == _ACTIVE_STATUS), firms[0] if firms else None)
+
+    async def publications(self, firm: SwissRegisterFirm) -> list[tuple[date, str]]:
+        """
+        The firm's publications in the official gazette (FOSC), each with its date.
+
+        Args:
+            firm: A firm the register listed.
+
+        Returns:
+            ``(date, text)`` of each publication; empty when the register does not answer.
+        """
+        if firm.register_id is None:
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
+                response = await http.get(_FIRM_URL.format(register_id=firm.register_id))
+        except httpx.HTTPError as exc:
+            logger.warning("Zefix publications of %s failed: %s", firm.name, exc)
+            return []
+        if response.status_code != 200:
+            return []
+        publications: list[tuple[date, str]] = []
+        for publication in response.json().get("shabPub") or []:
+            published_on = str(publication.get("shabDate") or "")
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", published_on):
+                publications.append((date.fromisoformat(published_on), str(publication.get("message") or "")))
+        return publications
 
     @staticmethod
     def register_name(name: str) -> str:
@@ -122,7 +185,7 @@ class SwissRegistry:
         return fold(firm.seat) == fold(town) and cls._compact(firm.name) == cls._compact(name)
 
     @staticmethod
-    def _closing_words(firm: SwissRegisterFirm) -> str | None:
+    def closing_words(firm: SwissRegisterFirm) -> str | None:
         """How a firm is closed: in liquidation, or struck off lately; ``None`` when it is not."""
         if firm.status == _IN_LIQUIDATION_STATUS:
             return "en liquidation"
