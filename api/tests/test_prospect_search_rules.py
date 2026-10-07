@@ -72,6 +72,14 @@ class TestTradeCatalog:
     def test_the_electrician_registry_domains_leave_out_the_heating_trades(self) -> None:
         assert TradeCatalog.resolve("électricien").rge_domains == ("Radiateurs électriques, dont régulation.",)
 
+    def test_a_power_plant_or_a_substation_is_not_an_electrician(self) -> None:
+        electrician = TradeCatalog.resolve("électricien")
+
+        assert electrician.accepts_category("Centrale hydroélectrique") is False
+        assert electrician.accepts_category("Sous-station électrique") is False
+        assert electrician.accepts_category("Électricien") is True
+        assert electrician.accepts_category("Entrepreneur en électricité") is True
+
     def test_a_garage_door_supplier_is_not_a_garage(self) -> None:
         garage = TradeCatalog.resolve("garage")
 
