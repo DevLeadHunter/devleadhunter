@@ -38,6 +38,9 @@ _VISION_MODEL_CANDIDATES: tuple[str, ...] = (
 _VISION_MODEL_CACHE_SECONDS = 3600.0
 _RATE_LIMIT_MAX_RETRIES = 3
 _RATE_LIMIT_MAX_DELAY_SECONDS = 12.0
+_DAILY_QUOTA_MARKER = "per day"
+_DAILY_QUOTA_DEFAULT_WAIT_SECONDS = 600.0
+_RETRY_IN_RE = re.compile(r"try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?")
 _JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 # gpt-oss / qwen3 models reason before answering, and the reasoning tokens count against
 # ``max_tokens`` — a tiny budget (e.g. 10 for a one-word verdict) is entirely consumed by
@@ -62,11 +65,12 @@ def _format_sender_identity(*, sender_name: str, company_name: str | None) -> st
 
 
 class LLMService:
-    """Thin Groq client with rule-based fallbacks."""
+    """Thin Groq client with rule-based fallbacks, and a second model while the main one's daily quota is spent."""
 
     def __init__(self) -> None:
         # (resolved_at, model id or None) — the vision model verified against the live model list.
         self._vision_model_cache: tuple[float, str | None] | None = None
+        self._quota_spent_until: dict[str, float] = {}
 
     @property
     def is_configured(self) -> bool:
@@ -125,7 +129,7 @@ class LLMService:
         """
         if not self.is_configured:
             return None
-        chosen_model = model or settings.groq_model
+        chosen_model = self._model_with_quota_left(model or settings.groq_model)
         payload = LlmCompletion.request_payload(
             messages,
             model=chosen_model,
@@ -182,7 +186,7 @@ class LLMService:
         """
         if not self.is_configured:
             return
-        chosen_model = model or settings.groq_model
+        chosen_model = self._model_with_quota_left(model or settings.groq_model)
         payload = LlmCompletion.request_payload(
             messages,
             model=chosen_model,
@@ -200,7 +204,14 @@ class LLMService:
                         if response.status_code == 400 and "reasoning_effort" in payload:
                             payload.pop("reasoning_effort")
                             continue
-                        if response.status_code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
+                        if response.status_code == 429:
+                            await response.aread()
+                        if self._says_daily_quota_spent(response):
+                            fallback = self._set_aside_spent_model(str(payload.get("model")), response)
+                            if fallback is not None:
+                                payload["model"] = fallback
+                                continue
+                        elif response.status_code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
                             attempt += 1
                             delay = self._retry_delay_seconds(response, attempt)
                             logger.info("Groq rate limited (%s): retry %s in %.1fs", chosen_model, attempt, delay)
@@ -226,8 +237,9 @@ class LLMService:
 
         A 429 is retried after the ``retry-after`` delay (capped, a few attempts): the vision batches
         of the photo labelling hit the tokens-per-minute cap of the account and were silently lost.
-        A 400 while ``reasoning_effort`` is set is retried once without it (not every qwen / gpt-oss
-        variant accepts the knob). Any other error is raised as ``HTTPStatusError``.
+        A 429 for the daily quota is not waited out: the fallback model answers instead, or the call
+        fails at once. A 400 while ``reasoning_effort`` is set is retried once without it (not every
+        qwen / gpt-oss variant accepts the knob). Any other error is raised as ``HTTPStatusError``.
         """
         attempt = 0
         while True:
@@ -235,6 +247,13 @@ class LLMService:
             if response.status_code == 400 and "reasoning_effort" in payload:
                 payload.pop("reasoning_effort")
                 continue
+            if self._says_daily_quota_spent(response):
+                fallback = self._set_aside_spent_model(str(payload.get("model")), response)
+                if fallback is None:
+                    response.raise_for_status()
+                else:
+                    payload["model"] = fallback
+                    continue
             if response.status_code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
                 attempt += 1
                 delay = self._retry_delay_seconds(response, attempt)
@@ -243,6 +262,58 @@ class LLMService:
                 continue
             response.raise_for_status()
             return response
+
+    def _model_with_quota_left(self, model: str) -> str:
+        """``model``, or the model answering for it while its daily quota is spent."""
+        if self._is_quota_spent(model):
+            return self._fallback_for(model) or model
+        return model
+
+    def _fallback_for(self, model: str) -> str | None:
+        """The model answering for ``model`` once its daily quota is spent: only the main model has one."""
+        fallback = (settings.groq_fallback_model or "").strip()
+        if model != settings.groq_model or not fallback or fallback == model or self._is_quota_spent(fallback):
+            return None
+        return fallback
+
+    def _is_quota_spent(self, model: str) -> bool:
+        """Whether Groq said the daily quota of ``model`` is spent, and the wait it gave is not over."""
+        return time.monotonic() < self._quota_spent_until.get(model, 0.0)
+
+    @staticmethod
+    def _says_daily_quota_spent(response: httpx.Response) -> bool:
+        """Whether a 429 is the daily quota (« tokens per day ») rather than a burst within a minute."""
+        return response.status_code == 429 and _DAILY_QUOTA_MARKER in response.text
+
+    def _set_aside_spent_model(self, model: str, response: httpx.Response) -> str | None:
+        """
+        Set aside a model whose daily quota is spent, until Groq says it answers again.
+
+        Args:
+            model: The model that answered 429.
+            response: Groq's answer, naming the wait.
+
+        Returns:
+            The model to ask instead, or ``None`` when there is none.
+        """
+        self._quota_spent_until[model] = time.monotonic() + self._quota_wait_seconds(response)
+        fallback = self._fallback_for(model)
+        if fallback is not None:
+            logger.warning("Groq daily quota spent on %s: %s answers until it is back", model, fallback)
+        return fallback
+
+    @staticmethod
+    def _quota_wait_seconds(response: httpx.Response) -> float:
+        """How long a spent quota stays spent: the ``retry-after`` header, else the « try again in 4m40s » of the message."""
+        try:
+            return float(response.headers.get("retry-after", ""))
+        except ValueError:
+            pass
+        wait = _RETRY_IN_RE.search(response.text)
+        if wait is None or not any(wait.groups()):
+            return _DAILY_QUOTA_DEFAULT_WAIT_SECONDS
+        hours, minutes, seconds = (float(part) if part else 0.0 for part in wait.groups())
+        return hours * 3600 + minutes * 60 + seconds
 
     @staticmethod
     def _retry_delay_seconds(response: httpx.Response, attempt: int) -> float:

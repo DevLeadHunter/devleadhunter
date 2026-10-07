@@ -250,6 +250,11 @@ class Settings(BaseSettings):
         alias="GROQ_MODEL",
         description="Groq model id used for completions (llama-3.3-70b-versatile was decommissioned 2026-06-17)",
     )
+    groq_fallback_model: str = Field(
+        default="openai/gpt-oss-20b",
+        alias="GROQ_FALLBACK_MODEL",
+        description="Groq model answering in place of GROQ_MODEL while its daily quota is spent (empty to turn off)",
+    )
     # Vision model (photo labelling). Only a preference: the service checks it against the account's
     # live model list and falls back to the next known vision model, so a decommission never leaves
     # the feature silently dead again.

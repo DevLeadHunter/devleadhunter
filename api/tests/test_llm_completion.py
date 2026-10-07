@@ -102,3 +102,66 @@ def test_a_groq_answer_without_content_is_no_answer(monkeypatch: pytest.MonkeyPa
         return httpx.Response(200, json={"choices": [{"message": {}}]})
 
     assert asyncio.run(_groq_with(handler, monkeypatch).complete(_MESSAGES)) is None
+
+
+_DAILY_QUOTA_SPENT = (
+    '{"error":{"message":"Rate limit reached for model `openai/gpt-oss-120b` in organization `org_x` service tier '
+    "`on_demand` on tokens per day (TPD): Limit 200000, Used 199272, Requested 1377. Please try again in 4m40.368s."
+    '"}}'
+)
+
+
+def test_a_spent_daily_quota_hands_this_call_and_the_next_ones_to_the_fallback_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asked_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model"]
+        asked_models.append(model)
+        if model == "openai/gpt-oss-120b":
+            return httpx.Response(429, text=_DAILY_QUOTA_SPENT)
+        return httpx.Response(200, json={"model": model, "choices": [{"message": {"content": "ok"}}]})
+
+    service = _groq_with(handler, monkeypatch)
+    monkeypatch.setattr(llm_module.settings, "groq_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(llm_module.settings, "groq_fallback_model", "openai/gpt-oss-20b")
+
+    first = asyncio.run(service.complete(_MESSAGES))
+    second = asyncio.run(service.complete(_MESSAGES))
+
+    assert first is not None and (first.text, first.model) == ("ok", "openai/gpt-oss-20b")
+    assert second is not None and second.model == "openai/gpt-oss-20b"
+    assert asked_models == ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "openai/gpt-oss-20b"]
+
+
+def test_a_spent_daily_quota_without_fallback_fails_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        asked_models.append(json.loads(request.content)["model"])
+        return httpx.Response(429, text=_DAILY_QUOTA_SPENT)
+
+    service = _groq_with(handler, monkeypatch)
+    monkeypatch.setattr(llm_module.settings, "groq_model", "openai/gpt-oss-120b")
+
+    assert asyncio.run(service.complete(_MESSAGES, model="qwen/qwen3.8-27b")) is None
+    assert asked_models == ["qwen/qwen3.8-27b"]
+
+
+def test_a_spent_daily_quota_hands_a_stream_to_the_fallback_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model"]
+        if model == "openai/gpt-oss-120b":
+            return httpx.Response(429, text=_DAILY_QUOTA_SPENT)
+        chunk = json.dumps({"model": model, "choices": [{"delta": {"content": "Bonjour"}}]})
+        return httpx.Response(200, text=f"data: {chunk}\n\ndata: [DONE]\n\n")
+
+    service = _groq_with(handler, monkeypatch)
+    monkeypatch.setattr(llm_module.settings, "groq_model", "openai/gpt-oss-120b")
+    monkeypatch.setattr(llm_module.settings, "groq_fallback_model", "openai/gpt-oss-20b")
+
+    async def collect() -> list[str]:
+        return [delta async for delta in service.complete_stream(_MESSAGES)]
+
+    assert asyncio.run(collect()) == ["Bonjour"]
