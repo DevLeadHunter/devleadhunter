@@ -203,6 +203,14 @@ def test_the_vcard_gives_the_email_the_website_and_the_mobiles() -> None:
     assert entry.mobile_phones == ("+41760000013",)
 
 
+def test_an_email_on_an_accented_domain_is_read_in_the_form_mail_servers_use() -> None:
+    vcard = "BEGIN:VCARD\r\nEMAIL:info@rochat-contrôles.ch\r\nEND:VCARD\r\n"
+
+    entry = SwissDirectory.parse_entry(_ENTRY_URL, _PAGE_WITHOUT_ASTERISK, vcard)
+
+    assert entry.emails == ("info@xn--rochat-contrles-nsb.ch",)
+
+
 def test_only_a_swiss_number_is_looked_up() -> None:
     assert SwissDirectory.national_number("+41 21 922 91 68") == "0219229168"
     assert SwissDirectory.national_number("079 123 45 67") == "0791234567"

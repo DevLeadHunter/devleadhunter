@@ -357,6 +357,28 @@ class ValidationService:
         return bool(re.match(pattern, email))
 
     @staticmethod
+    def ascii_email(email: str) -> str:
+        """
+        The address with its domain written the way mail servers read it.
+
+        An accented domain (« info@nh-contrôles.ch ») becomes its ASCII form
+        (« info@xn--nh-contrles-9eb.ch »); any other address comes back as it is.
+
+        Args:
+            email: An email address.
+
+        Returns:
+            The address with an ASCII domain.
+        """
+        local_part, separator, domain = email.rpartition("@")
+        if not separator or domain.isascii():
+            return email
+        try:
+            return f"{local_part}@{domain.encode('idna').decode('ascii')}"
+        except UnicodeError:
+            return email
+
+    @staticmethod
     def normalize_phone(phone: str | None) -> str | None:
         """
         Normalize phone number format.

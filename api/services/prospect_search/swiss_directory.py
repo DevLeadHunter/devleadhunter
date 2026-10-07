@@ -24,6 +24,7 @@ from typing import ClassVar
 import httpx
 
 from services.sms.phone_normalizer import PhoneNumberPlans, to_e164
+from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
 
 logger = logging.getLogger(__name__)
@@ -345,7 +346,7 @@ class SwissDirectory:
         for field_name, raw_value in _VCARD_LINE_RE.findall(_VCARD_FOLD_RE.sub("", vcard_text)):
             value = raw_value.strip()
             if field_name == "EMAIL":
-                emails.append(value.lower())
+                emails.append(validation_service.ascii_email(value.lower()))
             elif field_name == "URL" and "search.ch/" not in value:
                 websites.append(value)
             elif field_name == "TEL" and PhoneNumberPlans.mobile_of_country(value, country="CH") is not None:

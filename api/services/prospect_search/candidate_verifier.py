@@ -42,7 +42,7 @@ from services.website_liveness_service import website_liveness_service
 
 logger = logging.getLogger(__name__)
 
-_EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
+_EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9à-öø-ÿ.-]+\.[a-z]{2,}", re.IGNORECASE)
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
 _SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch", "zip.ch")
@@ -855,7 +855,7 @@ class CandidateVerifier:
             if CandidateVerifier.is_group_discussion(line.link):
                 continue
             for match in _EMAIL_RE.finditer(email_candidate_scorer.without_glued_labels(line.text)):
-                found.append((match.group(0).lower().rstrip("."), index))
+                found.append((validation_service.ascii_email(match.group(0).lower().rstrip(".")), index))
         return found
 
     def _keep_snippet_emails(
