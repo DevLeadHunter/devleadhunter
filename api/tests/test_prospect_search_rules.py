@@ -20,6 +20,7 @@ from models.facebook_exclusion import FacebookPageExclusion
 from models.prospect_db import ProspectDB
 from models.prospect_search_candidate import ProspectSearchCandidate
 from schemas.prospect_search import CandidateDecisions, ProspectSearchCreate
+from services.decision_maker.normalize import fold
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -141,6 +142,12 @@ class TestSearchZones:
 
         assert set(plan[-2:]) == {"Sion", "Genève"}
         assert len(plan) == len(SearchZones.towns_of("CH"))
+
+    @pytest.mark.parametrize("country", ["FR", "CH", "CA"])
+    def test_a_town_is_listed_once(self, country: str) -> None:
+        towns = [fold(town) for town in SearchZones.towns_of(country)]
+
+        assert len(towns) == len(set(towns))
 
     def test_brittany_is_left_out_of_the_french_towns(self) -> None:
         assert not {"Rennes", "Brest", "Quimper", "Vannes", "Saint-Brieuc", "Lorient"} & set(SearchZones.towns_of("FR"))
