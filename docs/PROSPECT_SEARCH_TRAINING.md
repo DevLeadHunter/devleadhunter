@@ -287,3 +287,35 @@ quotidien épuisé) : 24 gardés en 51 minutes, 529 requêtes.
 ### Résultat
 
 Le 7 octobre à 0 h 15 : France email 40/40, Québec 25/20, SMS France 15/15, Suisse 16/40.
+
+## Manche 9 — Suisse, les trois métiers (nuit du 7 octobre)
+
+| Recherche | Gardés | Bons | Faux |
+|---|---|---|---|
+| n° 11, Suisse, 8 par métier (3 h, 863 requêtes, 147 appels au juge) | 17 | 12 (prospects 329, 330, 332 à 341) | 2 emails d'une autre entreprise (la galerie d'un proche, un autre garage), 1 profil Facebook d'un particulier, 1 seconde fiche d'un astérisque, 1 carrosserie d'un groupe qui a son site |
+
+Les fiches restées « à valider » dans les recherches 1 à 9 ont été reprises : 7 portaient l'astérisque, une entreprise était radiée, un garage était bon (son email était dans l'annuaire, Google n'avait pas répondu) : prospect 331.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Un paysagiste « F. … Sàrl » passait pour absent de l'annuaire alors que son patron y figure, à la même adresse, avec l'astérisque | Le numéro de l'entreprise n'est pas listé et le nom (« F. … ») ne trouve pas la fiche (« …, Prénom ») | L'annuaire est aussi lu à l'adresse de la fiche, sous le nom de famille ; seule la même adresse compte, pas un homonyme plus loin dans la rue |
+| La moitié des paysagistes suisses coûtaient une recherche Google pour finir écartés par l'astérisque | L'annuaire n'était lu qu'après la recherche Google | L'annuaire (gratuit) est lu d'abord : une fiche à astérisque ne coûte plus de requête payante ni d'appel au juge |
+| Un tiers des fiches coûtaient une recherche Google pour découvrir leur site | Le bouton « Site Web » de la fiche Google n'était pas suivi | Le bouton est suivi (une simple redirection de Google, gratuite) : un site en ligne écarte la fiche sans requête payante |
+| Des fiches restaient « à valider : site déclaré mais pas retrouvé » | Leur bouton « Site Web » mène à leur page d'annuaire (yellow.local.ch), pas à un site | Un bouton qui mène à un annuaire ne compte plus comme un site ; vers une page Facebook, il donne la page |
+| Une seconde fiche Google d'un paysagiste déjà écarté pour l'astérisque a été gardée (refusée à la main) | Sa fiche ne montrait pas de numéro : l'annuaire, désormais lu avant Google, était interrogé sans numéro, puis plus jamais une fois le numéro révélé par Google | Un numéro ou une adresse que Google révèle est cherché dans l'annuaire |
+| La même entreprise pouvait revenir d'une ville à l'autre | La mémoire de la recherche (déjà proposé) se perdait à chaque nouvelle ville, et elle ne retenait pas ses propres rejets | La recherche garde, d'une ville à l'autre et après un redémarrage, ce qu'elle a proposé et ce qu'elle a écarté pour de bon |
+| Un paysagiste gardé avec l'email d'une galerie d'art (refusé à la main) | La galerie d'un membre de la famille partage le fixe de la maison : la recherche par numéro prenait l'email de toute page montrant le numéro | Hors annuaire, une page ne donne son email que si son titre nomme l'entreprise |
+| Un « électricien » gardé : le profil Facebook d'un particulier dont le nom de famille est celui de la ville, avec l'email d'une paroisse (refusé à la main) | La ville lue dans le nom de la page plaçait la page dans la ville ; un domaine d'Église n'était pas reconnu comme institution | Le nom de la page ne compte plus pour la ville, un profil personnel (« … et d'autres personnes que vous pouvez connaître ») est écarté, les domaines de paroisse, de diocèse et d'Église (« cath ») sont des institutions |
+| Une entreprise trouvée par Facebook pouvait échapper à l'astérisque | Sans numéro au départ, l'annuaire n'était pas interrogé ; le numéro lu ensuite sur la page ne l'était jamais | Le numéro lu sur la page Facebook est cherché dans l'annuaire avant la décision |
+| Un garage dont un annuaire miroir écrit « * Ne désire pas recevoir de publicité » | La mention n'était lue que sur local.ch et search.ch | La mention est lue sur tout résultat qui nomme l'entreprise |
+| Un électricien accepté la veille porte l'astérisque sur zip.ch (prospect passé en « Ne plus contacter ») | search.ch ne liste plus son numéro ; zip.ch garde les fiches que l'annuaire a perdues, astérisque compris | Un numéro absent de search.ch est cherché sur zip.ch |
+| Un garage gardé avec l'email d'un autre garage (refusé à la main) | « Garage du Moulin » passait pour « Garage du Soleil » : les mots génériques communs (« garage du ») suffisaient | Un texte ne nomme une entreprise que s'il porte au moins un mot propre à son nom |
+| Une carrosserie gardée avec un email sur le domaine de son groupe, qui a un site en ligne (refusée à la main) | Le site du domaine ne la nommait pas : l'email était pris sans autre question | Un email sur le domaine d'un site en ligne qui ne nomme pas l'entreprise met la fiche « à confirmer » |
+| Un garage dont le domaine ne montre que la page d'accueil de l'hébergeur passait pour avoir un site | La page « Bienvenue sur … » répond normalement | Cette page compte comme un site mort |
+| Trois garages « à confirmer : l'annuaire n'a pas répondu » | Interrogé avant Google pour chaque fiche, search.ch limitait le débit du serveur | Les requêtes à l'annuaire sont espacées d'une seconde et redemandées après un refus |
+
+### Résultat
+
+Le 7 octobre à 7 h 30 : Suisse 28/40 (17 garages, 8 paysagistes, 3 électriciens), France email 40/40, Québec 25/20, SMS France 15/15. Les paysagistes (4 sur 8) et les électriciens (1 sur 8) ont atteint la limite de 12 villes par métier : la recherche est relancée pour 12 villes de plus. La recherche des garages est la plus rentable (9 en 5 villes) ; la moitié des paysagistes et des électriciens suisses refusent la publicité.

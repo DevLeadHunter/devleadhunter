@@ -78,8 +78,7 @@ main, aucun n'a de site. Durée : 5 à 7 minutes par recherche, lecture des page
   Google. Corrigé le jour même : recherche par numéro de téléphone, et titre long cherché sans
   guillemets (le cas est rejoué en test).
 - Ce que l'app ne fait toujours pas : trouver un artisan qui n'a ni fiche Google ni page Facebook
-  (annonces dans des groupes), ouvrir le bouton « Site Web » d'une fiche quand Google ne montre pas le
-  site ailleurs (ces fiches attendent dans « À confirmer »).
+  (annonces dans des groupes).
 
 Depuis le 6 octobre (manche 1 de l'entraînement, `docs/PROSPECT_SEARCH_TRAINING.md`) : la fiche
 search.ch de chaque candidat suisse est lue par son numéro (astérisque « pas de publicité » = écarté,
@@ -99,6 +98,19 @@ ne donnent plus d'email, le site qui publie l'email du business (sous un nom tir
 domaine d'email qui épelle son nom comptent comme son site, un domaine écrit dans le nom de la fiche
 est contrôlé, les emails de plateformes, de réseaux de garages et les boîtes `dpo@` sont refusés, et
 la liste RGE des électriciens ne garde que les radiateurs électriques.
+
+Depuis les manches 5 à 9 (nuit du 6 au 7 octobre) : une fiche québécoise ne prend plus son téléphone
+ou sa rue pour sa catégorie, les établissements publics sortent des registres RGE et RBQ, une page
+d'un autre pays, un document téléchargé ou une publication de groupe ne donnent plus d'email, le nom
+est cherché dans l'annuaire suisse sans sa forme juridique (et à l'adresse de la fiche, sous le nom de
+famille du patron), un annuaire qui ne répond pas laisse le candidat « À confirmer », l'astérisque est
+lu avant toute requête payante (le numéro lu sur une page Facebook compris), et le bouton « Site Web »
+de la fiche Google est suivi : un site en ligne écarte la fiche sans recherche payante, une page
+d'annuaire ne compte pas comme un site. Depuis le matin du 7 octobre : la mention « pas de publicité »
+d'un annuaire miroir est lue, un numéro absent de search.ch est cherché sur zip.ch (qui garde les fiches
+perdues, astérisque compris), un texte ne nomme une entreprise que s'il porte un mot propre à son nom,
+un email sur le domaine d'un site en ligne qui ne nomme pas l'entreprise met la fiche « À confirmer »,
+la page d'accueil d'un hébergeur compte comme un site mort, et les requêtes à search.ch sont espacées.
 
 **Ce qui reste (lots de la section 10)**
 
