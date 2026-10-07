@@ -127,8 +127,9 @@ paysagistes ; domotique et éclairage pour les électriciens), la Suisse compte 
 Google n'a pas servie deux fois reçoit un dernier essai une minute plus tard en fin de métier, un email
 sur un domaine accentué est lu (et envoyé) dans sa forme `xn--`, la page d'accueil d'un hébergeur sur
 un domaine accentué compte comme un site mort, une fiche sans adresse dont le numéro est d'un autre
-pays est écartée, la page d'accueil d'un domaine au certificat cassé est relue en HTTP, et l'email du
-réseau AD est un email de réseau.
+pays est écartée, la page d'accueil d'un domaine au certificat cassé est relue en HTTP, l'email du
+réseau AD est un email de réseau, et le registre fédéral suisse (Zefix) est lu pour toute fiche suisse
+proposée : une société « en liquidation » ou radiée depuis moins de trois ans est écartée comme fermée.
 
 **Ce qui reste (lots de la section 10)**
 

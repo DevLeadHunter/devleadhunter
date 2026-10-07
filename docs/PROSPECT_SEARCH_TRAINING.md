@@ -370,7 +370,7 @@ Six sont venus de fiches déjà en attente, contrôlées à la main : 3 garages 
 | Recherche | Gardés | Bons | Faux |
 |---|---|---|---|
 | n° 14, France, paysagistes + garages, 6 par métier (20 minutes, 233 requêtes, 26 appels au juge) | 13 | 6 retenus (prospects 358 à 363), 3 garages bons en réserve | 1 paysagiste radié au registre, 1 garage avec l'email du réseau AD, 2 paysagistes non vérifiables au registre (en réserve) |
-| n° 15, Suisse, électriciens, 5 (48 minutes, 231 requêtes, 30 appels au juge) | 5 | 3 (prospects 365 à 367) | 1 entreprise française sans adresse, 1 électricien qui a un site (certificat cassé) |
+| n° 15, Suisse, électriciens, 5 (25 villes en trois passages, 383 requêtes, 55 appels au juge) | 8 | 4 (prospects 365 à 367, 370), 1 en réserve non contrôlé | 1 entreprise française sans adresse, 1 électricien qui a un site (certificat cassé), 1 indépendant radié (repris par une autre entreprise) |
 | n° 16, France, paysagistes, 2 (2 minutes, 23 requêtes, 3 appels au juge) | 3 | 2 (prospects 368, 369) | aucun (1 bon en réserve) |
 
 ### Écarts et causes
@@ -384,12 +384,22 @@ Six sont venus de fiches déjà en attente, contrôlées à la main : 3 garages 
 | Un électricien mis de côté « sans email » alors que l'annuaire donne son adresse sur un domaine accentué (info@…contrôles.ch) | La validation des emails refusait les lettres accentuées : l'adresse était jetée sans bruit | L'email est lu dans la forme que lisent les serveurs (`xn--…`) (`ae9f288f`), envoyé ainsi à Resend (`92a17321`), et la page d'accueil de l'hébergeur d'un domaine accentué compte comme un site mort (`47eb7f37`) |
 | Une entreprise française gardée dans une recherche suisse (ville frontalière) | Sans adresse, rien ne la plaçait en France, alors que son numéro commence par +33 | Sans adresse, un numéro d'un autre pays place la fiche dans cet autre pays (`28677a39`) |
 | Un électricien gardé alors qu'il a un site | Son certificat HTTPS est cassé : la page d'accueil du domaine de son email passait pour muette, et le domaine (« nom + fils ») ne ressemble pas assez au nom complet | La page d'accueil est relue en HTTP quand le HTTPS échoue (`1f41e9ca`) |
+| Un électricien indépendant gardé alors qu'il est radié (repris par une autre entreprise en 2024), une société « en liquidation » à confirmer | Google ne montrait pas la page du registre qui le dit | Le registre fédéral (Zefix) est lu pour toute fiche suisse proposée : même nom et même siège « en liquidation », ou radiés depuis moins de trois ans, sans homonyme actif = fermée (`2fcf5b15`, `00b33355`) |
 
 Piste écartée : les listes de membres des associations cantonales d'électriciens (EIT) ; presque tous les membres ont déjà un site.
 
 ### Résultat
 
-Le 7 octobre à 12 h 45 : toutes les cases sont pleines sauf une, les électriciens suisses (9/10). La recherche n° 15 est relancée pour 12 villes de plus.
+Le 7 octobre à 13 h 20, toutes les cases du tableau sont pleines (17 prospects ajoutés, n° 354 à 370) :
+
+| Campagne | Paysagistes | Garages | Électriciens |
+|---|---|---|---|
+| Suisse, email | 17/16 | 18/14 | 10/10 |
+| France, email | 16/16 | 14/14 | 18/10 |
+| Québec, email | 6/6 | 10/10 | 10/4 |
+| France, SMS (sans email) | 7/6 | 6/6 | 5/3 |
+
+Le dixième électricien suisse est arrivé au troisième passage de la n° 15 (36 villes déjà parcourues pour ce métier avant elle). Le dernier essai différé a joué une fois en production.
 
 ## Bilan de l'entraînement (7 octobre)
 
@@ -409,10 +419,10 @@ Précision de l'app = bons prospects parmi les fiches qu'elle a gardées (les «
 | n° 12 (manche 10) | Suisse | 4 | 3 | 75 % |
 | n° 13 (manche 10) | Suisse | 5 | 5 | 100 % |
 | n° 14 (manche 11) | France | 13 | 9 | 69 % |
-| n° 15 (manche 11) | Suisse | 5 | 3 | 60 % |
+| n° 15 (manche 11) | Suisse | 8 | 4 (+ 1 non contrôlé) | 50 % |
 | n° 16 (manche 11) | France | 3 | 2 (+ 1 mini-site Solocal douteux) | 67 % |
 
-- La Suisse passe de 20 à 57 % les premiers jours à 60-100 % sur les quatre dernières recherches ; la France de 36 à 67-71 %, le Québec de 64 à 90 %. À la main, la manche 1 donnait 75 % (6 bons sur 8) : l'app fait maintenant à peu près aussi bien, seule, et chaque faux des dernières recherches a reçu sa correction.
+- La Suisse passe de 20 à 57 % les premiers jours à 50-100 % sur les quatre dernières recherches (les électriciens, la case la plus rare, tirent vers le bas) ; la France de 36 à 67-71 %, le Québec de 64 à 90 %. À la main, la manche 1 donnait 75 % (6 bons sur 8) : l'app fait maintenant à peu près aussi bien, seule, et chaque faux des dernières recherches a reçu sa correction.
 - Le 7 octobre à midi, compté case par case, il manquait encore 17 prospects : un total par pays ne suffit pas, le tableau de la campagne fixe un nombre par métier.
 - Les fiches « à confirmer » rapportent peu (1 bon sur 5 dans la reprise de la n° 11) : l'app a raison de les montrer à part.
 - Coût : 35 requêtes par prospect dans la n° 13, environ 80 dans les n° 11 et 12 (électriciens, grandes villes), soit 0,05 à 0,12 $ par prospect (0,0015 $ la requête).
