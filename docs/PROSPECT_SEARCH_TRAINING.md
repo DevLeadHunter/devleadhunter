@@ -286,7 +286,7 @@ quotidien épuisé) : 24 gardés en 51 minutes, 529 requêtes.
 
 ### Résultat
 
-Le 7 octobre à 0 h 15 : France email 40/40, Québec 25/20, SMS France 15/15, Suisse 16/40.
+Le 7 octobre à 2 h 15 : France email 40/40, Québec 25/20, SMS France 15/15, Suisse 16/40.
 
 ## Manche 9 — Suisse, les trois métiers (nuit du 7 octobre)
 
@@ -318,4 +318,4 @@ Les fiches restées « à valider » dans les recherches 1 à 9 ont été repris
 
 ### Résultat
 
-Le 7 octobre à 7 h 30 : Suisse 28/40 (17 garages, 8 paysagistes, 3 électriciens), France email 40/40, Québec 25/20, SMS France 15/15. Les paysagistes (4 sur 8) et les électriciens (1 sur 8) ont atteint la limite de 12 villes par métier : la recherche est relancée pour 12 villes de plus. La recherche des garages est la plus rentable (9 en 5 villes) ; la moitié des paysagistes et des électriciens suisses refusent la publicité.
+Le 7 octobre à 9 h 30 : Suisse 28/40 (17 garages, 8 paysagistes, 3 électriciens), France email 40/40, Québec 25/20, SMS France 15/15. Les paysagistes (4 sur 8) et les électriciens (1 sur 8) ont atteint la limite de 12 villes par métier : la recherche est relancée pour 12 villes de plus. La recherche des garages est la plus rentable (9 en 5 villes) ; la moitié des paysagistes et des électriciens suisses refusent la publicité.
