@@ -341,6 +341,17 @@ _OPEN_PHOTO_COUNT_JS = r"""
     return false;
 })()
 """
+_PHOTO_COUNT_JS = r"""
+(() => {
+    for (const el of document.querySelectorAll("div[role='main'] *")) {
+        if (el.children.length) continue;
+        const text = (el.textContent || '').trim().toLowerCase();
+        const match = text.match(/^(\d[\d\s  .,]*)\s+photos?$/);
+        if (match) return parseInt(match[1].replace(/\D/g, ''), 10);
+    }
+    return null;
+})()
+"""
 # Scroll the place panel's own scroll container (not ``div[role=main]`` itself, which never scrolls).
 _SCROLL_PLACE_PANEL_JS = r"""
 (() => {
@@ -358,6 +369,8 @@ _ALL_PHOTOS_LABELS: tuple[str, ...] = ("tout", "all")
 _OWNER_PHOTOS_LABELS: tuple[str, ...] = ("photos du propriétaire", "by owner")
 _GRID_TILE_SELECTOR: str = "a.MIgS0d[data-photo-index]"
 _PHOTO_SECTION_SCROLLS: int = 5
+_PLAIN_LAYOUT_PHOTO_CAP: int = 10
+_PLAIN_LAYOUT_REDRAWS: int = 3
 
 # Read the OPEN photo grid. Each tile is `<a class="MIgS0d" data-photo-index>` whose picture is a
 # `background-image` on an inner div (NOT an <img>). Videos are excluded (aria-label « Vidéo » / a
@@ -520,10 +533,21 @@ class PhotoTraits:
     look_hash: int
 
 
+@dataclass(frozen=True)
+class CuratedGallery:
+    """The photos that can illustrate a site, and the logo that goes with them."""
+
+    photos: list[str]
+    logo_url: str | None
+
+
 _MIN_PHOTO_SIDE_PX: int = 400
 _MIN_PHOTO_CONTRAST: float = 12.0
 _GRAPHIC_FLAT_COLOUR_SHARE: float = 0.6
 _GRAPHIC_MAX_COLOURS: int = 170
+_LOGO_MIN_FLAT_COLOUR_SHARE: float = 0.3
+_LOGO_MAX_COLOURS_WITHOUT_FLAT_BACKGROUND: int = 160
+_LOGO_MIN_SQUARENESS: float = 0.8
 _LOGO_LOOK_DISTANCE: int = 10
 _SAME_PHOTO_LOOK_DISTANCE: int = 4
 
@@ -644,14 +668,50 @@ class GalleryCuration:
             return "graphic"
         return None
 
+    @staticmethod
+    def is_photo(traits: PhotoTraits) -> bool:
+        """
+        Whether an image is a real photo, never a logo: no flat background and many colours.
+
+        Measured 7 Oct 2026 on the Facebook profile pictures taken as logos: a garage front and a tree
+        surgeon at work had 13-16 % of one flat colour in 181-275 colours; real logos 34-77 % flat, or
+        144 colours on a textured background.
+        """
+        return (
+            traits.flat_colour_share < _LOGO_MIN_FLAT_COLOUR_SHARE
+            and traits.colour_count > _LOGO_MAX_COLOURS_WITHOUT_FLAT_BACKGROUND
+        )
+
+    @staticmethod
+    def is_square_graphic(traits: PhotoTraits) -> bool:
+        """Whether an image refused as a graphic has a logo's shape: a square or nearly so."""
+        squareness = min(traits.width, traits.height) / max(traits.width, traits.height, 1)
+        return GalleryCuration.unfit_reason(traits) == "graphic" and squareness >= _LOGO_MIN_SQUARENESS
+
     @classmethod
     async def curate(cls, urls: list[str], *, logo_url: str | None = None) -> list[str]:
         """
         Keep the photos of a gallery that can illustrate a site, in their order.
 
+        Args:
+            urls: The gallery, in order.
+            logo_url: The business's logo, whose re-uploads are no gallery photo.
+
+        Returns:
+            The kept photos, in their order.
+        """
+        return (await cls.curate_gallery(urls, logo_url=logo_url)).photos
+
+    @classmethod
+    async def curate_gallery(cls, urls: list[str], *, logo_url: str | None = None) -> CuratedGallery:
+        """
+        Keep the photos of a gallery that can illustrate a site, in their order, and settle its logo.
+
         Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
         the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. On
-        any download/decode failure the URL is kept (never silently dropped).
+        any download/decode failure the URL is kept (never silently dropped). A logo that is in fact a
+        photo (a Facebook profile picture of the shop front) is no logo; without a logo, the first square
+        graphic of the gallery is (a listing whose only image is its logo).
 
         The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
         DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
@@ -662,10 +722,10 @@ class GalleryCuration:
             logo_url: The business's logo, whose re-uploads are no gallery photo.
 
         Returns:
-            The kept photos, in their order.
+            The kept photos, in their order, and the logo.
         """
-        if not urls:
-            return []
+        if not urls and not logo_url:
+            return CuratedGallery(photos=[], logo_url=None)
 
         import base64
 
@@ -692,9 +752,12 @@ class GalleryCuration:
                     *[_traits_of(client, url) for url in [*urls, *([logo_url] if logo_url else [])]]
                 )
         except Exception:
-            return list(urls)
+            return CuratedGallery(photos=list(urls), logo_url=logo_url)
 
         logo_traits = traits.pop() if logo_url else None
+        if logo_traits is not None and cls.is_photo(logo_traits):
+            logger.info("Enrichment: a photo is no logo: %s", (logo_url or "")[:80])
+            logo_url, logo_traits = None, None
         kept: list[str] = []
         kept_look_hashes: list[int] = []
         for url, photo in zip(urls, traits):
@@ -709,13 +772,15 @@ class GalleryCuration:
             ):
                 reason = "logo"
             if reason is not None:
+                if logo_url is None and cls.is_square_graphic(photo):
+                    logo_url, logo_traits = url, photo
                 logger.info("Enrichment: photo left out of the gallery (%s): %s", reason, url[:80])
                 continue
             if any(_hamming_distance(photo.look_hash, seen) <= _SAME_PHOTO_LOOK_DISTANCE for seen in kept_look_hashes):
                 continue
             kept.append(url)
             kept_look_hashes.append(photo.look_hash)
-        return kept
+        return CuratedGallery(photos=kept, logo_url=logo_url)
 
 
 class EnrichmentScraper:
@@ -747,7 +812,8 @@ class EnrichmentScraper:
             fb_only = await facebook_enrichment_scraper.enrich(
                 business_name=business_name, facebook_url=facebook_url or "", country=country
             )
-            fb_only.photos = await GalleryCuration.curate(fb_only.photos, logo_url=fb_only.logo_url)
+            gallery = await GalleryCuration.curate_gallery(fb_only.photos, logo_url=fb_only.logo_url)
+            fb_only.photos, fb_only.logo_url = gallery.photos, gallery.logo_url
             fb_only.reviews = _dedupe_reviews(fb_only.reviews)
             return fb_only
 
@@ -786,7 +852,8 @@ class EnrichmentScraper:
                 logger.info("Facebook complementary enrichment failed for %s: %s", business_name, exc)
 
         # Curated once the full set (Google, then Facebook) is assembled, before it reaches the gallery.
-        data.photos = await GalleryCuration.curate(data.photos, logo_url=data.logo_url)
+        gallery = await GalleryCuration.curate_gallery(data.photos, logo_url=data.logo_url)
+        data.photos, data.logo_url = gallery.photos, gallery.logo_url
         data.reviews = _dedupe_reviews(data.reviews)
         return data
 
@@ -809,6 +876,8 @@ class EnrichmentScraper:
             data.social_links = {**facebook.social_links, **(data.social_links or {})}
         if not data.description and facebook.description:
             data.description = facebook.description
+        if not data.services and facebook.services:
+            data.services = facebook.services
         if facebook.emails:
             data.emails = [*data.emails, *facebook.emails]
         # Photos: keep Google's first (most relevant), then APPEND Facebook's as a secondary source —
@@ -1078,7 +1147,9 @@ class EnrichmentScraper:
         when it shows Street View. Google serves the place panel in two layouts, about half the time each
         — with category chips under « Photos et vidéos », or a plain « Photos » section reading « 32
         photos » whose grid stops at about ten — and renders either only once the panel is scrolled down
-        to it. Reloading does not choose the layout (measured 7 Oct 2026).
+        to it. Reloading does not choose the layout, but clearing the cookies draws it again (measured 7 Oct
+        2026: category, plain, category over three draws): a plain panel announcing more photos than its
+        grid shows is drawn again up to three times.
 
         Args:
             tab: The Maps tab, on the place panel.
@@ -1089,17 +1160,55 @@ class EnrichmentScraper:
             Which opener worked, or ``None`` when no grid opened.
         """
         category_opener = _OPEN_PHOTO_CATEGORY_JS % json.dumps(list(_ALL_PHOTOS_LABELS))
-        for _ in range(_PHOTO_SECTION_SCROLLS):
-            if await self._opens_grid(tab, category_opener):
-                return "category"
-            await NodriverDom.evaluate(tab, _SCROLL_PLACE_PANEL_JS, by_value=True)
-            await asyncio.sleep(0.5)
+        redraws_left = _PLAIN_LAYOUT_REDRAWS
+        redraws_without_count_left = 1
+        while True:
+            for _ in range(_PHOTO_SECTION_SCROLLS):
+                if await self._opens_grid(tab, category_opener):
+                    return "category"
+                await NodriverDom.evaluate(tab, _SCROLL_PLACE_PANEL_JS, by_value=True)
+                await asyncio.sleep(0.5)
+            announced_photos = await NodriverDom.evaluate(tab, _PHOTO_COUNT_JS, by_value=True)
+            is_count_shown = isinstance(announced_photos, int)
+            if is_count_shown and announced_photos <= _PLAIN_LAYOUT_PHOTO_CAP:
+                break
+            if not is_count_shown and redraws_without_count_left == 0:
+                break
+            if redraws_left == 0 or not place_url:
+                break
+            redraws_left -= 1
+            if not is_count_shown:
+                redraws_without_count_left -= 1
+            logger.info("Enrichment: plain photo layout (%s photos announced) — drawing it again", announced_photos)
+            if not await self._redraw_layout(tab, place_url):
+                break
         for name, script in (("photo count", _OPEN_PHOTO_COUNT_JS), ("hero", _OPEN_PHOTOS_JS)):
             if await self._opens_grid(tab, script):
                 return name
             await self._back_to_place_panel(tab, place_url=place_url, place_title=place_title)
         logger.info("Enrichment: no photo grid could be opened on the place panel")
         return None
+
+    async def _redraw_layout(self, tab: Any, place_url: str) -> bool:
+        """
+        Clear the cookies and reopen the place, so Google draws its panel layout again.
+
+        Args:
+            tab: The Maps tab.
+            place_url: The place's URL.
+
+        Returns:
+            Whether the place panel opened again.
+        """
+        try:
+            import nodriver.cdp as cdp
+
+            await tab.send(cdp.network.clear_browser_cookies())
+        except Exception as exc:
+            logger.info("Enrichment: cookies could not be cleared (%s)", exc)
+            return False
+        await NodriverDom.navigate(tab, place_url)
+        return await self._open_place_panel(tab)
 
     async def _back_to_place_panel(self, tab: Any, *, place_url: str | None, place_title: str | None) -> None:
         """Reload the place when a click left its panel (a Street View photo opens Street View, under the same URL)."""

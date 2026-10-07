@@ -88,3 +88,30 @@ def test_curation_keeps_what_it_cannot_read() -> None:
     unreadable = "data:image/jpeg;base64,bm90IGFuIGltYWdl"
 
     assert asyncio.run(GalleryCuration.curate([unreadable])) == [unreadable]
+
+
+def test_a_photo_given_as_logo_is_no_logo() -> None:
+    """A Facebook profile picture of the shop front was the site's logo: a photo is never a logo."""
+    first = _data_uri(_photo(6))
+
+    gallery = asyncio.run(GalleryCuration.curate_gallery([first], logo_url=_data_uri(_photo(7, size=(200, 200)))))
+
+    assert (gallery.photos, gallery.logo_url) == ([first], None)
+
+
+def test_without_a_logo_the_square_graphic_of_the_listing_becomes_it() -> None:
+    """A listing whose only image is its logo: the logo is read, not thrown away with the graphics."""
+    logo, first = _data_uri(_logo()), _data_uri(_photo(8))
+
+    gallery = asyncio.run(GalleryCuration.curate_gallery([logo, first]))
+
+    assert (gallery.photos, gallery.logo_url) == ([first], logo)
+
+
+def test_a_wide_banner_is_never_taken_for_the_logo() -> None:
+    """A flat banner three times wider than tall is a graphic, not a logo."""
+    banner = _data_uri(_logo(size=(1200, 400)))
+
+    gallery = asyncio.run(GalleryCuration.curate_gallery([banner]))
+
+    assert (gallery.photos, gallery.logo_url) == ([], None)

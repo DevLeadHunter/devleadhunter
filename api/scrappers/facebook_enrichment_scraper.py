@@ -41,6 +41,7 @@ from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import company_tokens, fold
+from services.service_list_reader import ServiceListReader
 from services.sms.phone_normalizer import format_phone_in_national_form
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,7 @@ _EXPAND_SEE_MORE_JS = r"""
 _FB_PAGE_JS = r"""
 (() => {
     const out = {
-        place_title: null, intro_text: '', about_text: '', og_description: null,
+        place_title: null, intro_text: '', about_text: '', og_description: null, best_description: null,
         embedded_texts: [], social: {}, website: null, profile_photo: null, emails: []
     };
     const txt = (el) => (el ? (el.innerText || el.textContent || '').trim() : '');
@@ -221,6 +222,10 @@ _FB_PAGE_JS = r"""
     // are truncated behind the login wall or cut with « … ».
     try {
         const html = document.documentElement ? (document.documentElement.innerHTML || '') : '';
+        const best = html.match(/"best_description":\{"text":"((?:\\.|[^"\\])*)"/);
+        if (best) {
+            try { out.best_description = (JSON.parse('"' + best[1] + '"') || '').trim() || null; } catch (e) {}
+        }
         const re = /"text":"((?:\\.|[^"\\])*)"/g;
         const seen = new Set();
         let match;
@@ -383,14 +388,15 @@ _BIO_NOISE_RE = re.compile(
     re.IGNORECASE,
 )
 _OG_LIKES_PREFIX_RE = re.compile(
-    r"^[^.]*\.\s*\d[\d\s ]*j['’]aime\s*·\s*\d[\d\s ]*en parlent\.\s*",
+    r"^.*?\.\s*\d[\d\s ]*j['’]aime\s*·\s*\d[\d\s ]*en parlent\.\s*",
     re.IGNORECASE,
 )
 _OG_AUDIENCE_PREFIX_RE = re.compile(
-    r"^[^.]*\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)(?:\s*·[^.]*)?\.\s*",
+    r"^.*?\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)(?:\s*·[^.]*)?\.\s*",
     re.IGNORECASE,
 )
 _INTRO_OPENING_CHARS: int = 40
+_TRUNCATION_MARK_RE = re.compile(r"\s*(?:\.{3}|…)\s*$")
 
 
 def _rating_from_pct(pct: int | None) -> float | None:
@@ -432,12 +438,24 @@ def _parse_intro_description(intro_text: str) -> str | None:
     Returns:
         The cleaned multi-sentence description, or None when absent.
     """
-    if not (intro_text or "").strip():
-        return None
-    lines: list[str] = [line.strip() for line in intro_text.splitlines() if line.strip()]
+    description = " ".join(_intro_lines(intro_text)).strip()
+    return description or None
+
+
+def _intro_lines(intro_text: str) -> list[str]:
+    """
+    The lines of the Intro card's blurb, between the « Intro » heading and the contact block.
+
+    Args:
+        intro_text: Visible text of the Intro card (or empty).
+
+    Returns:
+        The blurb's lines as the page shows them, empty when there is no Intro card.
+    """
+    lines: list[str] = [line.strip() for line in (intro_text or "").splitlines() if line.strip()]
     start = next((index for index, line in enumerate(lines) if line.lower() == "intro"), None)
     if start is None:
-        return None
+        return []
     body: list[str] = []
     for line in lines[start + 1 :]:
         lowered = line.lower()
@@ -448,8 +466,28 @@ def _parse_intro_description(intro_text: str) -> str | None:
         if re.match(r"^page\s*·", lowered):
             break
         body.append(line)
-    description = " ".join(body).strip()
-    return description or None
+    return body
+
+
+def _parse_best_description(best_description: str | None) -> str | None:
+    """
+    The page's full description (Facebook's ``best_description``) on one line, without a cut-off end.
+
+    The owner sometimes pasted a text that stops mid-word (« … d'exploitation de forê... »): it then ends on
+    its last whole sentence, or gives nothing when no sentence is whole.
+
+    Args:
+        best_description: The ``best_description`` text read from the page data, or None.
+
+    Returns:
+        The description, or None when absent or cut before its first sentence ends.
+    """
+    text = re.sub(r"\s+", " ", best_description or "").strip()
+    if not text or not _TRUNCATION_MARK_RE.search(text):
+        return text or None
+    text = _TRUNCATION_MARK_RE.sub("", text)
+    last_end = max(text.rfind(mark) for mark in ".!?")
+    return text[: last_end + 1].strip() if last_end > 0 else None
 
 
 def _parse_og_description(og_description: str | None) -> str | None:
@@ -469,7 +507,7 @@ def _parse_og_description(og_description: str | None) -> str | None:
     text = _OG_AUDIENCE_PREFIX_RE.sub("", text).strip()
     # Weak pages give « {name}. {X} J'aime. {category} » with no « en parlent » — strip that shape too,
     # so what's left is real copy (or nothing). Spaces cover the French thin/no-break number separators.
-    text = re.sub(r"^[^.]*\.\s*\d[\d\s  ]*j['’]aime\.\s*", "", text, flags=re.IGNORECASE).strip()
+    text = re.sub(r"^.*?\.\s*\d[\d\s  ]*j['’]aime\.\s*", "", text, flags=re.IGNORECASE).strip()
     text = re.sub(r"\s*\.\.\.\s*$", "", text).strip()
     text = re.sub(r"\s+", " ", text)
     return text if len(text) >= 40 else None
@@ -948,13 +986,17 @@ def _pick_description(
     about_text: str,
     og_description: str | None,
     embedded_texts: list[str] | None = None,
+    best_description: str | None = None,
 ) -> str | None:
-    """The page's own presentation: its Intro card, else og:description, else its about text, else a bio.
+    """The page's own presentation: its full description, else its Intro card, og:description, about text, bio.
 
-    The presentation wins even when a post is longer (an old « we are moving » post became a garage's
-    description, 7 Oct 2026); when it is cut short, a fuller text opening the same way completes it,
-    otherwise it ends on its last whole sentence. An embedded bio is the last resort: posts read alike.
+    The full description (``best_description``) is the text the owner wrote, never cut by the page layout.
+    Without it, the presentation wins even when a post is longer (an old « we are moving » post became a
+    garage's description, 7 Oct 2026); when it is cut short, a fuller text opening the same way completes
+    it, otherwise it ends on its last whole sentence. An embedded bio is the last resort: posts read alike.
     """
+    if (best_description or "").strip():
+        return _parse_best_description(best_description)
     presentations = [
         item
         for item in (
@@ -1295,11 +1337,18 @@ class FacebookEnrichmentScraper:
             intro_text, str(og_description or ""), about_text[:4000], country=country
         )
         phone = _parse_phone(intro_text, about_text[:4000], country=country)
+        best_description = str(dom.get("best_description") or "").strip() or None
         description = _pick_description(
             intro_text=intro_text,
             about_text=about_text,
             og_description=og_description,
             embedded_texts=page_embedded,
+            best_description=best_description,
+        )
+        services = ServiceListReader.services_in(
+            best_description or "\n".join(_intro_lines(intro_text)) or description,
+            business_name=place_title,
+            city=place_city,
         )
         reviews = _merge_review_lists(
             _parse_reviews_from_embedded_texts(embedded_texts or []),
@@ -1319,6 +1368,7 @@ class FacebookEnrichmentScraper:
             website=website or None,
             photos=photo_urls,
             reviews=reviews,
+            services=services,
             social_links=social,
             emails=emails,
             place_title=place_title or None,

@@ -6,6 +6,7 @@ from scrappers.enrichment_scraper import EnrichmentData
 from scrappers.facebook_enrichment_scraper import (
     FacebookEnrichmentScraper,
     _clean_social_url,
+    _parse_best_description,
     _parse_city_postal,
     _parse_og_description,
     _parse_phone,
@@ -243,3 +244,56 @@ class TestPageDescription:
         og = "Garage Exemple, Terrebonne. 53 followers · 5 personnes étaient ici. L'accueil et la qualité sont irréprochables."
 
         assert _parse_og_description(og) == "L'accueil et la qualité sont irréprochables."
+
+
+class TestFullPageDescription:
+    """The page's full description wins, whole (second enrichment round, 7 Oct 2026)."""
+
+    def test_the_full_description_wins_over_the_cut_intro(self) -> None:
+        """The Intro card and og:description cut the text; the page data holds it whole."""
+        full = "Paysagiste de formation.\nPlus de 25 ans d'expérience.\nDallage, pavage, taille des arbres, clôture."
+        intro = "Intro\nPaysagiste de formation.\nPage · Jardinier"
+
+        description = _pick_description(
+            intro_text=intro, about_text="", og_description=None, embedded_texts=[], best_description=full
+        )
+
+        assert (
+            description
+            == "Paysagiste de formation. Plus de 25 ans d'expérience. Dallage, pavage, taille des arbres, clôture."
+        )
+
+    def test_a_list_without_final_dot_is_kept_whole(self) -> None:
+        """« GARAGE DE MÉCANIQUE . AIR CLIMATISÉ, FREIN » was cut to its first words: a full text is never cut."""
+        full = "GARAGE DE MÉCANIQUE AUTOMOBILE . AIR CLIMATISÉ, FREIN, SILENCIEUX"
+
+        assert _parse_best_description(full) == full
+
+    def test_a_text_the_owner_left_cut_ends_on_its_last_whole_sentence(self) -> None:
+        """« … J'interviens à tous... » loses its half sentence."""
+        assert (
+            _parse_best_description("Paysagiste depuis 20 ans. J'interviens à tous...") == "Paysagiste depuis 20 ans."
+        )
+
+    def test_a_text_cut_before_its_first_sentence_ends_gives_nothing(self) -> None:
+        """« … d'exploitation de forê... » would show a broken word on the site: nothing is better."""
+        assert (
+            _parse_best_description("L'entreprise Exemple vous propose des services d'exploitation de forê...") is None
+        )
+
+    def test_og_description_of_a_dotted_name_loses_its_prefix(self) -> None:
+        """« I.H Exemple. 112 followers. … » kept its name and audience: the dots of the name stopped the cleaning."""
+        og = "I.H Exemple. 112 followers. Paysagiste de formation, plus de 25 ans d'expérience à Sion."
+
+        assert _parse_og_description(og) == "Paysagiste de formation, plus de 25 ans d'expérience à Sion."
+
+    def test_the_services_of_an_intro_list_are_read(self) -> None:
+        """An emoji list in the Intro card gives the services, the quote and network lines left out."""
+        dom = {
+            "place_title": "Exemple Paysages",
+            "intro_text": "Intro\n🌳 Abattage • Elagage • Dessouchage\n🌿 Aménagement paysager\n📩 Soumission rapide\nPage · Paysagiste",
+        }
+
+        data = FacebookEnrichmentScraper._build_from_raw(dom, "")
+
+        assert data.services == ["Abattage", "Elagage", "Dessouchage", "Aménagement paysager"]
