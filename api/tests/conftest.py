@@ -1,4 +1,4 @@
-"""Shared test setup: every model registered on the metadata, an in-memory database per test, no real storage or directory."""
+"""Shared test setup: every model registered on the metadata, an in-memory database per test, no real storage, directory or register."""
 
 import importlib
 import pkgutil
@@ -16,6 +16,7 @@ from core.config import settings
 from core.database import Base
 from scrappers.google_website_button import google_website_button
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
+from services.prospect_search.swiss_registry import SwissRegisterFirm, swiss_registry
 from services.r2_storage_service import r2_storage
 
 for _module in pkgutil.iter_modules(models.__path__):
@@ -55,6 +56,16 @@ def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(swiss_directory, "zip_listing_with_asterisk", no_zip_asterisk)
     monkeypatch.setattr(swiss_directory_module, "_SECONDS_BETWEEN_REQUESTS", 0.0)
     monkeypatch.setattr(swiss_directory_module, "_SECONDS_AFTER_REFUSAL", 0.0)
+
+
+@pytest.fixture(autouse=True)
+def swiss_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The federal company register lists nobody unless a test scripts a firm: a run never calls Zefix."""
+
+    async def no_firm(name: str) -> list[SwissRegisterFirm]:
+        return []
+
+    monkeypatch.setattr(swiss_registry, "firms_named", no_firm)
 
 
 @pytest.fixture(autouse=True)
