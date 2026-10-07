@@ -412,6 +412,27 @@ def _serve_front_page(monkeypatch: pytest.MonkeyPatch, page_url: str, page_text:
     monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(front_page))
 
 
+@pytest.mark.parametrize(
+    ("email", "expected_website"),
+    [("info@rochat-electricite.ch", "https://rochat-electricite.ch/"), ("info@groupe-exemple.ch", None)],
+)
+def test_a_domain_spelling_the_business_name_behind_a_bot_check_is_its_website(
+    monkeypatch: pytest.MonkeyPatch, email: str, expected_website: str | None
+) -> None:
+    facts = _facts(
+        name="Rochat Electricité SA", city="Boudry", email=email, email_proof_level=EmailProofLevel.DIRECTORY.value
+    )
+
+    async def bot_check(domain: str) -> tuple[str, str] | None:
+        return None
+
+    monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(bot_check))
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _ELECTRICIAN))
+
+    assert facts.website == expected_website
+
+
 def test_an_email_on_the_live_domain_of_a_site_that_does_not_name_the_business_waits_for_a_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

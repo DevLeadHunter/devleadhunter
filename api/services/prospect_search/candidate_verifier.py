@@ -699,7 +699,8 @@ class CandidateVerifier:
         the Facebook page. The domain's front page counts as the business's website when it
         names the business or shows its phone; a dead site or a directory mini-site known so
         far gives way to it. A live front page that does neither is noted: the address may be
-        a group's or another business's, to be checked.
+        a group's or another business's, to be checked. A domain spelling the business name that
+        answers without showing its page (a bot check) is its website all the same.
 
         Args:
             facts: The candidate, completed in place.
@@ -712,6 +713,8 @@ class CandidateVerifier:
             return
         front_page = await cls._front_page_of(domain)
         if front_page is None:
+            if cls._is_domain_named_after(domain, facts):
+                await cls._take_domain_named_after_business(facts, domain)
             return
         page_url, page_text = front_page
         page_host = (urlparse(page_url).hostname or "").lower().removeprefix("www.")
@@ -730,6 +733,16 @@ class CandidateVerifier:
         facts.website = page_url
         facts.website_status = status.value if status is not None else None
         facts.add_evidence("website", page_url, source="Le domaine de son email répond", url=page_url)
+
+    @staticmethod
+    async def _take_domain_named_after_business(facts: CandidateFacts, domain: str) -> None:
+        """Take as the business's website a domain spelling its name that answers, even behind a bot check."""
+        page_url = f"https://{domain}/"
+        if await website_liveness_service.check_website_status(page_url) != WebsiteStatus.LIVE:
+            return
+        facts.website = page_url
+        facts.website_status = WebsiteStatus.LIVE.value
+        facts.add_evidence("website", page_url, source="Le domaine de son email porte son nom", url=page_url)
 
     @staticmethod
     def _is_domain_named_after(domain: str, facts: CandidateFacts) -> bool:
