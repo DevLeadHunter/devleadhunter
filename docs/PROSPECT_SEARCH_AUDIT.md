@@ -121,6 +121,15 @@ Google). Les centrales et postes électriques sortent du métier « électricien
 attend une confirmation. Quand le quota gratuit du jour de gpt-oss-120b est épuisé, le juge répond
 avec gpt-oss-20b.
 
+Depuis la manche 11 (7 octobre, midi) : chaque métier couvre le thème de la template de son site
+(vendeurs de voitures, carrossiers et jantes pour les garages ; clôtures et arrosage pour les
+paysagistes ; domotique et éclairage pour les électriciens), la Suisse compte 147 villes, une fiche que
+Google n'a pas servie deux fois reçoit un dernier essai une minute plus tard en fin de métier, un email
+sur un domaine accentué est lu (et envoyé) dans sa forme `xn--`, la page d'accueil d'un hébergeur sur
+un domaine accentué compte comme un site mort, une fiche sans adresse dont le numéro est d'un autre
+pays est écartée, la page d'accueil d'un domaine au certificat cassé est relue en HTTP, et l'email du
+réseau AD est un email de réseau.
+
 **Ce qui reste (lots de la section 10)**
 
 - Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en
