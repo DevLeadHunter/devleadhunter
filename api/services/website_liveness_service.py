@@ -76,6 +76,8 @@ class WebsiteLivenessService:
         "website unavailable",
     )
 
+    HOSTING_WELCOME_TITLE_PREFIXES: tuple[str, ...] = ("bienvenue sur", "welcome to", "willkommen auf", "benvenuto su")
+
     # Statuses that prove the page is gone. Other 4xx (401/403/429…) usually
     # mean bot protection on a perfectly working site — never call those dead.
     DEAD_HTTP_STATUSES: frozenset[int] = frozenset({404, 410})
@@ -206,6 +208,19 @@ class WebsiteLivenessService:
         lowered_title = title.group(1).strip().lower()
         return bool(lowered_title) and not any(word in lowered_title for word in cls.SERVER_ERROR_TITLE_WORDS)
 
+    @classmethod
+    def _is_hosting_welcome_page(cls, url: str, page_text: str) -> bool:
+        """Whether the page is the host's welcome page of a domain without a site: its title only names the domain."""
+        title = _TITLE_RE.search(page_text[: cls.BODY_SNIFF_CHARS])
+        host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+        if title is None or not host:
+            return False
+        lowered_title = title.group(1).strip().lower().removesuffix(".")
+        return any(
+            lowered_title in (f"{prefix} {host}", f"{prefix} www.{host}")
+            for prefix in cls.HOSTING_WELCOME_TITLE_PREFIXES
+        )
+
     async def _probe(self, url: str) -> WebsiteStatus:
         """
         Fetch the URL and classify the response.
@@ -235,6 +250,8 @@ class WebsiteLivenessService:
 
         body_start = response.text[: self.BODY_SNIFF_CHARS].lower()
         if any(marker in body_start for marker in self.DEAD_PAGE_MARKERS):
+            return WebsiteStatus.DEAD
+        if self._is_hosting_welcome_page(url, response.text):
             return WebsiteStatus.DEAD
         is_own_page_offline = response.status_code == self.MAINTENANCE_HTTP_STATUS and self._shows_own_page(
             response.text

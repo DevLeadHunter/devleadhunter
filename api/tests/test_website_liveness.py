@@ -219,3 +219,19 @@ def test_a_live_german_site_selling_something_stays_live() -> None:
     service = WebsiteLivenessService()
     _FakeAsyncClient.response = _FakeResponse(status_code=200, text="<h2>Occasionen zu verkaufen</h2>")
     assert _check(service, "https://garage-keller.ch") is WebsiteStatus.LIVE
+
+
+def test_a_host_s_welcome_page_for_a_domain_without_a_site_is_dead() -> None:
+    _FakeAsyncClient.response = _FakeResponse(
+        200, "<html><head><title>Bienvenue sur garage-exemple.ch</title></head><body></body></html>"
+    )
+
+    assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.DEAD
+
+
+def test_a_site_welcoming_its_visitors_by_name_stays_live() -> None:
+    _FakeAsyncClient.response = _FakeResponse(
+        200, "<html><head><title>Bienvenue sur le site du Garage Exemple</title></head></html>"
+    )
+
+    assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.LIVE

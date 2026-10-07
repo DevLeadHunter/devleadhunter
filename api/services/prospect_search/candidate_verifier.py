@@ -697,7 +697,8 @@ class CandidateVerifier:
         Called each time an email is learnt: in the search results, by the contact search, on
         the Facebook page. The domain's front page counts as the business's website when it
         names the business or shows its phone; a dead site or a directory mini-site known so
-        far gives way to it.
+        far gives way to it. A live front page that does neither is noted: the address may be
+        a group's or another business's, to be checked.
 
         Args:
             facts: The candidate, completed in place.
@@ -719,6 +720,8 @@ class CandidateVerifier:
         names_it = cls.names_business(page_text, facts, trade)
         shows_its_phone = len(phone_digits) == 8 and phone_digits in re.sub(r"\D", "", page_text)
         if not (names_it or shows_its_phone or cls._is_domain_named_after(domain, facts)):
+            if await website_liveness_service.check_website_status(page_url) == WebsiteStatus.LIVE:
+                facts.add_evidence("email_domain_site", domain, source="Le domaine de son email", url=page_url)
             return
         status = await website_liveness_service.check_website_status(page_url)
         if facts.website is not None and status != WebsiteStatus.LIVE:

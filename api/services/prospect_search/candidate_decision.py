@@ -88,6 +88,14 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="L'annuaire suisse n'a pas répondu : l'astérisque « pas de publicité » n'a pas été lu.",
             )
+        if facts.has_email_on_another_site and facts.email is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Son email est sur {facts.email.rsplit('@', 1)[-1]}, un site en ligne qui ne le nomme pas : "
+                    "à vérifier."
+                ),
+            )
         has_untraced_website = facts.has_website_button is True and facts.website is None and facts.facebook_url is None
         if criteria.only_without_website and has_untraced_website:
             return CandidateVerdict(

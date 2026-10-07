@@ -5,7 +5,13 @@ from typing import Any
 
 import pytest
 
-from enums.prospect_search import CandidateOrigin, CandidateRejectReason, EmailProofLevel, ProspectSearchChannel
+from enums.prospect_search import (
+    CandidateOrigin,
+    CandidateRejectReason,
+    CandidateStatus,
+    EmailProofLevel,
+    ProspectSearchChannel,
+)
 from enums.website_status import WebsiteStatus
 from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -404,6 +410,29 @@ def _serve_front_page(monkeypatch: pytest.MonkeyPatch, page_url: str, page_text:
         return page_url, page_text
 
     monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(front_page))
+
+
+def test_an_email_on_the_live_domain_of_a_site_that_does_not_name_the_business_waits_for_a_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facts = _facts(
+        name="Carrosserie Rochat SA",
+        city="Orbe",
+        phone="024 000 00 90",
+        email="carrosserie@groupe-exemple.ch",
+        email_proof_level=EmailProofLevel.PUBLISHED.value,
+        is_verified=True,
+    )
+    _serve_front_page(
+        monkeypatch, "https://www.groupe-exemple.ch/", "<title>Garage et Carrosserie | Groupe Exemple</title>"
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website is None
+    assert verdict.status == CandidateStatus.TO_CONFIRM
+    assert verdict.detail == "Son email est sur groupe-exemple.ch, un site en ligne qui ne le nomme pas : à vérifier."
 
 
 def test_an_email_on_the_business_s_own_domain_replaces_a_directory_mini_site(monkeypatch: pytest.MonkeyPatch) -> None:

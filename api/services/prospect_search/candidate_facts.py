@@ -64,6 +64,14 @@ class CandidateFacts:
         return CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None
 
     @property
+    def has_email_on_another_site(self) -> bool:
+        """Whether the email's domain runs a live site that does not name the business (a group's, another business's)."""
+        domain = (self.email or "").rsplit("@", 1)[-1]
+        return bool(domain) and any(
+            line.get("fact") == "email_domain_site" and line.get("value") == domain for line in self.evidence
+        )
+
+    @property
     def is_ruled_out_before_search(self) -> bool:
         """Whether the candidate is out before any paid search: a chain, a refusal of advertising, a live website."""
         return self.is_chain or self.refuses_advertising or self.website_status == WebsiteStatus.LIVE.value
