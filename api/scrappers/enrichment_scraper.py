@@ -288,9 +288,12 @@ _PREPARE_PANEL_JS = r"""
 
 # Open the place's photo grid via the hero « Voir les photos » button. The grid is the ONLY reliable
 # prospect-scoped source: the panel and the raw page also carry « Restaurants à proximité » thumbnails
-# from OTHER businesses, but the gallery shows only THIS place's photos.
+# from OTHER businesses, but the gallery shows only THIS place's photos. A Street View hero opens
+# Street View instead of the grid and strands the scrape there, so it is never clicked.
 _OPEN_PHOTOS_JS = r"""
 (() => {
+    const hero = document.querySelector('button[aria-label^="Photo de"] img, button[aria-label^="Photo of"] img');
+    if (hero && (hero.getAttribute('src') || '').indexOf('streetviewpixels') !== -1) return false;
     const direct = document.querySelector('button.Dx2nRe');
     if (direct) { try { direct.click(); return true; } catch (e) {} }
     for (const el of document.querySelectorAll('button, [role="button"]')) {
@@ -304,6 +307,64 @@ _OPEN_PHOTOS_JS = r"""
     return false;
 })()
 """
+
+# Click a photo category: a chip of the panel's « Photos » section, or a tab of the open gallery. Logged
+# out, the hero viewer stops at about ten photos while the « Tout » grid lists them all (31 against 10
+# on a Swiss landscaper, 7 Oct 2026); « Photos du propriétaire » holds the business's own uploads, and
+# the only real photo when « Tout » shows nothing but Street View.
+_OPEN_PHOTO_CATEGORY_JS = r"""
+((labels) => {
+    const nameOf = (el) => (el.getAttribute('aria-label') || el.innerText || el.textContent || '').trim().toLowerCase();
+    // The reviews' topic filter has a « Tout » chip too: a photo category sits next to its siblings.
+    const besidePhotoCategories = (el) => {
+        let box = el.parentElement;
+        for (let depth = 0; box && depth < 3; depth += 1, box = box.parentElement) {
+            for (const other of box.querySelectorAll('button[aria-label], [role="tab"]')) {
+                if (other !== el && /^(photos du propriétaire|by owner|street view)/.test(nameOf(other))) return true;
+            }
+        }
+        return false;
+    };
+    for (const label of labels) {
+        for (const el of document.querySelectorAll('button[aria-label], [role="tab"]')) {
+            if (nameOf(el) !== label || (!/propriétaire|owner/.test(label) && !besidePhotoCategories(el))) continue;
+            try { el.click(); return label; } catch (e) {}
+        }
+    }
+    return null;
+})(%s)
+"""
+# The other panel layout has no category chips: its « Photos » section reads « 32 photos » and opens
+# the same gallery.
+_OPEN_PHOTO_COUNT_JS = r"""
+(() => {
+    for (const el of document.querySelectorAll("div[role='main'] *")) {
+        if (el.children.length) continue;
+        const text = (el.textContent || '').trim().toLowerCase();
+        if (!/^\d[\d\s  .,]*\s+photos?$/.test(text)) continue;
+        const target = el.closest('button, a, [role="button"], [jsaction]') || el;
+        try { target.click(); return true; } catch (e) {}
+    }
+    return false;
+})()
+"""
+# Scroll the place panel's own scroll container (not ``div[role=main]`` itself, which never scrolls).
+_SCROLL_PLACE_PANEL_JS = r"""
+(() => {
+    const main = document.querySelector("div[role='main']");
+    if (!main) return false;
+    const scroller = [main, ...main.querySelectorAll('div')].find(
+        (el) => el.scrollHeight > el.clientHeight + 50 && /auto|scroll/.test(getComputedStyle(el).overflowY)
+    );
+    if (!scroller) return false;
+    scroller.scrollTop += 600;
+    return true;
+})()
+"""
+_ALL_PHOTOS_LABELS: tuple[str, ...] = ("tout", "all")
+_OWNER_PHOTOS_LABELS: tuple[str, ...] = ("photos du propriétaire", "by owner")
+_GRID_TILE_SELECTOR: str = "a.MIgS0d[data-photo-index]"
+_PHOTO_SECTION_SCROLLS: int = 5
 
 # Read the OPEN photo grid. Each tile is `<a class="MIgS0d" data-photo-index>` whose picture is a
 # `background-image` on an inner div (NOT an <img>). Videos are excluded (aria-label « Vidéo » / a
@@ -443,7 +504,7 @@ def _average_hash(image_bytes: bytes) -> int | None:
         from PIL import Image  # Pillow is already a dependency (brand_color_service).
 
         image = Image.open(BytesIO(image_bytes)).convert("L").resize((8, 8))
-        pixels = list(image.getdata())
+        pixels = list(image.tobytes())
         average = sum(pixels) / len(pixels)
         bits = 0
         for index, pixel in enumerate(pixels):
@@ -452,6 +513,77 @@ def _average_hash(image_bytes: bytes) -> int | None:
         return bits
     except Exception:
         return None
+
+
+@dataclass(frozen=True)
+class PhotoTraits:
+    """What a gallery photo looks like: its size, its contrast and how much of it is one flat colour."""
+
+    width: int
+    height: int
+    contrast: float
+    flat_share: float
+    colour_count: int
+    look: int
+
+
+# A site needs a photo at least this wide or tall; a Facebook cover kept at 320 px is a blur.
+_MIN_PHOTO_SIDE_PX: int = 400
+# Below this grey-level spread, an image is a blank banner.
+_MIN_PHOTO_CONTRAST: float = 12.0
+# A logo or a flyer is one flat colour over most of its surface, in few colours (measured 7 Oct 2026:
+# logos 66-88 % in 42-161 colours, real photos 5-13 % in 178-374 colours).
+_GRAPHIC_FLAT_SHARE: float = 0.6
+_GRAPHIC_MAX_COLOURS: int = 170
+# The logo re-uploaded as a gallery photo looks like it within this many hash bits.
+_LOGO_LOOK_DISTANCE: int = 10
+
+
+def photo_traits(image_bytes: bytes) -> PhotoTraits | None:
+    """
+    Read what a photo looks like, or ``None`` when the bytes are not an image.
+
+    Args:
+        image_bytes: The downloaded image.
+
+    Returns:
+        Its size, contrast, flat-colour share, colour count (over 16 levels a channel) and look hash.
+    """
+    try:
+        from collections import Counter
+        from io import BytesIO
+
+        from PIL import Image, ImageStat
+
+        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        return None
+    look = _average_hash(image_bytes)
+    if look is None:
+        return None
+    pixels = image.resize((64, 64)).tobytes()
+    colours = Counter(
+        (pixels[index] // 16, pixels[index + 1] // 16, pixels[index + 2] // 16) for index in range(0, len(pixels), 3)
+    )
+    return PhotoTraits(
+        width=image.width,
+        height=image.height,
+        contrast=ImageStat.Stat(image.convert("L")).stddev[0],
+        flat_share=colours.most_common(1)[0][1] / (64 * 64),
+        colour_count=len(colours),
+        look=look,
+    )
+
+
+def unfit_photo_reason(traits: PhotoTraits) -> str | None:
+    """Why a photo cannot illustrate a site (too small, blank, a logo or a flyer), or ``None`` when it can."""
+    if max(traits.width, traits.height) < _MIN_PHOTO_SIDE_PX:
+        return "too small"
+    if traits.contrast < _MIN_PHOTO_CONTRAST:
+        return "blank"
+    if traits.flat_share >= _GRAPHIC_FLAT_SHARE and traits.colour_count <= _GRAPHIC_MAX_COLOURS:
+        return "graphic"
+    return None
 
 
 def _hamming_distance(left: int, right: int) -> int:
@@ -512,48 +644,77 @@ def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
     return unique
 
 
-async def _perceptual_dedupe_photos(urls: list[str], *, threshold: int = 4) -> list[str]:
-    """Drop VISUALLY duplicate photos (same image re-uploaded → new file id, same look).
+async def _curate_photos(urls: list[str], *, logo_url: str | None = None, threshold: int = 4) -> list[str]:
+    """Keep the photos that can illustrate a site: no logo, flyer, blur or blank banner, no visual duplicate.
 
-    Downloads each image once (parallel, best-effort), average-hashes it, and keeps a photo only if
-    it isn't within ``threshold`` bits of one already kept. On any download/decode failure the URL is
-    kept (never silently dropped). No-ops on fewer than two photos.
+    Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
+    the ones :func:`unfit_photo_reason` refuses, the logo re-uploaded as a photo, and any photo within
+    ``threshold`` bits of one already kept. On any download/decode failure the URL is kept (never
+    silently dropped).
 
     The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
     DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
     (measured on a live listing), so 4 keeps them while still collapsing genuine re-uploads.
+
+    Args:
+        urls: The gallery, in order.
+        logo_url: The business's logo, whose re-uploads are no gallery photo.
+        threshold: The look distance under which two photos are one.
+
+    Returns:
+        The kept photos, in their order.
     """
-    if len(urls) < 2:
-        return list(urls)
+    if not urls:
+        return []
+
+    import base64
 
     import httpx
 
     semaphore = asyncio.Semaphore(8)
 
-    async def _hash_one(client: httpx.AsyncClient, url: str) -> int | None:
+    async def _traits_of(client: httpx.AsyncClient, url: str) -> PhotoTraits | None:
+        if url.startswith("data:"):
+            try:
+                return photo_traits(base64.b64decode(url.split(",", 1)[1]))
+            except Exception:
+                return None
         async with semaphore:
             try:
                 response = await client.get(url)
             except Exception:
                 return None
-            return _average_hash(response.content) if response.status_code == 200 else None
+            return photo_traits(response.content) if response.status_code == 200 else None
 
     try:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            hashes = await asyncio.gather(*[_hash_one(client, url) for url in urls])
+            traits = await asyncio.gather(
+                *[_traits_of(client, url) for url in [*urls, *([logo_url] if logo_url else [])]]
+            )
     except Exception:
         return list(urls)
 
+    logo_traits = traits.pop() if logo_url else None
     kept: list[str] = []
-    kept_hashes: list[int] = []
-    for url, digest in zip(urls, hashes):
-        if digest is None:
-            kept.append(url)  # couldn't hash → keep rather than lose a real photo
+    kept_looks: list[int] = []
+    for url, photo in zip(urls, traits):
+        if photo is None:
+            kept.append(url)  # couldn't read it → keep rather than lose a real photo
             continue
-        if any(_hamming_distance(digest, seen) <= threshold for seen in kept_hashes):
+        reason = unfit_photo_reason(photo)
+        if (
+            reason is None
+            and logo_traits is not None
+            and _hamming_distance(photo.look, logo_traits.look) <= _LOGO_LOOK_DISTANCE
+        ):
+            reason = "logo"
+        if reason is not None:
+            logger.info("Enrichment: photo left out of the gallery (%s): %s", reason, url[:80])
+            continue
+        if any(_hamming_distance(photo.look, seen) <= threshold for seen in kept_looks):
             continue
         kept.append(url)
-        kept_hashes.append(digest)
+        kept_looks.append(photo.look)
     return kept
 
 
@@ -586,7 +747,7 @@ class EnrichmentScraper:
             fb_only = await facebook_enrichment_scraper.enrich(
                 business_name=business_name, facebook_url=facebook_url or "", country=country
             )
-            fb_only.photos = await _perceptual_dedupe_photos(fb_only.photos)
+            fb_only.photos = await _curate_photos(fb_only.photos, logo_url=fb_only.logo_url)
             fb_only.reviews = _dedupe_reviews(fb_only.reviews)
             return fb_only
 
@@ -624,9 +785,9 @@ class EnrichmentScraper:
             except Exception as exc:
                 logger.info("Facebook complementary enrichment failed for %s: %s", business_name, exc)
 
-        # Drop visually-duplicate photos (same image re-uploaded across Google/Facebook) once the
-        # full set is assembled, before it reaches the prospect's gallery.
-        data.photos = await _perceptual_dedupe_photos(data.photos)
+        # Drop visually-duplicate photos (same image re-uploaded across Google/Facebook), logos, flyers
+        # and blurs once the full set is assembled, before it reaches the prospect's gallery.
+        data.photos = await _curate_photos(data.photos, logo_url=data.logo_url)
         data.reviews = _dedupe_reviews(data.reviews)
         return data
 
@@ -715,7 +876,9 @@ class EnrichmentScraper:
             # photo gallery); reload until it renders the full one so the count and photos survive.
             await self._ensure_complete_panel(tab, url)
             await self._wait_for_maps_hydration(tab)
-            place_url = NodriverDom.tab_url(tab)
+            # A place opened from its « cid » link may keep that URL: either one reloads the place.
+            current_url = NodriverDom.tab_url(tab)
+            place_url = current_url if "/maps/place/" in current_url else url
             # Capture the business-name h1 BEFORE extraction expands the hours: expanding them makes
             # Google swap the first h1 for « Horaires », which would then poison the identity guard.
             place_title = await self._read_place_title(tab)
@@ -724,14 +887,18 @@ class EnrichmentScraper:
             # à proximité » thumbnails from OTHER businesses). Read it HERE, on the still-fresh panel,
             # before extraction expands the hours and hides the « Voir les photos » button — reading now
             # avoids the ~3s re-anchor reload the button-gone path would need. The gallery is closed after.
-            early_photos = await self._read_photo_grid_then_close(tab)
+            early_photos = await self._read_photo_grid_then_close(tab, place_url=place_url, place_title=place_title)
             # If the fresh-panel read left us off the place panel (gallery still open / navigated away),
             # re-anchor so extraction runs on a real panel — the same reload the old order always paid,
-            # now paid only when the gallery didn't close cleanly.
-            if "/maps/place/" not in NodriverDom.tab_url(tab) or not await self._panel_is_complete(tab):
-                if "/maps/place/" in place_url:
-                    await NodriverDom.navigate(tab, place_url)
-                    await self._open_place_panel(tab)
+            # now paid only when the gallery didn't close cleanly. Street View keeps the place URL, so
+            # the heading is checked too.
+            if (
+                NodriverDom.tab_url(tab) != current_url
+                or not await self._panel_is_complete(tab)
+                or (place_title and await self._read_place_title(tab) != place_title)
+            ):
+                await NodriverDom.navigate(tab, place_url)
+                await self._open_place_panel(tab)
 
             data = await self._extract_with_retries(tab, business_name=business_name, city=city)
             if place_title:
@@ -743,10 +910,9 @@ class EnrichmentScraper:
                 # The fresh-panel read found nothing; extraction has since hidden the button, so re-anchor
                 # to a fresh panel and read the grid the proven way (verified logged-out: 10 tiles).
                 data.photos = []
-                if "/maps/place/" in place_url:
-                    await NodriverDom.navigate(tab, place_url)
-                    await self._open_place_panel(tab)
-                await self._grab_more_photos(tab, data)
+                await NodriverDom.navigate(tab, place_url)
+                await self._open_place_panel(tab)
+                await self._grab_more_photos(tab, data, place_url=place_url, place_title=place_title)
             return data
         except Exception as exc:
             logger.warning("Enrichment scrape failed for %s: %s", business_name, exc)
@@ -867,50 +1033,145 @@ class EnrichmentScraper:
         except Exception:
             pass
 
-    async def _collect_open_grid(self, tab: Any, *, seed: list[str] | None = None) -> list[str] | None:
-        """Open « Voir les photos » and read the full photo grid, returning THIS place's photo URLs.
+    async def _collect_open_grid(
+        self,
+        tab: Any,
+        *,
+        seed: list[str] | None = None,
+        place_url: str | None = None,
+        place_title: str | None = None,
+    ) -> list[str] | None:
+        """Open the photo grid and read it, returning THIS place's photo URLs, the business's own first.
 
         The grid is the only reliably prospect-scoped source (the panel and page also carry nearby
-        businesses' thumbnails). We open the grid, step-scroll its own virtualised container, and collect
-        the tile URLs after each step, optionally starting from ``seed`` (already-known URLs). Returns
-        ``None`` when the button or tiles never appear, so the caller can pick its fallback.
-        """
-        opened = await NodriverDom.evaluate(tab, _OPEN_PHOTOS_JS, by_value=True)
-        if opened is not True:
-            return None
-        if not await NodriverDom.wait_for_selector(tab, "a.MIgS0d[data-photo-index]", timeout_s=6.0):
-            return None
+        businesses' thumbnails). Logged out, the hero viewer stops at about ten photos while the grid
+        opened from the « Photos » section lists them all; the « Photos du propriétaire » tab then puts
+        the business's own uploads first. The result starts from ``seed`` (already-known URLs).
 
-        seen: set[str] = {url for url in (seed or []) if url}
-        merged: list[str] = [url for url in (seed or []) if url]
+        Args:
+            tab: The Maps tab, on the place panel.
+            seed: Photo URLs already known, kept first.
+            place_url: The place's URL, to come back to it.
+            place_title: The place's heading, to tell when a click left the panel (Street View).
+
+        Returns:
+            The photo URLs, or ``None`` when no grid opens, so the caller can pick its fallback.
+        """
+        opener = await self._open_photo_grid(tab, place_url=place_url, place_title=place_title)
+        if opener is None:
+            return None
+        every_photo = await self._read_open_grid(tab)
+        owner_photos = await self._read_photo_category(tab, _OWNER_PHOTOS_LABELS) or []
+        logger.info(
+            "Enrichment: photo grid opened by %s — %s photo(s), %s from the owner",
+            opener,
+            len(every_photo),
+            len(owner_photos),
+        )
+        merged = list(dict.fromkeys(url for url in [*(seed or []), *owner_photos, *every_photo] if url))
+        return merged[:40]
+
+    async def _open_photo_grid(self, tab: Any, *, place_url: str | None, place_title: str | None) -> str | None:
+        """
+        Open the place's photo grid: its « Tout » category, else the section's « N photos », else the hero.
+
+        Google serves the place panel in two layouts, about half the time each — with category chips
+        under « Photos et vidéos », or a plain « Photos » section whose grid stops at about ten photos —
+        and renders either only once the panel is scrolled down to it. Reloading does not choose the
+        layout (measured 7 Oct 2026), so the plain one is read as it is.
+
+        Args:
+            tab: The Maps tab, on the place panel.
+            place_url: The place's URL, to come back to it.
+            place_title: The place's heading, to tell when a click left the panel (Street View).
+
+        Returns:
+            Which opener worked, or ``None`` when no grid opened.
+        """
+        category_opener = _OPEN_PHOTO_CATEGORY_JS % json.dumps(list(_ALL_PHOTOS_LABELS))
+        for _ in range(_PHOTO_SECTION_SCROLLS):
+            if await self._opens_grid(tab, category_opener):
+                return "category"
+            await NodriverDom.evaluate(tab, _SCROLL_PLACE_PANEL_JS, by_value=True)
+            await asyncio.sleep(0.5)
+        # The plain layout's count, then the hero: always on screen, but its viewer is capped.
+        for name, script in (("photo count", _OPEN_PHOTO_COUNT_JS), ("hero", _OPEN_PHOTOS_JS)):
+            if await self._opens_grid(tab, script):
+                return name
+            await self._back_to_place_panel(tab, place_url=place_url, place_title=place_title)
+        logger.info("Enrichment: no photo grid could be opened on the place panel")
+        return None
+
+    async def _back_to_place_panel(self, tab: Any, *, place_url: str | None, place_title: str | None) -> None:
+        """Reload the place when a click left its panel (a Street View photo opens Street View, under the same URL)."""
+        if not place_url or not place_title:
+            return
+        if await self._read_place_title(tab) == place_title:
+            return
+        await NodriverDom.navigate(tab, place_url)
+        await self._open_place_panel(tab)
+
+    @staticmethod
+    async def _opens_grid(tab: Any, script: str) -> bool:
+        """Whether clicking what ``script`` finds brings up the photo grid's tiles."""
+        clicked = await NodriverDom.evaluate(tab, script, by_value=True)
+        if clicked is not True and not isinstance(clicked, str):
+            return False
+        return await NodriverDom.wait_for_selector(tab, _GRID_TILE_SELECTOR, timeout_s=6.0)
+
+    async def _read_photo_category(self, tab: Any, labels: tuple[str, ...]) -> list[str] | None:
+        """
+        Click a category tab of the open gallery and read its grid.
+
+        Args:
+            tab: The Maps tab, on the open gallery.
+            labels: The category's names, lowercase, in the languages Maps may show.
+
+        Returns:
+            The category's photo URLs, or ``None`` when the gallery shows no such category.
+        """
+        clicked = await NodriverDom.evaluate(tab, _OPEN_PHOTO_CATEGORY_JS % json.dumps(list(labels)), by_value=True)
+        if not isinstance(clicked, str) or not await NodriverDom.wait_for_selector(
+            tab, _GRID_TILE_SELECTOR, timeout_s=6.0
+        ):
+            return None
+        # A tab switch swaps the tiles in place: let the previous category's tiles go before reading.
+        await asyncio.sleep(1.0)
+        return await self._read_open_grid(tab)
+
+    async def _read_open_grid(self, tab: Any) -> list[str]:
+        """Read the open grid, step-scrolling its virtualised container until no new tile shows up."""
+        collected: list[str] = []
         stable_rounds = 0
         for _ in range(28):
-            added = 0
-            for url in await self._read_grid_photos(tab):
-                if url and url not in seen:
-                    seen.add(url)
-                    merged.append(url)
-                    added += 1
-            stable_rounds = 0 if added else stable_rounds + 1
-            if stable_rounds >= 3 or len(merged) >= 40:
+            fresh = [url for url in await self._read_grid_photos(tab) if url not in collected]
+            collected.extend(fresh)
+            stable_rounds = 0 if fresh else stable_rounds + 1
+            if stable_rounds >= 3 or len(collected) >= 40:
                 break
             await NodriverDom.evaluate(tab, _GRID_SCROLL_JS, by_value=True)
             await asyncio.sleep(0.5)
-        return merged[:40]
+        return collected
 
-    async def _grab_more_photos(self, tab: Any, data: EnrichmentData) -> None:
+    async def _grab_more_photos(
+        self, tab: Any, data: EnrichmentData, *, place_url: str | None = None, place_title: str | None = None
+    ) -> None:
         """Fallback grid read (post-extraction, re-anchored panel): merge the grid into ``data.photos``.
 
         Isolated + best-effort: only ADDS photos, so a failure never touches what we already have.
         """
         try:
-            collected = await self._collect_open_grid(tab, seed=data.photos)
+            collected = await self._collect_open_grid(
+                tab, seed=data.photos, place_url=place_url, place_title=place_title
+            )
             if collected is not None:
                 data.photos = collected
         except Exception as exc:
             logger.info("Extra Google photo pass failed: %s", exc)
 
-    async def _read_photo_grid_then_close(self, tab: Any) -> list[str]:
+    async def _read_photo_grid_then_close(
+        self, tab: Any, *, place_url: str | None = None, place_title: str | None = None
+    ) -> list[str]:
         """Read the photo grid on the STILL-FRESH panel (before extraction hides the button), then close
         the gallery so extraction reads the place panel again.
 
@@ -920,7 +1181,7 @@ class EnrichmentScraper:
         Returns ``[]`` when the grid never opened, so the caller falls back to the proven path.
         """
         try:
-            collected = await self._collect_open_grid(tab)
+            collected = await self._collect_open_grid(tab, place_url=place_url, place_title=place_title)
         except Exception as exc:
             logger.info("Fresh-panel photo grid read failed: %s", exc)
             return []
