@@ -112,6 +112,15 @@ perdues, astérisque compris), un texte ne nomme une entreprise que s'il porte u
 un email sur le domaine d'un site en ligne qui ne nomme pas l'entreprise met la fiche « À confirmer »,
 la page d'accueil d'un hébergeur compte comme un site mort, et les requêtes à search.ch sont espacées.
 
+Depuis la manche 10 (7 octobre, matin) : zip.ch est lu pour tout numéro que search.ch ne liste pas,
+même quand l'entreprise y est trouvée par son nom, et un numéro étoilé précédé de « téléphone »,
+« mobile », « portable », « natel » ou « fax » compte sur tout résultat (extraits zip.ch, liens de redirection
+Google). Les centrales et postes électriques sortent du métier « électricien », un domaine d'email qui
+épelle le nom de l'entreprise et répond derrière une page anti-robots est son site, l'identifiant
+« (@…) » sort du nom d'une page Facebook, et une page Facebook dont le nom ne dit pas le métier
+attend une confirmation. Quand le quota gratuit du jour de gpt-oss-120b est épuisé, le juge répond
+avec gpt-oss-20b.
+
 **Ce qui reste (lots de la section 10)**
 
 - Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en

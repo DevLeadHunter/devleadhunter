@@ -319,3 +319,34 @@ Les fiches restées « à valider » dans les recherches 1 à 9 ont été repris
 ### Résultat
 
 Le 7 octobre à 9 h 30 : Suisse 28/40 (17 garages, 8 paysagistes, 3 électriciens), France email 40/40, Québec 25/20, SMS France 15/15. Les paysagistes (4 sur 8) et les électriciens (1 sur 8) ont atteint la limite de 12 villes par métier : la recherche est relancée pour 12 villes de plus. La recherche des garages est la plus rentable (9 en 5 villes) ; la moitié des paysagistes et des électriciens suisses refusent la publicité.
+
+## Manche 10 — Suisse, paysagistes et électriciens (7 octobre, matin)
+
+| Recherche | Contrôlés à la main | Bons | Refusés |
+|---|---|---|---|
+| n° 11 reprise, 12 villes de plus par métier (376 requêtes, 57 appels au juge) | 10 | 4 (prospects 342 à 345) | 6 : un email sur un faux domaine Gmail, un astérisque sur zip.ch, une centrale hydroélectrique, un site derrière une page anti-robots, un email sur le domaine d'une autre entreprise, un électricien français itinérant |
+| n° 12, 5 par métier (1 h, 242 requêtes, 23 appels au juge) | 6 | 3 (prospects 346 à 348) | 3 : la page Facebook d'une association de commerces, un astérisque sur un portable, une agence d'emploi |
+| n° 13, 3 par métier (en cours à 10 h 40) | 4 | 4 (prospects 349 à 352) | aucun |
+
+« Contrôlés à la main » = les fiches gardées et les fiches « à confirmer » qui avaient un email. Le prospect 342 était « à confirmer » : son email figure sur la liste des entreprises de sa commune, il a été gardé à la main. Le prospect 344 est un homme à tout faire qui entretient des jardins : cas limite, gardé.
+
+La règle de la manche 9 « email sur le domaine d'un site en ligne qui ne nomme pas l'entreprise » a joué : un électricien dont l'email est sur le domaine d'une autre entreprise est arrivé « à confirmer », pas gardé.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Un « électricien » à confirmer était une centrale hydroélectrique, avec l'email d'une pharmacie du même nom | La catégorie Google « centrale hydroélectrique » passait pour le métier | Centrales, sous-stations et postes électriques sont hors du métier (`0f787f0d`) |
+| Un électricien gardé a un site, derrière une page anti-robots | La page d'accueil du domaine de son email, qui porte son nom, ne se lisait pas : le domaine était ignoré | Un domaine d'email qui épelle le nom de l'entreprise et qui répond est son site, même illisible (`ebcf66b2`) |
+| Un paysagiste gardé : son portable porte l'astérisque sur zip.ch | search.ch trouvait l'entreprise par son nom, et zip.ch n'était lu que si search.ch ne trouvait rien | zip.ch est lu pour tout numéro que search.ch ne liste pas ; un extrait zip.ch étoilé dans les résultats Google compte aussi (`771a4e56`) |
+| Le nom d'une page Facebook gardait son identifiant (« … (@…) ») jusque dans la fiche du prospect (corrigé à la main) | Le titre de la page n'était coupé qu'à « \| Facebook » | L'identifiant est retiré du nom (`911407e4`) |
+| Un électricien à confirmer : son portable porte l'astérisque dans l'extrait Google de sa fiche d'annuaire | L'extrait arrivait derrière un lien de redirection Google, et l'astérisque n'était lu que sur les liens des annuaires | Un numéro étoilé précédé de « téléphone », « mobile », « portable », « natel » ou « fax » est lu sur tout résultat (`d7cca9c5`) |
+| Un « électricien » gardé était la page Facebook d'une association de commerces de la région | Une page trouvée par la recherche Facebook était crue sur le métier cherché | Une page Facebook dont le nom ne dit pas le métier passe « à confirmer » (`94f22911`) |
+| Un paysagiste gardé : son seul email est sur « gmail.ch » | gmail.ch n'est pas Gmail : le domaine a son propre serveur de courrier, il passe tous les contrôles | Pas corrigé : un seul cas, et pas de filtre agressif sur les emails ; le contrôle à la main l'attrape |
+| Un électricien français itinérant gardé en Suisse | Rien sur sa fiche ne le disait | Pas corrigé (cas isolé) |
+
+Groq : la recherche n° 11 a épuisé le quota gratuit du jour (200 000 jetons sur gpt-oss-120b). Le juge passe désormais sur gpt-oss-20b, qui a son propre quota, quand celui du modèle principal est épuisé (`d4fbbbaa`).
+
+### Résultat
+
+Le 7 octobre à 10 h 40 : Suisse 39/40 (17 paysagistes, 18 garages, 4 électriciens). Les électriciens suisses restent la case la plus dure : 1 bon sur 24 villes dans la n° 11, aucun sur 12 villes dans la n° 12, 1 à Genève dans la n° 13 ; dans chaque ville, la plupart ont un site ou refusent la publicité.
