@@ -147,7 +147,7 @@ class FacebookPageUrl:
         Strip Facebook's boilerplate from a search result title.
 
         Removes a leading notification count (« (3) »), a trailing sub-tab (« - Avis »),
-        the trailing « | Facebook » and the page's handle (« (@ihpaysagiste) »).
+        the trailing « | Facebook » and the page's handle (« (@jrpaysagiste) »).
 
         Args:
             result_title: Title of a search result on facebook.com.

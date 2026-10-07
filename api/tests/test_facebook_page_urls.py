@@ -78,5 +78,5 @@ class TestBusinessNameOfTitle:
         assert FacebookPageUrl.business_name_of_title("Tacos Maru - Avis | Facebook") == "Tacos Maru"
 
     def test_strips_the_page_handle(self) -> None:
-        assert FacebookPageUrl.business_name_of_title("I.H Paysagiste (@ihpaysagiste)") == "I.H Paysagiste"
+        assert FacebookPageUrl.business_name_of_title("J.R Paysagiste (@jrpaysagiste)") == "J.R Paysagiste"
         assert FacebookPageUrl.business_name_of_title("Jardins Rochat (@jardins.rochat) | Facebook") == "Jardins Rochat"

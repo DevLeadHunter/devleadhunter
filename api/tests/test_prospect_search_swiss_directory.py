@@ -645,9 +645,9 @@ def test_a_directory_extract_behind_a_google_redirect_keeps_its_starred_number()
     page = {
         "organic": [
             {
-                "link": "https://www.google.com/goto?url=CAESkwEB6zswFU5U4trI6bKf",
+                "link": "https://www.google.com/goto?url=CAESexemple",
                 "title": "D. Rochat monteur électricien à Bulle",
-                "description": "Adresse: Rue du Vieux-Pont 76, 1630 Bulle ; Numéro de téléphone mobile: 079 000 00 98* ; "
+                "description": "Adresse: Rue de l'Exemple 1, 1630 Bulle ; Numéro de téléphone mobile: 079 000 00 98* ; "
                 "Email: info@rochat-electricien.ch",
             }
         ]
@@ -661,10 +661,10 @@ def test_a_directory_extract_behind_a_google_redirect_keeps_its_starred_number()
 
 
 def test_zip_ch_is_read_for_the_listing_s_number_even_when_the_business_was_found_by_name() -> None:
-    facts = _facts(name="Rochat Valentin", city="La Cibourg", phone="078 000 00 95", trade_key="paysagiste")
+    facts = _facts(name="Rochat Marc", city="Le Locle", phone="078 000 00 95", trade_key="paysagiste")
     business_entry = _entry(
-        url="https://search.ch/tel/la-cibourg/les-reprises-18/valentin-rochat-sa.fr.html",
-        name="Valentin Rochat SA",
+        url="https://search.ch/tel/le-locle/rue-de-l-exemple-1/marc-rochat-sa.fr.html",
+        name="Marc Rochat SA",
         is_business=True,
     )
 
@@ -674,13 +674,13 @@ def test_zip_ch_is_read_for_the_listing_s_number_even_when_the_business_was_foun
 
 
 def test_a_starred_number_in_a_zip_ch_extract_refuses_advertising() -> None:
-    facts = _facts(name="Rochat Valentin", city="La Cibourg", phone="078 000 00 95")
+    facts = _facts(name="Rochat Marc", city="Le Locle", phone="078 000 00 95")
     page = {
         "organic": [
             {
-                "link": "https://zip.ch/fr/rochat-valentin-les-reprises-la-cibourg-x1/",
-                "title": "Rochat Valentin - La Cibourg",
-                "description": "Rochat Valentin - Les Reprises 18, 2300 La Cibourg. Mobile. 078 000 00 95 *. E-mail.",
+                "link": "https://zip.ch/fr/rochat-marc-rue-de-l-exemple-le-locle-x1/",
+                "title": "Rochat Marc - Le Locle",
+                "description": "Rochat Marc - Rue de l'Exemple 1, 2400 Le Locle. Mobile. 078 000 00 95 *. E-mail.",
             }
         ]
     }
