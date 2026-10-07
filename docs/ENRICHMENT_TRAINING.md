@@ -77,7 +77,7 @@ Note d'un lead : nombre de champs où l'app a au moins ce que la main a trouvé,
 | Post de 2017 en description (n° 321), « 91 followers » en tête (n° 351) | La description Facebook prenait le texte le plus long, post compris ; l'en-tête de l'aperçu (nom, ville, abonnés, visites) n'était pas retiré | La présentation de la page passe avant tout ; complétée par un texte plus long qui commence pareil, sinon coupée après sa dernière phrase entière ; en-tête retiré |
 | n° 351 fermé, enrichi comme ouvert | Personne ne relisait le registre à l'enrichissement | Registre suisse lu à l'enrichissement : en liquidation ou radiée depuis moins de 3 ans → « Ne plus contacter » avec la raison |
 | Aucun décisionnaire suisse | Le décisionnaire ne lisait que les registres français | Personnes lues dans les publications FOSC (titulaire, président, administrateur unique, associé gérant, gérant ; formats d'avant et d'après 2020 ; départs « n'est plus ») ; utilisé seul quand une seule personne tient le rôle et que le prénom est sûr, sinon proposé à confirmer |
-| Gérant du n° 310 non retenu | À la même adresse, l'entreprise individuelle du père (même métier, toujours active) faisait jeu égal | Le numéro SIRET que la recherche avait lu (registre RGE) désigne l'entreprise : aucune autre entreprise du registre ne peut plus la concurrencer |
+| Gérant du n° 310 non retenu | À la même adresse, une autre entreprise du même nom de famille (même métier, toujours active) faisait jeu égal | Le numéro SIRET que la recherche avait lu (registre RGE) désigne l'entreprise : aucune autre entreprise du registre ne peut plus la concurrencer |
 
 ### Résultat
 
