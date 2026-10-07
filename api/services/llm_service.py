@@ -40,7 +40,7 @@ _RATE_LIMIT_MAX_RETRIES = 3
 _RATE_LIMIT_MAX_DELAY_SECONDS = 12.0
 _DAILY_QUOTA_MARKER = "per day"
 _DAILY_QUOTA_DEFAULT_WAIT_SECONDS = 600.0
-_RETRY_IN_RE = re.compile(r"try again in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?")
+_RETRY_IN_RE = re.compile(r"try again in (?:(\d+)h)?(?:(\d+)m(?!s))?(?:([\d.]+)(ms|s))?")
 _JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 # gpt-oss / qwen3 models reason before answering, and the reasoning tokens count against
 # ``max_tokens`` — a tiny budget (e.g. 10 for a one-word verdict) is entirely consumed by
@@ -312,8 +312,9 @@ class LLMService:
         wait = _RETRY_IN_RE.search(response.text)
         if wait is None or not any(wait.groups()):
             return _DAILY_QUOTA_DEFAULT_WAIT_SECONDS
-        hours, minutes, seconds = (float(part) if part else 0.0 for part in wait.groups())
-        return hours * 3600 + minutes * 60 + seconds
+        hours, minutes, amount, unit = wait.groups()
+        seconds = float(amount or 0) / (1000 if unit == "ms" else 1)
+        return float(hours or 0) * 3600 + float(minutes or 0) * 60 + seconds
 
     @staticmethod
     def _retry_delay_seconds(response: httpx.Response, attempt: int) -> float:

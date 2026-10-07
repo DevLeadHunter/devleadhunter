@@ -165,3 +165,19 @@ def test_a_spent_daily_quota_hands_a_stream_to_the_fallback_model(monkeypatch: p
         return [delta async for delta in service.complete_stream(_MESSAGES)]
 
     assert asyncio.run(collect()) == ["Bonjour"]
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_seconds"),
+    [
+        ("Please try again in 4m40.368s.", 280.368),
+        ("Please try again in 1h2m3s.", 3723.0),
+        ("Please try again in 864ms.", 0.864),
+        ("Please try again in 2m.", 120.0),
+        ("Please try later.", 600.0),
+    ],
+)
+def test_a_spent_quota_stays_set_aside_for_the_wait_groq_names(message: str, expected_seconds: float) -> None:
+    response = httpx.Response(429, text=f'{{"error":{{"message":"tokens per day (TPD). {message}"}}}}')
+
+    assert LLMService._quota_wait_seconds(response) == pytest.approx(expected_seconds)
