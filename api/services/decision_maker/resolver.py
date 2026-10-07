@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from dataclasses import replace
 
 from enums.website_status import WebsiteStatus
 from services.decision_maker.strategies import (
@@ -89,6 +90,10 @@ class DecisionMakerResolver:
         # rival a geo-confirmed one — the geography already disambiguated them.
         if best.primary and best.geo_confirmed:
             rivals = [r for r in rivals if not (r.primary and not r.geo_confirmed)]
+        # The company the search tied to the business by its number leaves no room to another
+        # registry company, even at the same address (a father's sole trade beside his son's SARL).
+        if best.anchored:
+            rivals = [r for r in rivals if not r.primary]
 
         # Two comparable-authority identities too close to call → trust neither.
         # A supporting source tied with a primary is NOT a stalemate: the
@@ -107,8 +112,8 @@ class DecisionMakerResolver:
         return NameResolution(status=status, candidate=best, candidates=boosted)
 
     @staticmethod
-    def _selection_key(candidate: NameCandidate) -> tuple[float, bool, bool]:
-        """Ranking key: confidence, with authoritative geo-anchored sources ahead.
+    def _selection_key(candidate: NameCandidate) -> tuple[bool, float, bool, bool]:
+        """Ranking key: the company tied by its number first, then confidence, with authoritative geo-anchored sources ahead.
 
         A geo-confirmed primary within a whisker of a supporting source must win
         the pick (the registry beats a legal-page regex naming the web agency) —
@@ -117,7 +122,7 @@ class DecisionMakerResolver:
         selection_score = candidate.confidence + (
             _PRIMARY_RIVAL_MARGIN if candidate.primary and candidate.geo_confirmed else 0.0
         )
-        return (selection_score, candidate.primary, bool(candidate.first and candidate.last))
+        return (candidate.anchored, selection_score, candidate.primary, bool(candidate.first and candidate.last))
 
     @staticmethod
     def _apply_agreement_boost(candidates: list[NameCandidate]) -> list[NameCandidate]:
@@ -134,25 +139,12 @@ class DecisionMakerResolver:
                 for other in candidates
             )
             confidence = min(1.0, candidate.confidence + (_AGREEMENT_BOOST if agreement else 0.0))
-            boosted.append(
-                NameCandidate(
-                    first=candidate.first,
-                    last=candidate.last,
-                    gender=candidate.gender,
-                    source=candidate.source,
-                    confidence=round(confidence, 2),
-                    primary=candidate.primary,
-                    geo_confirmed=candidate.geo_confirmed,
-                    evidence_group=candidate.evidence_group,
-                    provenance=candidate.provenance,
-                    raw=candidate.raw,
-                )
-            )
+            boosted.append(replace(candidate, confidence=round(confidence, 2)))
         return boosted
 
 
-def context_from_prospect(prospect, enrichment=None) -> ResolutionContext:
-    """Build the strategy input from a prospect row (+ optional enrichment).
+def context_from_prospect(prospect, enrichment=None, *, registry_number: str | None = None) -> ResolutionContext:
+    """Build the strategy input from a prospect row (+ optional enrichment, + the company number the search read).
 
     Source-agnostic on purpose: only persisted prospect/enrichment data is
     used, whatever scraper discovered the prospect. When the prospect address
@@ -187,6 +179,7 @@ def context_from_prospect(prospect, enrichment=None) -> ResolutionContext:
         phone=prospect.phone,
         owner_responses=owner_responses,
         description=description,
+        registry_number=registry_number,
     )
 
 

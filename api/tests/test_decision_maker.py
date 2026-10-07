@@ -19,6 +19,7 @@ from services.decision_maker.strategies import (
     OwnerResponseStrategy,
     RegistreGouvStrategy,
     WebRegistryStrategy,
+    registry_siren,
 )
 from services.decision_maker.types import NameCandidate, NameResolution, ResolutionContext
 
@@ -493,3 +494,51 @@ def test_web_registry_recovers_legal_name_then_delegates_to_registry() -> None:
     assert candidate.provenance.startswith("Recherche web →")
     # The registry was queried with the RECOVERED legal name and without the strict postal filter.
     assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code is None for call in registry.calls)
+
+
+# ── The company number the prospect search read (first enrichment round, 7 Oct 2026) ──
+
+
+def test_registry_siren_reads_a_siren_or_a_siret_and_nothing_else() -> None:
+    """The RGE register gives a SIRET; a Swiss IDE or a Quebec licence is no SIREN."""
+    assert registry_siren("123 456 789 00013") == "123456789"
+    assert registry_siren("123456789") == "123456789"
+    assert registry_siren("CHE-123.456.789") is None
+    assert registry_siren("RBQ 5678-1234-01") is None
+    assert registry_siren(None) is None
+
+
+def test_the_searched_company_number_ties_the_registry_match_without_a_postcode() -> None:
+    """A prospect address without postcode still reaches its company through the number the search read."""
+    context = ResolutionContext(company_name="Dubois Électricité", city="Bidart", registry_number="12345678900013")
+    results = [
+        {
+            "nom_complet": "DUBOIS ELECTRICITE",
+            "nature_juridique": "5499",
+            "siren": "123456789",
+            "siege": {"code_postal": "64210", "libelle_commune": "BIDART"},
+            "dirigeants": [
+                {"nom": "DUBOIS", "prenoms": "Julien", "qualite": "Gérant", "type_dirigeant": "personne physique"}
+            ],
+        }
+    ]
+
+    candidates = RegistreGouvStrategy().parse_results(results, context)
+
+    assert [(candidate.first, candidate.anchored, candidate.geo_confirmed) for candidate in candidates] == [
+        ("Julien", True, True)
+    ]
+    assert "numéro relevé par la recherche" in candidates[0].provenance
+
+
+def test_a_father_sole_trade_at_the_same_address_cannot_rival_the_searched_company() -> None:
+    """The son's SARL found by its number wins over the father's still-active sole trade next door."""
+    resolver = DecisionMakerResolver(strategies=[])
+    anchored = _registry("Julien", "Dubois", 0.9, geo_confirmed=True)
+    anchored.anchored = True
+    candidates = [anchored, _registry("Alain", "Dubois", 0.95, geo_confirmed=True)]
+
+    resolution = resolver.pick_best(candidates)
+
+    assert resolution.status == NameResolution.AUTO
+    assert resolution.candidate is not None and resolution.candidate.first == "Julien"

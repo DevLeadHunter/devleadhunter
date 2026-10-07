@@ -44,6 +44,16 @@ _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
 
 
+def registry_siren(registry_number: str | None) -> str | None:
+    """The SIREN of a French company number (a SIREN or a SIRET), or ``None`` for any other number."""
+    digits = re.sub(r"\D", "", registry_number or "")
+    return (
+        digits[:9]
+        if len(digits) in (9, 14) and not (registry_number or "").upper().startswith(("CHE", "RBQ"))
+        else None
+    )
+
+
 class RegistreGouvStrategy:
     """Tier 1 — the official (free, key-less) « Recherche d'entreprises » API.
 
@@ -55,12 +65,13 @@ class RegistreGouvStrategy:
     name = "registre_gouv"
 
     async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
-        """Query the registry by company name (+ postal code / city)."""
+        """Query the registry by the company number the search read, else by company name (+ postal code / city)."""
         query = (context.company_name or "").strip()
         if not query:
             return []
-        params: dict[str, Any] = {"q": query, "page": 1, "per_page": 5}
-        if context.postal_code:
+        siren = registry_siren(context.registry_number)
+        params: dict[str, Any] = {"q": siren or query, "page": 1, "per_page": 5}
+        if context.postal_code and not siren:
             params["code_postal"] = context.postal_code
         try:
             async with httpx.AsyncClient(timeout=12.0) as client:
@@ -75,67 +86,85 @@ class RegistreGouvStrategy:
     def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
         """Score the registry matches (pure — unit-testable on fixtures)."""
         candidates: list[NameCandidate] = []
+        siren = registry_siren(context.registry_number)
         for result in results[:5]:
-            similarity = self._match_similarity(result, context)
+            # The company the search tied to the business by its number is it, whatever its name.
+            anchored = bool(siren) and str(result.get("siren") or "") == siren
+            similarity = 1.0 if anchored else self._match_similarity(result, context)
             if similarity < _MIN_COMPANY_SIMILARITY:
                 continue
-            city_ok = self._city_matches(result, context)
+            city_ok = anchored or self._city_matches(result, context)
             # Département-level match is enough geo confirmation: artisans are
             # often registered at home, one commune away from where they work.
             geo_confirmed = city_ok or self._department_matches(result, context)
             base = 0.5 + 0.25 * similarity + (0.15 if city_ok else 0.0)
-
-            dirigeants = [
-                d
-                for d in (result.get("dirigeants") or [])
-                if (d.get("type_dirigeant") or "personne physique") == "personne physique"
-            ]
-            is_ei = str(result.get("nature_juridique") or "").startswith("1000")
-
-            if is_ei:
-                # EI: the denomination itself is « NOM Prénom » of the person.
-                first, last = split_registry_full_name(str(result.get("nom_complet") or ""))
-                if dirigeants:
-                    first = title_case_name(dirigeants[0].get("prenoms")) or first
-                    last = title_case_name(dirigeants[0].get("nom")) or last
-                if first or last:
-                    candidates.append(self._candidate(first, last, min(0.95, base + 0.25), result, geo_confirmed))
-                continue
-
-            if len(dirigeants) == 1:
-                d = dirigeants[0]
-                candidates.append(
-                    self._candidate(
-                        title_case_name(d.get("prenoms")),
-                        title_case_name(d.get("nom")),
-                        min(0.9, base + 0.1),
-                        result,
-                        geo_confirmed,
-                    )
-                )
-            elif len(dirigeants) > 1:
-                # Ambiguous: prefer the gérant/président, scored under the
-                # solo case (golden rule — when unsure, stay neutral).
-                lead = next(
-                    (
-                        d
-                        for d in dirigeants
-                        if "gérant" in str(d.get("qualite") or "").lower()
-                        or "président" in str(d.get("qualite") or "").lower()
-                    ),
-                    None,
-                )
-                if lead is not None:
-                    candidates.append(
-                        self._candidate(
-                            title_case_name(lead.get("prenoms")),
-                            title_case_name(lead.get("nom")),
-                            min(0.75, base),
-                            result,
-                            geo_confirmed,
-                        )
-                    )
+            found = self._candidates_of(result, base=base, geo_confirmed=geo_confirmed)
+            if anchored:
+                found = [self._anchored(candidate) for candidate in found]
+            candidates.extend(found)
         return candidates
+
+    def _candidates_of(self, result: dict[str, Any], *, base: float, geo_confirmed: bool) -> list[NameCandidate]:
+        """The person a registry company names: the EI holder, its sole dirigeant, else its gérant/président."""
+        dirigeants = [
+            d
+            for d in (result.get("dirigeants") or [])
+            if (d.get("type_dirigeant") or "personne physique") == "personne physique"
+        ]
+        is_ei = str(result.get("nature_juridique") or "").startswith("1000")
+
+        if is_ei:
+            # EI: the denomination itself is « NOM Prénom » of the person.
+            first, last = split_registry_full_name(str(result.get("nom_complet") or ""))
+            if dirigeants:
+                first = title_case_name(dirigeants[0].get("prenoms")) or first
+                last = title_case_name(dirigeants[0].get("nom")) or last
+            if first or last:
+                return [self._candidate(first, last, min(0.95, base + 0.25), result, geo_confirmed)]
+            return []
+
+        if len(dirigeants) == 1:
+            d = dirigeants[0]
+            return [
+                self._candidate(
+                    title_case_name(d.get("prenoms")),
+                    title_case_name(d.get("nom")),
+                    min(0.9, base + 0.1),
+                    result,
+                    geo_confirmed,
+                )
+            ]
+        # Ambiguous: prefer the gérant/président, scored under the
+        # solo case (golden rule — when unsure, stay neutral).
+        lead = next(
+            (
+                d
+                for d in dirigeants
+                if "gérant" in str(d.get("qualite") or "").lower() or "président" in str(d.get("qualite") or "").lower()
+            ),
+            None,
+        )
+        if lead is None:
+            return []
+        return [
+            self._candidate(
+                title_case_name(lead.get("prenoms")),
+                title_case_name(lead.get("nom")),
+                min(0.75, base),
+                result,
+                geo_confirmed,
+            )
+        ]
+
+    @staticmethod
+    def _anchored(candidate: NameCandidate) -> NameCandidate:
+        """The candidate as read from the company the search tied to the business by its number."""
+        return replace(
+            candidate,
+            anchored=True,
+            confidence=max(candidate.confidence, 0.9),
+            provenance=candidate.provenance.replace("localisation confirmée", "numéro relevé par la recherche"),
+        )
 
     def _candidate(
         self,

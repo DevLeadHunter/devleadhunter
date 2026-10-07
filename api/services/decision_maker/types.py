@@ -32,6 +32,9 @@ class NameCandidate:
     #: Human-readable French justification shown next to the name in the drawer.
     provenance: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
+    #: Read from the very company the prospect search tied to the business by its number: no
+    #: same-place homonym can rival it.
+    anchored: bool = False
 
     @property
     def has_name(self) -> bool:
@@ -109,6 +112,8 @@ class ResolutionContext:
     # the extraction strategies without any new network call.
     owner_responses: list[str] = field(default_factory=list)
     description: str | None = None
+    #: The company number the prospect search read for the business (SIRET from the RGE register…).
+    registry_number: str | None = None
 
 
 @runtime_checkable
