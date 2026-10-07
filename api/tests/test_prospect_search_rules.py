@@ -80,6 +80,32 @@ class TestTradeCatalog:
         assert electrician.accepts_category("Électricien") is True
         assert electrician.accepts_category("Entrepreneur en électricité") is True
 
+    @pytest.mark.parametrize(
+        ("trade", "category", "expected"),
+        [
+            ("garage", "Concessionnaire automobile", True),
+            ("garage", "Carrosserie", True),
+            ("garage", "Service de réparation de jantes", True),
+            ("garage", "Vendeur de voitures d'occasion", True),
+            ("garage", "Service de remorquage", True),
+            ("garage", "Agence d'assurance automobile", False),
+            ("garage", "Location de voitures", False),
+            ("garage", "Borne de recharge pour véhicules électriques", False),
+            ("paysagiste", "Entreprise de clôtures", True),
+            ("paysagiste", "Entrepreneur en systèmes d'irrigation", True),
+            ("paysagiste", "Service de débroussaillage", True),
+            ("paysagiste", "Jardin d'enfants", False),
+            ("paysagiste", "Jardin botanique", False),
+            ("électricien", "Entreprise de domotique", True),
+            ("électricien", "Borne de recharge pour véhicules électriques", False),
+            ("électricien", "Service de réparation d'appareils électriques", False),
+        ],
+    )
+    def test_a_trade_covers_the_whole_theme_of_its_site_template(
+        self, trade: str, category: str, expected: bool
+    ) -> None:
+        assert TradeCatalog.resolve(trade).accepts_category(category) is expected
+
     def test_a_garage_door_supplier_is_not_a_garage(self) -> None:
         garage = TradeCatalog.resolve("garage")
 
