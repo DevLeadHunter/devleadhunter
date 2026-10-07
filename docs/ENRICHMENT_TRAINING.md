@@ -185,6 +185,7 @@ Après correction (commits `cf1662ea`, `dc3cb4d2`, `9adf55a0`), même lot :
   répondant RBQ), et des flyers, bannières et images de banque restent dans 3 galeries.
 - Une relance ne vide pas un logo déjà enregistré (un logo mis à la main ne doit jamais disparaître) : les
   2 photos prises pour logo à la 1re passe ont été retirées à la main.
+- Contrôle sur les 98 autres leads enrichis le même soir : la règle « nom de l'entreprise repris par les clients » proposait des mots courants ou des marques (« Des Rosiers », « Et Fils », « Jantes Alu »), « Cordialement » passait pour une signature, et la recherche du registre sans les mots du métier proposait le gérant d'un club de tennis pour un paysagiste (7 propositions fausses sur 28). Corrigé (`5958007c`) : le prénom doit être employé pour une personne dans un avis (« voir … », « merci à … »), en mot capitalisé, dans un nom qui contient autre chose que la personne ; mots de fin de message exclus des signatures ; sans les mots du métier, le nom du registre doit coller presque exactement. Après relance : 20 propositions, toutes plausibles, à confirmer dans la fiche.
 - Reste à faire (manche 3) : écarter flyers, publicités, captures d'écran et images de banque des
   galeries (étiquetage visuel des photos, déjà en place pour la restauration) ; décisionnaire d'une
   entreprise individuelle au nom du patron (adresse mail, registre), d'une raison individuelle suisse
