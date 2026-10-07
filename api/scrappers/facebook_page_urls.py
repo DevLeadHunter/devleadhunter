@@ -79,6 +79,7 @@ _TITLE_TAB_WORDS: str = (
 _TITLE_TAB_RE: re.Pattern[str] = re.compile(rf"\s*[|\-–·]\s*(?:{_TITLE_TAB_WORDS})\s*$", re.IGNORECASE)
 _TITLE_FACEBOOK_RE: re.Pattern[str] = re.compile(r"\s*[|\-–·]\s*Facebook\s*$", re.IGNORECASE)
 _TITLE_NOTIFICATION_PREFIX_RE: re.Pattern[str] = re.compile(r"^\s*\(\d+\)\s*")
+_TITLE_HANDLE_RE: re.Pattern[str] = re.compile(r"\s*\(@[\w.]+\)\s*$")
 
 _PAGE_HANDLE_RE: re.Pattern[str] = re.compile(r"^[A-Za-z0-9.\-_]+$")
 _PERMALINK_ID_RE: re.Pattern[str] = re.compile(r"-(\d{6,})$")
@@ -145,8 +146,8 @@ class FacebookPageUrl:
         """
         Strip Facebook's boilerplate from a search result title.
 
-        Removes a leading notification count (« (3) »), a trailing sub-tab (« - Avis »)
-        and the trailing « | Facebook ».
+        Removes a leading notification count (« (3) »), a trailing sub-tab (« - Avis »),
+        the trailing « | Facebook » and the page's handle (« (@ihpaysagiste) »).
 
         Args:
             result_title: Title of a search result on facebook.com.
@@ -159,4 +160,5 @@ class FacebookPageUrl:
         cleaned = _TITLE_TAB_RE.sub("", cleaned)
         # « … - Home | Facebook » needs the Facebook suffix removed on both sides of the tab.
         cleaned = _TITLE_FACEBOOK_RE.sub("", cleaned)
+        cleaned = _TITLE_HANDLE_RE.sub("", cleaned)
         return re.sub(r"\s+", " ", cleaned).strip()
