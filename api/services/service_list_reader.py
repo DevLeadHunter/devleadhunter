@@ -11,7 +11,7 @@ MIN_LIST_ITEMS = 3
 MAX_ITEM_WORDS = 7
 MAX_ITEM_CHARS = 60
 MIN_ITEM_CHARS = 3
-MIN_VALID_SHARE = 0.6
+MIN_SERVICE_SHARE = 0.6
 
 _EMOJI_RE = re.compile("[←-⯿☀-➿\U0001f000-\U0001faff]️?")
 _BULLET_RE = re.compile(r"\s*(?:\n|•|·|\||;|\s[-–]\s)\s*")
@@ -75,7 +75,7 @@ class ServiceListReader:
         if city and any(fold(item) == fold(city) for item in cleaned):
             return []
         services = [item for item in cleaned if cls._is_service(item, business_name=business_name)]
-        if len(services) < MIN_LIST_ITEMS or len(services) < MIN_VALID_SHARE * len(items):
+        if len(services) < MIN_LIST_ITEMS or len(services) < MIN_SERVICE_SHARE * len(items):
             return []
         return services
 

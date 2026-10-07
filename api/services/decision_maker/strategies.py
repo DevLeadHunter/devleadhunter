@@ -45,7 +45,7 @@ _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
 _GROUP_CUSTOMER_REVIEWS = "customer_reviews"
 
-_TRADE_WORDS: frozenset[str] = frozenset(
+_TRADE_AND_LEGAL_FORM_WORDS: frozenset[str] = frozenset(
     {
         "garage",
         "garages",
@@ -79,15 +79,19 @@ _MIN_TRADE_FREE_SIMILARITY = 0.75
 _DOTTED_INITIAL_RE = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
 
 
-def _initials_joined(name: str) -> str:
-    """A company name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
-    return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
+class TradeName:
+    """A business's trade name read the way the registry spells its legal name."""
 
+    @staticmethod
+    def with_initials_joined(name: str) -> str:
+        """The name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
+        return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
 
-def _without_trade_words(name: str) -> str:
-    """A company name without its trade and legal-form words (« Garage Exemple Auto » reads « Exemple Auto »)."""
-    words = [word for word in re.split(r"\s+", (name or "").strip()) if word]
-    return " ".join(word for word in words if fold(word).strip(".,") not in _TRADE_WORDS)
+    @staticmethod
+    def without_trade_words(name: str) -> str:
+        """The name without its trade and legal-form words (« Garage Exemple Auto » reads « Exemple Auto »)."""
+        words = [word for word in re.split(r"\s+", (name or "").strip()) if word]
+        return " ".join(word for word in words if fold(word).strip(".,") not in _TRADE_AND_LEGAL_FORM_WORDS)
 
 
 class RegistreGouvStrategy:
@@ -121,7 +125,7 @@ class RegistreGouvStrategy:
             return []
         siren = self.siren_of(context.registry_number)
         queries = [siren] if siren else [query]
-        trade_free_query = _without_trade_words(query)
+        trade_free_query = TradeName.without_trade_words(query)
         if (
             not siren
             and trade_free_query != query
@@ -280,12 +284,16 @@ class RegistreGouvStrategy:
         left is often one family name, shared by every homonym of the town.
         """
         names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
-        similarity = max(company_similarity(_initials_joined(context.company_name), _initials_joined(n)) for n in names)
-        trade_free_name = _without_trade_words(context.company_name)
+        similarity = max(
+            company_similarity(TradeName.with_initials_joined(context.company_name), TradeName.with_initials_joined(n))
+            for n in names
+        )
+        trade_free_name = TradeName.without_trade_words(context.company_name)
         if not trade_free_name or trade_free_name == context.company_name:
             return similarity
         trade_free_similarity = max(
-            company_similarity(_initials_joined(trade_free_name), _initials_joined(n)) for n in names
+            company_similarity(TradeName.with_initials_joined(trade_free_name), TradeName.with_initials_joined(n))
+            for n in names
         )
         return max(similarity, trade_free_similarity if trade_free_similarity >= _MIN_TRADE_FREE_SIMILARITY else 0.0)
 
@@ -581,7 +589,7 @@ class BusinessNameOwnerStrategy:
         name_words = [
             word
             for word in re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
-            if fold(word) in significant and fold(word) not in _TRADE_WORDS
+            if fold(word) in significant and fold(word) not in _TRADE_AND_LEGAL_FORM_WORDS
         ]
         customer_texts = [fold(text) for text in [*context.review_texts, *context.owner_responses] if text]
         for first, last in pairwise(name_words):
