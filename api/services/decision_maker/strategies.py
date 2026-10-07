@@ -44,16 +44,6 @@ _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
 
 
-def registry_siren(registry_number: str | None) -> str | None:
-    """The SIREN of a French company number (a SIREN or a SIRET), or ``None`` for any other number."""
-    digits = re.sub(r"\D", "", registry_number or "")
-    return (
-        digits[:9]
-        if len(digits) in (9, 14) and not (registry_number or "").upper().startswith(("CHE", "RBQ"))
-        else None
-    )
-
-
 class RegistreGouvStrategy:
     """Tier 1 — the official (free, key-less) « Recherche d'entreprises » API.
 
@@ -64,12 +54,20 @@ class RegistreGouvStrategy:
 
     name = "registre_gouv"
 
+    @staticmethod
+    def siren_of(registry_number: str | None) -> str | None:
+        """The SIREN of a French company number (a SIREN or a SIRET), or ``None`` for any other number."""
+        if (registry_number or "").upper().startswith(("CHE", "RBQ")):
+            return None
+        digits = re.sub(r"\D", "", registry_number or "")
+        return digits[:9] if len(digits) in (9, 14) else None
+
     async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
         """Query the registry by the company number the search read, else by company name (+ postal code / city)."""
         query = (context.company_name or "").strip()
         if not query:
             return []
-        siren = registry_siren(context.registry_number)
+        siren = self.siren_of(context.registry_number)
         params: dict[str, Any] = {"q": siren or query, "page": 1, "per_page": 5}
         if context.postal_code and not siren:
             params["code_postal"] = context.postal_code
@@ -84,11 +82,10 @@ class RegistreGouvStrategy:
         return self.parse_results(payload.get("results") or [], context)
 
     def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
-        """Score the registry matches (pure — unit-testable on fixtures)."""
+        """Score the registry matches (pure — unit-testable on fixtures); the company of the searched number is the business, whatever its name."""
         candidates: list[NameCandidate] = []
-        siren = registry_siren(context.registry_number)
+        siren = self.siren_of(context.registry_number)
         for result in results[:5]:
-            # The company the search tied to the business by its number is it, whatever its name.
             anchored = bool(siren) and str(result.get("siren") or "") == siren
             similarity = 1.0 if anchored else self._match_similarity(result, context)
             if similarity < _MIN_COMPANY_SIMILARITY:

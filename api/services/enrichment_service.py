@@ -519,7 +519,7 @@ class EnrichmentService:
             uid: The company number the search read (« CHE-… »), when it read one.
         """
         from services.decision_maker.normalize import infer_gender
-        from services.decision_maker.swiss_register_people import lead_people, registered_people
+        from services.decision_maker.swiss_register_people import SwissRegisterPeople
         from services.prospect_search.swiss_registry import swiss_registry
 
         try:
@@ -544,7 +544,9 @@ class EnrichmentService:
             )
             if firm is None or swiss_registry.closing_words(firm) is not None:
                 return
-            leads = lead_people(registered_people(await swiss_registry.publications(firm)))
+            leads = SwissRegisterPeople.lead_people(
+                SwissRegisterPeople.registered_people(await swiss_registry.publications(firm))
+            )
             if not leads:
                 return
             lead = leads[0]

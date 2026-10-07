@@ -6,13 +6,16 @@ Every name here is invented: the publications keep the real wording, never a rea
 
 from datetime import date
 
-from services.decision_maker.swiss_register_people import RegisteredPerson, lead_people, registered_people
+from services.decision_maker.swiss_register_people import RegisteredPerson, SwissRegisterPeople
 
 
 def _leads(*publications: tuple[date, str]) -> list[tuple[str | None, str, bool]]:
     """The leading people of the publications, as (first name, last name, is the first name certain)."""
-    people = registered_people(list(publications))
-    return [(person.first_name, person.last_name, person.is_name_certain) for person in lead_people(people)]
+    people = SwissRegisterPeople.registered_people(list(publications))
+    return [
+        (person.first_name, person.last_name, person.is_name_certain)
+        for person in SwissRegisterPeople.lead_people(people)
+    ]
 
 
 def test_a_sole_trader_is_its_holder() -> None:
@@ -143,7 +146,7 @@ def test_mis_decoded_accents_are_repaired() -> None:
         "gÃ©rant, avec signature individuelle.",
     )
 
-    people = registered_people([publication])
+    people = SwissRegisterPeople.registered_people([publication])
 
     assert [(person.last_name, person.roles) for person in people] == [("Exemple", ("associé et gérant",))]
 
@@ -153,4 +156,4 @@ def test_an_auditing_company_is_no_person() -> None:
     assert RegisteredPerson(first_name=None, last_name="Exemple", roles=("membre",)).rank == 0
     publication = (date(2020, 1, 1), "Personne(s) inscrite(s): Fiduciaire Exemple SA, à Sion, organe de révision.")
 
-    assert registered_people([publication]) == []
+    assert SwissRegisterPeople.registered_people([publication]) == []

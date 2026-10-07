@@ -76,6 +76,8 @@ class DecisionMakerResolver:
           - Two geo-confirmed primaries naming different people → trust neither.
           - Any other disagreeing candidate above the proposal floor demotes an
             AUTO outcome to PROPOSED (human arbitration, never a sent email).
+          - The company the search tied to the business by its number leaves no
+            room to another registry company, even one at the same address.
         """
         if not candidates:
             return NameResolution(status=NameResolution.NONE, candidate=None, candidates=[])
@@ -90,8 +92,6 @@ class DecisionMakerResolver:
         # rival a geo-confirmed one — the geography already disambiguated them.
         if best.primary and best.geo_confirmed:
             rivals = [r for r in rivals if not (r.primary and not r.geo_confirmed)]
-        # The company the search tied to the business by its number leaves no room to another
-        # registry company, even at the same address (a father's sole trade beside his son's SARL).
         if best.anchored:
             rivals = [r for r in rivals if not r.primary]
 

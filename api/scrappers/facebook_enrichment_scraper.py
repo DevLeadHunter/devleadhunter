@@ -386,13 +386,10 @@ _OG_LIKES_PREFIX_RE = re.compile(
     r"^[^.]*\.\s*\d[\d\s ]*j['’]aime\s*·\s*\d[\d\s ]*en parlent\.\s*",
     re.IGNORECASE,
 )
-# « Exemple Paysagiste, Morges. 91 followers. Découvrez… », « … 53 followers · 5 personnes étaient ici. … »:
-# the page's name, town and audience lead og:description before its presentation.
 _OG_AUDIENCE_PREFIX_RE = re.compile(
     r"^[^.]*\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)(?:\s*·[^.]*)?\.\s*",
     re.IGNORECASE,
 )
-# A fuller text completes a cut Intro when it opens with the Intro's first characters.
 _INTRO_OPENING_CHARS: int = 40
 
 
@@ -462,8 +459,9 @@ def _parse_og_description(og_description: str | None) -> str | None:
         og_description: Raw Open Graph description, or None.
 
     Returns:
-        A cleaned description without the « X J'aime · Y en parlent » prefix,
-        or None when empty / too short.
+        A cleaned description without the « X J'aime · Y en parlent » prefix nor the page's name, town
+        and audience (« Exemple, Morges. 91 followers · 5 personnes étaient ici. Découvrez… »), or None
+        when empty / too short.
     """
     if not (og_description or "").strip():
         return None

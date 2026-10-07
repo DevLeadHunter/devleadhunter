@@ -32,8 +32,7 @@ class NameCandidate:
     #: Human-readable French justification shown next to the name in the drawer.
     provenance: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
-    #: Read from the very company the prospect search tied to the business by its number: no
-    #: same-place homonym can rival it.
+    #: Read from the company the prospect search tied to the business by its number.
     anchored: bool = False
 
     @property

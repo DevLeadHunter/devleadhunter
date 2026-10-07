@@ -10,7 +10,7 @@ import random
 
 from PIL import Image, ImageDraw
 
-from scrappers.enrichment_scraper import _curate_photos, photo_traits, unfit_photo_reason
+from scrappers.enrichment_scraper import GalleryCuration
 
 
 def _jpeg(image: Image.Image) -> bytes:
@@ -44,32 +44,32 @@ def _logo(size: tuple[int, int] = (800, 800), colour: str = "darkgreen") -> Imag
 
 def test_a_real_photo_is_fit_for_the_gallery() -> None:
     """Many colours, no flat area, a decent size: a photo."""
-    traits = photo_traits(_jpeg(_photo(1)))
+    traits = GalleryCuration.traits_of(_jpeg(_photo(1)))
 
-    assert traits is not None and unfit_photo_reason(traits) is None
+    assert traits is not None and GalleryCuration.unfit_reason(traits) is None
 
 
 def test_a_logo_on_a_plain_background_is_a_graphic() -> None:
     """One flat colour over most of the image, in few colours: a logo or a flyer."""
-    traits = photo_traits(_jpeg(_logo()))
+    traits = GalleryCuration.traits_of(_jpeg(_logo()))
 
-    assert traits is not None and unfit_photo_reason(traits) == "graphic"
+    assert traits is not None and GalleryCuration.unfit_reason(traits) == "graphic"
 
 
 def test_a_cover_kept_at_320_pixels_is_too_small() -> None:
     """The Facebook cover read at its 320-pixel size is a blur on a site."""
-    traits = photo_traits(_jpeg(_photo(2, size=(320, 119))))
+    traits = GalleryCuration.traits_of(_jpeg(_photo(2, size=(320, 119))))
 
-    assert traits is not None and unfit_photo_reason(traits) == "too small"
+    assert traits is not None and GalleryCuration.unfit_reason(traits) == "too small"
 
 
 def test_a_near_uniform_banner_is_blank() -> None:
     """An almost uniform dark banner shows nothing."""
     banner = Image.new("RGB", (960, 360), (30, 30, 34))
     ImageDraw.Draw(banner).rectangle([0, 0, 480, 360], fill=(36, 36, 40))
-    traits = photo_traits(_jpeg(banner))
+    traits = GalleryCuration.traits_of(_jpeg(banner))
 
-    assert traits is not None and unfit_photo_reason(traits) == "blank"
+    assert traits is not None and GalleryCuration.unfit_reason(traits) == "blank"
 
 
 def test_curation_keeps_photos_and_drops_logo_cover_and_duplicates() -> None:
@@ -78,7 +78,7 @@ def test_curation_keeps_photos_and_drops_logo_cover_and_duplicates() -> None:
     logo = _data_uri(_logo())
     gallery = [_data_uri(_logo(size=(900, 900))), first, _data_uri(_photo(5, size=(320, 122))), second, first]
 
-    kept = asyncio.run(_curate_photos(gallery, logo_url=logo))
+    kept = asyncio.run(GalleryCuration.curate(gallery, logo_url=logo))
 
     assert kept == [first, second]
 
@@ -87,4 +87,4 @@ def test_curation_keeps_what_it_cannot_read() -> None:
     """A photo that does not load is kept: never lose a real photo on a network hiccup."""
     unreadable = "data:image/jpeg;base64,bm90IGFuIGltYWdl"
 
-    assert asyncio.run(_curate_photos([unreadable])) == [unreadable]
+    assert asyncio.run(GalleryCuration.curate([unreadable])) == [unreadable]

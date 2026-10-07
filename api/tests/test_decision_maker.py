@@ -19,7 +19,6 @@ from services.decision_maker.strategies import (
     OwnerResponseStrategy,
     RegistreGouvStrategy,
     WebRegistryStrategy,
-    registry_siren,
 )
 from services.decision_maker.types import NameCandidate, NameResolution, ResolutionContext
 
@@ -496,16 +495,13 @@ def test_web_registry_recovers_legal_name_then_delegates_to_registry() -> None:
     assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code is None for call in registry.calls)
 
 
-# ── The company number the prospect search read (first enrichment round, 7 Oct 2026) ──
-
-
 def test_registry_siren_reads_a_siren_or_a_siret_and_nothing_else() -> None:
     """The RGE register gives a SIRET; a Swiss IDE or a Quebec licence is no SIREN."""
-    assert registry_siren("123 456 789 00013") == "123456789"
-    assert registry_siren("123456789") == "123456789"
-    assert registry_siren("CHE-123.456.789") is None
-    assert registry_siren("RBQ 5678-1234-01") is None
-    assert registry_siren(None) is None
+    assert RegistreGouvStrategy.siren_of("123 456 789 00013") == "123456789"
+    assert RegistreGouvStrategy.siren_of("123456789") == "123456789"
+    assert RegistreGouvStrategy.siren_of("CHE-123.456.789") is None
+    assert RegistreGouvStrategy.siren_of("RBQ 5678-1234-01") is None
+    assert RegistreGouvStrategy.siren_of(None) is None
 
 
 def test_the_searched_company_number_ties_the_registry_match_without_a_postcode() -> None:
@@ -531,8 +527,8 @@ def test_the_searched_company_number_ties_the_registry_match_without_a_postcode(
     assert "numéro relevé par la recherche" in candidates[0].provenance
 
 
-def test_a_father_sole_trade_at_the_same_address_cannot_rival_the_searched_company() -> None:
-    """The son's SARL found by its number wins over the father's still-active sole trade next door."""
+def test_a_family_company_at_the_same_address_cannot_rival_the_searched_company() -> None:
+    """Two active companies of one family at one address: the one the search found by its number wins."""
     resolver = DecisionMakerResolver(strategies=[])
     anchored = _registry("Julien", "Dubois", 0.9, geo_confirmed=True)
     anchored.anchored = True

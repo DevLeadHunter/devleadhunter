@@ -288,8 +288,7 @@ _PREPARE_PANEL_JS = r"""
 
 # Open the place's photo grid via the hero « Voir les photos » button. The grid is the ONLY reliable
 # prospect-scoped source: the panel and the raw page also carry « Restaurants à proximité » thumbnails
-# from OTHER businesses, but the gallery shows only THIS place's photos. A Street View hero opens
-# Street View instead of the grid and strands the scrape there, so it is never clicked.
+# from OTHER businesses, but the gallery shows only THIS place's photos.
 _OPEN_PHOTOS_JS = r"""
 (() => {
     const hero = document.querySelector('button[aria-label^="Photo de"] img, button[aria-label^="Photo of"] img');
@@ -308,10 +307,6 @@ _OPEN_PHOTOS_JS = r"""
 })()
 """
 
-# Click a photo category: a chip of the panel's « Photos » section, or a tab of the open gallery. Logged
-# out, the hero viewer stops at about ten photos while the « Tout » grid lists them all (31 against 10
-# on a Swiss landscaper, 7 Oct 2026); « Photos du propriétaire » holds the business's own uploads, and
-# the only real photo when « Tout » shows nothing but Street View.
 _OPEN_PHOTO_CATEGORY_JS = r"""
 ((labels) => {
     const nameOf = (el) => (el.getAttribute('aria-label') || el.innerText || el.textContent || '').trim().toLowerCase();
@@ -334,8 +329,6 @@ _OPEN_PHOTO_CATEGORY_JS = r"""
     return null;
 })(%s)
 """
-# The other panel layout has no category chips: its « Photos » section reads « 32 photos » and opens
-# the same gallery.
 _OPEN_PHOTO_COUNT_JS = r"""
 (() => {
     for (const el of document.querySelectorAll("div[role='main'] *")) {
@@ -522,68 +515,17 @@ class PhotoTraits:
     width: int
     height: int
     contrast: float
-    flat_share: float
+    flat_colour_share: float
     colour_count: int
-    look: int
+    look_hash: int
 
 
-# A site needs a photo at least this wide or tall; a Facebook cover kept at 320 px is a blur.
 _MIN_PHOTO_SIDE_PX: int = 400
-# Below this grey-level spread, an image is a blank banner.
 _MIN_PHOTO_CONTRAST: float = 12.0
-# A logo or a flyer is one flat colour over most of its surface, in few colours (measured 7 Oct 2026:
-# logos 66-88 % in 42-161 colours, real photos 5-13 % in 178-374 colours).
-_GRAPHIC_FLAT_SHARE: float = 0.6
+_GRAPHIC_FLAT_COLOUR_SHARE: float = 0.6
 _GRAPHIC_MAX_COLOURS: int = 170
-# The logo re-uploaded as a gallery photo looks like it within this many hash bits.
 _LOGO_LOOK_DISTANCE: int = 10
-
-
-def photo_traits(image_bytes: bytes) -> PhotoTraits | None:
-    """
-    Read what a photo looks like, or ``None`` when the bytes are not an image.
-
-    Args:
-        image_bytes: The downloaded image.
-
-    Returns:
-        Its size, contrast, flat-colour share, colour count (over 16 levels a channel) and look hash.
-    """
-    try:
-        from collections import Counter
-        from io import BytesIO
-
-        from PIL import Image, ImageStat
-
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    except Exception:
-        return None
-    look = _average_hash(image_bytes)
-    if look is None:
-        return None
-    pixels = image.resize((64, 64)).tobytes()
-    colours = Counter(
-        (pixels[index] // 16, pixels[index + 1] // 16, pixels[index + 2] // 16) for index in range(0, len(pixels), 3)
-    )
-    return PhotoTraits(
-        width=image.width,
-        height=image.height,
-        contrast=ImageStat.Stat(image.convert("L")).stddev[0],
-        flat_share=colours.most_common(1)[0][1] / (64 * 64),
-        colour_count=len(colours),
-        look=look,
-    )
-
-
-def unfit_photo_reason(traits: PhotoTraits) -> str | None:
-    """Why a photo cannot illustrate a site (too small, blank, a logo or a flyer), or ``None`` when it can."""
-    if max(traits.width, traits.height) < _MIN_PHOTO_SIDE_PX:
-        return "too small"
-    if traits.contrast < _MIN_PHOTO_CONTRAST:
-        return "blank"
-    if traits.flat_share >= _GRAPHIC_FLAT_SHARE and traits.colour_count <= _GRAPHIC_MAX_COLOURS:
-        return "graphic"
-    return None
+_SAME_PHOTO_LOOK_DISTANCE: int = 4
 
 
 def _hamming_distance(left: int, right: int) -> int:
@@ -644,78 +586,136 @@ def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
     return unique
 
 
-async def _curate_photos(urls: list[str], *, logo_url: str | None = None, threshold: int = 4) -> list[str]:
-    """Keep the photos that can illustrate a site: no logo, flyer, blur or blank banner, no visual duplicate.
+class GalleryCuration:
+    """Keeps the photos that can illustrate a site: no logo, flyer, blur or blank banner, no visual duplicate."""
 
-    Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
-    the ones :func:`unfit_photo_reason` refuses, the logo re-uploaded as a photo, and any photo within
-    ``threshold`` bits of one already kept. On any download/decode failure the URL is kept (never
-    silently dropped).
+    @staticmethod
+    def traits_of(image_bytes: bytes) -> PhotoTraits | None:
+        """
+        Read what a photo looks like, or ``None`` when the bytes are not an image.
 
-    The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
-    DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
-    (measured on a live listing), so 4 keeps them while still collapsing genuine re-uploads.
+        Args:
+            image_bytes: The downloaded image.
 
-    Args:
-        urls: The gallery, in order.
-        logo_url: The business's logo, whose re-uploads are no gallery photo.
-        threshold: The look distance under which two photos are one.
+        Returns:
+            Its size, contrast, flat-colour share, colour count (over 16 levels a channel) and look hash.
+        """
+        try:
+            from collections import Counter
+            from io import BytesIO
 
-    Returns:
-        The kept photos, in their order.
-    """
-    if not urls:
-        return []
+            from PIL import Image, ImageStat
 
-    import base64
+            image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        except Exception:
+            return None
+        look_hash = _average_hash(image_bytes)
+        if look_hash is None:
+            return None
+        pixels = image.resize((64, 64)).tobytes()
+        colours = Counter(
+            (pixels[index] // 16, pixels[index + 1] // 16, pixels[index + 2] // 16)
+            for index in range(0, len(pixels), 3)
+        )
+        return PhotoTraits(
+            width=image.width,
+            height=image.height,
+            contrast=ImageStat.Stat(image.convert("L")).stddev[0],
+            flat_colour_share=colours.most_common(1)[0][1] / (64 * 64),
+            colour_count=len(colours),
+            look_hash=look_hash,
+        )
 
-    import httpx
+    @staticmethod
+    def unfit_reason(traits: PhotoTraits) -> str | None:
+        """
+        Why a photo cannot illustrate a site, or ``None`` when it can.
 
-    semaphore = asyncio.Semaphore(8)
+        Too small under 400 px on its longest side (a Facebook cover kept at 320 px is a blur), blank
+        under a grey-level spread of 12, a graphic when one flat colour covers 60 % of it in 170 colours
+        or fewer — a logo or a flyer (measured 7 Oct 2026: logos 66-88 % in 42-161 colours, real photos
+        5-13 % in 178-374 colours).
+        """
+        if max(traits.width, traits.height) < _MIN_PHOTO_SIDE_PX:
+            return "too small"
+        if traits.contrast < _MIN_PHOTO_CONTRAST:
+            return "blank"
+        if traits.flat_colour_share >= _GRAPHIC_FLAT_COLOUR_SHARE and traits.colour_count <= _GRAPHIC_MAX_COLOURS:
+            return "graphic"
+        return None
 
-    async def _traits_of(client: httpx.AsyncClient, url: str) -> PhotoTraits | None:
-        if url.startswith("data:"):
-            try:
-                return photo_traits(base64.b64decode(url.split(",", 1)[1]))
-            except Exception:
-                return None
-        async with semaphore:
-            try:
-                response = await client.get(url)
-            except Exception:
-                return None
-            return photo_traits(response.content) if response.status_code == 200 else None
+    @classmethod
+    async def curate(cls, urls: list[str], *, logo_url: str | None = None) -> list[str]:
+        """
+        Keep the photos of a gallery that can illustrate a site, in their order.
 
-    try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            traits = await asyncio.gather(
-                *[_traits_of(client, url) for url in [*urls, *([logo_url] if logo_url else [])]]
-            )
-    except Exception:
-        return list(urls)
+        Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
+        the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. On
+        any download/decode failure the URL is kept (never silently dropped).
 
-    logo_traits = traits.pop() if logo_url else None
-    kept: list[str] = []
-    kept_looks: list[int] = []
-    for url, photo in zip(urls, traits):
-        if photo is None:
-            kept.append(url)  # couldn't read it → keep rather than lose a real photo
-            continue
-        reason = unfit_photo_reason(photo)
-        if (
-            reason is None
-            and logo_traits is not None
-            and _hamming_distance(photo.look, logo_traits.look) <= _LOGO_LOOK_DISTANCE
-        ):
-            reason = "logo"
-        if reason is not None:
-            logger.info("Enrichment: photo left out of the gallery (%s): %s", reason, url[:80])
-            continue
-        if any(_hamming_distance(photo.look, seen) <= threshold for seen in kept_looks):
-            continue
-        kept.append(url)
-        kept_looks.append(photo.look)
-    return kept
+        The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
+        DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
+        (measured on a live listing), so 4 keeps them while still collapsing genuine re-uploads.
+
+        Args:
+            urls: The gallery, in order.
+            logo_url: The business's logo, whose re-uploads are no gallery photo.
+
+        Returns:
+            The kept photos, in their order.
+        """
+        if not urls:
+            return []
+
+        import base64
+
+        import httpx
+
+        semaphore = asyncio.Semaphore(8)
+
+        async def _traits_of(client: httpx.AsyncClient, url: str) -> PhotoTraits | None:
+            if url.startswith("data:"):
+                try:
+                    return cls.traits_of(base64.b64decode(url.split(",", 1)[1]))
+                except Exception:
+                    return None
+            async with semaphore:
+                try:
+                    response = await client.get(url)
+                except Exception:
+                    return None
+                return cls.traits_of(response.content) if response.status_code == 200 else None
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+                traits = await asyncio.gather(
+                    *[_traits_of(client, url) for url in [*urls, *([logo_url] if logo_url else [])]]
+                )
+        except Exception:
+            return list(urls)
+
+        logo_traits = traits.pop() if logo_url else None
+        kept: list[str] = []
+        kept_look_hashes: list[int] = []
+        for url, photo in zip(urls, traits):
+            if photo is None:
+                kept.append(url)
+                continue
+            reason = cls.unfit_reason(photo)
+            if (
+                reason is None
+                and logo_traits is not None
+                and _hamming_distance(photo.look_hash, logo_traits.look_hash) <= _LOGO_LOOK_DISTANCE
+            ):
+                reason = "logo"
+            if reason is not None:
+                logger.info("Enrichment: photo left out of the gallery (%s): %s", reason, url[:80])
+                continue
+            if any(_hamming_distance(photo.look_hash, seen) <= _SAME_PHOTO_LOOK_DISTANCE for seen in kept_look_hashes):
+                continue
+            kept.append(url)
+            kept_look_hashes.append(photo.look_hash)
+        return kept
 
 
 class EnrichmentScraper:
@@ -747,7 +747,7 @@ class EnrichmentScraper:
             fb_only = await facebook_enrichment_scraper.enrich(
                 business_name=business_name, facebook_url=facebook_url or "", country=country
             )
-            fb_only.photos = await _curate_photos(fb_only.photos, logo_url=fb_only.logo_url)
+            fb_only.photos = await GalleryCuration.curate(fb_only.photos, logo_url=fb_only.logo_url)
             fb_only.reviews = _dedupe_reviews(fb_only.reviews)
             return fb_only
 
@@ -785,9 +785,8 @@ class EnrichmentScraper:
             except Exception as exc:
                 logger.info("Facebook complementary enrichment failed for %s: %s", business_name, exc)
 
-        # Drop visually-duplicate photos (same image re-uploaded across Google/Facebook), logos, flyers
-        # and blurs once the full set is assembled, before it reaches the prospect's gallery.
-        data.photos = await _curate_photos(data.photos, logo_url=data.logo_url)
+        # Curated once the full set (Google, then Facebook) is assembled, before it reaches the gallery.
+        data.photos = await GalleryCuration.curate(data.photos, logo_url=data.logo_url)
         data.reviews = _dedupe_reviews(data.reviews)
         return data
 
@@ -890,8 +889,7 @@ class EnrichmentScraper:
             early_photos = await self._read_photo_grid_then_close(tab, place_url=place_url, place_title=place_title)
             # If the fresh-panel read left us off the place panel (gallery still open / navigated away),
             # re-anchor so extraction runs on a real panel — the same reload the old order always paid,
-            # now paid only when the gallery didn't close cleanly. Street View keeps the place URL, so
-            # the heading is checked too.
+            # now paid only when the gallery didn't close cleanly.
             if (
                 NodriverDom.tab_url(tab) != current_url
                 or not await self._panel_is_complete(tab)
@@ -1075,10 +1073,12 @@ class EnrichmentScraper:
         """
         Open the place's photo grid: its « Tout » category, else the section's « N photos », else the hero.
 
-        Google serves the place panel in two layouts, about half the time each — with category chips
-        under « Photos et vidéos », or a plain « Photos » section whose grid stops at about ten photos —
-        and renders either only once the panel is scrolled down to it. Reloading does not choose the
-        layout (measured 7 Oct 2026), so the plain one is read as it is.
+        Logged out, the hero viewer stops at about ten photos (31 against 10 on a Swiss landscaper, 7 Oct
+        2026) and a Street View hero strands the scrape in Street View, so the hero comes last and never
+        when it shows Street View. Google serves the place panel in two layouts, about half the time each
+        — with category chips under « Photos et vidéos », or a plain « Photos » section reading « 32
+        photos » whose grid stops at about ten — and renders either only once the panel is scrolled down
+        to it. Reloading does not choose the layout (measured 7 Oct 2026).
 
         Args:
             tab: The Maps tab, on the place panel.
@@ -1094,7 +1094,6 @@ class EnrichmentScraper:
                 return "category"
             await NodriverDom.evaluate(tab, _SCROLL_PLACE_PANEL_JS, by_value=True)
             await asyncio.sleep(0.5)
-        # The plain layout's count, then the hero: always on screen, but its viewer is capped.
         for name, script in (("photo count", _OPEN_PHOTO_COUNT_JS), ("hero", _OPEN_PHOTOS_JS)):
             if await self._opens_grid(tab, script):
                 return name
@@ -1122,6 +1121,9 @@ class EnrichmentScraper:
     async def _read_photo_category(self, tab: Any, labels: tuple[str, ...]) -> list[str] | None:
         """
         Click a category tab of the open gallery and read its grid.
+
+        « Photos du propriétaire » holds the business's own uploads, and the only real photo when « Tout »
+        shows nothing but Street View.
 
         Args:
             tab: The Maps tab, on the open gallery.
