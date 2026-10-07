@@ -41,6 +41,7 @@ from services.scraper_diagnostics_service import (
     STATUS_OK,
     scraper_diagnostics_service,
 )
+from services.service_list_reader import ServiceListReader
 from services.trade_normalizer import TradeNormalizer
 from services.validation_service import validation_service
 
@@ -274,6 +275,10 @@ class EnrichmentService:
                 data.photos = await prospect_photo_storage.rehost_photos(prospect.id, data.photos)
                 if data.logo_url:
                     data.logo_url = await prospect_photo_storage.rehost_one(prospect.id, data.logo_url)
+                if not data.services:
+                    data.services = ServiceListReader.services_in(
+                        data.description, business_name=prospect.name, city=prospect.city
+                    )
                 self._apply_data(record, data)
                 # A Facebook page on the Maps listing (as the "website" link or a social link) is not a
                 # real website — capture it as the prospect's facebook_url so a later complementary
@@ -391,21 +396,23 @@ class EnrichmentService:
         enrichment or sending.
         """
         registry_number = self._searched_registry_number(db, prospect)
-        if (prospect.country or "FR") == "CH":
+        country = prospect.country or "FR"
+        if country == "CH":
             await self._read_swiss_register(db, prospect, record, uid=registry_number)
-            return
+            if prospect.is_dismissed or record.contact_name_status or record.proposed_state:
+                return
         if self._has_settled_contact(record):
-            return
-        # The cascade reads FRENCH registries (SIRENE, Pappers): outside France it can only produce a French homonym.
-        if (prospect.country or "FR") != "FR":
             return
         try:
             from services.decision_maker.resolver import (
                 context_from_prospect,
                 decision_maker_resolver,
+                public_text_resolver,
             )
 
-            resolution = await decision_maker_resolver.resolve(
+            # The full cascade reads FRENCH registries (SIRENE, Pappers): elsewhere it could only find a French homonym.
+            resolver = decision_maker_resolver if country == "FR" else public_text_resolver
+            resolution = await resolver.resolve(
                 context_from_prospect(prospect, record, registry_number=registry_number)
             )
             record.name_candidates = [candidate.to_persistable() for candidate in resolution.candidates]

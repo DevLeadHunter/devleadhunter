@@ -9,6 +9,7 @@ from dataclasses import replace
 
 from enums.website_status import WebsiteStatus
 from services.decision_maker.strategies import (
+    BusinessNameOwnerStrategy,
     LegalMentionsStrategy,
     LlmAggregateStrategy,
     OwnerResponseStrategy,
@@ -48,6 +49,7 @@ class DecisionMakerResolver:
             OwnerResponseStrategy(),
             LegalMentionsStrategy(),
             LlmAggregateStrategy(),
+            BusinessNameOwnerStrategy(),
         ]
 
     async def resolve(self, context: ResolutionContext) -> NameResolution:
@@ -161,6 +163,7 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
     if prospect.website_status in (WebsiteStatus.DEAD.value, WebsiteStatus.PLACEHOLDER.value):
         website = None
     owner_responses: list[str] = []
+    review_texts: list[str] = []
     description: str | None = None
     if enrichment is not None:
         description = enrichment.description
@@ -171,6 +174,8 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
                 reply = review.get("owner_response") or review.get("ownerResponse")
                 if reply:
                     owner_responses.append(str(reply))
+                if review.get("text"):
+                    review_texts.append(str(review["text"]))
     return ResolutionContext(
         company_name=prospect.name or "",
         city=city,
@@ -180,7 +185,11 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
         owner_responses=owner_responses,
         description=description,
         registry_number=registry_number,
+        review_texts=review_texts,
     )
 
 
 decision_maker_resolver = DecisionMakerResolver()
+public_text_resolver = DecisionMakerResolver(
+    [OwnerResponseStrategy(), LlmAggregateStrategy(), BusinessNameOwnerStrategy()]
+)

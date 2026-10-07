@@ -13,6 +13,7 @@ import logging
 import re
 from dataclasses import replace
 from html import unescape
+from itertools import pairwise
 from typing import Any
 
 import httpx
@@ -42,6 +43,51 @@ _MIN_COMPANY_SIMILARITY = 0.45
 _GROUP_REGISTRY = "registry"
 _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
+_GROUP_CUSTOMER_REVIEWS = "customer_reviews"
+
+_TRADE_WORDS: frozenset[str] = frozenset(
+    {
+        "garage",
+        "garages",
+        "carrosserie",
+        "mecanique",
+        "paysagiste",
+        "paysagistes",
+        "paysage",
+        "paysages",
+        "paysager",
+        "jardin",
+        "jardins",
+        "electricite",
+        "electrique",
+        "electricien",
+        "plomberie",
+        "plombier",
+        "chauffage",
+        "services",
+        "entretien",
+        "generale",
+        "general",
+        "inc",
+        "sarl",
+        "sas",
+        "eurl",
+    }
+)
+_MIN_REGISTRY_QUERY_CHARS = 3
+_MIN_TRADE_FREE_SIMILARITY = 0.75
+_DOTTED_INITIAL_RE = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
+
+
+def _initials_joined(name: str) -> str:
+    """A company name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
+    return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
+
+
+def _without_trade_words(name: str) -> str:
+    """A company name without its trade and legal-form words (« Garage Exemple Auto » reads « Exemple Auto »)."""
+    words = [word for word in re.split(r"\s+", (name or "").strip()) if word]
+    return " ".join(word for word in words if fold(word).strip(".,") not in _TRADE_WORDS)
 
 
 class RegistreGouvStrategy:
@@ -63,23 +109,41 @@ class RegistreGouvStrategy:
         return digits[:9] if len(digits) in (9, 14) else None
 
     async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
-        """Query the registry by the company number the search read, else by company name (+ postal code / city)."""
+        """
+        Query the registry by the company number the search read, else by company name (+ postal code / city).
+
+        The registry's full-text search wants every word of the query in the company's legal name: when the
+        trade name carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its
+        trade words is tried next.
+        """
         query = (context.company_name or "").strip()
         if not query:
             return []
         siren = self.siren_of(context.registry_number)
-        params: dict[str, Any] = {"q": siren or query, "page": 1, "per_page": 5}
-        if context.postal_code and not siren:
-            params["code_postal"] = context.postal_code
-        try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
-                response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
-                response.raise_for_status()
-                payload: dict[str, Any] = response.json()
-        except Exception as exc:
-            logger.warning("registre_gouv lookup failed for %r: %s", query, exc)
-            return []
-        return self.parse_results(payload.get("results") or [], context)
+        queries = [siren] if siren else [query]
+        trade_free_query = _without_trade_words(query)
+        if (
+            not siren
+            and trade_free_query != query
+            and len(re.sub(r"\W", "", trade_free_query)) >= _MIN_REGISTRY_QUERY_CHARS
+        ):
+            queries.append(trade_free_query)
+        for registry_query in queries:
+            params: dict[str, Any] = {"q": registry_query, "page": 1, "per_page": 5}
+            if context.postal_code and not siren:
+                params["code_postal"] = context.postal_code
+            try:
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
+                    response.raise_for_status()
+                    payload: dict[str, Any] = response.json()
+            except Exception as exc:
+                logger.warning("registre_gouv lookup failed for %r: %s", registry_query, exc)
+                return []
+            candidates = self.parse_results(payload.get("results") or [], context)
+            if candidates:
+                return candidates
+        return []
 
     def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
         """Score the registry matches (pure — unit-testable on fixtures); the company of the searched number is the business, whatever its name."""
@@ -209,9 +273,21 @@ class RegistreGouvStrategy:
 
     @staticmethod
     def _match_similarity(result: dict[str, Any], context: ResolutionContext) -> float:
-        """Best similarity between the prospect name and the registry names."""
+        """
+        Best similarity between the prospect name and the registry names.
+
+        Without its trade words the name must match almost exactly (« Exemple Auto » is EXEMPLE AUTO): what is
+        left is often one family name, shared by every homonym of the town.
+        """
         names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
-        return max(company_similarity(context.company_name, n) for n in names)
+        similarity = max(company_similarity(_initials_joined(context.company_name), _initials_joined(n)) for n in names)
+        trade_free_name = _without_trade_words(context.company_name)
+        if not trade_free_name or trade_free_name == context.company_name:
+            return similarity
+        trade_free_similarity = max(
+            company_similarity(_initials_joined(trade_free_name), _initials_joined(n)) for n in names
+        )
+        return max(similarity, trade_free_similarity if trade_free_similarity >= _MIN_TRADE_FREE_SIMILARITY else 0.0)
 
     @staticmethod
     def _city_matches(result: dict[str, Any], context: ResolutionContext) -> bool:
@@ -483,6 +559,53 @@ class OwnerResponseStrategy:
                 raw={"occurrences": seen},
             )
         ]
+
+
+class BusinessNameOwnerStrategy:
+    """Supporting — the owner named in the business's own name, when customers call him by that first name.
+
+    « Garage Jules Exemple » with reviews saying « je vais voir Jules pour réparer ma voiture »: Jules is
+    the first name and Exemple the last name of the person behind the business. Never a primary source,
+    so a proposal at best.
+    """
+
+    name = "business_name"
+
+    async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
+        """Find the pair of name words customers call the owner by."""
+        return self.candidates_of(context)
+
+    def candidates_of(self, context: ResolutionContext) -> list[NameCandidate]:
+        """The owner a business name spells, when customers use its first word alone (pure — testable)."""
+        significant = company_tokens(context.company_name or "")
+        name_words = [
+            word
+            for word in re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
+            if fold(word) in significant and fold(word) not in _TRADE_WORDS
+        ]
+        customer_texts = [fold(text) for text in [*context.review_texts, *context.owner_responses] if text]
+        for first, last in pairwise(name_words):
+            called_alone = re.compile(rf"\b{re.escape(fold(first))}\b(?!\s+{re.escape(fold(last))}\b)")
+            mentions = sum(1 for text in customer_texts if called_alone.search(text))
+            if mentions:
+                first_name, last_name = title_case_name(first), title_case_name(last)
+                return [
+                    NameCandidate(
+                        first=first_name,
+                        last=last_name,
+                        gender=infer_gender(first_name),
+                        source=self.name,
+                        confidence=0.6,
+                        primary=False,
+                        evidence_group=_GROUP_CUSTOMER_REVIEWS,
+                        provenance=(
+                            f"Nom de l'entreprise « {context.company_name} », et les clients l'appellent « {first_name} »"
+                            f" dans {mentions} avis"
+                        ),
+                        raw={"mentions": mentions},
+                    )
+                ]
+        return []
 
 
 # « Gérant : Prénom Nom » patterns found on mentions-légales / à-propos pages.

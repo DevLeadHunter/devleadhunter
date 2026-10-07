@@ -14,6 +14,7 @@ from services.decision_maker.normalize import (
 )
 from services.decision_maker.resolver import DecisionMakerResolver
 from services.decision_maker.strategies import (
+    BusinessNameOwnerStrategy,
     LegalMentionsStrategy,
     LlmAggregateStrategy,
     OwnerResponseStrategy,
@@ -538,3 +539,68 @@ def test_a_family_company_at_the_same_address_cannot_rival_the_searched_company(
 
     assert resolution.status == NameResolution.AUTO
     assert resolution.candidate is not None and resolution.candidate.first == "Julien"
+
+
+def test_initials_and_trade_words_do_not_hide_the_registry_company() -> None:
+    """« A.S auto garage » is the company A.S AUTO: dotted initials join, the trade word goes."""
+    context = ResolutionContext(company_name="A.S auto garage", city="Limoges", postal_code="87000")
+    results = [
+        {
+            "nom_complet": "A.S AUTO",
+            "nature_juridique": "5710",
+            "siren": "999999999",
+            "siege": {"code_postal": "87000", "libelle_commune": "LIMOGES"},
+            "dirigeants": [
+                {
+                    "nom": "EXEMPLE",
+                    "prenoms": "Alex",
+                    "qualite": "Président de SAS",
+                    "type_dirigeant": "personne physique",
+                }
+            ],
+        }
+    ]
+
+    candidates = RegistreGouvStrategy().parse_results(results, context)
+
+    assert [(candidate.first, candidate.last, candidate.geo_confirmed) for candidate in candidates] == [
+        ("Alex", "Exemple", True)
+    ]
+
+
+def test_a_family_name_left_alone_does_not_match_its_homonyms() -> None:
+    """« Garage Martin » without its trade word is just « Martin »: an EI MARTIN Paul in town is not it."""
+    context = ResolutionContext(company_name="Garage Martin", city="Cahors", postal_code="46000")
+    results = [
+        {
+            "nom_complet": "MARTIN PAUL",
+            "nature_juridique": "1000",
+            "siren": "888888888",
+            "siege": {"code_postal": "46000", "libelle_commune": "CAHORS"},
+            "dirigeants": [],
+        }
+    ]
+
+    assert RegistreGouvStrategy().parse_results(results, context) == []
+
+
+def test_customers_calling_the_owner_by_first_name_make_a_proposal() -> None:
+    """« Garage Jules Exemple » and a review « je vais voir Jules » : Jules Exemple, never trusted alone."""
+    context = ResolutionContext(
+        company_name="Garage Jules Exemple",
+        review_texts=["Depuis 10 ans je vais voir Jules pour réparer ma voiture."],
+    )
+
+    candidates = BusinessNameOwnerStrategy().candidates_of(context)
+
+    assert [(c.first, c.last, c.primary, c.confidence) for c in candidates] == [("Jules", "Exemple", False, 0.6)]
+    assert DecisionMakerResolver(strategies=[]).pick_best(candidates).status == NameResolution.PROPOSED
+
+
+def test_reviews_naming_the_whole_business_do_not_tell_a_first_name() -> None:
+    """« Garage Jules Exemple au top » names the business, not the man: nothing is proposed."""
+    context = ResolutionContext(
+        company_name="Garage Jules Exemple", review_texts=["Garage Jules Exemple au top, je recommande."]
+    )
+
+    assert BusinessNameOwnerStrategy().candidates_of(context) == []

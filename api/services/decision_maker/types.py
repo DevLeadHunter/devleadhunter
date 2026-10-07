@@ -113,6 +113,8 @@ class ResolutionContext:
     description: str | None = None
     #: The company number the prospect search read for the business (SIRET from the RGE register…).
     registry_number: str | None = None
+    #: What customers wrote in their reviews (« je vais voir Jules »).
+    review_texts: list[str] = field(default_factory=list)
 
 
 @runtime_checkable
