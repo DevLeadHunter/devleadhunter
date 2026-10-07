@@ -224,7 +224,7 @@ class WebsiteLivenessService:
 
     @staticmethod
     def _spellings_of(host: str) -> set[str]:
-        """A host as a URL writes it and as a reader does (« xn--nh-contrles-9eb.ch » is « nh-contrôles.ch »)."""
+        """A host as a URL writes it and as a reader does (« xn--rochat-contrles-nsb.ch » is « rochat-contrôles.ch »)."""
         try:
             return {host, host.encode("ascii").decode("idna")}
         except UnicodeError:

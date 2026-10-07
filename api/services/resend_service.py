@@ -35,8 +35,8 @@ class ResendService:
         """
         The « to » field of a send: the name, then the address with an ASCII domain.
 
-        Resend relies on Amazon SES, which takes an accented domain (« nh-contrôles.ch ») only in
-        its ASCII form (« xn--nh-contrles-9eb.ch »).
+        Resend relies on Amazon SES, which takes an accented domain (« rochat-contrôles.ch ») only in
+        its ASCII form (« xn--rochat-contrles-nsb.ch »).
         """
         address = validation_service.ascii_email(to_email)
         return f"{to_name} <{address}>" if to_name else address

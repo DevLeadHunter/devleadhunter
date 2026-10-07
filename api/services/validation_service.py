@@ -361,8 +361,8 @@ class ValidationService:
         """
         The address with its domain written the way mail servers read it.
 
-        An accented domain (« info@nh-contrôles.ch ») becomes its ASCII form
-        (« info@xn--nh-contrles-9eb.ch »); any other address comes back as it is.
+        An accented domain (« info@rochat-contrôles.ch ») becomes its ASCII form
+        (« info@xn--rochat-contrles-nsb.ch »); any other address comes back as it is.
 
         Args:
             email: An email address.
