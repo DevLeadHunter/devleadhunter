@@ -460,6 +460,7 @@ class TestCandidateDecision:
 
     def test_a_facebook_page_without_a_phone_is_left_to_the_user(self) -> None:
         facts = _facts(
+            name="Jardins Rochat",
             origin=CandidateOrigin.FACEBOOK_SEARCH.value,
             city=None,
             searched_city="Martigny",
@@ -473,6 +474,22 @@ class TestCandidateDecision:
 
         facts.phone = "079 000 00 11"
         assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.KEPT
+
+    def test_a_facebook_page_whose_name_does_not_say_the_trade_is_left_to_the_user(self) -> None:
+        facts = _facts(
+            name="Ici Exemple & Région : nos commerces, notre force",
+            google_category=None,
+            origin=CandidateOrigin.FACEBOOK_SEARCH.value,
+            phone="078 000 00 81",
+            email="commerces.exemple@gmail.com",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+        electrician = TradeCatalog.resolve("électricien")
+
+        assert CandidateDecision.decide(facts, electrician, _EMAIL_ONLY).status is CandidateStatus.TO_CONFIRM
+
+        facts.name = "Rochat Électricité"
+        assert CandidateDecision.decide(facts, electrician, _EMAIL_ONLY).status is CandidateStatus.KEPT
 
 
 class TestBusinessNaming:

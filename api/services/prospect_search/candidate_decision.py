@@ -110,6 +110,14 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="Page Facebook sans téléphone : rien ne montre que c'est un artisan du coin, à vérifier.",
             )
+        is_page_without_trade_name = facts.origin == CandidateOrigin.FACEBOOK_SEARCH.value and not trade.names_trade(
+            facts.name
+        )
+        if is_page_without_trade_name and (has_proven_email or has_guessed_email):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail="Page Facebook dont le nom ne dit pas le métier : à vérifier (association, groupe, agence…).",
+            )
         if cls._meets_channel(criteria.channel, has_email=has_proven_email, has_mobile=has_mobile):
             return CandidateVerdict(CandidateStatus.KEPT)
         if not has_proven_email and can_read_facebook_page and criteria.channel != ProspectSearchChannel.SMS:

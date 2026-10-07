@@ -32,6 +32,11 @@ class TradeProfile:
     rbq_subcategories: tuple[str, ...] = ()
     is_generic: bool = field(default=False)
 
+    def names_trade(self, name: str) -> bool:
+        """Whether a business name says the trade (« Rochat Électricité », « Jardins du Lac »)."""
+        folded_name = fold(name)
+        return any(fold(word) in folded_name for word in (*self.aliases, *self.category_keywords))
+
     def terms_for(self, country: str) -> tuple[str, ...]:
         """Search words of the trade in a country (the default words when none are specific)."""
         return self.search_terms.get(country.upper()) or self.search_terms[_DEFAULT_COUNTRY]
