@@ -146,6 +146,8 @@ BLOCKED_DOMAINS: frozenset[str] = frozenset(
         "motrio.fr",
         "motrio.com",
         "ad.fr",
+        "autodistribution.com",
+        "autodistribution.fr",
         "top-garage.fr",
         "precisium.fr",
         "eurorepar.fr",
