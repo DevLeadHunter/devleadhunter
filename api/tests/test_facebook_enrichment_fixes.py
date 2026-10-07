@@ -275,6 +275,12 @@ class TestFullPageDescription:
             _parse_best_description("Paysagiste depuis 20 ans. J'interviens à tous...") == "Paysagiste depuis 20 ans."
         )
 
+    def test_dots_after_a_space_are_an_etc_not_a_cut(self) -> None:
+        """« … auto-location, électricité ... » is whole: the owner's dots stand for « etc. »."""
+        full = "Garage Exemple, Réparations toutes marques, auto-location, électricité ..."
+
+        assert _parse_best_description(full) == full
+
     def test_a_text_cut_before_its_first_sentence_ends_gives_nothing(self) -> None:
         """« … d'exploitation de forê... » would show a broken word on the site: nothing is better."""
         assert (

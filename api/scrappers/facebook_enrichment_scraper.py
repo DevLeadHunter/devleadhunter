@@ -396,7 +396,7 @@ _OG_AUDIENCE_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 _INTRO_OPENING_CHARS: int = 40
-_TRUNCATION_MARK_RE = re.compile(r"\s*(?:\.{3}|…)\s*$")
+_TRUNCATION_MARK_RE = re.compile(r"(?<=\w)(?:\.{3}|…)\s*$")
 
 
 def _rating_from_pct(pct: int | None) -> float | None:
@@ -474,7 +474,8 @@ def _parse_best_description(best_description: str | None) -> str | None:
     The page's full description (Facebook's ``best_description``) on one line, without a cut-off end.
 
     The owner sometimes pasted a text that stops mid-word (« … d'exploitation de forê... »): it then ends on
-    its last whole sentence, or gives nothing when no sentence is whole.
+    its last whole sentence, or gives nothing when no sentence is whole. Dots after a space are the owner's
+    « etc. » (« … auto-location, électricité ... »), not a cut.
 
     Args:
         best_description: The ``best_description`` text read from the page data, or None.

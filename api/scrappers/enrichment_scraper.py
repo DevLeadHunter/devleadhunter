@@ -545,8 +545,7 @@ _MIN_PHOTO_SIDE_PX: int = 400
 _MIN_PHOTO_CONTRAST: float = 12.0
 _GRAPHIC_FLAT_COLOUR_SHARE: float = 0.6
 _GRAPHIC_MAX_COLOURS: int = 170
-_LOGO_MIN_FLAT_COLOUR_SHARE: float = 0.3
-_LOGO_MAX_COLOURS_WITHOUT_FLAT_BACKGROUND: int = 160
+_LOGO_MIN_FLAT_COLOUR_SHARE: float = 0.2
 _LOGO_MIN_SQUARENESS: float = 0.8
 _LOGO_LOOK_DISTANCE: int = 10
 _SAME_PHOTO_LOOK_DISTANCE: int = 4
@@ -671,16 +670,13 @@ class GalleryCuration:
     @staticmethod
     def is_photo(traits: PhotoTraits) -> bool:
         """
-        Whether an image is a real photo, never a logo: no flat background and many colours.
+        Whether an image is a real photo, never a logo: no flat background.
 
         Measured 7 Oct 2026 on the Facebook profile pictures taken as logos: a garage front and a tree
-        surgeon at work had 13-16 % of one flat colour in 181-275 colours; real logos 34-77 % flat, or
-        144 colours on a textured background.
+        surgeon at work had 13-16 % of one flat colour, real logos 34-77 %. A logo printed on a stone
+        texture (15 %) reads as a photo too: no logo beats a photo in the logo's place.
         """
-        return (
-            traits.flat_colour_share < _LOGO_MIN_FLAT_COLOUR_SHARE
-            and traits.colour_count > _LOGO_MAX_COLOURS_WITHOUT_FLAT_BACKGROUND
-        )
+        return traits.flat_colour_share < _LOGO_MIN_FLAT_COLOUR_SHARE
 
     @staticmethod
     def is_square_graphic(traits: PhotoTraits) -> bool:

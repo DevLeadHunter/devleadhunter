@@ -32,7 +32,7 @@ from core.win32_asyncio import ensure_proactor_event_loop
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
 from services.country_profiles import DEFAULT_COUNTRY_CODE
 
-_HTTP_TIMEOUT = 60.0
+_HTTP_TIMEOUT = 180.0
 
 
 async def _list_prospects(api: OperatorApi) -> list[dict[str, object]]:
