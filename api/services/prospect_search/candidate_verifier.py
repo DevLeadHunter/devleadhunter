@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 _EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
-_SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch")
+_SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch", "zip.ch")
 _LEGAL_FORM_RE: re.Pattern[str] = re.compile(
     r"(?<!\w)(s\.?\s?[aà]\.?\s?r\.?\s?l\.?|s\.?\s?a\.?|gmbh|ag|sagl|snc|eurl|sasu?|inc\.?|enr\.?|lt[ée]e)(?!\w)",
     re.IGNORECASE,
@@ -331,7 +331,7 @@ class CandidateVerifier:
 
     @staticmethod
     def is_swiss_directory_page(line: SearchResultLine) -> bool:
-        """Whether a result is a page of local.ch or search.ch."""
+        """Whether a result is a page of local.ch, search.ch or zip.ch (which copies them)."""
         return any(line.host == host or line.host.endswith(f".{host}") for host in _SWISS_DIRECTORY_HOSTS)
 
     @classmethod
@@ -366,8 +366,9 @@ class CandidateVerifier:
         if facts.country != "CH" or not facts.matches_trade:
             return None
         try:
+            entry_of_phone = await self._directory.entry_for_phone(facts.phone)
             entry = (
-                await self._directory.entry_for_phone(facts.phone)
+                entry_of_phone
                 or await self._entry_found_by_name(facts, trade)
                 or await self._entry_found_at_address(facts, trade)
             )
@@ -375,7 +376,7 @@ class CandidateVerifier:
             self.note_directory_unanswered(facts, exc)
             return None
         self.take_directory_asterisk(facts, entry)
-        if entry is None:
+        if entry_of_phone is None:
             self.take_zip_asterisk(facts, await self._directory.zip_listing_with_asterisk(facts.phone))
         return entry
 

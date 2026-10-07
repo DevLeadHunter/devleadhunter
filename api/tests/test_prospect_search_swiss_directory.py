@@ -640,6 +640,38 @@ def test_the_asterisk_zip_ch_keeps_for_a_number_search_ch_dropped_refuses_advert
     assert [line["source"] for line in facts.evidence if line["fact"] == "no_advertising"] == ["zip.ch"]
 
 
+def test_zip_ch_is_read_for_the_listing_s_number_even_when_the_business_was_found_by_name() -> None:
+    facts = _facts(name="Rochat Valentin", city="La Cibourg", phone="078 000 00 95", trade_key="paysagiste")
+    business_entry = _entry(
+        url="https://search.ch/tel/la-cibourg/les-reprises-18/valentin-rochat-sa.fr.html",
+        name="Valentin Rochat SA",
+        is_business=True,
+    )
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_name=[business_entry], zip_starred_phone="078 000 00 95"))
+
+    assert facts.refuses_advertising is True
+
+
+def test_a_starred_number_in_a_zip_ch_extract_refuses_advertising() -> None:
+    facts = _facts(name="Rochat Valentin", city="La Cibourg", phone="078 000 00 95")
+    page = {
+        "organic": [
+            {
+                "link": "https://zip.ch/fr/rochat-valentin-les-reprises-la-cibourg-x1/",
+                "title": "Rochat Valentin - La Cibourg",
+                "description": "Rochat Valentin - Les Reprises 18, 2300 La Cibourg. Mobile. 078 000 00 95 *. E-mail.",
+            }
+        ]
+    }
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.refuses_advertising is True
+
+
 @pytest.mark.parametrize(
     ("asterisk", "expected"),
     [('<span class="text-muted">&nbsp;*</span>', True), ("", False)],
