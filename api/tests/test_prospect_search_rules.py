@@ -491,6 +491,30 @@ class TestCandidateDecision:
             CandidateRejectReason.OUT_OF_COUNTRY
         )
 
+    @pytest.mark.parametrize(
+        ("phone", "address", "is_abroad"),
+        [
+            ("+33 7 00 00 00 52", None, True),
+            ("078 000 00 52", None, False),
+            ("+33 7 00 00 00 52", "Rue de l'Exemple 1, 1226 Thônex", False),
+        ],
+    )
+    def test_a_listing_without_address_whose_phone_is_from_another_country_is_discarded(
+        self, phone: str, address: str | None, is_abroad: bool
+    ) -> None:
+        facts = _facts(
+            phone=phone,
+            address=address,
+            email="jardins.exemple74@gmail.com",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+
+        verdict = CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY)
+
+        assert (verdict.reject_reason is CandidateRejectReason.OUT_OF_COUNTRY) is is_abroad
+        if is_abroad:
+            assert verdict.detail == "Numéro d'un autre pays que la recherche : +33 7 00 00 00 52"
+
     def test_a_facebook_page_without_a_phone_is_left_to_the_user(self) -> None:
         facts = _facts(
             name="Jardins Rochat",

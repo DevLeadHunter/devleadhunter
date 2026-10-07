@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enums.prospect_search import EmailProofLevel
 from enums.website_status import WebsiteStatus
 from services.country_profiles import CountryProfiles
-from services.sms.phone_normalizer import PhoneNumberPlans
+from services.sms.phone_normalizer import PhoneNumberPlans, to_e164
 
 _SNIPPET_MAX_CHARS: int = 240
 
@@ -60,8 +60,22 @@ class CandidateFacts:
 
     @property
     def is_abroad(self) -> bool:
-        """Whether the address ends with another country than the search's."""
-        return CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None
+        """
+        Whether the business is in another country than the search's.
+
+        Its address ends with another country or, when it gives no address, its phone carries
+        another country's dial code (a French firm surfacing in a Swiss border town).
+        """
+        if CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None:
+            return True
+        international = to_e164(self.phone, country=self.country)
+        home = CountryProfiles.declared(self.country)
+        return (
+            not self.address
+            and international is not None
+            and home is not None
+            and not international.startswith(home.dial_code)
+        )
 
     @property
     def has_email_on_another_site(self) -> bool:

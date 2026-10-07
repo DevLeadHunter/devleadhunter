@@ -164,7 +164,10 @@ class CandidateDecision:
             return cls._rejected(CandidateRejectReason.CLOSED, cls._closed_detail(facts))
         if facts.is_abroad:
             return cls._rejected(
-                CandidateRejectReason.OUT_OF_COUNTRY, f"Adresse dans un autre pays que la recherche : {facts.address}"
+                CandidateRejectReason.OUT_OF_COUNTRY,
+                f"Adresse dans un autre pays que la recherche : {facts.address}"
+                if facts.address
+                else f"Numéro d'un autre pays que la recherche : {facts.phone}",
             )
         if facts.refuses_advertising:
             return cls._rejected(
