@@ -4,6 +4,8 @@ normalisation, registry parsing and the resolver's confidence/agreement logic.
 All offline: strategy parsers are exercised on fixtures, never the network.
 """
 
+import asyncio
+
 from services.decision_maker.activity import activity_consistency
 from services.decision_maker.greeting import build_greeting
 from services.decision_maker.normalize import (
@@ -604,3 +606,52 @@ def test_reviews_naming_the_whole_business_do_not_tell_a_first_name() -> None:
     )
 
     assert BusinessNameOwnerStrategy().candidates_of(context) == []
+
+
+def test_common_words_brands_and_shouted_names_are_never_taken_for_an_owner() -> None:
+    """« JANTES ALU », « Garage des Rosiers », « O'Garage et Fils », « chez Otobox » named nobody (8 Oct 2026)."""
+    cases = [
+        ("JANTES ALU", "Je vais voir JANTES ALU pour mes jantes, super."),
+        ("Garage des Rosiers", "Merci des conseils, travail rapide."),
+        ("O'Garage et Fils inc.", "Avec et sans rendez-vous, toujours servi."),
+        ("Otobox Centre Auto", "Toujours bien servi chez Otobox, je recommande."),
+    ]
+
+    found = [
+        BusinessNameOwnerStrategy().candidates_of(ResolutionContext(company_name=name, review_texts=[review]))
+        for name, review in cases
+    ]
+
+    assert found == [[], [], [], []]
+
+
+def test_a_business_named_after_its_owner_alone_does_not_tell_the_first_name() -> None:
+    """« Neuhaus Exemple » could be either order: nothing is proposed from the name alone."""
+    context = ResolutionContext(company_name="Neuhaus Exemple", review_texts=["Merci Neuhaus pour le travail."])
+
+    assert BusinessNameOwnerStrategy().candidates_of(context) == []
+
+
+def test_a_closing_word_is_never_a_signature() -> None:
+    """An owner reply ending on « Cordialement » was proposed as « Cordialement » (8 Oct 2026)."""
+    context = ResolutionContext(company_name="Exemple Tech", owner_responses=["Merci pour votre avis.\nCordialement"])
+
+    assert asyncio.run(OwnerResponseStrategy().resolve(context)) == []
+
+
+def test_a_company_found_without_the_trade_words_must_carry_that_name() -> None:
+    """« Lb Jardin Passion » searched as « Lb Passion » also found LB TENNIS PASSION: not the garden firm."""
+    context = ResolutionContext(company_name="Lb Jardin Passion", city="Cahors", postal_code="46000")
+    results = [
+        {
+            "nom_complet": "LB TENNIS PASSION",
+            "nature_juridique": "5499",
+            "siren": "777777777",
+            "siege": {"code_postal": "46090", "libelle_commune": "MERCUES"},
+            "dirigeants": [
+                {"nom": "EXEMPLE", "prenoms": "Luc", "qualite": "Gérant", "type_dirigeant": "personne physique"}
+            ],
+        }
+    ]
+
+    assert RegistreGouvStrategy().parse_results(results, context, is_trade_free_query=True) == []

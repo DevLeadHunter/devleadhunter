@@ -124,15 +124,15 @@ class RegistreGouvStrategy:
         if not query:
             return []
         siren = self.siren_of(context.registry_number)
-        queries = [siren] if siren else [query]
+        queries = [(siren, False)] if siren else [(query, False)]
         trade_free_query = TradeName.without_trade_words(query)
         if (
             not siren
             and trade_free_query != query
             and len(re.sub(r"\W", "", trade_free_query)) >= _MIN_REGISTRY_QUERY_CHARS
         ):
-            queries.append(trade_free_query)
-        for registry_query in queries:
+            queries.append((trade_free_query, True))
+        for registry_query, is_trade_free_query in queries:
             params: dict[str, Any] = {"q": registry_query, "page": 1, "per_page": 5}
             if context.postal_code and not siren:
                 params["code_postal"] = context.postal_code
@@ -144,18 +144,32 @@ class RegistreGouvStrategy:
             except Exception as exc:
                 logger.warning("registre_gouv lookup failed for %r: %s", registry_query, exc)
                 return []
-            candidates = self.parse_results(payload.get("results") or [], context)
+            candidates = self.parse_results(
+                payload.get("results") or [], context, is_trade_free_query=is_trade_free_query
+            )
             if candidates:
                 return candidates
         return []
 
-    def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
-        """Score the registry matches (pure — unit-testable on fixtures); the company of the searched number is the business, whatever its name."""
+    def parse_results(
+        self, results: list[dict[str, Any]], context: ResolutionContext, *, is_trade_free_query: bool = False
+    ) -> list[NameCandidate]:
+        """
+        Score the registry matches (pure — unit-testable on fixtures); the company of the searched number is the business, whatever its name.
+
+        Companies found by the name without its trade words must carry that name almost exactly: « Lb Passion »
+        also finds LB TENNIS PASSION for a garden firm.
+        """
         candidates: list[NameCandidate] = []
         siren = self.siren_of(context.registry_number)
         for result in results[:5]:
             anchored = bool(siren) and str(result.get("siren") or "") == siren
-            similarity = 1.0 if anchored else self._match_similarity(result, context)
+            if anchored:
+                similarity = 1.0
+            elif is_trade_free_query:
+                similarity = self._trade_free_similarity(result, context)
+            else:
+                similarity = self._match_similarity(result, context)
             if similarity < _MIN_COMPANY_SIMILARITY:
                 continue
             city_ok = anchored or self._city_matches(result, context)
@@ -277,25 +291,31 @@ class RegistreGouvStrategy:
 
     @staticmethod
     def _match_similarity(result: dict[str, Any], context: ResolutionContext) -> float:
-        """
-        Best similarity between the prospect name and the registry names.
-
-        Without its trade words the name must match almost exactly (« Exemple Auto » is EXEMPLE AUTO): what is
-        left is often one family name, shared by every homonym of the town.
-        """
+        """Best similarity between the prospect name, or its name without trade words, and the registry names."""
         names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
         similarity = max(
             company_similarity(TradeName.with_initials_joined(context.company_name), TradeName.with_initials_joined(n))
             for n in names
         )
+        return max(similarity, RegistreGouvStrategy._trade_free_similarity(result, context))
+
+    @staticmethod
+    def _trade_free_similarity(result: dict[str, Any], context: ResolutionContext) -> float:
+        """
+        Similarity between the name without its trade words and the registry names, kept only when near exact.
+
+        What is left is often one family name or a pair of initials, shared by every homonym of the town
+        (« Exemple Auto » is EXEMPLE AUTO, « Martin » is not MARTIN PAUL).
+        """
         trade_free_name = TradeName.without_trade_words(context.company_name)
         if not trade_free_name or trade_free_name == context.company_name:
-            return similarity
-        trade_free_similarity = max(
+            return 0.0
+        names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
+        similarity = max(
             company_similarity(TradeName.with_initials_joined(trade_free_name), TradeName.with_initials_joined(n))
             for n in names
         )
-        return max(similarity, trade_free_similarity if trade_free_similarity >= _MIN_TRADE_FREE_SIMILARITY else 0.0)
+        return similarity if similarity >= _MIN_TRADE_FREE_SIMILARITY else 0.0
 
     @staticmethod
     def _city_matches(result: dict[str, Any], context: ResolutionContext) -> bool:
@@ -528,6 +548,29 @@ _OWNER_SIGNATURE_RE = re.compile(
     r"(?:^|[\n\-—–])\s*(?:cordialement|merci|à bientôt)?[,\s]*([A-ZÀ-Ü][a-zà-ü]{2,15})\s*$",
     re.MULTILINE,
 )
+_CLOSING_WORDS: frozenset[str] = frozenset(
+    {
+        "cordialement",
+        "merci",
+        "salutations",
+        "amicalement",
+        "sincerement",
+        "bonne",
+        "belle",
+        "excellente",
+        "bien",
+        "equipe",
+        "team",
+        "direction",
+        "gerant",
+        "gerance",
+    }
+)
+_NAME_LINK_WORDS: frozenset[str] = frozenset(
+    {"de", "des", "du", "et", "la", "le", "les", "au", "aux", "en", "sur", "chez", "fils", "freres", "jr", "of", "and"}
+)
+_PERSON_CUE_BEFORE_NAME = r"\b(?:[Vv]oir|[Mm]erci(?:\s+à)?|[Aa]vec|[Dd]emandez|[Aa]ppelez|[Cc]ontactez)"
+_MIN_NAME_WORD_CHARS = 3
 
 
 class OwnerResponseStrategy:
@@ -546,7 +589,7 @@ class OwnerResponseStrategy:
         for text in context.owner_responses:
             for match in _OWNER_SIGNATURE_RE.finditer(text or ""):
                 name = title_case_name(match.group(1))
-                if name:
+                if name and fold(name) not in _CLOSING_WORDS:
                     counts[name] = counts.get(name, 0) + 1
         if not counts:
             return []
@@ -584,17 +627,22 @@ class BusinessNameOwnerStrategy:
         return self.candidates_of(context)
 
     def candidates_of(self, context: ResolutionContext) -> list[NameCandidate]:
-        """The owner a business name spells, when customers use its first word alone (pure — testable)."""
-        significant = company_tokens(context.company_name or "")
-        name_words = [
-            word
-            for word in re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
-            if fold(word) in significant and fold(word) not in _TRADE_AND_LEGAL_FORM_WORDS
-        ]
-        customer_texts = [fold(text) for text in [*context.review_texts, *context.owner_responses] if text]
-        for first, last in pairwise(name_words):
-            called_alone = re.compile(rf"\b{re.escape(fold(first))}\b(?!\s+{re.escape(fold(last))}\b)")
-            mentions = sum(1 for text in customer_texts if called_alone.search(text))
+        """
+        The owner a business name spells, when customers address him by its first word (pure — testable).
+
+        Both words are capitalized name words of the business name (not « des », « Fils », « JANTES ALU »),
+        the business name holds more than them (« Neuhaus Stefan » does not tell which is the first name),
+        and a review calls the first one as a person: « voir Jules », « merci à Jules », never « chez Otobox ».
+        """
+        company_words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
+        if all(self._is_name_word(word) for word in company_words):
+            return []
+        customer_texts = [text for text in [*context.review_texts, *context.owner_responses] if text]
+        for first, last in pairwise(company_words):
+            if not (self._is_name_word(first) and self._is_name_word(last)):
+                continue
+            addressed = re.compile(rf"{_PERSON_CUE_BEFORE_NAME}\s+{re.escape(first)}\b(?!\s+{re.escape(last)}\b)")
+            mentions = sum(1 for text in customer_texts if addressed.search(text))
             if mentions:
                 first_name, last_name = title_case_name(first), title_case_name(last)
                 return [
@@ -614,6 +662,19 @@ class BusinessNameOwnerStrategy:
                     )
                 ]
         return []
+
+    @staticmethod
+    def _is_name_word(word: str) -> bool:
+        """Whether a word of the business name can be a first or last name: capitalized, not a trade or link word."""
+        parts = [part for part in re.split(r"[-']", word) if part]
+        is_capitalized = bool(parts) and all(part[:1].isupper() and part[1:] == part[1:].lower() for part in parts)
+        folded = fold(word)
+        return (
+            is_capitalized
+            and len(word) >= _MIN_NAME_WORD_CHARS
+            and folded not in _TRADE_AND_LEGAL_FORM_WORDS
+            and folded not in _NAME_LINK_WORDS
+        )
 
 
 # « Gérant : Prénom Nom » patterns found on mentions-légales / à-propos pages.
