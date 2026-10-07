@@ -809,19 +809,25 @@ class CandidateVerifier:
 
     @staticmethod
     async def _front_page_of(domain: str) -> tuple[str, str] | None:
-        """The final address and the first characters of a domain's front page, when it answers."""
-        try:
-            async with httpx.AsyncClient(
-                timeout=_OWN_DOMAIN_TIMEOUT_SECONDS,
-                follow_redirects=True,
-                headers=website_liveness_service.REQUEST_HEADERS,
-            ) as http:
-                response = await http.get(f"https://{domain}")
-        except httpx.HTTPError:
-            return None
-        if response.status_code != 200:
-            return None
-        return str(response.url), response.text[:_OWN_DOMAIN_READ_CHARS]
+        """
+        The final address and the first characters of a domain's front page, when it answers.
+
+        A site whose certificate is broken still answers in plain HTTP: it is read there.
+        """
+        async with httpx.AsyncClient(
+            timeout=_OWN_DOMAIN_TIMEOUT_SECONDS,
+            follow_redirects=True,
+            headers=website_liveness_service.REQUEST_HEADERS,
+        ) as http:
+            for scheme in ("https", "http"):
+                try:
+                    response = await http.get(f"{scheme}://{domain}")
+                except httpx.HTTPError:
+                    continue
+                if response.status_code != 200:
+                    return None
+                return str(response.url), response.text[:_OWN_DOMAIN_READ_CHARS]
+        return None
 
     def _apply_verdict(
         self, facts: CandidateFacts, verdict: JudgeVerdict | None, results: list[SearchResultLine], trade: TradeProfile
