@@ -1,6 +1,7 @@
 """The federal company register closes a Swiss company « en liquidation » or struck off."""
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -90,3 +91,19 @@ def test_another_firm_or_a_business_outside_switzerland_is_left_open(
     asyncio.run(swiss_registry.read_closing(facts))
 
     assert facts.is_closed is False
+
+
+@pytest.mark.parametrize(("struck_off_days_ago", "is_closed"), [(30, True), (12 * 365, False)])
+def test_only_a_recent_striking_off_closes_a_sole_trader_listed_with_a_civility(
+    monkeypatch: pytest.MonkeyPatch, struck_off_days_ago: int, is_closed: bool
+) -> None:
+    struck_off_on = datetime.now(UTC).date() - timedelta(days=struck_off_days_ago)
+    asked_names = _register_listing(
+        monkeypatch, SwissRegisterFirm("Paul Rochat", "Yvonand", "GELOESCHT", "CHE-000.000.005", struck_off_on)
+    )
+    facts = _facts(name="Mr. Paul Rochat", city="Yvonand")
+
+    asyncio.run(swiss_registry.read_closing(facts))
+
+    assert asked_names == ["Paul Rochat"]
+    assert facts.is_closed is is_closed
