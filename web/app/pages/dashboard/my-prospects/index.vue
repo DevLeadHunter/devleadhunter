@@ -114,16 +114,16 @@
       <div
         class="grid grid-cols-2 gap-4"
         :class="{
-          '@4xl:grid-cols-3': isPendingTab,
-          '@4xl:grid-cols-6': !isPendingTab && !isAssistantModule,
-          '@4xl:grid-cols-7': !isPendingTab && isAssistantModule,
+          '@4xl:grid-cols-3': !isContactStatusTab,
+          '@4xl:grid-cols-6': isContactStatusTab && !isAssistantModule,
+          '@4xl:grid-cols-7': isContactStatusTab && isAssistantModule,
         }"
       >
-        <div v-if="isAssistantModule && !isPendingTab">
+        <div v-if="isAssistantModule && isContactStatusTab">
           <label class="app-label mb-1.5 block">Tri</label>
           <UiSelectField v-model="sortOrder" :options="sortOrderOptions" />
         </div>
-        <div v-if="!isPendingTab">
+        <div v-if="isContactStatusTab">
           <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
         </div>
@@ -135,11 +135,11 @@
           <label class="app-label mb-1.5 block">Catégorie</label>
           <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="app-input" />
         </div>
-        <div v-if="!isPendingTab">
+        <div v-if="isContactStatusTab">
           <label class="app-label mb-1.5 block">Température</label>
           <UiSelectField v-model="filterTemperature" :options="temperatureFilterOptions" />
         </div>
-        <div v-if="!isPendingTab">
+        <div v-if="isContactStatusTab">
           <label class="app-label mb-1.5 block">Email</label>
           <UiSelectField v-model="filterEmail" :options="emailFilterOptions" />
         </div>
@@ -213,10 +213,59 @@
             class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
           ></span>
         </button>
+        <button
+          type="button"
+          class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
+          :class="isDismissedTab ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'"
+          @click="activeTab = 'dismissed'"
+        >
+          Écartés
+          <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
+            {{ filteredDismissedProspects.length }}
+          </span>
+          <span
+            v-if="isDismissedTab"
+            class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
+          ></span>
+        </button>
       </div>
     </div>
 
     <ProspectSearchPendingLeadList v-if="isPendingTab" :candidates="filteredPendingLeads" />
+
+    <template v-else-if="isDismissedTab">
+      <div v-if="isLoadingDismissed" class="flex items-center justify-center py-16">
+        <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
+      </div>
+
+      <div v-else-if="dismissedError" class="app-card border-[var(--app-red)]/40 bg-[var(--app-red-soft)] p-5">
+        <p class="font-semibold text-[var(--app-red)]">Erreur</p>
+        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">{{ dismissedError }}</p>
+      </div>
+
+      <div v-else-if="filteredDismissedProspects.length === 0" class="app-card px-6 py-12 text-center">
+        <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+        <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun prospect écarté</h3>
+        <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--app-ink-soft)]">
+          Les prospects que vous écartez, ou que l'app écarte (entreprise fermée au registre), arrivent ici avec la
+          raison. Vous pouvez les remettre dans vos prospects à tout moment.
+        </p>
+      </div>
+
+      <div v-else class="app-card overflow-hidden">
+        <UiProspectDismissedTable
+          :prospects="filteredDismissedProspects"
+          :restoring-prospect-ids="restoringProspectIds"
+          @open="openDismissedDrawer"
+          @restore="restoreDismissedProspect"
+        />
+        <div
+          class="font-label border-t border-[var(--app-line)] bg-[var(--app-surface-2)]/50 px-4 py-3.5 text-xs text-[var(--app-ink-soft)] sm:px-6"
+        >
+          {{ dismissedCountLabel }}
+        </div>
+      </div>
+    </template>
 
     <div v-else-if="isLoading" class="flex items-center justify-center py-16">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
@@ -304,7 +353,7 @@
 
     <Transition name="bulkbar">
       <div
-        v-if="!isPendingTab && selectedProspects.length > 0"
+        v-if="isContactStatusTab && selectedProspects.length > 0"
         class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-0 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-4"
       >
         <!-- Mobile (< sm) : bottom sheet ancrée au bas de l'écran. -->
@@ -485,6 +534,10 @@ definePageMeta({
 const prospects: Ref<Prospect[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
 const error: Ref<string | null> = ref(null)
+const dismissedProspects: Ref<Prospect[]> = ref([])
+const isLoadingDismissed: Ref<boolean> = ref(false)
+const dismissedError: Ref<string | null> = ref(null)
+const restoringProspectIds: Ref<number[]> = ref([])
 const selectedProspects: Ref<string[]> = ref([])
 const bulkCampaignOpen: Ref<boolean> = ref(false)
 const bulkBusy: Ref<boolean> = ref(false)
@@ -559,6 +612,8 @@ const toast: UseToastReturn = useToast()
 const searchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 
 const isPendingTab: ComputedRef<boolean> = computed((): boolean => activeTab.value === 'pending')
+const isDismissedTab: ComputedRef<boolean> = computed((): boolean => activeTab.value === 'dismissed')
+const isContactStatusTab: ComputedRef<boolean> = computed((): boolean => !isPendingTab.value && !isDismissedTab.value)
 
 const filteredPendingLeads: ComputedRef<ProspectSearchCandidate[]> = computed((): ProspectSearchCandidate[] =>
   searchStore.findPendingCandidates({
@@ -605,28 +660,7 @@ const prospectsWithPhone: ComputedRef<number> = computed(
 
 /** Prospects matching every filter EXCEPT the contacted tab (drives the tab counts). */
 const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
-  let filtered: Prospect[] = prospects.value
-
-  if (searchQuery.value) {
-    const query: string = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (prospect: Prospect) =>
-        prospect.name.toLowerCase().includes(query) ||
-        prospect.city?.toLowerCase().includes(query) ||
-        prospect.email?.toLowerCase().includes(query) ||
-        prospect.phone?.toLowerCase().includes(query),
-    )
-  }
-
-  if (filterCity.value) {
-    const city: string = filterCity.value.toLowerCase()
-    filtered = filtered.filter((prospect: Prospect) => prospect.city?.toLowerCase().includes(city))
-  }
-
-  if (filterCategory.value) {
-    const cat: string = filterCategory.value.toLowerCase()
-    filtered = filtered.filter((prospect: Prospect) => prospect.category.toLowerCase().includes(cat))
-  }
+  let filtered: Prospect[] = prospects.value.filter(matchesSharedFilters)
 
   if (filterWebsite.value === 'yes') {
     filtered = filtered.filter((prospect: Prospect) => ProspectWebsite.hasWorkingWebsite(prospect))
@@ -660,6 +694,16 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
   return filtered
 })
 
+const filteredDismissedProspects: ComputedRef<Prospect[]> = computed((): Prospect[] =>
+  dismissedProspects.value.filter(matchesSharedFilters),
+)
+
+const dismissedCountLabel: ComputedRef<string> = computed((): string =>
+  filteredDismissedProspects.value.length > 1
+    ? `${filteredDismissedProspects.value.length} prospects écartés`
+    : '1 prospect écarté',
+)
+
 const notContactedCount: ComputedRef<number> = computed(
   () => baseFiltered.value.filter((prospect: Prospect) => !prospect.contacted).length,
 )
@@ -685,6 +729,70 @@ const paginatedProspects: ComputedRef<Prospect[]> = computed(() => {
   const start: number = (currentPage.value - 1) * pageSize
   return filteredProspects.value.slice(start, start + pageSize)
 })
+
+/**
+ * Whether a prospect matches the search, city and category filters shared by every tab.
+ * @param prospect - The prospect to test.
+ * @returns True when it passes the three filters.
+ */
+function matchesSharedFilters(prospect: Prospect): boolean {
+  const query: string = searchQuery.value.toLowerCase()
+  const isMatchingQuery: boolean =
+    !query ||
+    prospect.name.toLowerCase().includes(query) ||
+    !!prospect.city?.toLowerCase().includes(query) ||
+    !!prospect.email?.toLowerCase().includes(query) ||
+    !!prospect.phone?.toLowerCase().includes(query)
+  const isMatchingCity: boolean =
+    !filterCity.value || !!prospect.city?.toLowerCase().includes(filterCity.value.toLowerCase())
+  const isMatchingCategory: boolean =
+    !filterCategory.value || prospect.category.toLowerCase().includes(filterCategory.value.toLowerCase())
+  return isMatchingQuery && isMatchingCity && isMatchingCategory
+}
+
+/**
+ * Fetch the prospects set aside, shown in the « Écartés » tab.
+ * @returns A promise resolved once the list is loaded.
+ */
+async function loadDismissedProspects(): Promise<void> {
+  try {
+    isLoadingDismissed.value = true
+    dismissedError.value = null
+    dismissedProspects.value = await ProspectsService.listDismissedProspects()
+  } catch (err: unknown) {
+    dismissedError.value = err instanceof Error ? err.message : 'Erreur lors du chargement des prospects écartés'
+  } finally {
+    isLoadingDismissed.value = false
+  }
+}
+
+/**
+ * Take a prospect back from the « Écartés » tab to the prospect lists.
+ * @param prospect - The prospect set aside.
+ * @returns A promise resolved once the prospect is back.
+ */
+async function restoreDismissedProspect(prospect: Prospect): Promise<void> {
+  if (restoringProspectIds.value.includes(prospect.id)) return
+  restoringProspectIds.value = [...restoringProspectIds.value, prospect.id]
+  try {
+    const restored: Prospect = await ProspectsService.restoreProspect(prospect.id)
+    handleProspectUpdated(restored)
+    toast.success(`« ${restored.name} » remis dans vos prospects`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Action impossible')
+  } finally {
+    restoringProspectIds.value = restoringProspectIds.value.filter((id: number): boolean => id !== prospect.id)
+  }
+}
+
+/**
+ * Open the drawer of a prospect set aside, browsing the « Écartés » list.
+ * @param prospect - The prospect set aside.
+ */
+function openDismissedDrawer(prospect: Prospect): void {
+  drawerStack.setProspectBrowseList(filteredDismissedProspects.value)
+  drawerStack.push({ kind: 'prospect', prospect })
+}
 
 /**
  * Fetch prospects from the API.
@@ -725,11 +833,12 @@ async function loadTemperatures(): Promise<void> {
 }
 
 /**
- * Reload prospects and reset pagination.
+ * Reload prospects, the ones set aside included, and reset pagination.
  */
 function refreshProspects(): void {
   currentPage.value = 1
   loadProspects()
+  loadDismissedProspects()
 }
 
 /**
@@ -961,11 +1070,31 @@ function openProspectEditDrawer(prospect: Prospect): void {
   drawerStack.push({ kind: 'prospect', prospect, startInEdit: true })
 }
 
-/** Drawer notified 'updated' — patch the local list, or insert a freshly created prospect. */
+/**
+ * Drawer notified 'updated' — patch the local lists, moving the prospect to or from the « Écartés » tab.
+ * @param updated - The prospect as the API returned it.
+ */
 function handleProspectUpdated(updated: Prospect): void {
-  const index: number = prospects.value.findIndex((prospect: Prospect) => prospect.id === updated.id)
-  if (index !== -1) prospects.value.splice(index, 1, updated)
-  else prospects.value.unshift(updated)
+  if (updated.dismissed_at) {
+    prospects.value = prospects.value.filter((prospect: Prospect) => prospect.id !== updated.id)
+    selectedProspects.value = selectedProspects.value.filter((id: string) => id !== String(updated.id))
+    putProspectInList(dismissedProspects, updated)
+    return
+  }
+
+  dismissedProspects.value = dismissedProspects.value.filter((prospect: Prospect) => prospect.id !== updated.id)
+  putProspectInList(prospects, updated)
+}
+
+/**
+ * Replace a prospect in a list, or put it first when the list does not hold it yet (freshly created or moved).
+ * @param list - The list to patch.
+ * @param updated - The prospect as the API returned it.
+ */
+function putProspectInList(list: Ref<Prospect[]>, updated: Prospect): void {
+  const index: number = list.value.findIndex((prospect: Prospect) => prospect.id === updated.id)
+  if (index !== -1) list.value.splice(index, 1, updated)
+  else list.value.unshift(updated)
 }
 
 /** Hidden file input used by the « Importer » dropdown. */
@@ -1097,9 +1226,10 @@ async function handleImportFile(event: Event): Promise<void> {
   }
 }
 
-/** Drawer notified 'deleted' — remove from local list. */
+/** Drawer notified 'deleted' — remove from local lists. */
 function handleProspectDeleted(prospectId: number): void {
   prospects.value = prospects.value.filter((prospect: Prospect) => prospect.id !== prospectId)
+  dismissedProspects.value = dismissedProspects.value.filter((prospect: Prospect) => prospect.id !== prospectId)
   selectedProspects.value = selectedProspects.value.filter((id: string) => id !== String(prospectId))
 }
 
@@ -1193,6 +1323,7 @@ onMounted(async (): Promise<void> => {
   if (!hasShownRequestedTab && !searchStore.hasLoadedActivity) {
     watch((): boolean => searchStore.hasLoadedActivity, leaveEmptyPendingTab, { once: true })
   }
+  loadDismissedProspects()
   await loadProspects()
   // Deep-link from the dashboard hot-leads widget: ?open=<prospectId> opens the drawer.
   const openParam: LocationQueryValue | LocationQueryValue[] | undefined = useRoute().query.open

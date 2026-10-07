@@ -60,6 +60,9 @@ export type Prospect = {
   do_not_contact?: boolean
   do_not_contact_reason?: string | null
   do_not_contact_at?: string | null
+  dismissed_at?: string | null
+  dismissal_reason?: string | null
+  dismissed_by_user_id?: number | null
   sms_auto_excluded?: boolean
   email_undeliverable?: boolean
   email_undeliverable_at?: string | null

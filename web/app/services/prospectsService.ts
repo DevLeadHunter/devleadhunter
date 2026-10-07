@@ -156,6 +156,33 @@ export class ProspectsService {
   }
 
   /**
+   * List the prospects set aside (« Écartés »), the latest first.
+   * @returns The prospects set aside, each with its reason.
+   */
+  static async listDismissedProspects(): Promise<Prospect[]> {
+    return ApiClient.get<Prospect[]>(`${BASE_URL}/dismissed`)
+  }
+
+  /**
+   * Set a prospect aside: kept so no search finds it again, out of every list, campaign and enrichment.
+   * @param prospectId - The prospect to set aside.
+   * @param reason - Why, shown in the « Écartés » tab.
+   * @returns The prospect set aside.
+   */
+  static async dismissProspect(prospectId: number, reason: string): Promise<Prospect> {
+    return ApiClient.post<Prospect>(`${BASE_URL}/${prospectId}/dismissal`, { reason })
+  }
+
+  /**
+   * Take a prospect back from the « Écartés » tab, to the lists, campaigns and enrichment.
+   * @param prospectId - The prospect to take back.
+   * @returns The prospect taken back.
+   */
+  static async restoreProspect(prospectId: number): Promise<Prospect> {
+    return ApiClient.delete<Prospect>(`${BASE_URL}/${prospectId}/dismissal`)
+  }
+
+  /**
    * Exclude (or re-include) a prospect from every automated SMS (relance J+30 and cold).
    * Campaigns, manual sends and email are untouched.
    * @param prospectId - Identifiant du prospect.

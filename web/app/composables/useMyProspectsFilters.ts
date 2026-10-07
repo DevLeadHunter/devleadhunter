@@ -18,8 +18,8 @@ const EMAIL_FILTER_VALUES: EmailFilter[] = ['all', 'undeliverable']
 export type ProspectSortOrder = 'recent' | 'demand'
 const SORT_ORDER_VALUES: ProspectSortOrder[] = ['recent', 'demand']
 
-export type MyProspectsTab = 'pending' | 'not_contacted' | 'contacted'
-const TAB_VALUES: MyProspectsTab[] = ['pending', 'not_contacted', 'contacted']
+export type MyProspectsTab = 'pending' | 'not_contacted' | 'contacted' | 'dismissed'
+const TAB_VALUES: MyProspectsTab[] = ['pending', 'not_contacted', 'contacted', 'dismissed']
 
 /** Persisted filter state for the my-prospects page. */
 export type MyProspectsFiltersState = {

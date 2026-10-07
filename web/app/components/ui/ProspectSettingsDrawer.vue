@@ -135,6 +135,64 @@
               />
             </div>
           </div>
+
+          <div class="border-t border-[var(--app-line)] pt-4">
+            <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Écarter</p>
+
+            <UiProspectDismissalBanner
+              v-if="prospect.dismissed_at"
+              :reason="prospect.dismissal_reason ?? null"
+              :is-dismissed-by-app="prospect.dismissed_by_user_id === null"
+              :is-restoring="isTogglingDismissal"
+              @restore="handleRestore"
+            />
+
+            <div v-else-if="showDismissForm" class="space-y-2 rounded-lg border border-[var(--app-line)] p-3">
+              <label
+                class="block text-xs font-medium text-[var(--app-ink-soft)]"
+                for="prospect-settings-dismissal-reason"
+              >
+                Raison
+              </label>
+              <textarea
+                id="prospect-settings-dismissal-reason"
+                v-model="dismissalReason"
+                rows="2"
+                class="input-field text-sm"
+                placeholder="Ex. a déjà un site, entreprise fermée, hors cible"
+              />
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="btn-secondary flex-1"
+                  :disabled="isTogglingDismissal"
+                  @click="closeDismissForm"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="isTogglingDismissal || !dismissalReason.trim()"
+                  @click="handleDismiss"
+                >
+                  <UIcon v-if="isTogglingDismissal" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
+                  Écarter
+                </button>
+              </div>
+            </div>
+
+            <template v-else>
+              <button type="button" class="btn-secondary w-full" @click="showDismissForm = true">
+                <UIcon name="i-lucide-archive" class="mr-1.5 h-4 w-4" />
+                Écarter ce prospect
+              </button>
+              <p class="text-muted mt-1.5 text-xs">
+                Il quitte vos listes, vos campagnes et les enrichissements mais reste connu : aucune recherche ne le
+                retrouvera. Il reste dans l'onglet « Écartés ».
+              </p>
+            </template>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -167,7 +225,7 @@ import { ref, watch } from 'vue'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
 
-/** Prospect settings sub-drawer: source URLs (Facebook / Google Maps) + « ne plus contacter ». */
+/** Prospect settings sub-drawer: source URLs (Facebook / Google Maps), « ne plus contacter » and « écarter ». */
 const props: UiProspectSettingsDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -190,8 +248,11 @@ const toast: UseToastReturn = useToast()
 const isSaving: Ref<boolean> = ref(false)
 const isTogglingContact: Ref<boolean> = ref(false)
 const isTogglingSmsAuto: Ref<boolean> = ref(false)
+const isTogglingDismissal: Ref<boolean> = ref(false)
 const showStopForm: Ref<boolean> = ref(false)
 const stopReason: Ref<string> = ref('')
+const showDismissForm: Ref<boolean> = ref(false)
+const dismissalReason: Ref<string> = ref('')
 
 /** Editable source-URL form state. */
 const form: Ref<ProspectSettingsForm> = ref({ facebook_url: '', google_maps_url: '' })
@@ -268,6 +329,52 @@ async function handleResumeContact(): Promise<void> {
 }
 
 /**
+ * Hide the « écarter » reason form and forget the typed reason.
+ */
+function closeDismissForm(): void {
+  showDismissForm.value = false
+  dismissalReason.value = ''
+}
+
+/**
+ * Set the prospect aside: it leaves the lists, campaigns and enrichment for the « Écartés » tab.
+ * @returns A promise resolved once the prospect is set aside.
+ */
+async function handleDismiss(): Promise<void> {
+  const reason: string = dismissalReason.value.trim()
+  if (!props.prospect || isTogglingDismissal.value || !reason) return
+  isTogglingDismissal.value = true
+  try {
+    const updated: Prospect = await ProspectsService.dismissProspect(props.prospect.id, reason)
+    emit('updated', updated)
+    closeDismissForm()
+    toast.success("Prospect écarté — retrouvez-le dans l'onglet « Écartés »")
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Action impossible')
+  } finally {
+    isTogglingDismissal.value = false
+  }
+}
+
+/**
+ * Take the prospect back from the « Écartés » tab to the lists, campaigns and enrichment.
+ * @returns A promise resolved once the prospect is taken back.
+ */
+async function handleRestore(): Promise<void> {
+  if (!props.prospect || isTogglingDismissal.value) return
+  isTogglingDismissal.value = true
+  try {
+    const updated: Prospect = await ProspectsService.restoreProspect(props.prospect.id)
+    emit('updated', updated)
+    toast.success('Prospect remis dans vos prospects')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Action impossible')
+  } finally {
+    isTogglingDismissal.value = false
+  }
+}
+
+/**
  * Toggle the prospect's inclusion in the automated SMS (immediate, like « ne plus contacter »).
  * @param enabled - true to keep the automated SMS for this prospect, false to opt it out.
  * @returns A promise resolved once the flag is persisted.
@@ -295,6 +402,7 @@ watch(
       google_maps_url: props.prospect?.google_maps_url ?? '',
     }
     closeStopForm()
+    closeDismissForm()
   },
   { immediate: true },
 )

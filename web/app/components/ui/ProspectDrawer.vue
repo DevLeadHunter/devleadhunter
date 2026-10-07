@@ -143,6 +143,15 @@
               </div>
             </div>
 
+            <div v-if="prospect.dismissed_at" class="px-5 pt-4">
+              <UiProspectDismissalBanner
+                :reason="prospect.dismissal_reason ?? null"
+                :is-dismissed-by-app="prospect.dismissed_by_user_id === null"
+                :is-restoring="isRestoring"
+                @restore="handleRestore"
+              />
+            </div>
+
             <div v-if="prospect.do_not_contact" class="px-5 pt-4">
               <UiProspectDoNotContactBanner
                 :reason="prospect.do_not_contact_reason ?? null"
@@ -779,6 +788,7 @@ const isLoadingDemoSite: Ref<boolean> = ref(false)
 const demoSite: Ref<DemoSite | null> = ref(null)
 const deleteConfirmModal: Ref<{ open: () => void } | null> = ref(null)
 const isTogglingContact: Ref<boolean> = ref(false)
+const isRestoring: Ref<boolean> = ref(false)
 
 // Exposed to the drawer host so it can suspend the swipe-to-next gesture while an edit is in progress.
 defineExpose({ editMode })
@@ -981,6 +991,24 @@ async function handleGenerateAssistant(): Promise<void> {
     toast.error(err instanceof Error ? err.message : 'La génération a échoué')
   } finally {
     isGeneratingAssistant.value = false
+  }
+}
+
+/**
+ * Take the prospect back from the « Écartés » tab to the lists, campaigns and enrichment.
+ * @returns A promise resolved once the prospect is taken back.
+ */
+async function handleRestore(): Promise<void> {
+  if (!props.prospect || isRestoring.value) return
+  isRestoring.value = true
+  try {
+    const updated: Prospect = await ProspectsService.restoreProspect(props.prospect.id)
+    emit('updated', updated)
+    toast.success('Prospect remis dans vos prospects')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Action impossible')
+  } finally {
+    isRestoring.value = false
   }
 }
 
