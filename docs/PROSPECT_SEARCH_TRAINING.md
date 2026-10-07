@@ -422,7 +422,7 @@ Précision de l'app = bons prospects parmi les fiches qu'elle a gardées (les «
 | n° 15 (manche 11) | Suisse | 8 | 4 (+ 1 non contrôlé) | 50 % |
 | n° 16 (manche 11) | France | 3 | 2 (+ 1 mini-site Solocal douteux) | 67 % |
 
-- La Suisse passe de 20 à 57 % les premiers jours à 50-100 % sur les quatre dernières recherches (les électriciens, la case la plus rare, tirent vers le bas) ; la France de 36 à 67-71 %, le Québec de 64 à 90 %. À la main, la manche 1 donnait 75 % (6 bons sur 8) : l'app fait maintenant à peu près aussi bien, seule, et chaque faux des dernières recherches a reçu sa correction.
+- La Suisse passe de 20 à 57 % les premiers jours à 50-100 % sur les quatre dernières recherches (les électriciens, la case la plus rare, tirent vers le bas) ; la France de 36 à 67-71 %, le Québec de 64 à 90 %. À la main, la manche 1 donnait 75 % (6 bons sur 8) : l'app fait maintenant à peu près aussi bien, seule, et chaque faux des dernières recherches a reçu sa correction. Ce n'est pas l'arrivée : Léo veut que l'app fasse mieux qu'à la main (7 octobre), l'entraînement continue donc à chaque recherche.
 - Le 7 octobre à midi, compté case par case, il manquait encore 17 prospects : un total par pays ne suffit pas, le tableau de la campagne fixe un nombre par métier.
 - Les fiches « à confirmer » rapportent peu (1 bon sur 5 dans la reprise de la n° 11) : l'app a raison de les montrer à part.
 - Coût : 35 requêtes par prospect dans la n° 13, environ 80 dans les n° 11 et 12 (électriciens, grandes villes), soit 0,05 à 0,12 $ par prospect (0,0015 $ la requête).
