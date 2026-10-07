@@ -54,6 +54,10 @@ _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
     r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
 )
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
+_LABELLED_STARRED_NUMBER_RE: re.Pattern[str] = re.compile(
+    r"(?:t[ée]l[ée]phone|mobile|portable|natel)[^:;\d]{0,20}:\s*(?:\+41|0)\s?\d{2}(?:[\s.]?\d){7}\s?\*",
+    re.IGNORECASE,
+)
 _NO_ADVERTISING_NOTICE_RE: re.Pattern[str] = re.compile(
     r"\*\s*(?:ne desire pas recevoir de publicite|ne souhaite pas de publicite|pas de publicite|keine werbung"
     r"|blocco pubblicita|no advertising)"
@@ -339,7 +343,9 @@ class CandidateVerifier:
         """
         Take the asterisk a Swiss directory prints after the numbers of a subscriber refusing advertising.
 
-        A site copying the directory prints the notice instead (« * Ne désire pas recevoir de publicité »).
+        A site copying the directory prints the notice instead (« * Ne désire pas recevoir de publicité »);
+        an extract reached through a Google redirect keeps the directory's labels (« Numéro de téléphone
+        mobile: 079 … * »).
 
         Args:
             facts: The candidate, completed in place.
@@ -349,7 +355,7 @@ class CandidateVerifier:
             return
         has_starred_number = (
             cls.is_swiss_directory_page(line) and _STARRED_SWISS_NUMBER_RE.search(line.description) is not None
-        )
+        ) or _LABELLED_STARRED_NUMBER_RE.search(line.description) is not None
         if has_starred_number or _NO_ADVERTISING_NOTICE_RE.search(fold(line.text)):
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)

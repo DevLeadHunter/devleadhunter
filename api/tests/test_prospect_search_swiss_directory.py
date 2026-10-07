@@ -640,6 +640,26 @@ def test_the_asterisk_zip_ch_keeps_for_a_number_search_ch_dropped_refuses_advert
     assert [line["source"] for line in facts.evidence if line["fact"] == "no_advertising"] == ["zip.ch"]
 
 
+def test_a_directory_extract_behind_a_google_redirect_keeps_its_starred_number() -> None:
+    facts = _facts(name="D. Rochat monteur électricien", city="Bulle", phone="076 000 00 98", trade_key="electricien")
+    page = {
+        "organic": [
+            {
+                "link": "https://www.google.com/goto?url=CAESkwEB6zswFU5U4trI6bKf",
+                "title": "D. Rochat monteur électricien à Bulle",
+                "description": "Adresse: Rue du Vieux-Pont 76, 1630 Bulle ; Numéro de téléphone mobile: 079 000 00 98* ; "
+                "Email: info@rochat-electricien.ch",
+            }
+        ]
+    }
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.refuses_advertising is True
+
+
 def test_zip_ch_is_read_for_the_listing_s_number_even_when_the_business_was_found_by_name() -> None:
     facts = _facts(name="Rochat Valentin", city="La Cibourg", phone="078 000 00 95", trade_key="paysagiste")
     business_entry = _entry(
