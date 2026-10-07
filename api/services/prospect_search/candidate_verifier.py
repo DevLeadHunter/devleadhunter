@@ -55,7 +55,7 @@ _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
 )
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
 _LABELLED_STARRED_NUMBER_RE: re.Pattern[str] = re.compile(
-    r"(?:t[ée]l[ée]phone|mobile|portable|natel)[^:;\d]{0,20}:\s*(?:\+41|0)\s?\d{2}(?:[\s.]?\d){7}\s?\*",
+    r"(?:t[ée]l[ée]phone|mobile|portable|natel|fax)[^:;\d]{0,20}:\s*(?:\+41|0)\s?\d{2}(?:[\s.]?\d){7}\s?\*",
     re.IGNORECASE,
 )
 _NO_ADVERTISING_NOTICE_RE: re.Pattern[str] = re.compile(

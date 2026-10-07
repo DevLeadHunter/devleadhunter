@@ -640,14 +640,15 @@ def test_the_asterisk_zip_ch_keeps_for_a_number_search_ch_dropped_refuses_advert
     assert [line["source"] for line in facts.evidence if line["fact"] == "no_advertising"] == ["zip.ch"]
 
 
-def test_a_directory_extract_behind_a_google_redirect_keeps_its_starred_number() -> None:
+@pytest.mark.parametrize("starred_number", ["Numéro de téléphone mobile: 079 000 00 98*", "Fax: 026 000 00 98*"])
+def test_a_directory_extract_behind_a_google_redirect_keeps_its_starred_number(starred_number: str) -> None:
     facts = _facts(name="D. Rochat monteur électricien", city="Bulle", phone="076 000 00 98", trade_key="electricien")
     page = {
         "organic": [
             {
                 "link": "https://www.google.com/goto?url=CAESexemple",
                 "title": "D. Rochat monteur électricien à Bulle",
-                "description": "Adresse: Rue de l'Exemple 1, 1630 Bulle ; Numéro de téléphone mobile: 079 000 00 98* ; "
+                "description": f"Adresse: Rue de l'Exemple 1, 1630 Bulle ; {starred_number} ; "
                 "Email: info@rochat-electricien.ch",
             }
         ]
