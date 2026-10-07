@@ -20,6 +20,7 @@ import aiohttp
 
 from core.config import settings
 from services.email_attachment import EmailAttachment
+from services.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,17 @@ _RESEND_SEND_URL: str = "https://api.resend.com/emails"
 
 class ResendService:
     """Send transactional / cold-outreach emails via the Resend HTTP API."""
+
+    @staticmethod
+    def recipient_field(to_email: str, to_name: str | None) -> str:
+        """
+        The « to » field of a send: the name, then the address with an ASCII domain.
+
+        Resend relies on Amazon SES, which takes an accented domain (« nh-contrôles.ch ») only in
+        its ASCII form (« xn--nh-contrles-9eb.ch »).
+        """
+        address = validation_service.ascii_email(to_email)
+        return f"{to_name} <{address}>" if to_name else address
 
     async def send_email(
         self,
@@ -83,7 +95,7 @@ class ResendService:
             raise RuntimeError("RESEND_API_KEY is not configured")
 
         from_field: str = f"{from_name} <{from_email}>" if from_name else from_email
-        to_field: str = f"{to_name} <{to_email}>" if to_name else to_email
+        to_field: str = self.recipient_field(to_email, to_name)
 
         payload: dict[str, Any] = {
             "from": from_field,
