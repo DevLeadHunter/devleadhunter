@@ -237,3 +237,9 @@ class TestPageDescription:
         og = "Exemple Paysagiste, Morges. 91 followers. Découvrez mes créations de jardinier paysagiste."
 
         assert _parse_og_description(og) == "Découvrez mes créations de jardinier paysagiste."
+
+    def test_og_description_loses_its_visits_count_too(self) -> None:
+        """« Garage Exemple, Terrebonne. 53 followers · 5 personnes étaient ici. L'accueil… »"""
+        og = "Garage Exemple, Terrebonne. 53 followers · 5 personnes étaient ici. L'accueil et la qualité sont irréprochables."
+
+        assert _parse_og_description(og) == "L'accueil et la qualité sont irréprochables."

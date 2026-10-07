@@ -386,10 +386,10 @@ _OG_LIKES_PREFIX_RE = re.compile(
     r"^[^.]*\.\s*\d[\d\s ]*j['’]aime\s*·\s*\d[\d\s ]*en parlent\.\s*",
     re.IGNORECASE,
 )
-# « Vuille Paysagiste, Morges. 91 followers. Découvrez… » — the page's name, town and audience lead
-# og:description before its presentation.
+# « Exemple Paysagiste, Morges. 91 followers. Découvrez… », « … 53 followers · 5 personnes étaient ici. … »:
+# the page's name, town and audience lead og:description before its presentation.
 _OG_AUDIENCE_PREFIX_RE = re.compile(
-    r"^[^.]*\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)\.\s*",
+    r"^[^.]*\.\s*\d[\d\s  .,]*\s*(?:k\s*)?(?:followers|abonné(?:e)?s|j['’]aime)(?:\s*·[^.]*)?\.\s*",
     re.IGNORECASE,
 )
 # A fuller text completes a cut Intro when it opens with the Intro's first characters.
