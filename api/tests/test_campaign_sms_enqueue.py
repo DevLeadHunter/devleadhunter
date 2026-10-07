@@ -57,6 +57,7 @@ def _prospect(pid: int, phone: str, dnc: bool = False):
         phone=phone,
         name=f"Prospect {pid}",
         do_not_contact=dnc,
+        is_dismissed=False,
         contacted_by_module=None,
         contacted_by_module_at=None,
     )

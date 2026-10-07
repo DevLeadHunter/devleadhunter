@@ -96,6 +96,21 @@ async def list_prospects(
     )
 
 
+@router.get(
+    "/dismissed",
+    response_model=list[Prospect],
+    summary="List the prospects set aside",
+    description="The « écartés » prospects: kept so no search finds them again, out of every other list.",
+)
+async def list_dismissed_prospects(
+    current_user: User = Depends(require_auth), db: Session = Depends(get_db)
+) -> list[Prospect]:
+    """List the prospects set aside, the latest first."""
+    return prospect_service.get_dismissed_prospects(
+        db, current_user.id, organization_service.user_org_id(db, current_user.id)
+    )
+
+
 @router.post(
     "/search-suggestions",
     response_model=list[ProspectSearchSuggestion],
@@ -161,6 +176,12 @@ class SmsAutoExclusionRequest(BaseModel):
     """Payload for POST /prospects/{id}/sms-auto-exclusion."""
 
     excluded: bool = Field(..., description="True to skip every automated SMS for this prospect, False to re-allow")
+
+
+class DismissalRequest(BaseModel):
+    """Payload for POST /prospects/{id}/dismissal."""
+
+    reason: str = Field(..., min_length=1, max_length=500, description="Why the prospect is set aside")
 
 
 @router.get(
@@ -428,6 +449,55 @@ async def set_prospect_do_not_contact(
     prospect = await prospect_service.set_do_not_contact(
         db, prospect_id, user_id=current_user.id, enabled=request.enabled, reason=request.reason
     )
+    if not prospect:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
+    return prospect
+
+
+@router.post(
+    "/{prospect_id}/dismissal",
+    response_model=Prospect,
+    summary="Set a prospect aside",
+    description="« Écarter » a prospect: kept so no search finds it again, out of every list, campaign and enrichment.",
+)
+async def dismiss_prospect(
+    prospect_id: int,
+    request: DismissalRequest,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> Prospect:
+    """Set a prospect aside, its pending sends held back.
+
+    Raises:
+        HTTPException: 404 when not visible, 403 when reserved by another member.
+    """
+    row = _get_visible_db_prospect(db, prospect_id, current_user)
+    _assert_not_reserved_by_other(db, current_user, row)
+    prospect = prospect_service.dismiss(db, prospect_id, reason=request.reason, dismissed_by_user_id=current_user.id)
+    if not prospect:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
+    return prospect
+
+
+@router.delete(
+    "/{prospect_id}/dismissal",
+    response_model=Prospect,
+    summary="Take a prospect back",
+    description="Bring an « écarté » prospect back to the lists, campaigns and enrichment.",
+)
+async def restore_prospect(
+    prospect_id: int,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> Prospect:
+    """Take a prospect back from the « Écartés » tab.
+
+    Raises:
+        HTTPException: 404 when not visible, 403 when reserved by another member.
+    """
+    row = _get_visible_db_prospect(db, prospect_id, current_user)
+    _assert_not_reserved_by_other(db, current_user, row)
+    prospect = prospect_service.restore(db, prospect_id, user_id=current_user.id)
     if not prospect:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
     return prospect

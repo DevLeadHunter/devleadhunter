@@ -135,7 +135,7 @@ class TestReviveDemoSite:
 
 def _reachable_prospect(**overrides: object) -> SimpleNamespace:
     """An SMS-reachable prospect (French mobile, not marked « ne plus contacter »)."""
-    base: dict[str, object] = {"phone": "06 12 34 56 78", "do_not_contact": False}
+    base: dict[str, object] = {"phone": "06 12 34 56 78", "do_not_contact": False, "is_dismissed": False}
     base.update(overrides)
     return SimpleNamespace(**base)
 

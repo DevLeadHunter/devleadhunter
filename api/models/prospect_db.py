@@ -67,6 +67,9 @@ class ProspectDB(Base):
     do_not_contact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
     do_not_contact_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     do_not_contact_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
+    dismissal_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    dismissed_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Cross-module contact lock: which sellable module last engaged this prospect, and when. While
     # the lock window holds, the other module skips him so he is never approached twice at once.
@@ -110,6 +113,11 @@ class ProspectDB(Base):
     campaigns: Mapped[list["Campaign"]] = relationship(
         "Campaign", secondary="campaign_prospects", back_populates="prospects"
     )
+
+    @property
+    def is_dismissed(self) -> bool:
+        """Whether the prospect is « écarté »: kept in the base, out of every list, campaign and enrichment."""
+        return self.dismissed_at is not None
 
     def __repr__(self) -> str:
         """String representation of the prospect."""

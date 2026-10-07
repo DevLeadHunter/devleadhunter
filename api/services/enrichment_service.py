@@ -505,9 +505,9 @@ class EnrichmentService:
         self, db: Session, prospect: ProspectDB, record: ProspectEnrichment, *, uid: str | None
     ) -> None:
         """
-        Read the federal register for a Swiss prospect: a closed company is no longer contacted, its head is the contact.
+        Read the federal register for a Swiss prospect: a closed company is set aside, its head is the contact.
 
-        A firm in liquidation or struck off lately sets « Ne plus contacter » with the reason (a landscaper
+        A firm in liquidation or struck off lately goes to the « Écartés » tab with the reason (a landscaper
         ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
         from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
         role, the firm was matched away from its seat, or the publication leaves the first name unsure.
@@ -525,15 +525,14 @@ class EnrichmentService:
         try:
             firm = await swiss_registry.firm_of(name=prospect.name, town=prospect.city, uid=uid)
             closing = swiss_registry.closing_words(firm) if firm is not None else None
-            if closing is not None and not prospect.do_not_contact:
+            if closing is not None and not prospect.is_dismissed:
                 from services.prospect_service import prospect_service
 
-                await prospect_service.set_do_not_contact(
+                prospect_service.dismiss(
                     db,
                     prospect.id,
-                    user_id=prospect.user_id,
-                    enabled=True,
                     reason=f"Entreprise {closing} au registre du commerce (Zefix)",
+                    dismissed_by_user_id=None,
                 )
                 return
             if self._has_settled_contact(record):

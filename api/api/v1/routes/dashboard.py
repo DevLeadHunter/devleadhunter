@@ -61,7 +61,7 @@ async def dashboard_stats(
     uid = current_user.id
     since = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=period_days) if period_days > 0 else None
 
-    prospects_stmt = select(ProspectDB.id).where(ProspectDB.user_id == uid)
+    prospects_stmt = select(ProspectDB.id).where(ProspectDB.user_id == uid, ProspectDB.dismissed_at.is_(None))
     if since is not None:
         prospects_stmt = prospects_stmt.where(ProspectDB.created_at >= since)
     prospects_total = _count(db, prospects_stmt)
@@ -187,8 +187,9 @@ def _apply_coverage_scope(stmt, scope: str, member_id, uid: int, org_id):
     """Restrict a prospect select to the coverage scope (me / org / member).
 
     Shared by the coverage aggregation and the zone-prospects listing so both
-    endpoints resolve visibility identically (member is org-guarded).
+    endpoints resolve visibility identically (member is org-guarded); « écartés » prospects stay off the map.
     """
+    stmt = stmt.where(ProspectDB.dismissed_at.is_(None))
     if scope == "org" and org_id is not None:
         return stmt.where(ProspectDB.organization_id == org_id)
     if scope == "member" and member_id is not None and org_id is not None:

@@ -113,6 +113,8 @@ class SmsAutomationService:
             return "Déjà relancé par SMS (ou SMS envoyé à la main)"
         if prospect.do_not_contact:
             return "Ne plus contacter"
+        if prospect.is_dismissed:
+            return "Écarté"
         if contact_lock_service.is_locked_for_module(prospect, MODULE_WEBSITES, datetime.utcnow()):
             return "Réservé par un autre module"
         if prospect.sms_auto_excluded:

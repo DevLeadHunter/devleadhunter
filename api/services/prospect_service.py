@@ -66,9 +66,9 @@ class ProspectService:
             organization_id: The user's organization (None = personal scope only)
 
         Returns:
-            List of all visible prospects, reservation names resolved
+            List of all visible prospects, reservation names resolved — the « écartés » ones aside
         """
-        query = db.query(ProspectDB)
+        query = db.query(ProspectDB).filter(ProspectDB.dismissed_at.is_(None))
 
         # Filter by user if provided
         if user_id is not None:
@@ -477,6 +477,105 @@ class ProspectService:
         prospect = Prospect.model_validate(db_prospect)
         self._set_opt_out_flags(prospect, db_prospect, self._resolve_opt_outs(db, [db_prospect]))
         return prospect
+
+    def dismiss(
+        self, db: Session, prospect_id: int, *, reason: str, dismissed_by_user_id: int | None
+    ) -> Prospect | None:
+        """
+        Set a prospect aside (« écarté »): no search finds it again, no list, campaign or enrichment shows it.
+
+        Its pending sends are held back with the reason, and the decision is logged to the owner's feed.
+
+        Args:
+            db: Active database session.
+            prospect_id: The prospect to set aside.
+            reason: Why, shown in the « Écartés » tab.
+            dismissed_by_user_id: The member who set it aside; ``None`` when the app did.
+
+        Returns:
+            The updated prospect, or ``None`` when it does not exist.
+        """
+        from services.campaign_queue_service import DISMISSED_SKIP_REASON, CampaignQueueService
+
+        db_prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id).first()
+        if db_prospect is None:
+            return None
+
+        clean_reason = reason.strip()[:500]
+        db_prospect.dismissed_at = datetime.now(UTC)
+        db_prospect.dismissal_reason = clean_reason
+        db_prospect.dismissed_by_user_id = dismissed_by_user_id
+        db.commit()
+        db.refresh(db_prospect)
+        CampaignQueueService(db).skip_pending_for_prospect(prospect_id, clean_reason, label=DISMISSED_SKIP_REASON)
+
+        activity_log_service.record(
+            category=CATEGORY_PROSPECT,
+            action="prospect_dismissed",
+            status=STATUS_WARNING,
+            title=f"Écarté · {db_prospect.name}",
+            detail=clean_reason,
+            user_id=dismissed_by_user_id or db_prospect.user_id,
+            entity_type="prospect",
+            entity_id=db_prospect.id,
+        )
+        return self._to_models_with_reservers(db, [db_prospect])[0]
+
+    def restore(self, db: Session, prospect_id: int, *, user_id: int) -> Prospect | None:
+        """
+        Take a prospect back from the « Écartés » tab: it returns to the lists, campaigns and enrichment.
+
+        Sends held back when it was set aside stay held back (re-queue them by hand if needed).
+
+        Args:
+            db: Active database session.
+            prospect_id: The prospect to take back.
+            user_id: The member taking it back (for the activity log).
+
+        Returns:
+            The updated prospect, or ``None`` when it does not exist.
+        """
+        db_prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id).first()
+        if db_prospect is None:
+            return None
+
+        db_prospect.dismissed_at = None
+        db_prospect.dismissal_reason = None
+        db_prospect.dismissed_by_user_id = None
+        db.commit()
+        db.refresh(db_prospect)
+
+        activity_log_service.record(
+            category=CATEGORY_PROSPECT,
+            action="prospect_restored",
+            status=STATUS_INFO,
+            title=f"Remis dans les prospects · {db_prospect.name}",
+            detail=None,
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=db_prospect.id,
+        )
+        return self._to_models_with_reservers(db, [db_prospect])[0]
+
+    def get_dismissed_prospects(self, db: Session, user_id: int, organization_id: int | None) -> list[Prospect]:
+        """
+        The « écartés » prospects visible to a user (their own + their organization's), the latest set aside first.
+
+        Args:
+            db: Active database session.
+            user_id: The user listing them.
+            organization_id: The user's organization (None = personal scope only).
+
+        Returns:
+            The prospects set aside, reservation names resolved.
+        """
+        rows = (
+            db.query(ProspectDB)
+            .filter(_org_visibility_filter(user_id, organization_id), ProspectDB.dismissed_at.is_not(None))
+            .order_by(ProspectDB.dismissed_at.desc())
+            .all()
+        )
+        return self._to_models_with_reservers(db, rows)
 
     async def set_sms_auto_excluded(
         self, db: Session, prospect_id: int, *, user_id: int, excluded: bool

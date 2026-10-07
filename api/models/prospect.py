@@ -264,6 +264,11 @@ class Prospect(ProspectBase):
         None, description="Optional note on why contact was stopped (shown on the held-back queue lines)"
     )
     do_not_contact_at: datetime | None = Field(None, description="When « ne plus contacter » was set")
+    dismissed_at: datetime | None = Field(None, description="When the prospect was « écarté » (None = in use)")
+    dismissal_reason: str | None = Field(None, description="Why it was « écarté », shown in the « Écartés » tab")
+    dismissed_by_user_id: int | None = Field(
+        None, description="Who « écarta » it — None when the app did (e.g. a company the register lists as closed)"
+    )
     sms_auto_excluded: bool = Field(
         False, description="Operator opted this prospect out of every automated SMS (relance J+30 and cold)"
     )

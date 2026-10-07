@@ -1572,7 +1572,7 @@ class DemoSiteService:
         if not site.prospect_id:
             return False
         prospect = db.query(ProspectDB).filter(ProspectDB.id == site.prospect_id).first()
-        if prospect is None or prospect.do_not_contact:
+        if prospect is None or prospect.do_not_contact or prospect.is_dismissed:
             return False
         # A mobile anywhere in the list keeps the demo revivable for a later SMS relance.
         phone_e164 = first_mobile_e164(prospect)

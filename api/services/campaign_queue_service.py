@@ -62,6 +62,7 @@ _MANUAL_CANCEL_REASON = "Annulé manuellement"
 
 # Reason stamped on a row held back because the prospect was marked « ne plus contacter ».
 _DO_NOT_CONTACT_SKIP_REASON = "Ne plus contacter"
+DISMISSED_SKIP_REASON: str = "Écarté"
 
 # Reason stamped when a prospect is reserved by another sellable module (cross-module lock).
 _CROSS_MODULE_SKIP_REASON = "Réservé par un autre module"
@@ -249,8 +250,8 @@ class CampaignQueueService:
             if unsubscribe_service.is_unsubscribed(self.db, prospect.email or ""):
                 logger.debug("[Queue] Skipping unsubscribed prospect %d", prospect.id)
                 continue
-            if prospect.do_not_contact:
-                logger.debug("[Queue] Skipping do-not-contact prospect %d", prospect.id)
+            if prospect.do_not_contact or prospect.is_dismissed:
+                logger.debug("[Queue] Skipping do-not-contact or set-aside prospect %d", prospect.id)
                 continue
             if contact_lock_service.is_locked_for_module(prospect, module, now):
                 logger.info("[Queue] Skipping prospect %d — reserved by another module", prospect.id)
@@ -479,7 +480,7 @@ class CampaignQueueService:
 
         if not prospect.email or unsubscribe_service.is_unsubscribed(self.db, prospect.email):
             return False
-        if prospect.do_not_contact:
+        if prospect.do_not_contact or prospect.is_dismissed:
             return False
 
         # A/B variant is assigned by position, identically to the bulk enqueue.
@@ -744,7 +745,7 @@ class CampaignQueueService:
         for prospect in campaign.prospects:
             if prospect.id in already_queued:
                 continue
-            if prospect.do_not_contact:
+            if prospect.do_not_contact or prospect.is_dismissed:
                 continue
             if contact_lock_service.is_locked_for_module(prospect, module, now):
                 result.skipped_locked.append({"id": prospect.id, "name": prospect.name or ""})
@@ -819,8 +820,8 @@ class CampaignQueueService:
         campaign: Campaign = item.campaign
         is_follow_up: bool = item.queue_type != "initial"
 
-        if prospect.do_not_contact:
-            self._skip(item, _DO_NOT_CONTACT_SKIP_REASON)
+        if prospect.do_not_contact or prospect.is_dismissed:
+            self._skip(item, _DO_NOT_CONTACT_SKIP_REASON if prospect.do_not_contact else DISMISSED_SKIP_REASON)
             return
 
         if is_follow_up and self._prospect_replied(item.user_id, prospect.id):
@@ -1347,11 +1348,11 @@ class CampaignQueueService:
             self.db.commit()
             return
 
-        # Guard: the operator marked the prospect « ne plus contacter » after it was enqueued.
-        if prospect.do_not_contact:
-            logger.info("[Queue] Skipping do-not-contact prospect %d", prospect.id)
+        # Guard: the operator marked the prospect « ne plus contacter » or set it aside after it was enqueued.
+        if prospect.do_not_contact or prospect.is_dismissed:
+            logger.info("[Queue] Skipping do-not-contact or set-aside prospect %d", prospect.id)
             item.status = _STATUS_SKIPPED
-            item.skip_reason = _DO_NOT_CONTACT_SKIP_REASON
+            item.skip_reason = _DO_NOT_CONTACT_SKIP_REASON if prospect.do_not_contact else DISMISSED_SKIP_REASON
             self.db.commit()
             return
 

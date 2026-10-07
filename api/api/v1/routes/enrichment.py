@@ -19,6 +19,8 @@ router = APIRouter(prefix="/prospects", tags=["enrichment"])
 # Cap a single bulk enrichment request — each item drives a headless browser.
 _MAX_BULK_ENRICH = 50
 
+_DISMISSED_ENRICHMENT_REFUSAL = "Prospect écarté : remettez-le dans vos prospects pour l'enrichir."
+
 
 class BulkEnrichRequest(BaseModel):
     """Payload for POST /prospects/enrichment/bulk-run."""
@@ -55,6 +57,8 @@ async def run_prospect_enrichment(
     prospect = enrichment_service.get_prospect_for_user(db, current_user.id, prospect_id)
     if not prospect:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prospect not found")
+    if prospect.is_dismissed:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=_DISMISSED_ENRICHMENT_REFUSAL)
     record = await enrichment_service.enrich(db, current_user.id, prospect, scraped_data=scraped_data)
     return ProspectEnrichmentResponse.model_validate(record)
 
@@ -155,6 +159,10 @@ async def run_bulk_enrichment(
         prospect = enrichment_service.get_prospect_for_user(db, current_user.id, prospect_id)
         if not prospect:
             results.append({"prospect_id": prospect_id, "status": "failed", "error": "Prospect introuvable"})
+            failed += 1
+            continue
+        if prospect.is_dismissed:
+            results.append({"prospect_id": prospect_id, "status": "failed", "error": _DISMISSED_ENRICHMENT_REFUSAL})
             failed += 1
             continue
 

@@ -29,7 +29,13 @@ async def export_prospects_csv(
     Returns a CSV file with all prospects for the current user.
     """
     # Get prospects
-    prospects = db.query(ProspectDB).filter(ProspectDB.user_id == current_user.id).offset(skip).limit(limit).all()
+    prospects = (
+        db.query(ProspectDB)
+        .filter(ProspectDB.user_id == current_user.id, ProspectDB.dismissed_at.is_(None))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     if not prospects:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No prospects found")

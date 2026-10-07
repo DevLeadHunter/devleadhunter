@@ -136,6 +136,7 @@ class KnownBusinessIndex:
     def __init__(self) -> None:
         self._prospect_id_by_key: dict[str, int] = {}
         self._do_not_contact_keys: set[str] = set()
+        self._dismissed_prospect_ids: set[int] = set()
         self._contacted_keys: set[str] = set()
         self._rejected_keys: set[str] = set()
         self._awaiting_decision_keys: set[str] = set()
@@ -177,6 +178,8 @@ class KnownBusinessIndex:
                 index._prospect_id_by_key.setdefault(key, prospect.id)
                 if prospect.do_not_contact:
                     index._do_not_contact_keys.add(key)
+            if prospect.is_dismissed:
+                index._dismissed_prospect_ids.add(prospect.id)
 
         since = naive_utc_now() - _REJECTION_MEMORY
         rejected = db.execute(
@@ -235,9 +238,13 @@ class KnownBusinessIndex:
                 )
         for key in keys:
             if key in self._prospect_id_by_key:
-                return KnownBusiness(
-                    CandidateRejectReason.ALREADY_KNOWN, "Déjà dans vos prospects.", self._prospect_id_by_key[key]
+                prospect_id = self._prospect_id_by_key[key]
+                detail = (
+                    "Déjà dans vos prospects, onglet « Écartés »."
+                    if prospect_id in self._dismissed_prospect_ids
+                    else "Déjà dans vos prospects."
                 )
+                return KnownBusiness(CandidateRejectReason.ALREADY_KNOWN, detail, prospect_id)
         if any(key in self._contacted_keys for key in keys):
             return KnownBusiness(CandidateRejectReason.ALREADY_KNOWN, "Son adresse a déjà reçu un de vos emails.", None)
         if any(key in self._awaiting_decision_keys for key in keys):

@@ -16,6 +16,7 @@ def _prospect(**overrides: object) -> SimpleNamespace:
         "id": 7,
         "phone": "06 12 34 56 78",
         "do_not_contact": False,
+        "is_dismissed": False,
         "sms_auto_excluded": False,
         "contacted": False,
     }

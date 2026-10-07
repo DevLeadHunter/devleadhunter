@@ -220,7 +220,7 @@ class SmsRelanceService:
         to_e164 = first_mobile_e164(prospect)
         if to_e164 is None:
             return None
-        if prospect.do_not_contact:
+        if prospect.do_not_contact or prospect.is_dismissed:
             return None
         # Per-prospect opt-out of every automated SMS (the operator handles it by hand).
         if prospect.sms_auto_excluded:

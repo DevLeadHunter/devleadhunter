@@ -51,7 +51,7 @@ def _record() -> SimpleNamespace:
 def _prospect() -> SimpleNamespace:
     """A Swiss landscaper of the campaign."""
     return SimpleNamespace(
-        id=1, name="Exemple Paysages Sàrl", city="Porrentruy", country="CH", do_not_contact=False, user_id=7
+        id=1, name="Exemple Paysages Sàrl", city="Porrentruy", country="CH", is_dismissed=False, user_id=7
     )
 
 
@@ -110,24 +110,22 @@ def test_a_firm_found_away_from_its_seat_is_only_proposed(register_firms: list[S
     assert (record.proposed_first_name, record.proposed_last_name) == ("Paul", "Exemple")
 
 
-def test_a_firm_struck_off_lately_is_no_longer_contacted(
+def test_a_firm_struck_off_lately_is_set_aside_by_the_app(
     register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A recent striking-off sets « Ne plus contacter » with its reason, and names nobody."""
+    """A recent striking-off sends the prospect to the « Écartés » tab with its reason, and names nobody."""
     register_firms.append(_firm(status="GELOESCHT", struck_off_on=datetime.now(UTC).date() - timedelta(days=90)))
-    flagged: list[tuple[int, str | None]] = []
+    set_aside: list[tuple[int, str, int | None]] = []
 
-    async def set_do_not_contact(
-        db: object, prospect_id: int, *, user_id: int, enabled: bool, reason: str | None = None
-    ) -> None:
-        flagged.append((prospect_id, reason))
+    def dismiss(db: object, prospect_id: int, *, reason: str, dismissed_by_user_id: int | None) -> None:
+        set_aside.append((prospect_id, reason, dismissed_by_user_id))
 
     from services.prospect_service import prospect_service
 
-    monkeypatch.setattr(prospect_service, "set_do_not_contact", set_do_not_contact)
+    monkeypatch.setattr(prospect_service, "dismiss", dismiss)
     record = _record()
 
     asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
 
-    assert flagged == [(1, "Entreprise radiée au registre du commerce (Zefix)")]
+    assert set_aside == [(1, "Entreprise radiée au registre du commerce (Zefix)", None)]
     assert record.contact_first_name is None and record.proposed_first_name is None

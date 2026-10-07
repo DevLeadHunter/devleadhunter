@@ -1,5 +1,6 @@
 """Rules of the prospect search that need no network: trades, identity, decision, Facebook results, judge answers."""
 
+from datetime import datetime
 from typing import ClassVar
 
 import pytest
@@ -225,6 +226,16 @@ class TestKnownBusinessIndex:
         match = index.match(self._keys(email="refus@example.com"))
 
         assert match is not None and match.reason is CandidateRejectReason.DO_NOT_CONTACT
+
+    def test_a_dismissed_prospect_stays_known_and_points_to_its_tab(self, db: Session) -> None:
+        prospect = self._prospect(db, dismissed_at=datetime(2026, 10, 7, 9, 0), dismissal_reason="Entreprise radiée")
+        index = KnownBusinessIndex.load(db, user_id=USER_ID, organization_id=None, search_id=1)
+
+        known = index.match(self._keys(phone="079 473 19 61"))
+
+        assert known is not None
+        assert (known.reason, known.prospect_id) == (CandidateRejectReason.ALREADY_KNOWN, prospect.id)
+        assert known.detail == "Déjà dans vos prospects, onglet « Écartés »."
 
     def test_another_user_s_prospect_is_not_known(self, db: Session) -> None:
         self._prospect(db, user_id=USER_ID + 1)
