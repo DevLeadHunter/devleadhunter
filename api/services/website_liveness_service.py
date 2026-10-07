@@ -217,9 +217,18 @@ class WebsiteLivenessService:
             return False
         lowered_title = title.group(1).strip().lower().removesuffix(".")
         return any(
-            lowered_title in (f"{prefix} {host}", f"{prefix} www.{host}")
+            lowered_title in (f"{prefix} {name}", f"{prefix} www.{name}")
             for prefix in cls.HOSTING_WELCOME_TITLE_PREFIXES
+            for name in cls._spellings_of(host)
         )
+
+    @staticmethod
+    def _spellings_of(host: str) -> set[str]:
+        """A host as a URL writes it and as a reader does (« xn--nh-contrles-9eb.ch » is « nh-contrôles.ch »)."""
+        try:
+            return {host, host.encode("ascii").decode("idna")}
+        except UnicodeError:
+            return {host}
 
     async def _probe(self, url: str) -> WebsiteStatus:
         """
