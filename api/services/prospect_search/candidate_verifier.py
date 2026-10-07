@@ -118,6 +118,10 @@ _COMMON_NAME_WORDS: frozenset[str] = frozenset(
     }
 )
 
+_NAME_LINK_WORDS: frozenset[str] = frozenset(
+    {"du", "de", "des", "la", "le", "les", "et", "di", "da", "del", "von", "und", "and", "the", "of"}
+)
+
 # Outlets of these networks are run by a group: the person reading the email does not decide.
 _CHAIN_NAME_MARKERS: tuple[str, ...] = (
     "norauto",
@@ -479,12 +483,17 @@ class CandidateVerifier:
     @classmethod
     def distinctive_tokens(cls, facts: CandidateFacts, trade: TradeProfile) -> set[str]:
         """Words of the business name that tell it from another of the same trade and town."""
+        return {token for token in cls.own_name_words(facts, trade) if len(token) >= 4}
+
+    @staticmethod
+    def own_name_words(facts: CandidateFacts, trade: TradeProfile) -> set[str]:
+        """Words of the business name that belong to it alone: no linking word, trade word, common word or town."""
         trade_words = {token for alias in (*trade.aliases, trade.label) for token in company_tokens(alias)}
         town_words = company_tokens(facts.town)
         return {
             token
             for token in company_tokens(facts.name)
-            if len(token) >= 4
+            if token not in _NAME_LINK_WORDS
             and token not in _COMMON_NAME_WORDS
             and token not in trade_words
             and token not in town_words
@@ -492,11 +501,20 @@ class CandidateVerifier:
 
     @classmethod
     def names_business(cls, text: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
-        """Whether a text talks about this business: close name, or every distinctive word present."""
+        """
+        Whether a text talks about this business: close name, or every distinctive word present.
+
+        A text carrying none of the words that belong to the name alone names another business,
+        however close the rest (« Garage du Moulin » is not « Garage du Soleil »).
+        """
+        own_words = cls.own_name_words(facts, trade)
+        text_words = company_tokens(text)
+        if own_words and not own_words & text_words:
+            return False
         if company_similarity(text, facts.name) >= _NAMED_IN_TEXT_SIMILARITY:
             return True
         distinctive = cls.distinctive_tokens(facts, trade)
-        return bool(distinctive) and distinctive <= company_tokens(text)
+        return bool(distinctive) and distinctive <= text_words
 
     @classmethod
     def is_facebook_page_of(cls, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile) -> bool:

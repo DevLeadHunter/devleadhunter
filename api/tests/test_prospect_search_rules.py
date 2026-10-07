@@ -24,6 +24,7 @@ from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity, KnownBusinessIndex
+from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.registry_sources import RegistryCompany
 from services.prospect_search.search_judge import SearchJudge, SearchResultLine
@@ -464,6 +465,18 @@ class TestCandidateDecision:
 
         facts.phone = "079 000 00 11"
         assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.KEPT
+
+
+class TestBusinessNaming:
+    def test_a_name_sharing_only_generic_words_is_another_business(self) -> None:
+        facts = CandidateFacts(
+            name="Garage du Soleil", trade_key="garage", country="CH", origin="google_local", city="Ardon"
+        )
+        garage = TradeCatalog.resolve("garage")
+
+        assert CandidateVerifier.names_business("Garage du Moulin SA - Ardon", facts, garage) is False
+        assert CandidateVerifier.names_business("Garage du Soleil, Yves Rochat - Ardon", facts, garage) is True
+        assert CandidateVerifier.names_business("Garage du Lac SA", facts, garage) is False
 
 
 class TestFacebookPageResults:
