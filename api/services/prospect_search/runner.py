@@ -55,6 +55,7 @@ from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.facebook_contact import FacebookContactRead, facebook_contact_recorder
 from services.prospect_search.facebook_page_results import FacebookPageResults
+from services.prospect_search.french_registry import french_registry
 from services.prospect_search.registry_sources import RegistryCompany, rbq_registry, rge_registry
 from services.prospect_search.search_judge import search_judge
 from services.prospect_search.search_zones import SearchZones
@@ -577,6 +578,7 @@ class ProspectSearchRunner:
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 if verdict.status in _PROPOSED_STATUSES:
                     await swiss_registry.read_closing(facts)
+                    await french_registry.read_closing(facts)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
             except Exception as exc:
                 logger.warning("Prospect search %s: candidate %s failed: %s", self._search_id, candidate_id, exc)

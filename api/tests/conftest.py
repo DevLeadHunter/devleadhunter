@@ -16,6 +16,7 @@ from core.config import settings
 from core.database import Base
 from scrappers.google_website_button import google_website_button
 from services.decision_maker.french_departments import FrenchDepartments
+from services.prospect_search.french_registry import FrenchRegistry
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.prospect_search.swiss_registry import SwissRegisterFirm, swiss_registry
 from services.r2_storage_service import r2_storage
@@ -75,6 +76,16 @@ def swiss_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(swiss_registry, "firms_named", no_firm)
     monkeypatch.setattr(swiss_registry, "address_of", no_address)
     monkeypatch.setattr(swiss_registry, "_detail", no_page)
+
+
+@pytest.fixture(autouse=True)
+def french_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The French company registry lists nobody unless a test scripts it: a search never calls it."""
+
+    async def no_company(query: str, **_options: object) -> list[dict[str, object]]:
+        return []
+
+    monkeypatch.setattr(FrenchRegistry, "_companies", staticmethod(no_company))
 
 
 @pytest.fixture(autouse=True)
