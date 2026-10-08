@@ -107,3 +107,12 @@ def test_a_rendered_template_without_a_lexicon_country_is_untouched() -> None:
     text = "Votre devis gratuit par e-mail"
     assert RegionalLexicon.localize_rendered(text, {RegionalLexicon.COUNTRY_KEY: "FR"}) == text
     assert RegionalLexicon.localize_rendered(text, {"entreprise": "Tremblay"}) == text
+
+
+def test_the_trade_words_are_written_the_quebec_way() -> None:
+    """Québec test sites still said « Artisan électricien » and « tableau électrique » (8 Oct 2026)."""
+    assert _quebec("Artisan électricien") == "Entrepreneur électricien"
+    assert _quebec("Un seul artisan pour tout votre extérieur") == "Un seul entrepreneur pour tout votre extérieur"
+    assert _quebec("Nos artisans et l'artisan du quartier") == "Nos entrepreneurs et l'entrepreneur du quartier"
+    assert _quebec("Remplacement du tableau électrique") == "Remplacement du panneau électrique"
+    assert _quebec("Un travail artisanal") == "Un travail artisanal"

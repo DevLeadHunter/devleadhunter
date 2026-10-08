@@ -412,6 +412,8 @@ class CountryProfiles:
                 "week-end": "fin de semaine",
                 "weekend": "fin de semaine",
                 "à emporter": "pour emporter",
+                "artisan": "entrepreneur",
+                "tableau électrique": "panneau électrique",
             },
             address_trailing_names=("Canada", "QC"),
             address_region_names=("Québec", "Quebec"),
