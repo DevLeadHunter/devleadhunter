@@ -63,8 +63,41 @@ COMMON_NAME_WORDS: frozenset[str] = frozenset(
 )
 
 NAME_LINK_WORDS: frozenset[str] = frozenset(
-    {"du", "de", "des", "la", "le", "les", "et", "di", "da", "del", "von", "und", "and", "the", "of"}
+    {
+        "du",
+        "de",
+        "des",
+        "la",
+        "le",
+        "les",
+        "et",
+        "au",
+        "aux",
+        "di",
+        "da",
+        "das",
+        "dos",
+        "del",
+        "von",
+        "und",
+        "and",
+        "the",
+        "of",
+    }
 )
+_STEMMED_WORD_MIN_CHARS: int = 5
+
+
+def _stem(word: str) -> str:
+    """A folded word without its plural and feminine endings: « extérieures », « exterieurs » read « exterieur »."""
+    if len(word) >= _STEMMED_WORD_MIN_CHARS and word.endswith("s") and not word.endswith("ss"):
+        word = word[:-1]
+    if len(word) >= _STEMMED_WORD_MIN_CHARS and word.endswith("e") and not word.endswith("ee"):
+        word = word[:-1]
+    return word
+
+
+_COMMON_NAME_STEMS: frozenset[str] = frozenset(_stem(word) for word in COMMON_NAME_WORDS)
 
 
 class BusinessName:
@@ -131,8 +164,8 @@ class BusinessName:
         Returns:
             The share, from 0.5 to 1, or None when the two names are two businesses'.
         """
-        business_distinctive = cls.distinctive_words(business_name, town=town)
-        checked_distinctive = cls.distinctive_words(cls.clean(name), town=town)
+        business_distinctive = cls.distinctive_stems(business_name, town=town)
+        checked_distinctive = cls.distinctive_stems(cls.clean(name), town=town)
         if not business_distinctive:
             business_words = cls._name_words(business_name)
             return 1.0 if business_words and cls._name_words(cls.clean(name)) == business_words else None
@@ -163,9 +196,27 @@ class BusinessName:
         return bool(business_words) and cls._words_beside_trade(cls.clean(name)) == business_words
 
     @classmethod
+    def is_exact_name(cls, name: str, business_name: str) -> bool:
+        """
+        Whether a name is the business's name word for word, its trade words included.
+
+        Stricter than ``is_same_name``: « ABC EXEMPLE & PISCINE » is « ABC Exemple & Piscine », while « SCI DE
+        L'EXEMPLE », the landlord, is not « Garage de l'Exemple ».
+
+        Args:
+            name: A registry company's name, or one of its trade names.
+            business_name: The prospect's business name.
+
+        Returns:
+            True when both names have the same words, legal form, accents and dotted initials aside.
+        """
+        business_stems = {_stem(word) for word in cls._name_words(business_name)}
+        return bool(business_stems) and {_stem(word) for word in cls._name_words(cls.clean(name))} == business_stems
+
+    @classmethod
     def _words_beside_trade(cls, name: str) -> set[str]:
-        """The words of a name without its legal form and its trade words."""
-        return {word for word in cls._name_words(name) if not TradeCatalog.is_trade_word(word)}
+        """The stems of a name's words without its legal form and its trade words."""
+        return {_stem(word) for word in cls._name_words(name) if not TradeCatalog.is_trade_word(word)}
 
     @classmethod
     def distinctive_words(cls, name: str, *, town: str | None = None) -> set[str]:
@@ -182,6 +233,20 @@ class BusinessName:
         return cls._distinctive(cls._name_words(name)) - company_tokens(town or "")
 
     @classmethod
+    def distinctive_stems(cls, name: str, *, town: str | None = None) -> set[str]:
+        """
+        The distinctive words of a name without their plural and feminine endings, to compare two spellings.
+
+        Args:
+            name: A business name.
+            town: The business's town, if known.
+
+        Returns:
+            The stems (« Arbres aux paysages Exemple » gives « arbr », « exemple »).
+        """
+        return {_stem(word) for word in cls.distinctive_words(name, town=town)}
+
+    @classmethod
     def _name_words(cls, name: str) -> set[str]:
         """The words of a name, its legal form left out (« inc », « Sàrl ») and its dotted initials joined."""
         return company_tokens(join_dotted_initials(cls.without_legal_form(name)))
@@ -192,7 +257,10 @@ class BusinessName:
         return {
             word
             for word in words
-            if word not in COMMON_NAME_WORDS and word not in NAME_LINK_WORDS and not TradeCatalog.is_trade_word(word)
+            if word not in COMMON_NAME_WORDS
+            and _stem(word) not in _COMMON_NAME_STEMS
+            and word not in NAME_LINK_WORDS
+            and not TradeCatalog.is_trade_word(word)
         }
 
     @staticmethod

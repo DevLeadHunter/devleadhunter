@@ -49,6 +49,81 @@ _NAF_BY_TRADE: dict[str, frozenset[str]] = {
     "restaurant": frozenset({"5610", "5630", "5621"}),
 }
 
+_OFFICIAL_ACTIVITY_CODES: tuple[str, ...] = (
+    "01.30Z",
+    "01.61Z",
+    "02.40Z",
+    "10.11Z",
+    "10.13A",
+    "10.13B",
+    "10.71A",
+    "10.71B",
+    "10.71C",
+    "10.71D",
+    "10.85Z",
+    "10.89Z",
+    "16.23Z",
+    "25.62A",
+    "25.62B",
+    "25.72Z",
+    "31.01Z",
+    "31.09A",
+    "31.09B",
+    "41.20A",
+    "41.20B",
+    "42.11Z",
+    "42.91Z",
+    "43.12A",
+    "43.12B",
+    "43.21A",
+    "43.21B",
+    "43.22A",
+    "43.22B",
+    "43.29A",
+    "43.29B",
+    "43.32A",
+    "43.32B",
+    "43.32C",
+    "43.33Z",
+    "43.34Z",
+    "43.91A",
+    "43.91B",
+    "43.99A",
+    "43.99B",
+    "43.99C",
+    "43.99D",
+    "43.99E",
+    "45.11Z",
+    "45.19Z",
+    "45.20A",
+    "45.20B",
+    "45.31Z",
+    "45.32Z",
+    "45.40Z",
+    "46.19A",
+    "46.19B",
+    "46.32A",
+    "46.32B",
+    "46.32C",
+    "47.22Z",
+    "47.24Z",
+    "47.76Z",
+    "56.10A",
+    "56.10B",
+    "56.10C",
+    "56.21Z",
+    "56.29A",
+    "56.29B",
+    "56.30Z",
+    "81.30Z",
+    "86.22A",
+    "86.22B",
+    "86.22C",
+    "86.23Z",
+    "96.02A",
+    "96.02B",
+)
+
 
 def _normalise_naf(naf_code: str | None) -> str | None:
     """Strip separators and case from a NAF code (« 81.30Z » → « 8130Z »)."""
@@ -78,3 +153,60 @@ def activity_consistency(trade: str | None, naf_code: str | None) -> bool | None
     if not prefixes or not normalised:
         return None
     return any(normalised.startswith(prefix) for prefix in prefixes)
+
+
+def has_known_activity(trade: str | None) -> bool:
+    """
+    Whether the activity codes coherent with a trade are known, so a registry company's code can be checked.
+
+    Args:
+        trade: The prospect's normalised trade word.
+
+    Returns:
+        True when :func:`activity_consistency` can judge a code for that trade.
+    """
+    return fold(trade or "") in _NAF_BY_TRADE
+
+
+def activity_codes_of(trade: str | None) -> list[str]:
+    """
+    The official activity codes coherent with a trade, to filter a registry search on them.
+
+    Args:
+        trade: The prospect's normalised trade word.
+
+    Returns:
+        The codes as the registry writes them (« 43.21A »); empty for a trade without known codes.
+    """
+    prefixes = _NAF_BY_TRADE.get(fold(trade or ""), frozenset())
+    return [code for code in _OFFICIAL_ACTIVITY_CODES if any(code.replace(".", "").startswith(p) for p in prefixes)]
+
+
+_MAIN_NAF_BY_TRADE: dict[str, str] = {
+    "garagiste": "4520",
+    "carrossier": "4520",
+    "plombier": "4322",
+    "chauffagiste": "4322",
+    "electricien": "4321",
+    "paysagiste": "8130",
+    "menuisier": "4332",
+    "couvreur": "4391",
+    "peintre": "4334",
+    "carreleur": "4333",
+}
+
+
+def is_main_activity(trade: str | None, naf_code: str | None) -> bool:
+    """
+    Whether a code is the activity the trade declares first (« 43.21A » for an electrician, not « 43.99C »).
+
+    Args:
+        trade: The prospect's normalised trade word.
+        naf_code: A registry company's main activity code.
+
+    Returns:
+        True when the code is the trade's main activity.
+    """
+    main_prefix = _MAIN_NAF_BY_TRADE.get(fold(trade or ""))
+    normalised = _normalise_naf(naf_code)
+    return bool(main_prefix and normalised and normalised.startswith(main_prefix))

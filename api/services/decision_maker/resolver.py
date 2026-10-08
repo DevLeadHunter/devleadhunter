@@ -8,12 +8,14 @@ import re
 from dataclasses import replace
 
 from enums.website_status import WebsiteStatus
+from services.decision_maker.email_owner import EmailOwnerStrategy
 from services.decision_maker.strategies import (
     BusinessNameOwnerStrategy,
     LegalMentionsStrategy,
     LlmAggregateStrategy,
     OwnerResponseStrategy,
     PappersStrategy,
+    RbqOfficerStrategy,
     RegistreGouvStrategy,
     WebRegistryStrategy,
 )
@@ -50,6 +52,7 @@ class DecisionMakerResolver:
             LegalMentionsStrategy(),
             LlmAggregateStrategy(),
             BusinessNameOwnerStrategy(),
+            EmailOwnerStrategy(),
         ]
 
     async def resolve(self, context: ResolutionContext) -> NameResolution:
@@ -72,7 +75,8 @@ class DecisionMakerResolver:
         Outcome rules (a wrong name is worse than no name):
           - AUTO requires a PRIMARY source (registre/Pappers) whose company was
             also matched geographically — supporting sources can never stack up
-            to automatic use, whatever their combined confidence.
+            to automatic use, whatever their combined confidence — or a person
+            the business names itself twice (its email address and its name).
           - A rival primary that is NOT geo-confirmed while the best one is, is
             the expected homonym-from-elsewhere noise → ignored entirely.
           - Two geo-confirmed primaries naming different people → trust neither.
@@ -109,7 +113,8 @@ class DecisionMakerResolver:
             return NameResolution(status=NameResolution.NONE, candidate=None, candidates=boosted)
 
         demoted = any(r.confidence >= PROPOSED_FLOOR for r in rivals)
-        auto_eligible = best.primary and best.geo_confirmed and best.confidence >= CONFIDENCE_THRESHOLD and not demoted
+        is_trustworthy_source = (best.primary and best.geo_confirmed) or best.self_declared
+        auto_eligible = is_trustworthy_source and best.confidence >= CONFIDENCE_THRESHOLD and not demoted
         status = NameResolution.AUTO if auto_eligible else NameResolution.PROPOSED
         return NameResolution(status=status, candidate=best, candidates=boosted)
 
@@ -165,8 +170,10 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
     owner_responses: list[str] = []
     review_texts: list[str] = []
     description: str | None = None
+    licence_number: str | None = None
     if enrichment is not None:
         description = enrichment.description
+        licence_number = enrichment.professional_license_number
         postal_code = postal_code or enrichment.place_postal_code
         city = city or enrichment.place_city
         for review in enrichment.reviews or []:
@@ -186,10 +193,19 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
         description=description,
         registry_number=registry_number,
         review_texts=review_texts,
+        emails=[email for email in (prospect.emails or [prospect.email]) if email],
+        licence_number=licence_number,
+        trade=prospect.category,
     )
 
 
 decision_maker_resolver = DecisionMakerResolver()
 public_text_resolver = DecisionMakerResolver(
-    [OwnerResponseStrategy(), LlmAggregateStrategy(), BusinessNameOwnerStrategy()]
+    [
+        OwnerResponseStrategy(),
+        LlmAggregateStrategy(),
+        BusinessNameOwnerStrategy(),
+        EmailOwnerStrategy(),
+        RbqOfficerStrategy(),
+    ]
 )

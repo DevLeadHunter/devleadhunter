@@ -33,7 +33,7 @@ def _facts(**overrides: object) -> CandidateFacts:
 def _register_listing(monkeypatch: pytest.MonkeyPatch, *firms: SwissRegisterFirm) -> list[str]:
     asked_names: list[str] = []
 
-    async def firms_named(name: str) -> list[SwissRegisterFirm]:
+    async def firms_named(name: str, *, max_entries: int = 10) -> list[SwissRegisterFirm]:
         asked_names.append(name)
         return list(firms)
 

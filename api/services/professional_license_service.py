@@ -30,6 +30,7 @@ from services.trade_normalizer import TradeNormalizer
 logger = logging.getLogger(__name__)
 
 RBQ_REGISTRY_SEARCH_URL = "https://www.pes.rbq.gouv.qc.ca/APIPROXY/RBQ.Registre.API/Licence/Rechercher"
+RBQ_REGISTRY_HOLDER_URL = "https://www.pes.rbq.gouv.qc.ca/APIPROXY/RBQ.Registre.API/Licence/Entrepreneur/{number}"
 RBQ_LICENSE_LABEL = "Licence RBQ"
 RBQ_DIAGNOSTIC_SOURCE = "rbq_registry"
 
@@ -108,6 +109,15 @@ class RbqLicenseHolder:
 
 
 @dataclass(frozen=True)
+class RbqLicenceOfficer:
+    """A person the RBQ registry names for a licence: an officer of the holder, or the holder itself."""
+
+    first_name: str
+    last_name: str
+    runs_the_business: bool
+
+
+@dataclass(frozen=True)
 class ProfessionalLicenseMatch:
     """A license confidently attributed to the prospect, ready to persist."""
 
@@ -147,6 +157,68 @@ class RbqLicenseRegistryClient:
             logger.warning("RBQ registry search failed for %r: %s", query, exc)
             return None
         return self.parse_search_results(payload)
+
+    async def officers_of(self, license_number: str) -> list[RbqLicenceOfficer] | None:
+        """
+        The people the registry names for a licence: its holder's officers, or the holder when a person holds it.
+
+        Args:
+            license_number: The licence number, with or without dashes.
+
+        Returns:
+            The officers (possibly none), or None when the registry is unreachable or answers something unexpected.
+        """
+        digits = license_number.replace("-", "").strip()
+        if not _RBQ_LICENSE_NUMBER_RE.match(digits):
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS) as client:
+                response = await client.get(
+                    RBQ_REGISTRY_HOLDER_URL.format(number=digits), headers={"Accept": "application/json"}
+                )
+                response.raise_for_status()
+                payload: dict[str, Any] = response.json()
+        except Exception as exc:
+            logger.warning("RBQ registry holder read failed for %s: %s", digits, exc)
+            return None
+        return self.parse_officers(payload)
+
+    @staticmethod
+    def parse_officers(payload: dict[str, Any]) -> list[RbqLicenceOfficer]:
+        """
+        Turn the registry's licence holder record into the people who run it.
+
+        An officer runs the business when the registry lets them answer for its administration and its
+        management; a holder registered as « Nom, Prénom » is a person running it alone.
+
+        Args:
+            payload: The decoded JSON answer of ``/Licence/Entrepreneur/{number}``.
+
+        Returns:
+            One officer per person named; empty when the record names nobody.
+        """
+        record = payload.get("retour") if isinstance(payload, dict) else None
+        if not isinstance(record, dict):
+            return []
+        officers: list[RbqLicenceOfficer] = []
+        for officer in record.get("dirigeants") or []:
+            person = officer.get("interlocuteurDirigeant") if isinstance(officer, dict) else None
+            if not isinstance(person, dict) or not person.get("prenom") or not person.get("nom"):
+                continue
+            officers.append(
+                RbqLicenceOfficer(
+                    first_name=str(person["prenom"]).strip(),
+                    last_name=str(person["nom"]).strip(),
+                    runs_the_business=bool(person.get("indAdministration")) and bool(person.get("indGestion")),
+                )
+            )
+        holder = record.get("intervenant") if isinstance(record.get("intervenant"), dict) else {}
+        last_name, _, first_name = str(holder.get("nom") or "").partition(",")
+        if not officers and first_name.strip() and last_name.strip():
+            officers.append(
+                RbqLicenceOfficer(first_name=first_name.strip(), last_name=last_name.strip(), runs_the_business=True)
+            )
+        return officers
 
     @staticmethod
     def parse_search_results(payload: dict[str, Any]) -> list[RbqLicenseHolder]:

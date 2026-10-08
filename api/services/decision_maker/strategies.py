@@ -11,15 +11,22 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from html import unescape
 from itertools import pairwise
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from core.config import settings
+from services.decision_maker.activity import (
+    activity_codes_of,
+    activity_consistency,
+    has_known_activity,
+    is_main_activity,
+)
 from services.decision_maker.french_departments import FrenchDepartments
+from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import (
     company_similarity,
     fold,
@@ -30,6 +37,9 @@ from services.decision_maker.normalize import (
 )
 from services.decision_maker.types import NameCandidate, ResolutionContext
 
+if TYPE_CHECKING:
+    from services.professional_license_service import RbqLicenceOfficer
+
 logger = logging.getLogger(__name__)
 
 _RECHERCHE_ENTREPRISES_URL = "https://recherche-entreprises.api.gouv.fr/search"
@@ -38,6 +48,15 @@ _PAPPERS_URL = "https://api.pappers.fr/v2/recherche"
 # A company-name match below this similarity is considered a different business.
 _MIN_COMPANY_SIMILARITY = 0.45
 _CEASED_STATE = "C"
+_PROPERTY_COMPANY_LEGAL_CATEGORY = "654"
+_SOLE_TRADER_LEGAL_CATEGORY = "1000"
+_MIN_KEYWORD_CHARS = 4
+_MAX_NAME_KEYWORDS = 2
+_KEYWORD_RESULTS_PER_PAGE = 10
+_PERSON_NAME_WORD_RE = re.compile(r"[a-z]+(?:-[a-z]+)*")
+_CIVILITY_BEFORE_LAST_NAME_RE = re.compile(
+    r"\b(?i:m\.|mr\.?|monsieur|mme|madame)\s+([A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)?)\b"
+)
 _ENSEIGNE_IN_NAME_RE = re.compile(r"\(([^)]+)\)")
 _GLUED_WORDS_RE = re.compile(r"(?<=[a-zà-ÿ])(?=[A-ZÀ-Ý]|\d)")
 _DOTTED_CAPITALS_RE = re.compile(r"^[A-ZÀ-Ý](?:\.[A-ZÀ-Ý]+)+\.?['’]?$")
@@ -81,6 +100,16 @@ _TRADE_AND_LEGAL_FORM_WORDS: frozenset[str] = frozenset(
 )
 _MIN_REGISTRY_QUERY_CHARS = 3
 _MIN_TRADE_FREE_SIMILARITY = 0.75
+
+
+@dataclass(frozen=True)
+class RegistryKeyword:
+    """A query the registry is searched with when the business name finds nothing, and what it stands for."""
+
+    text: str
+    #: The first name (if known) and last name of the person the query names, when it names one.
+    person: tuple[str | None, str] | None = None
+    is_email_domain: bool = False
 
 
 class TradeName:
@@ -135,6 +164,8 @@ class RegistreGouvStrategy:
         the registry files it (« ExempleAuto64 » as « Exemple Auto 64 ») is tried next, then, when the trade name
         carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its trade words.
         The département comes from the postal code, else from the town (a business found on Facebook has none).
+        When no query names the business, its words and its owner's name are searched among the companies of its
+        trade in its département.
         """
         query = (context.company_name or "").strip()
         if not query:
@@ -155,26 +186,183 @@ class RegistreGouvStrategy:
         ):
             queries.append((trade_free_query, True))
         for registry_query, is_trade_free_query in queries:
-            params: dict[str, Any] = {"q": registry_query, "page": 1, "per_page": 5}
-            if department and not siren:
-                params["departement"] = department
-            try:
-                async with httpx.AsyncClient(timeout=12.0) as client:
-                    response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
-                    response.raise_for_status()
-                    payload: dict[str, Any] = response.json()
-            except Exception as exc:
-                logger.warning("registre_gouv lookup failed for %r: %s", registry_query, exc)
+            results = await self._search(registry_query, department=None if siren else department, per_page=5)
+            if results is None:
                 return []
             candidates = self.parse_results(
-                payload.get("results") or [],
-                context,
-                department=department,
-                is_trade_free_query=is_trade_free_query,
+                results, context, department=department, is_trade_free_query=is_trade_free_query
             )
             if candidates:
                 return candidates
+        if siren or not department:
+            return []
+        return await self._search_by_keywords(context, department)
+
+    @staticmethod
+    async def _search(
+        query: str, *, department: str | None, per_page: int, activity_codes: list[str] | None = None
+    ) -> list[dict[str, Any]] | None:
+        """The registry's companies for a query, in a département and those activities when given; None on failure."""
+        params: dict[str, Any] = {"q": query, "page": 1, "per_page": per_page}
+        if department:
+            params["departement"] = department
+        if activity_codes:
+            params["activite_principale"] = ",".join(activity_codes)
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
+                response.raise_for_status()
+                payload: dict[str, Any] = response.json()
+        except Exception as exc:
+            logger.warning("registre_gouv lookup failed for %r: %s", query, exc)
+            return None
+        return payload.get("results") or []
+
+    async def _search_by_keywords(self, context: ResolutionContext, department: str) -> list[NameCandidate]:
+        """
+        Find the business by one of its words or its owner's name, among the companies of its trade in its département.
+
+        The registry files « EXEMPLE Electrical » as « JULES MODELE (EXEMPLE) », « Modele Entretien parc et jardin »
+        under its owner, a sole trader under the name his email spells (« jules.modele@ ») or his customers say
+        (« Monsieur Modele »). Each is searched in the département among the companies declaring the trade's
+        activity, a common name not hiding them; only active ones count, and a single one is the business — the
+        one declaring the trade's main activity when several fit (an electrician, not a builder of the family).
+        A word naming a commune (« Exemple-Auto Pau-Lescar ») is a place, not the business: never searched.
+        """
+        from services.trade_normalizer import TradeNormalizer
+
+        trade = TradeNormalizer.normalize(context.trade)
+        if not has_known_activity(trade):
+            return []
+        activity_codes = activity_codes_of(trade)
+        for keyword in self._keywords(context):
+            if (
+                keyword.person is None
+                and not keyword.is_email_domain
+                and await FrenchDepartments.is_town_name(keyword.text)
+            ):
+                continue
+            results = await self._search(
+                keyword.text, department=department, per_page=_KEYWORD_RESULTS_PER_PAGE, activity_codes=activity_codes
+            )
+            matching = [
+                result
+                for result in results or []
+                if self.is_keyword_company(result, keyword, context=context, trade=trade, department=department)
+            ]
+            if len(matching) > 1:
+                matching = [result for result in matching if is_main_activity(trade, self._activity_of(result))]
+            if len(matching) == 1:
+                found = self._candidates_of(matching[0], base=0.75 if keyword.person else 0.7, geo_confirmed=True)
+                provenance_note = f", trouvée par « {keyword.text} » dans le métier"
+                return [replace(candidate, provenance=candidate.provenance + provenance_note) for candidate in found]
         return []
+
+    @staticmethod
+    def _keywords(context: ResolutionContext) -> list[RegistryKeyword]:
+        """The words of the business name and of its own email domain, then the owners its emails and its customers name."""
+        from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS
+        from services.decision_maker.email_owner import PersonInEmail
+        from services.prospect_search.business_name import BusinessName
+
+        name_words = sorted(
+            BusinessName.distinctive_words(context.company_name, town=context.city), key=len, reverse=True
+        )
+        keywords = [RegistryKeyword(word) for word in name_words if len(word) >= _MIN_KEYWORD_CHARS][
+            :_MAX_NAME_KEYWORDS
+        ]
+        for email in context.emails:
+            domain = fold(email.partition("@")[2])
+            domain_label = domain.rsplit(".", 1)[0]
+            if (
+                domain not in GENERIC_EMAIL_PROVIDERS
+                and len(domain_label) >= _MIN_KEYWORD_CHARS
+                and domain_label.isalnum()
+            ):
+                keywords.append(RegistryKeyword(domain_label, is_email_domain=True))
+        for email in context.emails:
+            person = PersonInEmail.person_of(email, context.company_name)
+            if person is not None:
+                keywords.append(
+                    RegistryKeyword(
+                        f"{person.last_name} {person.first_name}", person=(person.first_name, person.last_name)
+                    )
+                )
+        customer_texts = " ".join([*context.review_texts, *context.owner_responses])
+        for last_name in dict.fromkeys(_CIVILITY_BEFORE_LAST_NAME_RE.findall(customer_texts)):
+            keywords.append(RegistryKeyword(last_name, person=(None, last_name)))
+        return keywords
+
+    def is_keyword_company(
+        self,
+        result: dict[str, Any],
+        keyword: RegistryKeyword,
+        *,
+        context: ResolutionContext,
+        trade: str,
+        department: str,
+    ) -> bool:
+        """
+        Whether a company a keyword found is the business (pure — testable).
+
+        It must be active, sit in the département, declare the trade's activity and not be a property company.
+        Found by a person, that person runs it; by the email domain, a name of the company is that domain; by a
+        word of the business name, a name of the company holds only words of the business name (« EXEMPLE »,
+        not « MODELE PARC ET JARDIN » for « Exemple Entretien parc et jardin »), or the company is the sole
+        trader whose last name the word is.
+
+        Args:
+            result: A registry company.
+            keyword: The query that found it.
+            context: The business looked for.
+            trade: The business's trade, as the trade normalizer writes it.
+            department: The business's département.
+
+        Returns:
+            True when the company can be the business.
+        """
+        siege = result.get("siege") or {}
+        naf = self._activity_of(result)
+        if (
+            str(result.get("etat_administratif") or "") == _CEASED_STATE
+            or self._is_property_company(result)
+            or FrenchDepartments.of_postal_code(str(siege.get("code_postal") or "")) != department
+            or activity_consistency(trade, naf) is not True
+        ):
+            return False
+        is_sole_trader = str(result.get("nature_juridique") or "").startswith(_SOLE_TRADER_LEGAL_CATEGORY)
+        people = [f"{d.get('prenoms') or ''} {d.get('nom') or ''}" for d in result.get("dirigeants") or []]
+        if is_sole_trader:
+            people.append(_ENSEIGNE_IN_NAME_RE.sub(" ", str(result.get("nom_complet") or "")))
+        company_names = [*self._trade_names(result)]
+        if not is_sole_trader:
+            company_names += [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
+        if keyword.person is not None:
+            first, last = keyword.person
+            wanted = self._person_words(last) | self._person_words(first or "")
+            return any(wanted <= self._person_words(person_name) for person_name in people)
+        if keyword.is_email_domain:
+            return any(re.sub(r"[^a-z0-9]", "", fold(name)) == keyword.text for name in company_names if name)
+        from services.prospect_search.business_name import BusinessName
+
+        business_words = BusinessName.distinctive_stems(context.company_name, town=context.city)
+        word = BusinessName.distinctive_stems(keyword.text)
+        name_words = [BusinessName.distinctive_stems(name) for name in company_names if name]
+        is_named_with_its_words = any(word <= words <= business_words for words in name_words)
+        is_named_after_its_holder = is_sole_trader and any(
+            fold(keyword.text) == fold(str(d.get("nom") or "")) for d in result.get("dirigeants") or []
+        )
+        return is_named_with_its_words or is_named_after_its_holder
+
+    @staticmethod
+    def _activity_of(result: dict[str, Any]) -> str:
+        """The main activity code a registry company declares, at its head office first."""
+        return str((result.get("siege") or {}).get("activite_principale") or result.get("activite_principale") or "")
+
+    @staticmethod
+    def _person_words(name: str) -> set[str]:
+        """The folded words of a person's name, a hyphenated name kept whole (« Exemple-Modèle »)."""
+        return set(_PERSON_NAME_WORD_RE.findall(fold(name)))
 
     def parse_results(
         self,
@@ -189,7 +377,10 @@ class RegistreGouvStrategy:
 
         Companies found by the name without its trade words must carry that name almost exactly: « Lb Passion »
         also finds LB TENNIS PASSION for a garden firm. A ceased company, or one registered in another
-        département, is another business: a homonym, or the business's former structure.
+        département, is another business: a homonym, or the business's former structure. A property company
+        (SCI) owns premises and runs no trade: « SCI DE L'EXEMPLE » is the landlord of « Garage de l'Exemple ».
+        When one company bears the business's name exactly (« EXEMPLE 05 »), the others found by its words
+        (« VENTE EXEMPLE 05 ») are other businesses.
 
         Args:
             results: The registry's answer.
@@ -203,14 +394,16 @@ class RegistreGouvStrategy:
         candidates: list[NameCandidate] = []
         siren = self.siren_of(context.registry_number)
         department = department or FrenchDepartments.of_postal_code(context.postal_code)
-        for result in results[:5]:
+        exact_name_results = [result for result in results[:5] if self._bears_the_exact_name(result, context)]
+        for result in exact_name_results or results[:5]:
             anchored = bool(siren) and str(result.get("siren") or "") == siren
             company_department = FrenchDepartments.of_postal_code(
                 str((result.get("siege") or {}).get("code_postal") or "")
             )
             is_in_department = department is not None and company_department == department
             is_elsewhere = department is not None and company_department is not None and not is_in_department
-            if not anchored and (str(result.get("etat_administratif") or "") == _CEASED_STATE or is_elsewhere):
+            is_ceased = str(result.get("etat_administratif") or "") == _CEASED_STATE
+            if not anchored and (is_ceased or is_elsewhere or self._is_property_company(result)):
                 continue
             if anchored:
                 similarity = 1.0
@@ -230,6 +423,23 @@ class RegistreGouvStrategy:
                 found = [self._anchored(candidate) for candidate in found]
             candidates.extend(found)
         return candidates
+
+    @staticmethod
+    def _bears_the_exact_name(result: dict[str, Any], context: ResolutionContext) -> bool:
+        """Whether a registry company bears the business's name word for word, as its legal name or a trade name."""
+        from services.prospect_search.business_name import BusinessName
+
+        names = [
+            str(result.get("nom_raison_sociale") or ""),
+            str(result.get("nom_complet") or ""),
+            *RegistreGouvStrategy._trade_names(result),
+        ]
+        return any(BusinessName.is_exact_name(name, context.company_name) for name in names if name)
+
+    @staticmethod
+    def _is_property_company(result: dict[str, Any]) -> bool:
+        """Whether a registry company is a property company (SCI and its kinds, legal categories 654x)."""
+        return str(result.get("nature_juridique") or "").startswith(_PROPERTY_COMPANY_LEGAL_CATEGORY)
 
     def _candidates_of(self, result: dict[str, Any], *, base: float, geo_confirmed: bool) -> list[NameCandidate]:
         """The person a registry company names: the EI holder, its sole dirigeant, else its gérant/président."""
@@ -563,7 +773,8 @@ class WebRegistryStrategy:
 
         A legal name found on the web shares a word with the trade name, which a neighbour's does too
         (« EXEMPLE HOME RENOV » for « Exemple Home Services »): the company must bear the trade name word for word,
-        or its head must be the person the trade name is named after (« Germain Paysagiste » is SECOMAN Germain).
+        or its head must be the person the trade name is named after (« Germain Paysagiste » is SECOMAN Germain),
+        in the same trade: « Exemple des Jardins » is not the painter of the Exemple family.
 
         Args:
             candidate: The head of a company the registry gave for a legal name found on the web.
@@ -573,6 +784,7 @@ class WebRegistryStrategy:
             True when the company is the business.
         """
         from services.prospect_search.business_name import BusinessName
+        from services.trade_normalizer import TradeNormalizer
 
         business_names = {context.company_name, TradeName.searchable(context.company_name)}
         company_names = RegistreGouvStrategy.names_in(str(candidate.raw.get("nom_complet") or ""))
@@ -583,7 +795,11 @@ class WebRegistryStrategy:
         ):
             return True
         person_words = {fold(word) for word in f"{candidate.first or ''} {candidate.last or ''}".split()}
-        return any(person_words & BusinessName.distinctive_words(name, town=context.city) for name in business_names)
+        is_named_after_its_head = any(
+            person_words & BusinessName.distinctive_words(name, town=context.city) for name in business_names
+        )
+        trade = TradeNormalizer.normalize(context.trade)
+        return is_named_after_its_head and activity_consistency(trade, candidate.raw.get("activite")) is not False
 
     def extract_company_names(self, html: str, enseigne: str) -> list[str]:
         """Pull raison-sociale candidates from a SERP (pure — testable on fixtures).
@@ -678,7 +894,8 @@ class OwnerResponseStrategy:
 
     Uses only text already captured by the enrichment scraper (no network).
     A recurring signature (« … à bientôt ! — Léo ») is a decent first-name
-    signal, scored moderately.
+    signal, scored moderately; a word no one is given as a first name
+    (« Avatacar », the booking platform answering for the garage) is no person.
     """
 
     name = "owner_response"
@@ -689,7 +906,7 @@ class OwnerResponseStrategy:
         for text in context.owner_responses:
             for match in _OWNER_SIGNATURE_RE.finditer(text or ""):
                 name = title_case_name(match.group(1))
-                if name and fold(name) not in _CLOSING_WORDS:
+                if name and fold(name) not in _CLOSING_WORDS and GivenNames.is_given_name(name.split()[0]):
                     counts[name] = counts.get(name, 0) + 1
         if not counts:
             return []
@@ -731,7 +948,7 @@ class BusinessNameOwnerStrategy:
         The owner a business name spells, when customers address him by its first word (pure — testable).
 
         Both words are capitalized name words of the business name (not « des », « Fils », « JANTES ALU »),
-        the business name holds more than them (« Neuhaus Stefan » does not tell which is the first name),
+        the business name holds more than them (« Modèle Jules » does not tell which is the first name),
         and a review calls the first one as a person: « voir Jules », « merci à Jules », never « chez Otobox ».
         """
         company_words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
@@ -934,3 +1151,57 @@ class LlmAggregateStrategy:
                 raw={"quote": quote[:200]},
             )
         ]
+
+
+class RbqOfficerStrategy:
+    """Primary — the officer the Québec licence registry (RBQ) names for the business's own licence.
+
+    The licence was tied to the business by its name and its town when the business was enriched, so its
+    officer is the head: the one answering for the administration and the management of the business.
+    """
+
+    name = "registre_rbq"
+
+    async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
+        """Read the officers of the business's licence in the registry."""
+        if not context.licence_number:
+            return []
+        from services.professional_license_service import RbqLicenseRegistryClient
+
+        officers = await RbqLicenseRegistryClient().officers_of(context.licence_number)
+        return self.candidates_of(officers or [], licence_number=context.licence_number)
+
+    def candidates_of(self, officers: list[RbqLicenceOfficer], *, licence_number: str) -> list[NameCandidate]:
+        """
+        The head among a licence's officers (pure — testable).
+
+        The officer answering for the administration and the management runs the business; several such
+        officers, or none, leave each one a proposal, the first ahead.
+
+        Args:
+            officers: The officers the registry names for the licence.
+            licence_number: The licence number, quoted in the provenance.
+
+        Returns:
+            One candidate per officer running the business.
+        """
+        running = [officer for officer in officers if officer.runs_the_business] or officers
+        is_sole_head = len(running) == 1
+        candidates: list[NameCandidate] = []
+        for rank, officer in enumerate(running):
+            first = (title_case_name(officer.first_name) or "").split(" ")[0] or None
+            candidates.append(
+                NameCandidate(
+                    first=first,
+                    last=title_case_name(officer.last_name),
+                    gender=infer_gender(first),
+                    source=self.name,
+                    confidence=0.9 if is_sole_head else (0.75 if rank == 0 else 0.6),
+                    primary=True,
+                    geo_confirmed=True,
+                    evidence_group=_GROUP_REGISTRY,
+                    provenance=f"Registre des licences RBQ : licence {licence_number}, dirigeant",
+                    anchored=is_sole_head,
+                )
+            )
+        return candidates

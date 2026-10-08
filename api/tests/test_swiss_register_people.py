@@ -182,3 +182,94 @@ def test_an_auditing_company_is_no_person() -> None:
     publication = (date(2020, 1, 1), "Personne(s) inscrite(s): Fiduciaire Exemple SA, à Sion, organe de révision.")
 
     assert SwissRegisterPeople.registered_people([publication]) == []
+
+
+def test_an_owner_whose_last_name_opens_with_a_particle_is_read() -> None:
+    """« Titulaire: de Modèle Exemple Jules, … »: the particle opens the last name, a single first name ends it."""
+    publication = (
+        date(2024, 7, 29),
+        "Exemple Paysagiste, à Exempleville. Nouvelle entreprise individuelle. Titulaire: de Modèle Exemple Jules, "
+        "de Portugal, à Exempleville, avec signature individuelle. But: entretien de jardins.",
+    )
+
+    assert _leads(publication) == [("Jules", "De Modèle Exemple", True)]
+
+
+def test_a_single_person_entered_is_read() -> None:
+    """« Personne inscrite: … » in the singular; two first names after the last name leave the cut unsure."""
+    publication = (
+        date(2022, 12, 9),
+        "Garage Exemple, à Exempleville. Nouvelle entreprise individuelle. Personne inscrite: de Modèle Jules Paul, "
+        "de Exempleville, à Exempleville, titulaire, signature individuelle.",
+    )
+
+    assert _leads(publication) == [("Jules Paul", "De Modèle", False)]
+
+
+def test_the_owner_of_a_sole_proprietorship_is_read_in_its_name() -> None:
+    """The owner closing the firm name, last name first; a last name alone or an unknown first name is nobody."""
+    readings = {
+        name: SwissRegisterPeople.owner_in_firm_name(name)
+        for name in (
+            "Garage Exemple, Modèle Jules",
+            "Garage Exemple - Temoin Modèle Paul",
+            "Exemple Paysage, de Modèle",
+            "Exemple-Paysagiste, dos Santos Modèle",
+            "Garage du Lac Jules Modèle",
+        )
+    }
+
+    assert {
+        name: (owner.first_name, owner.last_name, owner.is_name_certain) if owner else None
+        for name, owner in readings.items()
+    } == {
+        "Garage Exemple, Modèle Jules": ("Jules", "Modèle", True),
+        "Garage Exemple - Temoin Modèle Paul": ("Paul", "Temoin Modèle", True),
+        "Exemple Paysage, de Modèle": None,
+        "Exemple-Paysagiste, dos Santos Modèle": None,
+        "Garage du Lac Jules Modèle": ("Jules", "Modèle", False),
+    }
+
+
+def test_a_misspelled_heading_still_enters_the_person() -> None:
+    """« Peronne inscrite: … » — the gazette's own typo — still names the owner."""
+    publication = (
+        date(2025, 3, 3),
+        "Exemple Utilitaires, à Exempleville. Nouvelle entreprise individuelle. Peronne inscrite: Modèle Jules, de "
+        "Exempleville, à Exempleville, titulaire, signature individuelle.",
+    )
+
+    assert _leads(publication) == [("Jules", "Modèle", True)]
+
+
+def test_a_firm_name_saying_titulaire_names_its_owner_whatever_his_first_name() -> None:
+    """« Exemple Paysagiste - titulaire Modèle Jorim »: last name first, as the register writes people."""
+    owner = SwissRegisterPeople.owner_in_firm_name("Exemple Paysagiste - titulaire Modèle Jorim")
+
+    assert owner is not None
+    assert (owner.first_name, owner.last_name, owner.is_name_certain) == ("Jorim", "Modèle", True)
+
+
+def test_the_chair_of_two_managers_joined_by_et_leads() -> None:
+    """« Associés-gérants: Exemple Paul, …, président et Modèle Jules, … »: two people, the chair runs it."""
+    publication = (
+        date(2020, 1, 1),
+        "Exemple Sàrl, à Exempleville. Associés-gérants: Exemple Paul, de Exempleville, à Exempleville, président "
+        "et Modèle Jules, de France, à Exempleville, tous deux avec signature individuelle, pour 10 parts.",
+    )
+
+    people = SwissRegisterPeople.registered_people([publication])
+
+    assert sorted(person.last_name for person in people) == ["Exemple", "Modèle"]
+    assert _leads(publication) == [("Paul", "Exemple", True)]
+
+
+def test_a_rare_first_name_ending_a_last_name_stays_in_it() -> None:
+    """« Exemple Marty Anne »: « Marty », a rare first name and a common last name, belongs to the last name."""
+    publication = (
+        date(2021, 6, 1),
+        "Exemple Electricité SA, à Exempleville. Personne inscrite: Exemple Marty Anne, de Exempleville, à "
+        "Exempleville, directrice, avec signature individuelle.",
+    )
+
+    assert _leads(publication) == [("Anne", "Exemple Marty", True)]

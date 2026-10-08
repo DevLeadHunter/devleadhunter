@@ -28,6 +28,7 @@ class FrenchDepartments:
     """Finds the département of a French postal code or town."""
 
     _department_by_town: ClassVar[dict[str, str | None]] = {}
+    _is_town_by_word: ClassVar[dict[str, bool]] = {}
 
     @staticmethod
     def of_postal_code(postal_code: str | None) -> str | None:
@@ -74,6 +75,29 @@ class FrenchDepartments:
         department = departments.pop() if len(departments) == 1 else None
         cls._department_by_town[key] = department
         return department
+
+    @classmethod
+    async def is_town_name(cls, word: str) -> bool:
+        """
+        Whether a word is the name of a French commune (« Lescar »), a place rather than the business's own word.
+
+        Args:
+            word: A word of a business name.
+
+        Returns:
+            True when a commune bears exactly that name; False when none does or the list does not answer.
+        """
+        key = town_key(word)
+        if not key:
+            return False
+        if key in cls._is_town_by_word:
+            return cls._is_town_by_word[key]
+        communes = await cls._communes_named(word)
+        if communes is None:
+            return False
+        is_town = any(town_key(str(commune.get("nom") or "")) == key for commune in communes)
+        cls._is_town_by_word[key] = is_town
+        return is_town
 
     @staticmethod
     async def _communes_named(town: str) -> list[dict[str, Any]] | None:

@@ -643,8 +643,8 @@ def test_common_words_brands_and_shouted_names_are_never_taken_for_an_owner() ->
 
 
 def test_a_business_named_after_its_owner_alone_does_not_tell_the_first_name() -> None:
-    """« Neuhaus Exemple » could be either order: nothing is proposed from the name alone."""
-    context = ResolutionContext(company_name="Neuhaus Exemple", review_texts=["Merci Neuhaus pour le travail."])
+    """« Modèle Exemple » could be either order: nothing is proposed from the name alone."""
+    context = ResolutionContext(company_name="Modèle Exemple", review_texts=["Merci Modèle pour le travail."])
 
     assert BusinessNameOwnerStrategy().candidates_of(context) == []
 

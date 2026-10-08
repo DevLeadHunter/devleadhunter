@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+_MIN_SHORT_FIRST_NAME_CHARS: int = 3
+
 
 @dataclass
 class NameCandidate:
@@ -34,6 +36,9 @@ class NameCandidate:
     raw: dict[str, Any] = field(default_factory=dict)
     #: Read from the company the prospect search tied to the business by its number.
     anchored: bool = False
+    #: The business names this person itself in two places (its email address and its own name): as
+    #: trustworthy as a registry for automatic use.
+    self_declared: bool = False
 
     @property
     def has_name(self) -> bool:
@@ -50,9 +55,13 @@ class NameCandidate:
         """True when both candidates plausibly name the SAME person.
 
         A first-name-only candidate confirms a full-name candidate sharing the
-        same first name (« Léo » agrees with « Léo Guillaume »).
+        same first name (« Léo » agrees with « Léo Guillaume »), and a short
+        first name its long form under the same last name (« Fred Exemple »,
+        read in an email address, is « Frédéric Exemple » of the registry).
         """
         if self.identity_key() == other.identity_key():
+            return True
+        if self._is_short_form_of(other) or other._is_short_form_of(self):
             return True
         return bool(
             self.first
@@ -60,6 +69,14 @@ class NameCandidate:
             and self.first.lower() == other.first.lower()
             and (not self.last or not other.last)
         )
+
+    def _is_short_form_of(self, other: NameCandidate) -> bool:
+        """Whether this name is the other's with its first name cut short (« Fred » for « Frédéric »)."""
+        from services.decision_maker.normalize import fold
+
+        first, other_first = fold(self.first or ""), fold(other.first or "")
+        is_same_last_name = bool(self.last and other.last) and fold(self.last or "") == fold(other.last or "")
+        return is_same_last_name and len(first) >= _MIN_SHORT_FIRST_NAME_CHARS and other_first.startswith(first)
 
     def to_persistable(self) -> dict[str, Any]:
         """Plain-JSON snapshot stored in ``name_candidates`` (debug/calibration)."""
@@ -115,6 +132,12 @@ class ResolutionContext:
     registry_number: str | None = None
     #: What customers wrote in their reviews (« je vais voir Jules »).
     review_texts: list[str] = field(default_factory=list)
+    #: The business's own email addresses (« jules.exemple@… » names the person who reads them).
+    emails: list[str] = field(default_factory=list)
+    #: The licence number the business holds in its trade's registry (RBQ in Québec).
+    licence_number: str | None = None
+    #: The business's trade as the prospect carries it (« électricien », « garage »…).
+    trade: str | None = None
 
 
 @runtime_checkable

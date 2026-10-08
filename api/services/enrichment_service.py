@@ -47,6 +47,8 @@ from services.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
 
+_MIN_SPECIFIC_NAME_WORDS: int = 2
+
 # Registre/Pappers are shared rate-limited APIs — a scraping job must not fire dozens of lookups at once.
 _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
 
@@ -583,7 +585,10 @@ class EnrichmentService:
         A firm in liquidation or struck off lately goes to the « Écartés » tab with the reason (a landscaper
         ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
         from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
-        role, the firm was matched away from its seat, or the publication leaves the first name unsure.
+        role, the firm was matched away from its seat, or the publication leaves the first name unsure. A firm
+        filed under another name is found by its words at the business's address, only to name the head; a
+        sole proprietorship that published nothing names its owner in its own name. The firm of a company
+        number that now trades under another name (sold, turned into a property company) names nobody.
 
         Args:
             db: Active database session.
@@ -614,6 +619,13 @@ class EnrichmentService:
             firm = firm or await swiss_registry.firm_of(
                 name=prospect.name, town=prospect.city, uid=uid, allow_unique_name=True
             )
+            if firm is not None and not swiss_registry.shares_words(firm.name, prospect.name or "", town=prospect.city):
+                return
+            if firm is None:
+                firm = await swiss_registry.firm_by_words_and_address(
+                    name=prospect.name or "", town=prospect.city, postal_code=self._swiss_postal_code(prospect, record)
+                )
+                is_firm_matched_exactly = firm is not None
             if firm is None or swiss_registry.closing_words(firm) is not None:
                 return
             if not is_firm_matched_exactly:
@@ -624,13 +636,17 @@ class EnrichmentService:
             leads = SwissRegisterPeople.lead_people(
                 SwissRegisterPeople.registered_people(await swiss_registry.publications(firm))
             )
+            if not leads and firm.is_sole_proprietorship:
+                owner = SwissRegisterPeople.owner_in_firm_name(firm.name)
+                leads = [owner] if owner is not None else []
             if not leads:
                 return
             lead = leads[0]
+            usual_first_name = (lead.first_name or "").split(" ")[0] or None
             candidate = NameCandidate(
-                first=lead.first_name,
+                first=usual_first_name,
                 last=lead.last_name,
-                gender=infer_gender(lead.first_name),
+                gender=infer_gender(usual_first_name),
                 source="registre_ch",
                 confidence=0.9,
                 primary=True,
@@ -666,11 +682,25 @@ class EnrichmentService:
         """
         if not firm_postal_code:
             return False
-        postal_match = CountryProfiles.get("CH").postal_code_regex.search(prospect.address or "")
-        business_postal_code = postal_match.group(1) if postal_match else record.place_postal_code
+        business_postal_code = EnrichmentService._swiss_postal_code(prospect, record)
         if not business_postal_code:
             return False
         return business_postal_code.strip()[:1] != firm_postal_code.strip()[:1]
+
+    @staticmethod
+    def _swiss_postal_code(prospect: ProspectDB, record: ProspectEnrichment) -> str | None:
+        """
+        The postal code of a Swiss business: the one its address writes, else its Maps place's.
+
+        Args:
+            prospect: The Swiss business.
+            record: Its enrichment.
+
+        Returns:
+            The four-digit code, or None when neither says.
+        """
+        postal_match = CountryProfiles.get("CH").postal_code_regex.search(prospect.address or "")
+        return postal_match.group(1) if postal_match else record.place_postal_code
 
     @staticmethod
     def _store_trusted_contact(record: ProspectEnrichment, candidate: NameCandidate) -> None:
@@ -874,10 +904,12 @@ class EnrichmentService:
     @staticmethod
     def _is_registered_under_its_name(prospect: ProspectDB, candidate: NameCandidate) -> bool:
         """
-        Whether the registry company of a candidate bears the business's own name, or carries it as its trade name.
+        Whether a candidate's registry company bears the business's name word for word, or as its trade name.
 
         Such a company in the business's département is the business, whatever activity code it declared
-        (« ABC Exemple & Piscine » files under building works for its pools).
+        (« ABC Exemple & Piscine » files under building works for its pools). Its trade words may be left aside
+        only when the name says more than a family name: « MATHIEU EXEMPLE » is « Mathieu Exemple Paysagiste »,
+        while a company « EXEMPLE » of another trade is not « Garage Exemple ».
 
         Args:
             prospect: The business.
@@ -889,8 +921,15 @@ class EnrichmentService:
         from services.decision_maker.strategies import RegistreGouvStrategy
         from services.prospect_search.business_name import BusinessName
 
+        business_name = prospect.name or ""
+        says_more_than_a_family_name = len(BusinessName.distinctive_words(business_name)) >= _MIN_SPECIFIC_NAME_WORDS
         registry_names = RegistreGouvStrategy.names_in(str(candidate.raw.get("nom_complet") or ""))
-        return any(BusinessName.is_same_name(name, prospect.name or "") for name in registry_names if name)
+        return any(
+            BusinessName.is_exact_name(name, business_name)
+            or (says_more_than_a_family_name and BusinessName.is_same_name(name, business_name))
+            for name in registry_names
+            if name
+        )
 
     @staticmethod
     def _activity_check(prospect: ProspectDB, candidate: NameCandidate | None) -> tuple[bool | None, str | None]:

@@ -16,11 +16,14 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date
 
-from services.decision_maker.normalize import fold, infer_gender, title_case_name
+from services.decision_maker.given_names import GivenNames
+from services.decision_maker.normalize import fold, title_case_name
 
 _ENTERING_HEADINGS: tuple[str, ...] = (
     "personne(s) inscrite(s)",
     "personnes inscrites",
+    "personne inscrite",
+    "peronne inscrite",
     "inscription ou modification de personne(s)",
     "nouvelles personnes inscrites ou modifications des personnes inscrites",
     "titulaire",
@@ -69,7 +72,9 @@ _HEADING_RE: re.Pattern[str] = re.compile(
 )
 _SENTENCE_END_RE: re.Pattern[str] = re.compile(r"\.\s+(?=[A-ZÀ-Ý])")
 _ABBREVIATIONS: frozenset[str] = frozenset({"st", "ste", "dr", "me", "mme", "p", "no", "art", "al"})
-_NEXT_PERSON_RE: re.Pattern[str] = re.compile(r",\s+(?:et\s+)?(?=[A-ZÀ-Ý][\w'’-]+(?:\s+[A-ZÀ-Ý][\w'’-]+)+,\s)")
+_NEXT_PERSON_RE: re.Pattern[str] = re.compile(
+    r"(?:,\s+(?:et\s+)?|\s+et\s+)(?=[A-ZÀ-Ý][\w'’-]+(?:\s+[A-ZÀ-Ý][\w'’-]+)+,\s)"
+)
 _ROLE_PREFIX_RE: re.Pattern[str] = re.compile(
     r"^(?:l['’]associée?\s+|(?:lequel|laquelle)\s+est\s+(?:en\s+outre\s+)?)", re.IGNORECASE
 )
@@ -77,11 +82,16 @@ _SIGNATURE_SUFFIX_RE: re.Pattern[str] = re.compile(
     r"\s+(?:avec|sans|mit|ohne)\s+(?:signature|unterschrift)\b.*$", re.IGNORECASE
 )
 _PERSON_NAME = r"[A-ZÀ-Ý][\w'’-]+(?:[ -][A-ZÀ-Ý][\w'’-]+)+"
+_NAME_PARTICLES: frozenset[str] = frozenset({"de", "du", "des", "da", "dos", "das", "di", "del", "van", "von"})
+_LAST_NAME_START_RE: re.Pattern[str] = re.compile(rf"^(?:(?:{'|'.join(sorted(_NAME_PARTICLES))})\s+)*[A-ZÀ-Ý]")
 _DEPARTURE_RE: re.Pattern[str] = re.compile(rf"({_PERSON_NAME})\s+n['’]est plus\b")
 _DEPARTURES_RE: re.Pattern[str] = re.compile(
     rf"({_PERSON_NAME}(?:\s*,\s*{_PERSON_NAME})*\s+et\s+{_PERSON_NAME})\s+ne sont plus\b"
 )
 _DEPARTED_NAMES_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+et\s+")
+_OWNER_IN_FIRM_NAME_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+[-–]\s+")
+_MIN_OWNER_NAME_WORDS: int = 2
+_MAX_OWNER_NAME_WORDS: int = 4
 _ORIGIN_RE: re.Pattern[str] = re.compile(r"^(?:de\s|d['’]|von\s|du\s|des\s|tous\s+deux\s+de\s)", re.IGNORECASE)
 _DOMICILE_RE: re.Pattern[str] = re.compile(r"^(?:à|a|in|en)\s", re.IGNORECASE)
 _NOT_A_ROLE_RE: re.Pattern[str] = re.compile(
@@ -89,222 +99,6 @@ _NOT_A_ROLE_RE: re.Pattern[str] = re.compile(
 )
 _COMPANY_RE: re.Pattern[str] = re.compile(r"\b(?:sa|sàrl|sarl|ag|gmbh|fiduciaire|revision|révision)\b|che-\d")
 _LATIN1_READ_UTF8_RE: re.Pattern[str] = re.compile("[ÂÃ][\u0080-¿]")
-
-_COMMON_GIVEN_NAMES: frozenset[str] = frozenset(
-    {
-        "abilio",
-        "adelino",
-        "agostinho",
-        "alberto",
-        "alvaro",
-        "americo",
-        "antonio",
-        "armando",
-        "artur",
-        "augusto",
-        "bernardo",
-        "bruno",
-        "carlos",
-        "custodio",
-        "diogo",
-        "domingos",
-        "duarte",
-        "eduardo",
-        "emanuel",
-        "fabio",
-        "fernando",
-        "filipe",
-        "francisco",
-        "goncalo",
-        "helder",
-        "henrique",
-        "hugo",
-        "ivo",
-        "jaime",
-        "joao",
-        "joaquim",
-        "jorge",
-        "jose",
-        "julio",
-        "luis",
-        "manuel",
-        "marco",
-        "marcos",
-        "mario",
-        "miguel",
-        "nelson",
-        "nuno",
-        "orlando",
-        "paulo",
-        "pedro",
-        "rafael",
-        "raul",
-        "renato",
-        "ricardo",
-        "rodrigo",
-        "rogerio",
-        "rui",
-        "sergio",
-        "silvio",
-        "simao",
-        "tiago",
-        "tomas",
-        "valter",
-        "vasco",
-        "vitor",
-        "ana",
-        "beatriz",
-        "carla",
-        "catarina",
-        "celia",
-        "cristina",
-        "fatima",
-        "filipa",
-        "graca",
-        "helena",
-        "ines",
-        "isabel",
-        "joana",
-        "lurdes",
-        "manuela",
-        "margarida",
-        "marta",
-        "paula",
-        "raquel",
-        "rita",
-        "rosa",
-        "rute",
-        "sonia",
-        "susana",
-        "teresa",
-        "vera",
-        "angelo",
-        "carlo",
-        "domenico",
-        "enzo",
-        "fabrizio",
-        "francesco",
-        "franco",
-        "gianni",
-        "giovanni",
-        "giuseppe",
-        "lorenzo",
-        "luca",
-        "luigi",
-        "massimo",
-        "matteo",
-        "maurizio",
-        "nicola",
-        "paolo",
-        "pietro",
-        "riccardo",
-        "roberto",
-        "salvatore",
-        "stefano",
-        "umberto",
-        "vincenzo",
-        "vittorio",
-        "chiara",
-        "francesca",
-        "giovanna",
-        "giulia",
-        "paola",
-        "valentina",
-        "alejandro",
-        "diego",
-        "ignacio",
-        "javier",
-        "jesus",
-        "joaquin",
-        "juan",
-        "pablo",
-        "ramon",
-        "carmen",
-        "dolores",
-        "mercedes",
-        "pilar",
-        "agron",
-        "ardian",
-        "arben",
-        "arsim",
-        "avni",
-        "bekim",
-        "besnik",
-        "blerim",
-        "bujar",
-        "burim",
-        "dardan",
-        "driton",
-        "fatmir",
-        "fitim",
-        "gezim",
-        "ilir",
-        "isuf",
-        "kushtrim",
-        "labinot",
-        "lirim",
-        "mentor",
-        "naim",
-        "valon",
-        "visar",
-        "arta",
-        "besa",
-        "drita",
-        "mimoza",
-        "teuta",
-        "vjosa",
-        "ahmed",
-        "ahmet",
-        "ali",
-        "amine",
-        "bilal",
-        "hasan",
-        "hassan",
-        "ibrahim",
-        "ismail",
-        "karim",
-        "kemal",
-        "khalid",
-        "mehdi",
-        "mehmet",
-        "mohamed",
-        "mohammed",
-        "murat",
-        "mustafa",
-        "nabil",
-        "omer",
-        "osman",
-        "rachid",
-        "said",
-        "sofiane",
-        "soufiane",
-        "yassine",
-        "youssef",
-        "yusuf",
-        "nadia",
-        "samira",
-        "beat",
-        "fritz",
-        "hans",
-        "heinz",
-        "jurg",
-        "kurt",
-        "markus",
-        "reto",
-        "rolf",
-        "ruedi",
-        "stefan",
-        "ueli",
-        "urs",
-        "walter",
-        "werner",
-        "brigitte",
-        "regula",
-        "ruth",
-        "ursula",
-        "verena",
-    }
-)
 
 _OWNER_ROLES: tuple[str, ...] = ("titulaire", "inhaber", "inhaberin")
 _CHAIR_ROLES: tuple[str, ...] = (
@@ -330,8 +124,8 @@ _DIRECTOR_ROLES: tuple[str, ...] = ("directeur", "directrice", "direktor", "dire
 class RegisteredPerson:
     """A person the register lists for a firm, with what they do there.
 
-    ``is_name_certain`` is false for an older « Nom Prénom » of three words or more, where nothing says
-    which word is the first name.
+    ``is_name_certain`` is false when nothing says which word of an older « Nom Prénom » written without a
+    comma is the first name.
     """
 
     first_name: str | None
@@ -398,6 +192,59 @@ class SwissRegisterPeople:
         return list(people.values())
 
     @staticmethod
+    def owner_in_firm_name(firm_name: str) -> RegisteredPerson | None:
+        """
+        The owner a sole proprietorship's name holds, for a firm the register publishes nothing about.
+
+        The owner closes the name after a comma or a dash, last name first (« Garage des Deux Cantons, Modèle
+        Jules », « Garage Exemple - Modèle Exemple Jules »), or with the first name first and no separator
+        (« Garage du Lac Jules Modèle »). Its first name must be one the list of given names knows: « Exemple,
+        dos Santos Modèle » holds a last name only — unless the name says « titulaire » before it (« Exemple -
+        titulaire Modèle Jules »). Without a separator, the name is only a proposal.
+
+        Args:
+            firm_name: The name of a sole proprietorship in the register.
+
+        Returns:
+            The owner, or ``None`` when the name holds no person.
+        """
+        parts = _OWNER_IN_FIRM_NAME_SEPARATOR_RE.split(firm_name.strip())
+        if len(parts) > 1:
+            words = parts[-1].split()
+            is_named_owner = bool(words) and fold(words[0]) in _OWNER_ROLES
+            words = words[1:] if is_named_owner else words
+            name_words = [word for word in words if word not in _NAME_PARTICLES]
+            is_person = (
+                len(name_words) >= _MIN_OWNER_NAME_WORDS
+                and len(words) <= _MAX_OWNER_NAME_WORDS
+                and _LAST_NAME_START_RE.match(" ".join(words))
+            )
+            if not is_person or not all(word[:1].isupper() or word in _NAME_PARTICLES for word in words):
+                return None
+            last_name, first_name, is_cut_sure = SwissRegisterPeople._split_name_without_comma(words)
+            if not is_named_owner and not GivenNames.is_common_given_name(first_name.split()[0]):
+                return None
+            return RegisteredPerson(
+                first_name=title_case_name(first_name),
+                last_name=title_case_name(last_name) or last_name,
+                roles=("titulaire",),
+                is_name_certain=is_cut_sure,
+            )
+        words = firm_name.split()
+        if (
+            len(words) < 3
+            or not GivenNames.is_common_given_name(words[-2])
+            or GivenNames.is_common_given_name(words[-1])
+        ):
+            return None
+        return RegisteredPerson(
+            first_name=title_case_name(words[-2]),
+            last_name=title_case_name(words[-1]) or words[-1],
+            roles=("titulaire",),
+            is_name_certain=False,
+        )
+
+    @staticmethod
     def lead_people(people: list[RegisteredPerson]) -> list[RegisteredPerson]:
         """The people holding the highest running role (owner, chair, manager, director); none when nobody runs it."""
         top = max((person.rank for person in people), default=0)
@@ -452,26 +299,30 @@ class SwissRegisterPeople:
         return text
 
     @staticmethod
-    def _split_name_without_comma(words: list[str]) -> tuple[str, str]:
+    def _split_name_without_comma(words: list[str]) -> tuple[str, str, bool]:
         """
-        The last name and first names of an older « Nom Prénom » written without a comma.
+        The last name and first names of an older « Nom Prénom » written without a comma, and whether the cut is sure.
 
-        The first names are the known given names that end it (« Modèle Exemple Vasco Simão » gives
-        « Vasco Simão »), the last word when none is known; the first word always belongs to the last name.
+        The first names are the common given names that end it (« Modèle Exemple Vasco Simão » gives
+        « Vasco Simão »; a rare one like « Marty » is a last name), the last word when none is known; the first
+        word always belongs to the last name.
+        The cut is sure for two words, or for a single given name after a word that is none (« de Modèle
+        Paul »): « Exemple Jean Paul » may be « Exemple Jean », « Paul ».
 
         Args:
             words: The name's words, last name first.
 
         Returns:
-            ``(last name, first names)``.
+            ``(last name, first names, whether the cut is sure)``.
         """
         given_count = 0
         for word in reversed(words[1:]):
-            if fold(word) not in _COMMON_GIVEN_NAMES and infer_gender(word) is None:
+            if not GivenNames.is_common_given_name(word):
                 break
             given_count += 1
+        is_cut_sure = len(words) == 2 or (given_count == 1 and not GivenNames.is_common_given_name(words[-2]))
         given_count = max(given_count, 1)
-        return " ".join(words[:-given_count]), " ".join(words[-given_count:])
+        return " ".join(words[:-given_count]), " ".join(words[-given_count:]), is_cut_sure
 
     @staticmethod
     def _person(entry: str, *, heading: str) -> RegisteredPerson | None:
@@ -479,8 +330,9 @@ class SwissRegisterPeople:
         One person of a section entry, or ``None`` when the entry names a company (an auditor) or nobody.
 
         « Nom, Prénom, de …, à …, rôle » gives the first name; the older « Nom Prénom, de … » puts it
-        after the last name. « l'associé Exemple Paul avec signature individuelle » and « lequel est en
-        outre gérant » lose their wrapping words; a heading that names a role (« Gérant: ») gives it.
+        after the last name, which may open with a particle (« de Modèle Paul »). « l'associé Exemple Paul avec
+        signature individuelle » and « lequel est en outre gérant » lose their wrapping words; a heading that
+        names a role (« Gérant: ») gives it.
         """
         parts = [
             _SIGNATURE_SUFFIX_RE.sub("", _ROLE_PREFIX_RE.sub("", part.strip())).strip()
@@ -497,10 +349,9 @@ class SwissRegisterPeople:
             words = parts[0].split()
             if len(words) < 2:
                 return None
-            last_name, first_name = SwissRegisterPeople._split_name_without_comma(words)
+            last_name, first_name, is_name_certain = SwissRegisterPeople._split_name_without_comma(words)
             details = parts[1:]
-            is_name_certain = len(words) == 2
-        if not re.match(r"^[A-ZÀ-Ý]", last_name):
+        if not _LAST_NAME_START_RE.match(last_name):
             return None
         roles = tuple(
             part

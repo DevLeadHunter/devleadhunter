@@ -214,12 +214,16 @@ def test_context_uses_place_identity_when_address_has_no_postal_code() -> None:
         website=None,
         website_status=None,
         phone=None,
+        email=None,
+        emails=None,
+        category=None,
     )
     enrichment = SimpleNamespace(
         description=None,
         reviews=[],
         place_postal_code="63000",
         place_city="Clermont-Ferrand",
+        professional_license_number=None,
     )
     context = context_from_prospect(prospect, enrichment)
     assert context.postal_code == "63000"
@@ -237,12 +241,16 @@ def test_context_prefers_the_prospect_own_address() -> None:
         website=None,
         website_status=None,
         phone=None,
+        email=None,
+        emails=None,
+        category=None,
     )
     enrichment = SimpleNamespace(
         description=None,
         reviews=[],
         place_postal_code="63000",
         place_city="Clermont-Ferrand",
+        professional_license_number=None,
     )
     context = context_from_prospect(prospect, enrichment)
     assert context.postal_code == "35000"
@@ -261,6 +269,9 @@ def test_context_drops_dead_and_placeholder_websites() -> None:
             website="https://plomberie-vidal.business.site",
             website_status=website_status,
             phone=None,
+            email=None,
+            emails=None,
+            category=None,
         )
 
     assert context_from_prospect(prospect_with_status("dead")).website is None

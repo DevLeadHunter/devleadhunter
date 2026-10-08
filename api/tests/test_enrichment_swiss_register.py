@@ -45,13 +45,19 @@ def _record() -> SimpleNamespace:
         "proposed_provenance",
         "proposed_state",
     ]
-    return SimpleNamespace(contact_name_manual=False, **dict.fromkeys(fields))
+    return SimpleNamespace(contact_name_manual=False, place_postal_code=None, **dict.fromkeys(fields))
 
 
 def _prospect() -> SimpleNamespace:
     """A Swiss landscaper of the campaign."""
     return SimpleNamespace(
-        id=1, name="Exemple Paysages Sàrl", city="Porrentruy", country="CH", is_dismissed=False, user_id=7
+        id=1,
+        name="Exemple Paysages Sàrl",
+        city="Porrentruy",
+        address=None,
+        country="CH",
+        is_dismissed=False,
+        user_id=7,
     )
 
 
@@ -74,7 +80,7 @@ def register_firms(monkeypatch: pytest.MonkeyPatch) -> list[SwissRegisterFirm]:
     """The firms the register lists, scripted by each test, with one publication each."""
     firms: list[SwissRegisterFirm] = []
 
-    async def firms_named(name: str) -> list[SwissRegisterFirm]:
+    async def firms_named(name: str, *, max_entries: int = 10) -> list[SwissRegisterFirm]:
         return list(firms)
 
     async def publications(firm: SwissRegisterFirm) -> list[tuple[date, str]]:
@@ -165,3 +171,74 @@ def test_the_only_firm_of_the_name_in_another_region_names_nobody(
     asyncio.run(EnrichmentService()._read_swiss_register(_Session(), prospect, record, uid=None))
 
     assert (record.contact_first_name, record.proposed_first_name) == (None, None)
+
+
+def test_a_firm_filed_under_another_name_at_the_business_address_names_its_head(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The register adds the owner's name (« Exemple Paysages Modèle »): found by its words at the address."""
+
+    async def address_in_town(firm: SwissRegisterFirm) -> tuple[str, str]:
+        return "2900", "Porrentruy"
+
+    monkeypatch.setattr(swiss_registry, "address_of", address_in_town)
+    register_firms.append(
+        SwissRegisterFirm(
+            name="Exemple Paysages Modèle",
+            seat="Haute-Ajoie",
+            status="EXISTIEREND",
+            uid="CHE-444.555.666",
+            register_id=2,
+        )
+    )
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
+
+    assert (record.contact_first_name, record.proposed_first_name) == ("Paul", None)
+
+
+def test_the_firm_of_a_number_now_trading_under_another_name_names_nobody(
+    register_firms: list[SwissRegisterFirm],
+) -> None:
+    """The company number read by the search now belongs to a property company: its director is not the head."""
+    register_firms.append(
+        SwissRegisterFirm(
+            name="Modèle Immobilier SA", seat="Porrentruy", status="EXISTIEREND", uid="CHE-111.222.333", register_id=1
+        )
+    )
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid="CHE-111.222.333"))
+
+    assert (record.contact_first_name, record.proposed_first_name) == (None, None)
+
+
+def test_a_sole_proprietorship_without_publication_names_its_owner_in_its_name(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """« Exemple Paysages, Modèle Jules », registered before the gazette went online, names its owner."""
+
+    async def no_publication(firm: SwissRegisterFirm) -> list[tuple[date, str]]:
+        return []
+
+    async def address_in_town(firm: SwissRegisterFirm) -> tuple[str, str]:
+        return "2900", "Porrentruy"
+
+    monkeypatch.setattr(swiss_registry, "publications", no_publication)
+    monkeypatch.setattr(swiss_registry, "address_of", address_in_town)
+    register_firms.append(
+        SwissRegisterFirm(
+            name="Exemple Paysages, Modèle Jules",
+            seat="Porrentruy",
+            status="EXISTIEREND",
+            uid="CHE-777.888.999",
+            register_id=3,
+            legal_form_id=1,
+        )
+    )
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
+
+    assert (record.contact_first_name, record.contact_last_name) == ("Jules", "Modèle")

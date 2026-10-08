@@ -11,7 +11,9 @@ import re
 import unicodedata
 
 # Lowercase particles kept as-is inside a title-cased name.
-_PARTICLES: frozenset[str] = frozenset({"de", "du", "des", "le", "la", "les", "d'", "l'", "van", "von", "da", "di"})
+_PARTICLES: frozenset[str] = frozenset(
+    {"de", "du", "des", "le", "la", "les", "d'", "l'", "van", "von", "da", "das", "dos", "di", "del"}
+)
 
 # Legal-form / company suffixes stripped when comparing company names.
 _COMPANY_NOISE: frozenset[str] = frozenset(
@@ -40,192 +42,6 @@ _COMPANY_NOISE: frozenset[str] = frozenset(
 )
 
 _DOTTED_INITIAL_RE: re.Pattern[str] = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
-
-# Compact gender lookup for common French first names — used ONLY for the
-# « Bonjour M./Mme {Nom} » case (last name without first name). Deliberately
-# conservative: an unknown first name yields no gender, hence a neutral greeting.
-_MALE_FIRST_NAMES: frozenset[str] = frozenset(
-    [
-        "jean",
-        "pierre",
-        "michel",
-        "andre",
-        "philippe",
-        "rene",
-        "louis",
-        "alain",
-        "jacques",
-        "bernard",
-        "marcel",
-        "daniel",
-        "roger",
-        "robert",
-        "paul",
-        "claude",
-        "christian",
-        "henri",
-        "georges",
-        "nicolas",
-        "patrick",
-        "antoine",
-        "francois",
-        "pascal",
-        "eric",
-        "david",
-        "olivier",
-        "stephane",
-        "laurent",
-        "frederic",
-        "sebastien",
-        "christophe",
-        "thierry",
-        "vincent",
-        "julien",
-        "alexandre",
-        "thomas",
-        "maxime",
-        "romain",
-        "kevin",
-        "florian",
-        "anthony",
-        "jeremy",
-        "mathieu",
-        "guillaume",
-        "benjamin",
-        "lucas",
-        "hugo",
-        "leo",
-        "theo",
-        "nathan",
-        "enzo",
-        "louis",
-        "gabriel",
-        "raphael",
-        "arthur",
-        "jules",
-        "adam",
-        "liam",
-        "noe",
-        "sacha",
-        "eliott",
-        "marc",
-        "luc",
-        "yves",
-        "gerard",
-        "serge",
-        "gilles",
-        "bruno",
-        "didier",
-        "joel",
-        "francis",
-        "dominique",
-        "remy",
-        "fabrice",
-        "gregory",
-        "cedric",
-        "ludovic",
-        "damien",
-        "aurelien",
-        "quentin",
-        "clement",
-        "valentin",
-        "baptiste",
-        "martin",
-        "simon",
-        "victor",
-        "axel",
-        "mohamed",
-        "karim",
-        "mehdi",
-        "rachid",
-        "samir",
-        "yanis",
-        "geoffrey",
-        "gregoire",
-        "tanguy",
-        "erwan",
-        "loic",
-        "mickael",
-        "jonathan",
-        "dylan",
-        "bastien",
-        "alexis",
-    ]
-)
-
-_FEMALE_FIRST_NAMES: frozenset[str] = frozenset(
-    [
-        "marie",
-        "jeanne",
-        "francoise",
-        "monique",
-        "catherine",
-        "nathalie",
-        "isabelle",
-        "sylvie",
-        "anne",
-        "martine",
-        "jacqueline",
-        "christiane",
-        "nicole",
-        "helene",
-        "laurence",
-        "sandrine",
-        "valerie",
-        "celine",
-        "karine",
-        "stephanie",
-        "sophie",
-        "aurelie",
-        "julie",
-        "camille",
-        "emilie",
-        "laura",
-        "manon",
-        "lea",
-        "chloe",
-        "emma",
-        "sarah",
-        "pauline",
-        "mathilde",
-        "lucie",
-        "marion",
-        "elodie",
-        "audrey",
-        "melanie",
-        "delphine",
-        "severine",
-        "virginie",
-        "patricia",
-        "veronique",
-        "brigitte",
-        "danielle",
-        "josiane",
-        "yvette",
-        "madeleine",
-        "therese",
-        "suzanne",
-        "charlotte",
-        "juliette",
-        "louise",
-        "alice",
-        "clara",
-        "ines",
-        "jade",
-        "lina",
-        "mila",
-        "rose",
-        "eva",
-        "anna",
-        "lou",
-        "zoe",
-        "nadia",
-        "samira",
-        "fatima",
-        "leila",
-        "amina",
-    ]
-)
 
 
 def fold(value: str) -> str:
@@ -266,20 +82,22 @@ def title_case_name(value: str | None) -> str | None:
 
 
 def infer_gender(first_name: str | None) -> str | None:
-    """Best-effort gender from a French first name ('M' / 'F' / None).
+    """Best-effort gender from a first name ('M' / 'F' / None).
 
     Only the FIRST token is considered (« Jean-Pierre » → « jean »… actually
-    the full hyphenated token is looked up first, then its head). Unknown →
-    None, and callers must fall back to a neutral greeting.
+    the full hyphenated token is looked up first, then its head). Unknown, or
+    borne by both sexes (« Dominique ») → None, and callers must fall back to a
+    neutral greeting.
     """
     if not first_name:
         return None
+    from services.decision_maker.given_names import GivenNames
+
     key = fold(first_name).split(" ")[0]
     for probe in (key, key.split("-")[0]):
-        if probe in _MALE_FIRST_NAMES:
-            return "M"
-        if probe in _FEMALE_FIRST_NAMES:
-            return "F"
+        sex = GivenNames.sex_of(probe)
+        if sex:
+            return sex
     return None
 
 

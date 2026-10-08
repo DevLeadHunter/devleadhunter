@@ -63,7 +63,7 @@ def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
 def swiss_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     """The federal company register lists nobody unless a test scripts a firm: a run never calls Zefix."""
 
-    async def no_firm(name: str) -> list[SwissRegisterFirm]:
+    async def no_firm(name: str, *, max_entries: int = 10) -> list[SwissRegisterFirm]:
         return []
 
     async def no_address(firm: SwissRegisterFirm) -> tuple[None, None]:
@@ -82,6 +82,7 @@ def french_communes_offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(no_answer))
     monkeypatch.setattr(FrenchDepartments, "_department_by_town", {})
+    monkeypatch.setattr(FrenchDepartments, "_is_town_by_word", {})
 
 
 @pytest.fixture(autouse=True)
