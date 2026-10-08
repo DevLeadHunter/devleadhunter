@@ -159,7 +159,7 @@ def test_the_only_firm_of_the_name_in_another_region_names_nobody(
     monkeypatch.setattr(swiss_registry, "address_of", address_far_away)
     register_firms.append(_firm(seat="Andelfingen"))
     prospect = _prospect()
-    prospect.address = "Route de Nyon 27, 1196 Gland"
+    prospect.address = "Rue de l'Exemple 1, 1196 Gland"
     record = _record()
 
     asyncio.run(EnrichmentService()._read_swiss_register(_Session(), prospect, record, uid=None))

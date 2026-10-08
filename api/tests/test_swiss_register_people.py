@@ -99,13 +99,13 @@ def test_a_long_older_name_leaves_its_first_name_unsure() -> None:
 
 
 def test_an_older_portuguese_name_keeps_both_its_first_names() -> None:
-    """« Modèle Exemple Pedro Sérgio »: two given names after two last names, the first word always a last name."""
+    """« Modèle Exemple Vasco Simão »: two given names after two last names, the first word always a last name."""
     publication = (
         date(2022, 5, 30),
-        "Associé-gérant: Modèle Exemple Pedro Sérgio, du Portugal, à Bernex, pour 200 parts de CHF 100. Fin.",
+        "Associé-gérant: Modèle Exemple Vasco Simão, du Portugal, à Genève, pour 20 parts de CHF 1000. Fin.",
     )
 
-    assert _leads(publication) == [("Pedro Sérgio", "Modèle Exemple", False)]
+    assert _leads(publication) == [("Vasco Simão", "Modèle Exemple", False)]
 
 
 def test_board_members_leaving_together_are_struck_off() -> None:

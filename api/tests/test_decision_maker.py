@@ -511,7 +511,7 @@ def test_web_registry_recovers_legal_name_then_delegates_to_registry() -> None:
     assert candidate.source == "web_registry"
     assert candidate.primary and candidate.geo_confirmed
     assert candidate.provenance.startswith("Recherche web →")
-    # The registry was queried with the RECOVERED legal name, in the business's département.
+    # The registry was queried with the RECOVERED legal name.
     assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code == "72000" for call in registry.calls)
 
 

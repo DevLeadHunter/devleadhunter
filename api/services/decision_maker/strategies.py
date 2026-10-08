@@ -545,8 +545,7 @@ class WebRegistryStrategy:
         if not legal_names:
             return []
         # Each sub-context carries the RECOVERED legal name, so the registry's own
-        # similarity check compares legal-name↔registry, not the unmatchable trade
-        # name; the registry searches it in the business's département.
+        # similarity check compares legal-name↔registry, not the unmatchable trade name.
         subs = [replace(context, company_name=name) for name in legal_names]
         results = await asyncio.gather(*(self._registry.resolve(sub) for sub in subs), return_exceptions=True)
         candidates: list[NameCandidate] = []

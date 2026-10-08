@@ -5,9 +5,9 @@ mail) meilleure que la recherche faite à la main avec Claude Code. Commencé le
 leads de la vague 4, avec la méthode des carnets `docs/PROSPECT_SEARCH_TRAINING.md` et
 `docs/ENRICHMENT_TRAINING.md`.
 
-**Le but, fixé par Léo (8 octobre) : que l'app trouve le décisionnaire mieux que Claude à la main,
-petit à petit, campagne après campagne.** Léo laisse Claude valider les décisionnaires « à confirmer »
-dont il est sûr ou quasiment sûr.
+**Le but (8 octobre) : que l'app trouve le décisionnaire mieux que Claude à la main, petit à petit,
+campagne après campagne.** Les décisionnaires « à confirmer » dont Claude est sûr ou quasiment sûr,
+Claude les valide lui-même.
 
 ## La méthode
 

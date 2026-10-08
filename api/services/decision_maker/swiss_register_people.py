@@ -456,8 +456,8 @@ class SwissRegisterPeople:
         """
         The last name and first names of an older « Nom Prénom » written without a comma.
 
-        The first names are the known given names that end it (« Da Costa Carvalho Pedro Sérgio » gives
-        « Pedro Sérgio »), the last word when none is known; the first word always belongs to the last name.
+        The first names are the known given names that end it (« Modèle Exemple Vasco Simão » gives
+        « Vasco Simão »), the last word when none is known; the first word always belongs to the last name.
 
         Args:
             words: The name's words, last name first.
