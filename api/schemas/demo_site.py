@@ -67,6 +67,14 @@ class DemoSiteServiceCard(BaseModel):
     image: str = Field(default="", max_length=2000)
 
 
+class DemoSitePortfolioItem(BaseModel):
+    """One realization of the site: a photo of the pool, what it shows, its kind of work."""
+
+    image: str = Field(..., min_length=1, max_length=2000)
+    title: str = Field(..., min_length=1, max_length=120)
+    category: str = Field(default="", max_length=40)
+
+
 class DemoSiteUpdateRequest(BaseModel):
     """Partial update payload for an existing demo site."""
 
@@ -93,6 +101,9 @@ class DemoSiteUpdateRequest(BaseModel):
     # « À propos » text written for this business (stored in ``section_overrides["about"]``, kept
     # across regenerations); ``""`` goes back to the generated one.
     about_text: str | None = Field(default=None, max_length=700)
+    # Realizations with the business's own photos (stored in ``section_overrides["portfolio"]``, kept
+    # across regenerations); ``[]`` goes back to the template's.
+    portfolio: list[DemoSitePortfolioItem] | None = Field(default=None, max_length=6)
 
 
 class DemoSiteServiceCardsConfig(BaseModel):

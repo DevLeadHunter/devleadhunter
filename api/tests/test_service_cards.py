@@ -19,7 +19,12 @@ from services.service_card_suggestion_service import (
     review_excerpts,
 )
 from services.templates import registry
-from services.templates.site_content import apply_section_overrides, clean_service_cards, fill_missing_card_images
+from services.templates.site_content import (
+    apply_section_overrides,
+    clean_portfolio_items,
+    clean_service_cards,
+    fill_missing_card_images,
+)
 
 POOL = ["https://cdn/truck.jpg", "https://cdn/burger.jpg", "https://cdn/menu.jpg", "https://cdn/wrap.jpg"]
 LABELS = {
@@ -399,4 +404,46 @@ def test_update_saves_and_clears_the_about_text(monkeypatch: pytest.MonkeyPatch)
     asyncio.run(service.update_demo_site(_FakeDB(), site, about_text="Je soigne chaque jardin."))
     assert site.section_overrides == {"about": "Je soigne chaque jardin."}
     asyncio.run(service.update_demo_site(_FakeDB(), site, about_text=""))
+    assert site.section_overrides is None
+
+
+def test_realizations_keep_only_titled_photos_of_the_pool() -> None:
+    pool = ["https://cdn/jardin.jpg", "https://cdn/terrasse.jpg"]
+
+    items = clean_portfolio_items(
+        [
+            {"image": "https://cdn/jardin.jpg", "title": "Jardin méditerranéen et pelouse", "category": "Création"},
+            {"image": "https://evil/x.jpg", "title": "Hors du site"},
+            {"image": "https://cdn/terrasse.jpg", "title": ""},
+            {"image": "", "title": "Sans photo"},
+        ],
+        allowed_images=pool,
+    )
+
+    assert items == [
+        {"image": "https://cdn/jardin.jpg", "title": "Jardin méditerranéen et pelouse", "category": "Création"}
+    ]
+
+
+def test_the_realizations_chosen_for_the_site_replace_the_template_ones() -> None:
+    site = {"portfolio": [{"image": "https://unsplash/x.jpg", "title": "Défaut", "category": "Création"}]}
+
+    apply_section_overrides(site, {"portfolio": [{"image": "https://cdn/allee.jpg", "title": "Allée en pierre"}]})
+
+    assert site["portfolio"] == [{"image": "https://cdn/allee.jpg", "title": "Allée en pierre", "category": ""}]
+
+
+def test_update_saves_and_clears_the_realizations(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(DemoSiteService, "_enrichment_dict_for_site", lambda self, db, site: {"photos": POOL})
+
+    async def fake_regenerate(self: DemoSiteService, db: object, demo_site: object) -> object:
+        return demo_site
+
+    monkeypatch.setattr(DemoSiteService, "regenerate_demo_site", fake_regenerate)
+    service = DemoSiteService()
+    site = _site()
+
+    asyncio.run(service.update_demo_site(_FakeDB(), site, portfolio=[{"image": POOL[0], "title": "Un chantier"}]))
+    assert site.section_overrides == {"portfolio": [{"image": POOL[0], "title": "Un chantier", "category": ""}]}
+    asyncio.run(service.update_demo_site(_FakeDB(), site, portfolio=[]))
     assert site.section_overrides is None

@@ -35,6 +35,10 @@ from services.validation_service import validation_service
 MAX_SERVICE_CARDS = 12
 MAX_SERVICE_CARD_TITLE_CHARS = 80
 MAX_SERVICE_CARD_DESCRIPTION_CHARS = 240
+# Operator-curated realizations (``DemoSite.section_overrides["portfolio"]``): shape limits.
+MAX_PORTFOLIO_ITEMS = 6
+MAX_PORTFOLIO_TITLE_CHARS = 120
+MAX_PORTFOLIO_CATEGORY_CHARS = 40
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
@@ -463,6 +467,43 @@ def clean_service_cards(
     return cleaned
 
 
+def clean_portfolio_items(
+    items: Any,
+    *,
+    allowed_images: list[str] | None = None,
+    max_items: int = MAX_PORTFOLIO_ITEMS,
+) -> list[dict[str, str]]:
+    """Validate operator-curated realizations into ``{"image", "title", "category"}`` rows.
+
+    A realization shows one of the business's own photos with what it shows: one without a title or
+    without a photo is dropped, and when ``allowed_images`` is given a photo outside that pool is too.
+
+    Args:
+        items: Raw realizations (API payload or stored override).
+        allowed_images: The site's photo pool; None skips the photo check (already-cleaned data).
+        max_items: Hard cap on the number of realizations kept.
+
+    Returns:
+        The clean realizations, in order.
+    """
+    if not isinstance(items, list):
+        return []
+    allowed: set[str] | None = set(allowed_images) if allowed_images is not None else None
+    cleaned: list[dict[str, str]] = []
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        title = " ".join(str(entry.get("title", "") or "").split()).strip()[:MAX_PORTFOLIO_TITLE_CHARS]
+        image = str(entry.get("image", "") or "").strip()
+        if not title or not image or (allowed is not None and image not in allowed):
+            continue
+        category = " ".join(str(entry.get("category", "") or "").split()).strip()[:MAX_PORTFOLIO_CATEGORY_CHARS]
+        cleaned.append({"image": image, "title": title, "category": category})
+        if len(cleaned) >= max_items:
+            break
+    return cleaned
+
+
 def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
     """Give every service card without a photo the best unused real photo of the site.
 
@@ -509,9 +550,9 @@ def apply_section_overrides(
 
     Currently ``services``: the curated cards replace the generated menu / prestations wholesale
     (title, description, photo); cards saved without a photo get the best unused real photo.
-    ``about`` replaces the « À propos » text with the one written for this business. The override
-    lives on the demo site, so it survives every regeneration — a colour tweak no longer wipes the
-    specialties or the text typed by hand.
+    ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
+    realizations with its own photos and what they show. The override lives on the demo site, so it
+    survives every regeneration — a colour tweak no longer wipes the specialties or the text typed by hand.
     """
     if not isinstance(overrides, dict):
         return site_content
@@ -535,6 +576,9 @@ def apply_section_overrides(
     about = overrides.get("about")
     if isinstance(about, str) and about.strip():
         site_content["about"] = about.strip()
+    portfolio = clean_portfolio_items(overrides.get("portfolio"))
+    if portfolio:
+        site_content["portfolio"] = portfolio
     return site_content
 
 

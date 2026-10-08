@@ -59,6 +59,7 @@ from services.storyblok_service import (
 from services.templates import registry as template_registry
 from services.templates.site_content import (
     apply_section_overrides,
+    clean_portfolio_items,
     clean_service_cards,
     from_storyblok_site_content,
     usable_site_photos,
@@ -494,6 +495,7 @@ class DemoSiteService:
         section_images: dict[str, str] | None = None,
         hero_badge: str | None = None,
         about_text: str | None = None,
+        portfolio: list[dict] | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -501,7 +503,8 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
-        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one).
+        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
+        the realizations with photos of the pool (``[]`` goes back to the template's).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -519,7 +522,7 @@ class DemoSiteService:
                 overrides["services"] = cards
                 overrides["services_source"] = services_source if services_source in _SERVICE_CARD_SOURCES else "manual"
             demo_site.section_overrides = overrides or None
-        if section_images is not None or hero_badge is not None or about_text is not None:
+        if section_images is not None or hero_badge is not None or about_text is not None or portfolio is not None:
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
@@ -545,6 +548,13 @@ class DemoSiteService:
                     overrides["about"] = about
                 else:
                     overrides.pop("about", None)
+            if portfolio is not None:
+                pool, _ = self._photo_pool_with_enrichment(db, demo_site)
+                items = clean_portfolio_items(portfolio, allowed_images=pool)
+                if items:
+                    overrides["portfolio"] = items
+                else:
+                    overrides.pop("portfolio", None)
             demo_site.section_overrides = overrides or None
         if image_order is not None:
             pool: list[str] = usable_site_photos(self._enrichment_dict_for_site(db, demo_site))
@@ -1309,6 +1319,45 @@ class DemoSiteService:
         if not self.needs_storyblok_space_swap(site, datetime.now(UTC)):
             return
         await self.swap_storyblok_space_for_outreach(db, site)
+
+    async def provision_missing_storyblok_space(self, db: Session, site: DemoSite) -> DemoSite:
+        """
+        Give a site created without its CMS space the space its prospecting video films, its content kept.
+
+        Storyblok creates about ten spaces a day: a site generated past that limit stays live without one
+        (its content renders from the database). This seeds the space from that content, curated texts and
+        photos included, so nothing is generated again.
+
+        Args:
+            db: Database session.
+            site: The demo site, with or without its space.
+
+        Returns:
+            The site, with its space when it had none.
+
+        Raises:
+            ValueError: When the site has no content, or Storyblok refuses (its daily limit included).
+        """
+        if site.storyblok_space_id or not storyblok_service.is_configured:
+            return site
+        content_json: dict = site.content_json if isinstance(site.content_json, dict) else {}
+        if not content_json:
+            raise ValueError("Ce site n'a pas encore de contenu à copier dans Storyblok.")
+        provision = await storyblok_service.provision_space_with_content(
+            business_name=site.business_name,
+            slug=site.slug,
+            template_id=site.template_id,
+            collaborator_email=(site.email or site.storyblok_login_email or "").strip(),
+            preview_url=self.demo_url_for_slug(site.slug),
+            content_json=content_json,
+            invite_client=False,
+            rehost_all_assets=True,
+            country=self._prospect_country_for_site(db, site),
+        )
+        self._apply_storyblok_provision(site, provision)
+        db.commit()
+        db.refresh(site)
+        return site
 
     def get_public_by_domain(self, db: Session, host: str) -> DemoSite | None:
         """

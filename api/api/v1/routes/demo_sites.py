@@ -55,7 +55,7 @@ from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
 from services.site_legal import site_legal_notice_service
-from services.storyblok_service import storyblok_service
+from services.storyblok_service import StoryblokProvisionError, storyblok_service
 from services.templates.registry import default_subtitle
 from services.video_pipeline import VideoGenerationError
 
@@ -483,6 +483,23 @@ async def regenerate_demo_site(
     site = await demo_site_service.regenerate_demo_site(db, site)
     reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
     return _serialize_demo_site(site, include_brand_color=True)
+
+
+@router.post("/{demo_site_id}/storyblok-space", response_model=DemoSiteResponse)
+async def provision_demo_site_storyblok_space(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Create the CMS space of a site generated without one (Storyblok's daily limit), its content kept."""
+    site = _get_editable_demo_site(db, current_user.id, demo_site_id)
+    try:
+        site = await demo_site_service.provision_missing_storyblok_space(db, site)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except StoryblokProvisionError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    return _serialize_demo_site(site)
 
 
 @router.post("/{demo_site_id}/restore-images", response_model=DemoSiteResponse)
