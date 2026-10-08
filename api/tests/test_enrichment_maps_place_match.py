@@ -20,10 +20,10 @@ from scrappers.enrichment_scraper import EnrichmentData
 from scrappers.maps_place_match import ListedPlace, MapsPlaceMatch
 from services.enrichment_service import EnrichmentService, enrichment_service
 from services.professional_license_service import professional_license_service
+from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.search_judge import search_judge
-from services.prospect_search.trade_catalog import TradeCatalog
 from services.scraper_diagnostics_service import scraper_diagnostics_service
 from services.validation_service import ValidationService
 
@@ -99,14 +99,14 @@ def test_at_most_three_places_are_opened() -> None:
 
 def test_the_place_maps_opens_itself_must_carry_the_owner_s_full_name() -> None:
     """Maps opened a namesake sharing the owner's first name for a sole trader: it is not the business."""
-    assert not MapsPlaceMatch.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
-    assert MapsPlaceMatch.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+    assert not BusinessName.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+    assert BusinessName.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
 
 
 def test_trade_words_and_linking_words_do_not_count_against_a_name() -> None:
     """« Exemple & Fils Électricité Générale » is « Exemple Et Fils », « Modèle Électricité » is « Eurl Modèle Elec »."""
-    assert MapsPlaceMatch.is_named_like("Exemple & Fils Electricite Generale", "Exemple Et Fils", town="Pau")
-    assert MapsPlaceMatch.is_named_like("Modèle Electricité", "Eurl Modèle Elec", town="Pau")
+    assert BusinessName.is_named_like("Exemple & Fils Electricite Generale", "Exemple Et Fils", town="Pau")
+    assert BusinessName.is_named_like("Modèle Electricité", "Eurl Modèle Elec", town="Pau")
 
 
 def test_a_name_made_of_a_trade_and_a_town_must_match_word_for_word() -> None:
@@ -231,20 +231,8 @@ def test_a_business_google_has_nothing_about_gets_its_facebook_page_to_read(
     assert (record.error_message or "").startswith("Pas de fiche Google, mais sa page Facebook est trouvée")
 
 
-def test_the_web_search_keeps_the_page_of_the_business_and_not_a_namesake_s() -> None:
-    """Only a page named like the business, in its town, showing no other phone number, is its page."""
-    results = [
-        {
-            "link": "https://www.facebook.com/exemple.homonyme/",
-            "title": "Exemple Électricité | Lyon",
-            "description": "Exemple Électricité, Lyon. Électricien 04 72 00 00 00.",
-        },
-        {
-            "link": "https://www.facebook.com/exemple.electricite/",
-            "title": "Exemple Électricité | Bidart",
-            "description": "Exemple Électricité, Bidart. 120 followers. Électricien 06 12 34 56 78.",
-        },
-    ]
+def _facebook_page_found(results: list[dict[str, str]]) -> str | None:
+    """The page the enrichment's web search keeps for an electrician of Bidart, among these results."""
     facts = CandidateFacts(
         name="Exemple Électricité",
         trade_key="electricien",
@@ -254,10 +242,42 @@ def test_the_web_search_keeps_the_page_of_the_business_and_not_a_namesake_s() ->
         phone="06 12 34 56 78",
     )
     finder = ContactFinder(_SearchResultsClient(results), search_judge)  # type: ignore[arg-type]
+    return asyncio.run(finder.find_facebook_page(facts))
 
-    page = asyncio.run(finder.find_facebook_page(facts, TradeCatalog.resolve("électricien")))
+
+def test_the_web_search_keeps_the_page_of_the_business_and_not_a_namesake_s() -> None:
+    """Only a page named like the business, in its town or showing its phone, and no other number, is its page."""
+    page = _facebook_page_found(
+        [
+            {
+                "link": "https://www.facebook.com/exemple.homonyme/",
+                "title": "Exemple Électricité | Lyon",
+                "description": "Exemple Électricité, Lyon. Électricien 04 72 00 00 00.",
+            },
+            {
+                "link": "https://www.facebook.com/exemple.electricite/",
+                "title": "Exemple Électricité | Bidart",
+                "description": "Exemple Électricité, Bidart. 120 followers. Électricien 06 12 34 56 78.",
+            },
+        ]
+    )
 
     assert page == "https://www.facebook.com/exemple.electricite"
+
+
+def test_a_namesake_of_the_same_trade_in_another_town_is_not_the_business_s_page() -> None:
+    """Same name, same trade, no number: a page placed in another town is a namesake's."""
+    page = _facebook_page_found(
+        [
+            {
+                "link": "https://www.facebook.com/exemple.homonyme/",
+                "title": "Exemple Électricité | Lyon",
+                "description": "Exemple Électricité, Lyon. 233 followers. Une entreprise d'électricité sérieuse.",
+            }
+        ]
+    )
+
+    assert page is None
 
 
 def test_an_empty_read_never_undoes_a_finished_enrichment(db: Session, resolved_prospect_ids: list[int]) -> None:

@@ -12,6 +12,9 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from services.decision_maker.normalize import company_tokens, join_dotted_initials
+from services.prospect_search.trade_catalog import TradeCatalog
+
 _PARENTHESES_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
 # A separator set off by spaces opens a tagline; a hyphen inside a name (« Weiss-Couvreur ») does not.
 _TAGLINE_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s+[-–—|:/·•]+(?:\s+|$)|,\s+")
@@ -25,6 +28,7 @@ _LEGAL_FORM_RE: re.Pattern[str] = re.compile(
     r"(?<!\w)(s\.?\s?[aà]\.?\s?r\.?\s?l\.?|s\.?\s?a\.?|gmbh|ag|sagl|snc|eurl|sasu?|inc\.?|enr\.?|lt[ée]e)(?!\w)",
     re.IGNORECASE,
 )
+_MIN_NAME_SIMILARITY: float = 0.5
 
 # Words too common in business names to tell one business from another.
 COMMON_NAME_WORDS: frozenset[str] = frozenset(
@@ -64,7 +68,7 @@ NAME_LINK_WORDS: frozenset[str] = frozenset(
 
 
 class BusinessName:
-    """Cleans the name a listing gives a business."""
+    """Cleans the name a listing gives a business, and tells whether a name is a given business's."""
 
     @classmethod
     def clean(cls, listing_name: str) -> str:
@@ -90,6 +94,70 @@ class BusinessName:
     def without_legal_form(name: str) -> str:
         """The name without its legal form (« Rochat » for « Rochat Sàrl »), or the name itself when nothing else remains."""
         return " ".join(_LEGAL_FORM_RE.sub(" ", name).split()) or name
+
+    @classmethod
+    def is_named_like(cls, name: str, business_name: str, *, town: str | None) -> bool:
+        """
+        Whether a name (a Maps place's, a Facebook page's) is the business's name.
+
+        Only the words that tell a business apart are compared: no legal form, trade word, linking word
+        or town, and no tagline (« Exemple Électrique - Maître Électricien Laval »). Most of them must be
+        the same (« Exemple & Fils Électricité Générale » is « Exemple Et Fils »). A business named after
+        one such word (« Exemple ») matches no name adding a word of its own: « Exemple Électricité » is
+        it, « Exemple Jules », a podiatrist, is not; nor is a namesake sharing a first name (« Jules
+        Exemple » for « Jules Modèle »). A name saying only a trade and a town (« Garage de Morges »)
+        must be the same word for word.
+
+        Args:
+            name: The name to check, as the place or page shows it.
+            business_name: The prospect's business name.
+            town: The prospect's town, if known.
+
+        Returns:
+            True when the name is the business's.
+        """
+        return cls.name_similarity(name, business_name, town=town) is not None
+
+    @classmethod
+    def name_similarity(cls, name: str, business_name: str, *, town: str | None) -> float | None:
+        """
+        The share of distinctive words a name has in common with the business's (see ``is_named_like``).
+
+        Args:
+            name: The name to check, as the place or page shows it.
+            business_name: The prospect's business name.
+            town: The prospect's town, if known.
+
+        Returns:
+            The share, from 0.5 to 1, or None when the two names are two businesses'.
+        """
+        business_words = cls._name_words(business_name)
+        checked_words = cls._name_words(cls.clean(name))
+        town_words = company_tokens(town or "")
+        business_distinctive = cls._distinctive(business_words) - town_words
+        checked_distinctive = cls._distinctive(checked_words) - town_words
+        if not business_distinctive:
+            return 1.0 if business_words and checked_words == business_words else None
+        shared = business_distinctive & checked_distinctive
+        similarity = len(shared) / len(business_distinctive | checked_distinctive)
+        adds_own_word = bool(checked_distinctive - business_distinctive)
+        if similarity < _MIN_NAME_SIMILARITY or (len(business_distinctive) == 1 and adds_own_word):
+            return None
+        return similarity
+
+    @classmethod
+    def _name_words(cls, name: str) -> set[str]:
+        """The words of a name, its legal form left out (« inc », « Sàrl ») and its dotted initials joined."""
+        return company_tokens(join_dotted_initials(cls.without_legal_form(name)))
+
+    @staticmethod
+    def _distinctive(words: set[str]) -> set[str]:
+        """The words that tell a business from another: no trade word, no word common to many names, no link word."""
+        return {
+            word
+            for word in words
+            if word not in COMMON_NAME_WORDS and word not in NAME_LINK_WORDS and not TradeCatalog.is_trade_word(word)
+        }
 
     @staticmethod
     def _without_decoration(name: str) -> str:

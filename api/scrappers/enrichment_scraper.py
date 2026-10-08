@@ -28,6 +28,7 @@ from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.osm_enrichment import enrich_from_osm
 from scrappers.resilient_extract import parse_ld_json_blocks
+from services.prospect_search.business_name import BusinessName
 from services.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
@@ -1104,7 +1105,7 @@ class EnrichmentScraper:
             if not is_search:
                 return MapsSearchOutcome.OPENED
             title = await self._read_place_title(tab)
-            is_business_place = MapsPlaceMatch.is_named_like(title or "", business_name, town=city) and not (
+            is_business_place = BusinessName.is_named_like(title or "", business_name, town=city) and not (
                 MapsPlaceMatch.is_in_other_town(await self._read_place_address(tab), city=city, country=country)
             )
             if is_business_place:

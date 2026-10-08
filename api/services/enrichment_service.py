@@ -368,13 +368,13 @@ class EnrichmentService:
     @staticmethod
     async def _search_facebook_page(prospect: ProspectDB) -> str | None:
         """
-        The business's own Facebook page, found by a web search the way a prospect search finds one.
+        The business's own Facebook page, found by a web search, on proof it is the business's.
 
         Args:
             prospect: A business Google has nothing about.
 
         Returns:
-            The page's address, or None when no result is its page or the search failed.
+            The page's address, or None when no result is surely its page or the search failed.
         """
         from scrappers.brightdata_client import BrightDataClient
         from services.prospect_search.candidate_facts import CandidateFacts
@@ -382,17 +382,16 @@ class EnrichmentService:
         from services.prospect_search.search_judge import search_judge
         from services.prospect_search.trade_catalog import TradeCatalog
 
-        trade = TradeCatalog.resolve(prospect.category or "")
         facts = CandidateFacts(
             name=prospect.name or "",
-            trade_key=trade.key,
+            trade_key=TradeCatalog.resolve(prospect.category or "").key,
             country=prospect.country or "FR",
             origin=prospect.source or "",
             city=prospect.city,
             phone=prospect.phone,
         )
         try:
-            return await ContactFinder(BrightDataClient(), search_judge).find_facebook_page(facts, trade)
+            return await ContactFinder(BrightDataClient(), search_judge).find_facebook_page(facts)
         except Exception as exc:
             logger.info("Facebook page search failed for prospect_id=%s: %s", prospect.id, exc)
             return None

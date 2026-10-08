@@ -315,10 +315,10 @@ class ValidationService:
         Returns:
             A human-readable French mismatch reason, or None when coherent.
         """
-        from scrappers.maps_place_match import MapsPlaceMatch
         from services.decision_maker.normalize import town_key
+        from services.prospect_search.business_name import BusinessName
 
-        if place_title and not MapsPlaceMatch.is_named_like(place_title, prospect_name, town=prospect_city):
+        if place_title and not BusinessName.is_named_like(place_title, prospect_name, town=prospect_city):
             return f"La fiche Google Maps trouvée (« {place_title} ») ne correspond pas au nom du prospect"
 
         if prospect_postal_code and place_postal_code and len(place_postal_code) == 5:

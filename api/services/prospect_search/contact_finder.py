@@ -23,9 +23,11 @@ from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
 from services.country_profiles import CountryProfiles
-from services.decision_maker.normalize import fold
+from services.decision_maker.normalize import company_tokens, fold
+from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
+from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.search_judge import SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
@@ -162,19 +164,37 @@ class ContactFinder:
         """Forget the candidate's email when its domain receives no mail."""
         await self._domain_check.drop_dead_email(facts)
 
-    async def find_facebook_page(self, facts: CandidateFacts, trade: TradeProfile) -> str | None:
+    async def find_facebook_page(self, facts: CandidateFacts) -> str | None:
         """
-        The business's own Facebook page, found by a web search.
+        The business's own Facebook page, found by a web search, on proof it is the business's.
+
+        Stricter than the search's own lookup, whose finds are checked afterwards: this page goes
+        straight into the business's site, so it must carry the business's name, show the business's
+        phone or name its town, and show no other number (a namesake elsewhere has the same name and
+        the same trade).
 
         Args:
-            facts: The business, completed in place with the page.
-            trade: Profile of the business's trade.
+            facts: The business: name, town, phone, country.
 
         Returns:
-            The page's address, or None when no result is the business's page.
+            The page's address, or None when no result is surely the business's page.
         """
-        await self._find_facebook_page(facts, trade)
-        return facts.facebook_url
+        page = await self._client.google_parsed(
+            f"site:facebook.com {facts.name} {facts.town}".strip(), country=facts.country
+        )
+        for line in CandidateVerifier.result_lines(page) if page else []:
+            facebook_page = FacebookPageUrl.canonical(line.link)
+            if not facebook_page or not FacebookPageResults.is_page_root(line.link):
+                continue
+            if not BusinessName.is_named_like(line.title, facts.name, town=facts.town):
+                continue
+            if self._shows_only_other_phones(line.text, facts):
+                continue
+            town_words = company_tokens(facts.town)
+            names_town = bool(town_words) and town_words <= company_tokens(line.text)
+            if names_town or self._shows_phone(line.text, facts):
+                return facebook_page
+        return None
 
     async def _find_facebook_page(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """Search the business on Facebook; an email in its own page's snippet is kept."""
