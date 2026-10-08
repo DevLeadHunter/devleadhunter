@@ -1,5 +1,5 @@
 """
-The decision maker of 23 campaign leads checked by hand (first decision-maker round, 8 Oct 2026): 6 of the
+The decision maker of 23 campaign leads checked by hand: 6 of the
 app's proposals named someone else — a namesake firm in another département, a firm that had ceased, a
 customer thanked in a reply, a director who had left — and a trusted name came from another firm of the
 same trade; registry entries filed as « JULES X (EXEMPLE AUTO 64) » or « E.XP' » were missed.

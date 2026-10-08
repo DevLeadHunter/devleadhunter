@@ -1,5 +1,5 @@
 """
-A « nom + ville » Maps search that lands on a results list (third enrichment round, 8 Oct 2026): the app read
+A « nom + ville » Maps search that lands on a results list: the app read
 the list's heading « Résultats » as the place's name, so its identity guard threw away all seven leads, two of
 which had their place in the list; opening the first result instead would have read a podiatrist's place for an
 electrician. A lead with nothing to read was not even posted, so no register was read for it, and nobody looked
