@@ -247,3 +247,20 @@ mail). Électriciens : 5 sur 5 par le registre RBQ.
   contrôlé à la main et enrichi par l'app ; voir `docs/ENRICHMENT_TRAINING.md`.
 - n° 283 : le nom et le téléphone venaient d'une autre fiche ; repris de la page Facebook de l'entreprise.
 - n° 284 : le site enregistré était celui d'un concurrent ; le nom est celui de la page de l'entreprise.
+
+### En prod, puis validation à la main
+
+- Déployé (`d0d8acd4`). Relance en prod sur les 7 québécois restés sans nom : rien de plus (ce que la
+  mesure annonçait) ; sur les 4 patrons écrits sans accents : réécrits avec leurs accents.
+- Validation par Claude : un patron saisi (ses publications d'annonces de l'entreprise, avec son
+  téléphone) ; un autre laissé sans nom (les seuls indices datent de 2021).
+- Vivier de la campagne : **109 décisionnaires sûrs** (107 avant) ; 103 places sur 115 en ont un, les 12
+  autres partiront avec « Bonjour ».
+
+### Reste à faire (manche 4)
+
+- Québec : les publications des groupes « Spotted » (« Prénom Nom. Enseigne »), l'adresse de la page
+  d'une enseigne de réseau qui porte le nom du patron.
+- France : la recherche web du patron n'y tourne pas encore (« gérant » y nomme le patron, au Québec un
+  employé : à mesurer avant) ; le registre interrogé par l'adresse.
+- Suisse : l'annuaire search.ch pour les entreprises non inscrites ; l'extrait cantonal vaudois.
