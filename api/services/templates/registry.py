@@ -88,7 +88,7 @@ def default_subtitle(template_id: str, area: str) -> str:
     builder = getattr(get_module(template_id), "default_subtitle", None)
     if callable(builder):
         return _fix_city_contraction(str(builder(area)))
-    return _fix_city_contraction(f"Plombier professionnel — dépannage rapide à {area}")
+    return _fix_city_contraction(f"Plombier professionnel, dépannage rapide à {area}")
 
 
 def default_theme(template_id: str) -> dict[str, str]:
@@ -118,6 +118,17 @@ def brand_color_key(template_id: str) -> str:
     meta = getattr(get_module(template_id), "TEMPLATE_META", {}) or {}
     key = meta.get("brand_color_key")
     return key if key in ("primary", "secondary", "accent") else "primary"
+
+
+def is_brand_color_behind_white_text(template_id: str) -> bool:
+    """
+    Whether a template writes its buttons in white on the brand colour
+    (``TEMPLATE_META['brand_color_behind_white_text']``, Verdure and Pitlane): the API then darkens a
+    logo colour too light for white text. Other templates get the colour as the logo gives it (Éclat
+    shades it itself for each background).
+    """
+    meta = getattr(get_module(template_id), "TEMPLATE_META", {}) or {}
+    return bool(meta.get("brand_color_behind_white_text"))
 
 
 def service_cards_meta(template_id: str) -> dict[str, Any] | None:

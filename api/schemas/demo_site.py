@@ -90,6 +90,9 @@ class DemoSiteUpdateRequest(BaseModel):
     # Curated FAQ / 2nd about photo URLs (stored in ``section_overrides["images"]``).
     section_images: dict[str, str] | None = None
     hero_badge: str | None = Field(default=None, max_length=80)
+    # « À propos » text written for this business (stored in ``section_overrides["about"]``, kept
+    # across regenerations); ``""`` goes back to the generated one.
+    about_text: str | None = Field(default=None, max_length=700)
 
 
 class DemoSiteServiceCardsConfig(BaseModel):

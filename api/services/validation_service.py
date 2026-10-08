@@ -26,6 +26,13 @@ class ValidationService:
         "consultez des plans et calculez des itinéraires",
     )
 
+    # A page bio or contact card (« Paysagiste 🌿 Entretien 🌱 », a phone, an email) is short; prose runs longer.
+    _MAX_BIO_CHARS: ClassVar[int] = 220
+    _MIN_BIO_EMOJIS: ClassVar[int] = 2
+    _CONTACT_DETAIL_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"[\w.+-]+@[\w-]+\.[\w.-]+|https?://|www\.|(?<!\d)\+?\d(?:[ .-]?\d){8,}(?!\d)"
+    )
+
     # Tokens too common to prove a description talks about THIS business.
     _WEAK_MENTION_TOKENS: ClassVar[frozenset[str]] = frozenset(
         {"les", "des", "sur", "sous", "chez", "sarl", "sas", "eurl", "ets", "saint", "sainte"}
@@ -256,6 +263,37 @@ class ValidationService:
         # to short texts avoids flagging long prose that happens to use a heading.
         label = r"\b(Sp[ée]cialit[ée]s?|Cat[ée]gorie|Type|Cuisine|Adresse|Horaires?|T[ée]l[ée]phone)\s*:"
         return len(text) < 100 and bool(re.search(label, text))
+
+    @classmethod
+    def is_scraped_bio(cls, description: str | None) -> bool:
+        """
+        Whether a short description is a page's bio or contact card, not prose a site can show as its « À propos ».
+
+        Real-world cases (8 Oct 2026, wave 4 test sites): a Facebook bio of names and emojis (« Jules et Paul
+        Exemple Paysagiste 🌿 Aménagements de jardins 🌴 Entretien 🌱 »), a card with a phone number
+        (« Entrepreneur en électricité 514-555-0199 Jules Exemple »), an address glued to an email address
+        (« Route Exemple 12, 1000 Ville contact@exemple.ch Entretiens, réparations »). Long prose that happens
+        to give a phone number is kept.
+
+        Args:
+            description: Scraped description text.
+
+        Returns:
+            True when the text should give way to the template's own « À propos ».
+        """
+        if not description:
+            return False
+        text = description.strip()
+        if len(text) >= cls._MAX_BIO_CHARS:
+            return False
+        emoji_count = sum(1 for char in text if cls._is_emoji(char))
+        return emoji_count >= cls._MIN_BIO_EMOJIS or bool(cls._CONTACT_DETAIL_RE.search(text))
+
+    @staticmethod
+    def _is_emoji(char: str) -> bool:
+        """Whether a character is a pictograph (🌿, 🔧, ⚡), not a letter, a digit or punctuation."""
+        code = ord(char)
+        return 0x1F300 <= code <= 0x1FAFF or 0x2600 <= code <= 0x27BF
 
     @classmethod
     def description_mentions_business(

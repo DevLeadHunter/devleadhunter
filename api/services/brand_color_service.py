@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 _MIN_SATURATION = 0.35
 _MIN_VALUE = 0.20
 _MAX_VALUE = 0.92
+# White text on a button of this colour must reach the WCAG AA contrast for normal text.
+_MIN_CONTRAST_WITH_WHITE = 4.5
+_DARKENING_STEP = 0.02
 
 
 class BrandColorService:
@@ -50,6 +53,36 @@ class BrandColorService:
             logger.info("Brand colour: could not load logo %s", cleaned, exc_info=True)
             return None
         return self._dominant_vivid_hex(image)
+
+    @classmethod
+    def readable_behind_white_text(cls, hex_color: str) -> str:
+        """
+        The brand colour darkened, hue kept, until white text on it reads well (a lime logo gave an
+        unreadable « Demander un devis gratuit » button, 8 Oct 2026); a dark enough colour is kept as is.
+
+        Args:
+            hex_color: The brand colour, ``#RRGGBB``.
+
+        Returns:
+            The colour, darkened only as much as the contrast with white asks.
+        """
+        red, green, blue = (int(hex_color[index : index + 2], 16) / 255 for index in (1, 3, 5))
+        hue, lightness, saturation = colorsys.rgb_to_hls(red, green, blue)
+        while cls.contrast_with_white(red, green, blue) < _MIN_CONTRAST_WITH_WHITE and lightness > 0:
+            lightness = max(0.0, lightness - _DARKENING_STEP)
+            red, green, blue = colorsys.hls_to_rgb(hue, lightness, saturation)
+        return "#" + "".join(f"{round(channel * 255):02X}" for channel in (red, green, blue))
+
+    @staticmethod
+    def contrast_with_white(red: float, green: float, blue: float) -> float:
+        """The WCAG contrast ratio between white and a colour given as 0-1 channels."""
+
+        def linear(channel: float) -> float:
+            """One sRGB channel as linear light."""
+            return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+        luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        return 1.05 / (luminance + 0.05)
 
     @staticmethod
     def _dominant_vivid_hex(image: object) -> str | None:

@@ -48,6 +48,7 @@ TEMPLATE_META: dict[str, object] = {
     # Canonical colour roles → palette key (audit 2026-08-17). Only these roles are editable;
     # keys not listed here don't visibly theme this layer, so the editor hides them.
     "color_roles": {"action": "primary", "fond": "secondary", "secondaire": "accent"},
+    "brand_color_behind_white_text": True,
 }
 
 VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
@@ -95,7 +96,7 @@ def default_subtitle(area: str) -> str:
     Returns:
         A garage subtitle.
     """
-    return f"Entretien, diagnostic et réparations à {area} — un atelier de confiance, devis avant intervention."
+    return f"Entretien, diagnostic et réparations à {area}. Un atelier de confiance, devis avant intervention."
 
 
 _SITE_ABOUT_DEFAULT: str = (
@@ -117,8 +118,7 @@ MECHANIC_SERVICES: list[dict[str, str]] = [
     {
         "title": "Diagnostic électronique",
         "description": (
-            "Valise multi-marques, lecture des défauts, recherche de panne. "
-            "Le devis part du diagnostic — pas l'inverse."
+            "Valise multi-marques, lecture des défauts, recherche de panne. Le devis part du diagnostic, pas l'inverse."
         ),
     },
     {
@@ -130,7 +130,7 @@ MECHANIC_SERVICES: list[dict[str, str]] = [
     {
         "title": "Distribution & mécanique",
         "description": (
-            "Courroie / chaîne, pompe à eau, embrayage, joints — interventions "
+            "Courroie ou chaîne, pompe à eau, embrayage, joints : interventions "
             "planifiées avec devis ferme et délai clair."
         ),
     },
@@ -138,7 +138,7 @@ MECHANIC_SERVICES: list[dict[str, str]] = [
         "title": "Pneus & géométrie",
         "description": (
             "Montage, équilibrage, crevaison, conseil usure. On vous dit quand le "
-            "pneu peut encore rouler — et quand non."
+            "pneu peut encore rouler, et quand il faut le changer."
         ),
     },
     {
@@ -161,7 +161,7 @@ MECHANIC_FAQ: list[dict[str, str]] = [
         "question": "Le devis est-il gratuit ?",
         "answer": (
             "Le devis de réparation est établi après diagnostic. On vous l'explique "
-            "clairement avant toute intervention — rien n'est lancé sans votre accord."
+            "clairement avant toute intervention : rien n'est lancé sans votre accord."
         ),
     },
     {

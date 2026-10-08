@@ -508,8 +508,9 @@ def apply_section_overrides(
 
     Currently ``services``: the curated cards replace the generated menu / prestations wholesale
     (title, description, photo); cards saved without a photo get the best unused real photo.
-    The override lives on the demo site, so it survives every regeneration — a colour tweak no
-    longer wipes the specialties typed by hand.
+    ``about`` replaces the « À propos » text with the one written for this business. The override
+    lives on the demo site, so it survives every regeneration — a colour tweak no longer wipes the
+    specialties or the text typed by hand.
     """
     if not isinstance(overrides, dict):
         return site_content
@@ -530,6 +531,9 @@ def apply_section_overrides(
     badge = overrides.get("heroBadge")
     if isinstance(badge, str) and badge.strip():
         site_content["heroBadge"] = badge.strip()
+    about = overrides.get("about")
+    if isinstance(about, str) and about.strip():
+        site_content["about"] = about.strip()
     return site_content
 
 
@@ -698,10 +702,13 @@ def map_prospect_and_enrichment(
 
     about = description.strip() if isinstance(description, str) and description.strip() else ""
     # Reject an unusable about before it reaches the site: a platform's own meta description
-    # ("Find local businesses…") or scraped attribute fragments glued together
-    # ("Food Truck à Poitiers Spécialité: …") — both read badly, so fall back to the clean default.
-    if validation_service.is_generic_platform_description(about) or validation_service.is_fragmentary_description(
-        about
+    # ("Find local businesses…"), scraped attribute fragments glued together
+    # ("Food Truck à Poitiers Spécialité: …") or a page bio / contact card (emojis, a phone, an
+    # email) — all read badly, so fall back to the clean default.
+    if (
+        validation_service.is_generic_platform_description(about)
+        or validation_service.is_fragmentary_description(about)
+        or validation_service.is_scraped_bio(about)
     ):
         about = ""
     about = about or about_default

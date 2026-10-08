@@ -39,3 +39,43 @@ def test_site_falls_back_to_default_when_about_is_fragmentary() -> None:
     )
     assert "Spécialité:" not in site["about"]
     assert site["about"].strip()
+
+
+def test_a_page_bio_or_a_contact_card_is_flagged() -> None:
+    """Three wave 4 test sites showed their raw page bio as « À propos » (8 Oct 2026)."""
+    assert validation_service.is_scraped_bio(
+        "Jules et Paul Exemple Paysagiste 🌿 Aménagements de jardins 🌴 Entretien 🌱"
+    )
+    assert validation_service.is_scraped_bio("Entrepreneur en électricité 514-555-0199 Jules Exemple")
+    assert validation_service.is_scraped_bio(
+        "Route Exemple 12 , 1000 Ville contact@exemple.ch Entretiens, réparations, changement de pneus."
+    )
+
+
+def test_prose_is_not_a_scraped_bio() -> None:
+    assert not validation_service.is_scraped_bio(
+        "Je crée et j'entretiens les jardins de la région depuis dix ans, avec le même soin du détail."
+    )
+    assert not validation_service.is_scraped_bio("Garage familial à Exempleville, ouvert en 1998 à la rue 12 1000.")
+    assert not validation_service.is_scraped_bio(
+        "Notre équipe intervient pour la création, l'entretien et la rénovation de vos espaces verts, "
+        "particuliers comme professionnels, dans tout le canton. Nous préparons chaque chantier avec vous, "
+        "du premier conseil au dernier coup de taille, et nous répondons au 021 555 01 99 du lundi au samedi."
+    )
+    assert not validation_service.is_scraped_bio(None)
+
+
+def test_site_falls_back_to_default_when_about_is_a_page_bio() -> None:
+    site = registry.build_site_content(
+        template_id="landscaper-verdure",
+        business_name="Exemple Jardins",
+        phone="0",
+        email="x@y.fr",
+        city="Tours",
+        area="Tours",
+        subtitle="",
+        palette={"primary": "#000", "secondary": "#111", "accent": "#222"},
+        enrichment={"description": "Jules Exemple Paysagiste 🌿 Entretien 🌱 Création 🌴"},
+    )
+    assert "🌿" not in site["about"]
+    assert site["about"].strip()

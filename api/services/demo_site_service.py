@@ -331,7 +331,8 @@ class DemoSiteService:
 
         A logo that yields no vivid colour leaves the template palette untouched, so the DA is never degraded.
         When ``use_brand_color`` is False the site keeps the template's default action colour (the client
-        preferred it to the logo colour) — the palette is returned unchanged.
+        preferred it to the logo colour) — the palette is returned unchanged. On a template whose buttons
+        are written in white on it, a colour too light for that is darkened.
 
         Args:
             palette: The base palette (template default or stored theme).
@@ -347,6 +348,8 @@ class DemoSiteService:
         brand = brand_color_service.extract_brand_color((enrichment or {}).get("logo_url"))
         if not brand:
             return palette
+        if template_registry.is_brand_color_behind_white_text(template_id):
+            brand = brand_color_service.readable_behind_white_text(brand)
         return {**palette, template_registry.brand_color_key(template_id): brand}
 
     def slugify(self, value: str) -> str:
@@ -490,6 +493,7 @@ class DemoSiteService:
         services_source: str | None = None,
         section_images: dict[str, str] | None = None,
         hero_badge: str | None = None,
+        about_text: str | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -497,6 +501,7 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
+        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -514,7 +519,7 @@ class DemoSiteService:
                 overrides["services"] = cards
                 overrides["services_source"] = services_source if services_source in _SERVICE_CARD_SOURCES else "manual"
             demo_site.section_overrides = overrides or None
-        if section_images is not None or hero_badge is not None:
+        if section_images is not None or hero_badge is not None or about_text is not None:
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
@@ -534,6 +539,12 @@ class DemoSiteService:
                     overrides["heroBadge"] = badge
                 else:
                     overrides.pop("heroBadge", None)
+            if about_text is not None:
+                about = about_text.strip()
+                if about:
+                    overrides["about"] = about
+                else:
+                    overrides.pop("about", None)
             demo_site.section_overrides = overrides or None
         if image_order is not None:
             pool: list[str] = usable_site_photos(self._enrichment_dict_for_site(db, demo_site))

@@ -52,6 +52,7 @@ TEMPLATE_META: dict[str, object] = {
     "color_roles": {"action": "primary", "fond": "secondary", "secondaire": "accent"},
     # Action colour = primary, so the prospect's logo colour lands on the buttons.
     "brand_color_key": "primary",
+    "brand_color_behind_white_text": True,
 }
 
 VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(

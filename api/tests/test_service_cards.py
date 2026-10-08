@@ -378,3 +378,25 @@ def test_auto_cards_kept_only_when_the_minimum_is_reached(monkeypatch: pytest.Mo
     asyncio.run(service._seed_auto_service_cards(_FakeDB(), site, {"photos": POOL}))
     assert site.section_overrides["services_source"] == "ai_auto"
     assert len(site.section_overrides["services"]) == 4
+
+
+def test_the_about_text_written_for_the_site_replaces_the_generated_one() -> None:
+    site = {"about": "Généré depuis la page de l'entreprise."}
+
+    apply_section_overrides(site, {"about": "  Je crée des jardins à Exempleville depuis dix ans.  "})
+
+    assert site["about"] == "Je crée des jardins à Exempleville depuis dix ans."
+
+
+def test_update_saves_and_clears_the_about_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_regenerate(self: DemoSiteService, db: object, demo_site: object) -> object:
+        return demo_site
+
+    monkeypatch.setattr(DemoSiteService, "regenerate_demo_site", fake_regenerate)
+    service = DemoSiteService()
+    site = _site()
+
+    asyncio.run(service.update_demo_site(_FakeDB(), site, about_text="Je soigne chaque jardin."))
+    assert site.section_overrides == {"about": "Je soigne chaque jardin."}
+    asyncio.run(service.update_demo_site(_FakeDB(), site, about_text=""))
+    assert site.section_overrides is None
