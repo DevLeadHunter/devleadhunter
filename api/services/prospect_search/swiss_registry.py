@@ -12,6 +12,8 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from itertools import pairwise
+from typing import Any
 
 import httpx
 
@@ -41,6 +43,10 @@ _LIQUIDATION_SUFFIX_RE: re.Pattern[str] = re.compile(
 )
 _HONORIFIC_RE: re.Pattern[str] = re.compile(r"^\s*(?:mr|mrs|mme|m|monsieur|madame|herr|frau)\.?\s+", re.IGNORECASE)
 _REGISTER_SOURCE: str = "Registre du commerce (Zefix)"
+_OTHER_ADDRESS_RE: re.Pattern[str] = re.compile(
+    r"(?:Autre adresse|Weitere Adresse|Altro indirizzo)\s*:\s*[^.;]*?\b(\d{4})\s+([^.,;]+)", re.IGNORECASE
+)
+_INITIALS_TOKEN_RE: re.Pattern[str] = re.compile(r"^[A-Z]{2,3}$")
 
 
 @dataclass(frozen=True)
@@ -167,10 +173,12 @@ class SwissRegistry:
         The active firm the register files a business under another name, found by its words at the business's address.
 
         The register spells a name its own way: the owner's name added (« Exemple Mécanique Modèle » for
-        « EXEMPLE MÉCANIQUE »), accents and plurals changed, a word glued. The name, then each of its distinctive
-        words, is searched; a firm counts when all the words of the shorter name are in the other one and its
-        registered address has the business's postal code or town, the firms sharing the most words read first.
-        It only names the head: an exact match alone may tell that the business closed.
+        « EXEMPLE MÉCANIQUE »), accents and plurals changed, initials glued to the next word (« Garage EXauto » for
+        « Garage EX Auto »). The name, its glued spellings, then each of its distinctive words, is searched; a firm
+        counts when all the words of the shorter name are in the other one and one of its addresses (the
+        registered one, or another its publications give, where a workshop away from the seat is) has the
+        business's postal code or town, the firms sharing the most words read first. It only names the head: an
+        exact match alone may tell that the business closed.
 
         Args:
             name: The business name.
@@ -183,7 +191,8 @@ class SwissRegistry:
         if not town and not postal_code:
             return None
         named: dict[str, SwissRegisterFirm] = {}
-        for query in [self.register_name(name), *self._searched_words(name, town)]:
+        queries = [self.register_name(name), *self._glued_spellings(name), *self._searched_words(name, town)]
+        for query in queries:
             for firm in await self.firms_named(query, max_entries=_MAX_FIRMS_PER_WORD):
                 if firm.status == _ACTIVE_STATUS and firm.uid and self.shares_words(firm.name, name, town=town):
                     named.setdefault(firm.uid, firm)
@@ -197,11 +206,12 @@ class SwissRegistry:
         )
         at_address: list[SwissRegisterFirm] = []
         for firm in closest_first[:_MAX_ADDRESSES_READ]:
-            firm_postal_code, firm_town = await self.address_of(firm)
-            is_same_postal_code = bool(postal_code) and firm_postal_code == postal_code
-            is_same_town = bool(town and firm_town) and town_key(firm_town or "") == town_key(town or "")
-            if is_same_postal_code or is_same_town:
-                at_address.append(firm)
+            for firm_postal_code, firm_town in await self.addresses_of(firm):
+                is_same_postal_code = bool(postal_code) and firm_postal_code == postal_code
+                is_same_town = bool(town and firm_town) and town_key(firm_town or "") == town_key(town or "")
+                if is_same_postal_code or is_same_town:
+                    at_address.append(firm)
+                    break
         return at_address[0] if len(at_address) == 1 else None
 
     @staticmethod
@@ -225,13 +235,34 @@ class SwissRegistry:
         business_words = BusinessName.distinctive_stems(business_name, town=town)
         if not firm_words or not business_words:
             return False
-        return firm_words <= business_words or business_words <= firm_words
+        if firm_words <= business_words or business_words <= firm_words:
+            return True
+        glued_firm_name = SwissRegistry._compact_beside_trade(BusinessName.clean(firm_name))
+        return bool(glued_firm_name) and glued_firm_name == SwissRegistry._compact_beside_trade(business_name)
 
     @staticmethod
     def _searched_words(name: str, town: str | None) -> list[str]:
         """The distinctive words of a name worth a register search on their own, longest first."""
         words = sorted(BusinessName.distinctive_words(name, town=town), key=lambda word: (-len(word), word))
         return [word for word in words if len(word) >= 3][:_MAX_SEARCHED_WORDS]
+
+    @staticmethod
+    def _glued_spellings(name: str) -> list[str]:
+        """The name with its initials glued to the next word, the way the register may file it (« EXauto »)."""
+        words = BusinessName.without_legal_form(name).split()
+        return [
+            f"{word}{following}"
+            for word, following in pairwise(words)
+            if _INITIALS_TOKEN_RE.match(word) and following[:1].isalpha()
+        ]
+
+    @staticmethod
+    def _compact_beside_trade(name: str) -> str:
+        """A name's letters and digits without its legal form and trade words (« Garage EX Auto » gives « exauto »)."""
+        from services.prospect_search.trade_catalog import TradeCatalog
+
+        words = re.findall(r"[a-z0-9]+", fold(BusinessName.without_legal_form(name)))
+        return "".join(word for word in words if not TradeCatalog.is_trade_word(word))
 
     async def publications(self, firm: SwissRegisterFirm) -> list[tuple[date, str]]:
         """
@@ -243,18 +274,8 @@ class SwissRegistry:
         Returns:
             ``(date, text)`` of each publication; empty when the register does not answer.
         """
-        if firm.register_id is None:
-            return []
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
-                response = await http.get(_FIRM_URL.format(register_id=firm.register_id))
-        except httpx.HTTPError as exc:
-            logger.warning("Zefix publications of %s failed: %s", firm.name, exc)
-            return []
-        if response.status_code != 200:
-            return []
         publications: list[tuple[date, str]] = []
-        for publication in response.json().get("shabPub") or []:
+        for publication in (await self._detail(firm)).get("shabPub") or []:
             published_on = str(publication.get("shabDate") or "")
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}", published_on):
                 publications.append((date.fromisoformat(published_on), str(publication.get("message") or "")))
@@ -270,19 +291,46 @@ class SwissRegistry:
         Returns:
             ``(postal code, town)``, each None when the register does not say or does not answer.
         """
+        addresses = await self.addresses_of(firm)
+        return addresses[0] if addresses else (None, None)
+
+    async def addresses_of(self, firm: SwissRegisterFirm) -> list[tuple[str | None, str | None]]:
+        """
+        The postal codes and towns where a firm works: its registered address, then the other addresses its
+        publications give (« Autre adresse: Route Exemple 28, 1880 Bex »), where a workshop away from the seat is.
+
+        Args:
+            firm: A firm the register listed.
+
+        Returns:
+            ``(postal code, town)`` of each address, the registered one first; empty when the register does not answer.
+        """
+        detail = await self._detail(firm)
+        if not detail:
+            return []
+        address = detail.get("address") or {}
+        town = _CANTON_SUFFIX_RE.sub("", str(address.get("town") or "").strip())
+        addresses: list[tuple[str | None, str | None]] = [
+            (str(address.get("swissZipCode") or "") or None, town or None)
+        ]
+        for publication in detail.get("shabPub") or []:
+            text = re.sub(r"<[^>]+>", "", str(publication.get("message") or ""))
+            addresses += [
+                (postal_code, other_town.strip()) for postal_code, other_town in _OTHER_ADDRESS_RE.findall(text)
+            ]
+        return addresses
+
+    async def _detail(self, firm: SwissRegisterFirm) -> dict[str, Any]:
+        """The register's page of a firm (address, publications); empty when unknown or the register does not answer."""
         if firm.register_id is None:
-            return None, None
+            return {}
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
                 response = await http.get(_FIRM_URL.format(register_id=firm.register_id))
         except httpx.HTTPError as exc:
-            logger.warning("Zefix address of %s failed: %s", firm.name, exc)
-            return None, None
-        if response.status_code != 200:
-            return None, None
-        address = response.json().get("address") or {}
-        town = _CANTON_SUFFIX_RE.sub("", str(address.get("town") or "").strip())
-        return str(address.get("swissZipCode") or "") or None, town or None
+            logger.warning("Zefix page of %s failed: %s", firm.name, exc)
+            return {}
+        return response.json() if response.status_code == 200 else {}
 
     @staticmethod
     def register_name(name: str) -> str:

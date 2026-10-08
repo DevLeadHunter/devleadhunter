@@ -92,6 +92,7 @@ _DEPARTED_NAMES_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+et\s+")
 _OWNER_IN_FIRM_NAME_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+[-–]\s+")
 _MIN_OWNER_NAME_WORDS: int = 2
 _MAX_OWNER_NAME_WORDS: int = 4
+_MIN_CONFIRMING_LAST_NAME_CHARS: int = 4
 _ORIGIN_RE: re.Pattern[str] = re.compile(r"^(?:de\s|d['’]|von\s|du\s|des\s|tous\s+deux\s+de\s)", re.IGNORECASE)
 _DOMICILE_RE: re.Pattern[str] = re.compile(r"^(?:à|a|in|en)\s", re.IGNORECASE)
 _NOT_A_ROLE_RE: re.Pattern[str] = re.compile(
@@ -243,6 +244,49 @@ class SwissRegisterPeople:
             roles=("titulaire",),
             is_name_certain=False,
         )
+
+    @staticmethod
+    def is_name_confirmed(
+        person: RegisteredPerson, *, business_name: str, emails: list[str], review_texts: list[str]
+    ) -> bool:
+        """
+        Whether the business itself tells where an unsure register name puts the first name.
+
+        « Modèle Jules Paul » may be Jules Paul Modèle or Paul Modèle Jules: the cut is confirmed when customers
+        call the person by the first given name (« merci Jules »), when one of the business's addresses holds the
+        last name (« modele@… »), when its name holds the person's initials (« Garage J.M » for Jules Modèle) or
+        the word that closes the last name (« Modèle Paysagiste »).
+
+        Args:
+            person: The person the register lists, the cut of their name unsure.
+            business_name: The business's name.
+            emails: The business's email addresses.
+            review_texts: What customers wrote in their reviews.
+
+        Returns:
+            True when one of the business's own words confirms the cut.
+        """
+        from services.decision_maker.normalize import initials_in
+        from services.prospect_search.business_name import BusinessName
+
+        first_name = (person.first_name or "").split(" ")[0]
+        last_words = person.last_name.split()
+        if not first_name or not last_words:
+            return False
+        first_name_re = re.compile(rf"(?<![\w'’-]){re.escape(first_name)}(?![\w'’-])")
+        if any(first_name_re.search(text or "") for text in review_texts):
+            return True
+        compact_last_name = re.sub(r"[^a-z]", "", fold(person.last_name))
+        email_names = [re.sub(r"[^a-z]", "", fold(email.partition("@")[0])) for email in emails]
+        if len(compact_last_name) >= _MIN_CONFIRMING_LAST_NAME_CHARS and any(
+            compact_last_name in email_name for email_name in email_names
+        ):
+            return True
+        person_initials = (first_name[:1] + "".join(word[:1] for word in last_words)).upper()
+        if person_initials in initials_in(BusinessName.without_legal_form(business_name)):
+            return True
+        business_words = {fold(word) for word in re.findall(r"[\w'’-]+", business_name)}
+        return fold(last_words[-1]) in business_words
 
     @staticmethod
     def lead_people(people: list[RegisteredPerson]) -> list[RegisteredPerson]:

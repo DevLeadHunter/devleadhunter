@@ -69,8 +69,12 @@ def swiss_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     async def no_address(firm: SwissRegisterFirm) -> tuple[None, None]:
         return None, None
 
+    async def no_page(firm: SwissRegisterFirm) -> dict[str, object]:
+        return {}
+
     monkeypatch.setattr(swiss_registry, "firms_named", no_firm)
     monkeypatch.setattr(swiss_registry, "address_of", no_address)
+    monkeypatch.setattr(swiss_registry, "_detail", no_page)
 
 
 @pytest.fixture(autouse=True)

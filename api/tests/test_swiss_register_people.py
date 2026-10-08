@@ -273,3 +273,21 @@ def test_a_rare_first_name_ending_a_last_name_stays_in_it() -> None:
     )
 
     assert _leads(publication) == [("Anne", "Exemple Marty", True)]
+
+
+def test_the_business_settles_an_unsure_register_name() -> None:
+    """« Modèle Jules Paul » is unsure; the reviews, the email, the initials or the name of the business settle it."""
+    person = RegisteredPerson(
+        first_name="Jules Paul", last_name="De Modèle", roles=("titulaire",), is_name_certain=False
+    )
+
+    def confirmed(business_name: str, emails: list[str], review_texts: list[str]) -> bool:
+        return SwissRegisterPeople.is_name_confirmed(
+            person, business_name=business_name, emails=emails, review_texts=review_texts
+        )
+
+    assert confirmed("Garage Exemple", [], ["Le garagiste, Jules, est très professionnel."])
+    assert confirmed("Garage Exemple", ["demodele@exemple.ch"], [])
+    assert confirmed("Garage J.D.M Auto-Moto", [], [])
+    assert confirmed("Modèle Paysagiste", [], [])
+    assert not confirmed("Garage Exemple", ["info@exemple.ch"], ["Très bon service."])

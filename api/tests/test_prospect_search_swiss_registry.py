@@ -107,3 +107,51 @@ def test_only_a_recent_striking_off_closes_a_sole_trader_listed_with_a_civility(
 
     assert asked_names == ["Paul Rochat"]
     assert facts.is_closed is is_closed
+
+
+def test_a_firm_working_at_another_address_than_its_seat_is_found_there(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« EXM Mécanique Modèle » sits in Vionnaz, its workshop in Bex: the gazette's « Autre adresse » ties it."""
+    firm = SwissRegisterFirm(
+        name="EXM Mécanique Modèle", seat="Vionnaz", status="EXISTIEREND", uid="CHE-111.222.333", register_id=4
+    )
+
+    async def page(firm: SwissRegisterFirm) -> dict[str, object]:
+        return {
+            "address": {"swissZipCode": "1895", "town": "Vionnaz"},
+            "shabPub": [
+                {
+                    "shabDate": "2026-01-12",
+                    "message": "EXM Mécanique Modèle, à Vionnaz, Route Exemple 35, 1895 Vionnaz, entreprise "
+                    "individuelle (Nouvelle inscription). Autre adresse: Route Modèle 28, 1880 Bex. But: mécanique.",
+                }
+            ],
+        }
+
+    _register_listing(monkeypatch, firm)
+    monkeypatch.setattr(swiss_registry, "_detail", page)
+
+    found = asyncio.run(swiss_registry.firm_by_words_and_address(name="EXM MÉCANIQUE", town="Bex", postal_code="1880"))
+
+    assert found == firm
+
+
+def test_initials_glued_to_the_next_word_are_the_same_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The register files « Garage EX Auto » as « Garage EXauto - Modèle Jules »: the glued spelling is searched."""
+    firm = SwissRegisterFirm(
+        name="Garage EXauto - Modèle Jules", seat="Chamoson", status="EXISTIEREND", uid="CHE-444.555.666", register_id=5
+    )
+    asked_names = _register_listing(monkeypatch, firm)
+
+    async def addresses_in_town(firm: SwissRegisterFirm) -> list[tuple[str, str]]:
+        return [("1955", "Chamoson")]
+
+    monkeypatch.setattr(swiss_registry, "addresses_of", addresses_in_town)
+
+    found = asyncio.run(
+        swiss_registry.firm_by_words_and_address(
+            name="Garage EX Auto", town="Saint-Pierre-de-Clages", postal_code="1955"
+        )
+    )
+
+    assert found == firm
+    assert "EXAuto" in asked_names

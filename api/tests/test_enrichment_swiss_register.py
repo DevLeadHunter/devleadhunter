@@ -178,10 +178,10 @@ def test_a_firm_filed_under_another_name_at_the_business_address_names_its_head(
 ) -> None:
     """The register adds the owner's name (« Exemple Paysages Modèle »): found by its words at the address."""
 
-    async def address_in_town(firm: SwissRegisterFirm) -> tuple[str, str]:
-        return "2900", "Porrentruy"
+    async def addresses_in_town(firm: SwissRegisterFirm) -> list[tuple[str, str]]:
+        return [("2900", "Porrentruy")]
 
-    monkeypatch.setattr(swiss_registry, "address_of", address_in_town)
+    monkeypatch.setattr(swiss_registry, "addresses_of", addresses_in_town)
     register_firms.append(
         SwissRegisterFirm(
             name="Exemple Paysages Modèle",
@@ -222,11 +222,11 @@ def test_a_sole_proprietorship_without_publication_names_its_owner_in_its_name(
     async def no_publication(firm: SwissRegisterFirm) -> list[tuple[date, str]]:
         return []
 
-    async def address_in_town(firm: SwissRegisterFirm) -> tuple[str, str]:
-        return "2900", "Porrentruy"
+    async def addresses_in_town(firm: SwissRegisterFirm) -> list[tuple[str, str]]:
+        return [("2900", "Porrentruy")]
 
     monkeypatch.setattr(swiss_registry, "publications", no_publication)
-    monkeypatch.setattr(swiss_registry, "address_of", address_in_town)
+    monkeypatch.setattr(swiss_registry, "addresses_of", addresses_in_town)
     register_firms.append(
         SwissRegisterFirm(
             name="Exemple Paysages, Modèle Jules",
@@ -242,3 +242,28 @@ def test_a_sole_proprietorship_without_publication_names_its_owner_in_its_name(
     asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
 
     assert (record.contact_first_name, record.contact_last_name) == ("Jules", "Modèle")
+
+
+def test_an_unsure_register_name_the_business_email_confirms_is_trusted(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """« de Modèle Jules Paul, titulaire » is unsure alone; the business writes from « demodele@… »: trusted."""
+
+    async def older_publication(firm: SwissRegisterFirm) -> list[tuple[date, str]]:
+        return [(date(2016, 3, 2), "Personne inscrite: de Modèle Jules Paul, de Exemple, à Porrentruy, titulaire.")]
+
+    monkeypatch.setattr(swiss_registry, "publications", older_publication)
+    register_firms.append(_firm())
+    prospect = _prospect()
+    prospect.email = "demodele@exemple.ch"
+    prospect.emails = ["demodele@exemple.ch"]
+    record = _record()
+    record.reviews = []
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), prospect, record, uid=None))
+
+    assert (record.contact_first_name, record.contact_last_name, record.proposed_first_name) == (
+        "Jules",
+        "De Modèle",
+        None,
+    )

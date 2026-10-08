@@ -600,10 +600,11 @@ class EnrichmentService:
         A firm in liquidation or struck off lately goes to the « Écartés » tab with the reason (a landscaper
         ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
         from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
-        role, the firm was matched away from its seat, or the publication leaves the first name unsure. A firm
-        filed under another name is found by its words at the business's address, only to name the head; a
-        sole proprietorship that published nothing names its owner in its own name. The firm of a company
-        number that now trades under another name (sold, turned into a property company) names nobody.
+        role, the firm was matched away from its seat, or the publication leaves the first name unsure and the
+        business's own reviews, email, initials or name do not settle it. A firm filed under another name is
+        found by its words at the business's address, only to name the head; a sole proprietorship that
+        published nothing names its owner in its own name. The firm of a company number that now trades under
+        another name (sold, turned into a property company) names nobody.
 
         Args:
             db: Active database session.
@@ -669,7 +670,15 @@ class EnrichmentService:
                 evidence_group="registry",
                 provenance=f"Registre du commerce (Zefix) : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
             )
-            if len(leads) == 1 and lead.is_name_certain and is_firm_matched_exactly:
+            is_name_certain = lead.is_name_certain or SwissRegisterPeople.is_name_confirmed(
+                lead,
+                business_name=prospect.name or "",
+                emails=[email for email in (prospect.emails or [prospect.email]) if email],
+                review_texts=[
+                    str(review.get("text") or "") for review in record.reviews or [] if isinstance(review, dict)
+                ],
+            )
+            if len(leads) == 1 and is_name_certain and is_firm_matched_exactly:
                 self._store_trusted_contact(record, candidate)
             else:
                 self._store_proposed_contact(record, candidate)
