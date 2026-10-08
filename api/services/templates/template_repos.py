@@ -19,13 +19,13 @@ TEMPLATE_REPOS: dict[str, tuple[str, str]] = {
     "plumber-signature": ("devleadhunter-template-plumber-signature", "v1.4.0"),
     "plumber-atelier": ("devleadhunter-template-plumber-atelier", "v1.5.0"),
     "plumber-cuivre": ("devleadhunter-template-plumber-cuivre", "v1.4.0"),
-    "electrician-eclat": ("devleadhunter-template-electrician-eclat", "v1.0.2"),
+    "electrician-eclat": ("devleadhunter-template-electrician-eclat", "v1.0.3"),
     "electrician-lumen": ("devleadhunter-template-electrician-lumen", "v1.4.0"),
-    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.4.0"),
+    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.4.2"),
     "dental": ("devleadhunter-template-dental", "v1.3.0"),
     "food": ("devleadhunter-template-food", "v1.2.0"),
     "barber": ("devleadhunter-template-barber", "v1.3.0"),
-    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.7.0"),
+    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.7.1"),
 }
 
 
