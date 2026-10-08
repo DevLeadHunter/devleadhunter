@@ -297,11 +297,12 @@ class ValidationService:
     ) -> str | None:
         """Check that a scraped Maps place is really the prospect's business.
 
-        Without a stored Maps URL the scraper searches « nom + ville » and opens
-        the FIRST result — a homonym elsewhere in France silently fills the demo
-        site with someone else's photos/reviews. Name similarity catches a wrong
-        business; the geo comparison catches the same-name-other-town homonym.
-        Missing data on either side skips that check (old sidecars send none).
+        Without a stored Maps URL the scraper searches « nom + ville », and the
+        place Maps opens can be a homonym's that would silently fill the demo
+        site with someone else's photos/reviews. The place must be named like the
+        business (the rule the scraper applies to the places it opens); the geo
+        comparison catches the same-name-other-town homonym. Missing data on
+        either side skips that check (old sidecars send none).
 
         Args:
             prospect_name: Business name stored on the prospect.
@@ -314,12 +315,11 @@ class ValidationService:
         Returns:
             A human-readable French mismatch reason, or None when coherent.
         """
-        from services.decision_maker.normalize import company_similarity, town_key
+        from scrappers.maps_search_results import MapsSearchResults
+        from services.decision_maker.normalize import town_key
 
-        if place_title:
-            similarity = company_similarity(prospect_name, place_title)
-            if similarity < 0.2:
-                return f"La fiche Google Maps trouvée (« {place_title} ») ne correspond pas au nom du prospect"
+        if place_title and not MapsSearchResults.is_named_like(place_title, prospect_name):
+            return f"La fiche Google Maps trouvée (« {place_title} ») ne correspond pas au nom du prospect"
 
         if prospect_postal_code and place_postal_code and len(place_postal_code) == 5:
             if place_postal_code[:2] != prospect_postal_code[:2]:

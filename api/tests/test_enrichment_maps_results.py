@@ -2,7 +2,8 @@
 A « nom + ville » Maps search that lands on a results list (third enrichment round, 8 Oct 2026): the app read
 the list's heading « Résultats » as the place's name, so its identity guard threw away all seven leads, two of
 which had their place in the list; opening the first result instead would have read a podiatrist's place for an
-electrician. A lead with nothing to read was not even posted, so no register was read for it.
+electrician. A lead with nothing to read was not even posted, so no register was read for it, and nobody looked
+for its Facebook page, which a plain web search finds.
 """
 
 import asyncio
@@ -19,9 +20,25 @@ from scrappers.enrichment_scraper import EnrichmentData
 from scrappers.maps_search_results import ListedPlace, MapsSearchResults
 from services.enrichment_service import EnrichmentService, enrichment_service
 from services.professional_license_service import professional_license_service
+from services.prospect_search.candidate_facts import CandidateFacts
+from services.prospect_search.contact_finder import ContactFinder
+from services.prospect_search.search_judge import search_judge
+from services.prospect_search.trade_catalog import TradeCatalog
 from services.scraper_diagnostics_service import scraper_diagnostics_service
+from services.validation_service import ValidationService
 
 _USER_ID = 1
+
+
+class _SearchResultsClient:
+    """Stands in for Bright Data: every web search answers the same results."""
+
+    def __init__(self, results: list[dict[str, str]]) -> None:
+        self._results = results
+
+    async def google_parsed(self, query: str, *, country: str = "FR", start: int = 0, local: bool = False) -> Any:
+        """The prepared results, whatever the query."""
+        return {"organic": self._results}
 
 
 def _listed(*names: str) -> list[ListedPlace]:
@@ -80,6 +97,25 @@ def test_at_most_three_places_are_opened() -> None:
     assert len(_opened(_listed(*["Exemple Paysage"] * 5), "Exemple Paysage")) == 3
 
 
+def test_the_place_maps_opens_itself_must_carry_the_owner_s_full_name() -> None:
+    """Maps opened a namesake sharing the owner's first name for a sole trader: it is not the business."""
+    assert not MapsSearchResults.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules")
+    assert MapsSearchResults.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules")
+
+
+def test_the_server_refuses_a_namesake_the_way_the_scraper_does() -> None:
+    """An older desktop app may still send a namesake's place: the identity guard refuses it too."""
+    reason = ValidationService.place_identity_mismatch(
+        prospect_name="Entreprise Individuelle Modèle Jules",
+        prospect_city="Pau",
+        prospect_postal_code=None,
+        place_title="Exemple Jules",
+        place_city=None,
+        place_postal_code=None,
+    )
+    assert reason is not None and "ne correspond pas" in reason
+
+
 @pytest.mark.parametrize(
     ("address", "city", "country", "is_elsewhere"),
     [
@@ -113,7 +149,7 @@ def test_the_cli_posts_a_sure_answer_even_empty_but_never_an_unread_page(data: E
 
 @pytest.fixture
 def resolved_prospect_ids(monkeypatch: pytest.MonkeyPatch) -> list[int]:
-    """The registers and the monitoring stay offline; the prospects whose decision maker was looked for."""
+    """The registers, the web search and the monitoring stay offline; the prospects whose decision maker was looked for."""
     resolved: list[int] = []
 
     async def resolve_contact(self: EnrichmentService, db: Session, prospect: ProspectDB, record: Any) -> None:
@@ -122,7 +158,11 @@ def resolved_prospect_ids(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     async def no_license(db: Session, prospect: ProspectDB, record: Any) -> None:
         return None
 
+    async def no_facebook_page(prospect: ProspectDB) -> str | None:
+        return None
+
     monkeypatch.setattr(EnrichmentService, "_resolve_contact", resolve_contact)
+    monkeypatch.setattr(EnrichmentService, "_search_facebook_page", staticmethod(no_facebook_page))
     monkeypatch.setattr(professional_license_service, "resolve_for_enrichment", no_license)
     monkeypatch.setattr(scraper_diagnostics_service, "record", lambda **_fields: None)
     return resolved
@@ -162,6 +202,52 @@ def test_a_business_with_no_place_says_so_and_still_reads_the_registers(
     assert resolved_prospect_ids == [prospect.id]
 
 
+def test_a_business_google_has_nothing_about_gets_its_facebook_page_to_read(
+    db: Session, resolved_prospect_ids: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The page a web search finds is stored on the prospect, so the next enrichment reads it."""
+
+    async def page_found(prospect: ProspectDB) -> str | None:
+        return "https://www.facebook.com/exemple.electricite"
+
+    monkeypatch.setattr(EnrichmentService, "_search_facebook_page", staticmethod(page_found))
+    prospect = _prospect(db)
+
+    record = _enrich(db, prospect, EnrichmentData(maps_listing_found=False))
+
+    assert prospect.facebook_url == "https://www.facebook.com/exemple.electricite"
+    assert (record.error_message or "").startswith("Pas de fiche Google, mais sa page Facebook est trouvée")
+
+
+def test_the_web_search_keeps_the_page_of_the_business_and_not_a_namesake_s() -> None:
+    """Only a page named like the business, in its town, showing no other phone number, is its page."""
+    results = [
+        {
+            "link": "https://www.facebook.com/exemple.homonyme/",
+            "title": "Exemple Électricité | Lyon",
+            "description": "Exemple Électricité, Lyon. Électricien 04 72 00 00 00.",
+        },
+        {
+            "link": "https://www.facebook.com/exemple.electricite/",
+            "title": "Exemple Électricité | Bidart",
+            "description": "Exemple Électricité, Bidart. 120 followers. Électricien 06 12 34 56 78.",
+        },
+    ]
+    facts = CandidateFacts(
+        name="Exemple Électricité",
+        trade_key="electricien",
+        country="FR",
+        origin="search",
+        city="Bidart",
+        phone="06 12 34 56 78",
+    )
+    finder = ContactFinder(_SearchResultsClient(results), search_judge)  # type: ignore[arg-type]
+
+    page = asyncio.run(finder.find_facebook_page(facts, TradeCatalog.resolve("électricien")))
+
+    assert page == "https://www.facebook.com/exemple.electricite"
+
+
 def test_an_empty_read_never_undoes_a_finished_enrichment(db: Session, resolved_prospect_ids: list[int]) -> None:
     """A place that a later search cannot find keeps the enrichment read from it earlier."""
     prospect = _prospect(db)
@@ -170,6 +256,19 @@ def test_an_empty_read_never_undoes_a_finished_enrichment(db: Session, resolved_
     record = _enrich(db, prospect, EnrichmentData(maps_listing_found=False))
 
     assert (record.status, record.rating, record.error_message) == (EnrichmentStatus.COMPLETED.value, 4.8, None)
+
+
+def test_an_enrichment_emptied_by_hand_is_no_finished_one(db: Session, resolved_prospect_ids: list[int]) -> None:
+    """Once the data of a wrong place is cleared, a read finding nothing says so instead of « completed »."""
+    prospect = _prospect(db)
+    _enrich(db, prospect, EnrichmentData(rating=4.8, maps_listing_found=True))
+    record = db.query(ProspectEnrichment).filter_by(prospect_id=prospect.id).one()
+    record.rating = None
+    db.commit()
+
+    record = _enrich(db, prospect, EnrichmentData(maps_listing_found=False))
+
+    assert record.status == EnrichmentStatus.FAILED.value
 
 
 @pytest.mark.parametrize(

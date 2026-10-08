@@ -33,6 +33,7 @@ from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
 from services.country_profiles import DEFAULT_COUNTRY_CODE
 
 _HTTP_TIMEOUT = 180.0
+_MAX_PASSES_PER_PROSPECT = 2
 
 
 async def _list_prospects(api: OperatorApi) -> list[dict[str, object]]:
@@ -121,22 +122,40 @@ async def _persist(api: OperatorApi, prospect_id: int, data: EnrichmentData) -> 
     return record if isinstance(record, dict) else {}
 
 
+async def _facebook_page_found_by_api(api: OperatorApi, prospect_id: int) -> str | None:
+    """The Facebook page the API found for a prospect Google had nothing about, if any."""
+    response = await api.get(f"/prospects/{prospect_id}")
+    response.raise_for_status()
+    return str(response.json().get("facebook_url") or "").strip() or None
+
+
 async def _enrich_one(api: OperatorApi, prospect: dict[str, object]) -> dict[str, object]:
-    """Scrape then persist a single prospect, returning a result row for the report."""
+    """Scrape then persist a single prospect, returning a result row for the report.
+
+    When Google has nothing and the API finds the business's Facebook page meanwhile, the page is
+    read right away, as a second pass.
+    """
     prospect_id = int(prospect["id"])
     name = str(prospect.get("name") or "")
-    try:
-        data = await _scrape(prospect)
-    except Exception as exc:
-        return {"prospect_id": prospect_id, "name": name, "status": "scrape_failed", "error": str(exc)}
+    for _pass in range(_MAX_PASSES_PER_PROSPECT):
+        try:
+            data = await _scrape(prospect)
+        except Exception as exc:
+            return {"prospect_id": prospect_id, "name": name, "status": "scrape_failed", "error": str(exc)}
 
-    if not _is_worth_persisting(data):
-        return {"prospect_id": prospect_id, "name": name, "status": "empty", "photos": 0}
+        if not _is_worth_persisting(data):
+            return {"prospect_id": prospect_id, "name": name, "status": "empty", "photos": 0}
 
-    try:
-        record = await _persist(api, prospect_id, data)
-    except Exception as exc:
-        return {"prospect_id": prospect_id, "name": name, "status": "persist_failed", "error": str(exc)}
+        try:
+            record = await _persist(api, prospect_id, data)
+            facebook_url = None
+            if not _is_meaningful(data) and not prospect.get("facebook_url"):
+                facebook_url = await _facebook_page_found_by_api(api, prospect_id)
+        except Exception as exc:
+            return {"prospect_id": prospect_id, "name": name, "status": "persist_failed", "error": str(exc)}
+        if not facebook_url:
+            break
+        prospect = {**prospect, "facebook_url": facebook_url}
 
     row: dict[str, object] = {
         "prospect_id": prospect_id,

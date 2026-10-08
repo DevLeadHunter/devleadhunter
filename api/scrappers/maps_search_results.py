@@ -44,12 +44,7 @@ class MapsSearchResults:
     @classmethod
     def places_named_like(cls, places: list[ListedPlace], business_name: str) -> list[ListedPlace]:
         """
-        The listed places that carry the business's name, closest name first.
-
-        A place's name is read without its tagline (« Exemple Électrique - Maître Électricien Laval »),
-        and most of its words must be the business's. A business named after one word only (« Exemple »)
-        matches no place adding a word of its own: « Exemple Électricité » is it, « Exemple Jules », a
-        podiatrist listed first, is not.
+        The listed places named like the business (see ``is_named_like``), closest name first.
 
         Args:
             places: The places of the list, in the list's order.
@@ -59,21 +54,46 @@ class MapsSearchResults:
             At most ``MAX_LISTED_PLACES_OPENED`` places, by decreasing name similarity, the list's
             order breaking ties.
         """
-        business_words = cls._name_words(business_name)
-        if not business_words:
-            return []
-        is_named_after_one_word = len(cls._distinctive(business_words)) == 1
         named_like: list[tuple[float, int, ListedPlace]] = []
         for position, place in enumerate(places):
-            place_words = cls._name_words(BusinessName.clean(place.name))
-            if not place_words:
-                continue
-            similarity = len(business_words & place_words) / len(business_words | place_words)
-            adds_own_word = bool(cls._distinctive(place_words - business_words))
-            if similarity >= MIN_LISTED_NAME_SIMILARITY and not (is_named_after_one_word and adds_own_word):
+            similarity = cls._name_similarity(place.name, business_name)
+            if similarity is not None:
                 named_like.append((similarity, position, place))
         named_like.sort(key=lambda match: (-match[0], match[1]))
         return [place for _, _, place in named_like[:MAX_LISTED_PLACES_OPENED]]
+
+    @classmethod
+    def is_named_like(cls, place_name: str, business_name: str) -> bool:
+        """
+        Whether a place's name is the business's name.
+
+        The place's name is read without its tagline (« Exemple Électrique - Maître Électricien Laval »),
+        and most of its words must be the business's. A business named after one word only (« Exemple »)
+        matches no place adding a word of its own: « Exemple Électricité » is it, « Exemple Jules », a
+        podiatrist, is not; nor is a namesake sharing a first name (« Jules Exemple » for « Jules Modèle »).
+
+        Args:
+            place_name: The name the place shows.
+            business_name: The prospect's business name.
+
+        Returns:
+            True when the place carries the business's name.
+        """
+        return cls._name_similarity(place_name, business_name) is not None
+
+    @classmethod
+    def _name_similarity(cls, place_name: str, business_name: str) -> float | None:
+        """The share of words the two names have in common, or None when the place has another business's name."""
+        business_words = cls._name_words(business_name)
+        place_words = cls._name_words(BusinessName.clean(place_name))
+        if not business_words or not place_words:
+            return None
+        similarity = len(business_words & place_words) / len(business_words | place_words)
+        is_named_after_one_word = len(cls._distinctive(business_words)) == 1
+        adds_own_word = bool(cls._distinctive(place_words - business_words))
+        if similarity < MIN_LISTED_NAME_SIMILARITY or (is_named_after_one_word and adds_own_word):
+            return None
+        return similarity
 
     @staticmethod
     def is_in_other_town(address: str | None, *, city: str | None, country: str) -> bool:

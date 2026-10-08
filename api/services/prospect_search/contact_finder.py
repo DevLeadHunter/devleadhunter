@@ -162,6 +162,20 @@ class ContactFinder:
         """Forget the candidate's email when its domain receives no mail."""
         await self._domain_check.drop_dead_email(facts)
 
+    async def find_facebook_page(self, facts: CandidateFacts, trade: TradeProfile) -> str | None:
+        """
+        The business's own Facebook page, found by a web search.
+
+        Args:
+            facts: The business, completed in place with the page.
+            trade: Profile of the business's trade.
+
+        Returns:
+            The page's address, or None when no result is the business's page.
+        """
+        await self._find_facebook_page(facts, trade)
+        return facts.facebook_url
+
     async def _find_facebook_page(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """Search the business on Facebook; an email in its own page's snippet is kept."""
         # The name is not quoted: a page rarely repeats the listing's full name (« … jardinier paysagiste »).

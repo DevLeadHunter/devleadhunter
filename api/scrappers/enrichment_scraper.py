@@ -931,14 +931,17 @@ class EnrichmentScraper:
         """nodriver implementation: open the place panel and extract rich data."""
         browser = NodriverBrowser(ephemeral=True)
         try:
-            if google_maps_url and GoogleScraper.is_maps_url(google_maps_url):
-                url = GoogleScraper.normalize_maps_url(google_maps_url)
-            else:
+            is_search = not (google_maps_url and GoogleScraper.is_maps_url(google_maps_url))
+            if is_search:
                 query = GoogleScraper.build_business_query(business_name, city)
                 url = f"https://www.google.com/maps/search/{query}"
+            else:
+                url = GoogleScraper.normalize_maps_url(google_maps_url or "")
 
             tab = await browser.get_tab(url)
-            listing = await self._open_listing(tab, business_name=business_name, city=city, country=country)
+            listing = await self._open_listing(
+                tab, business_name=business_name, city=city, country=country, is_search=is_search
+            )
             if listing is MapsSearchOutcome.NOT_LISTED:
                 logger.info("Enrichment: Maps lists no place named like %s in %s", business_name, city)
                 return EnrichmentData(maps_listing_found=False)
@@ -1072,29 +1075,42 @@ class EnrichmentScraper:
         await GoogleScraper.accept_web_modal(tab)
         return await NodriverDom.wait_for_selector(tab, "h1", timeout_s=12.0)
 
-    async def _open_listing(self, tab: Any, *, business_name: str, city: str | None, country: str) -> MapsSearchOutcome:
+    async def _open_listing(
+        self, tab: Any, *, business_name: str, city: str | None, country: str, is_search: bool
+    ) -> MapsSearchOutcome:
         """
         Open the business's place, and only it.
 
-        Maps opens a place itself when it is sure of the search; otherwise it lists results, and only a
-        listed place carrying the business's name, in the business's town, is opened. The list's own
-        heading (« Résultats ») is never read as a place.
+        A stored place link opens the place itself. A « nom + ville » search opens a place only when it
+        carries the business's name in the business's town: the one Maps opens when it is sure of the
+        search, or one of the results it lists when it is not. The list's own heading (« Résultats »)
+        is never read as a place.
 
         Args:
             tab: The tab on the Maps search or place URL.
             business_name: The prospect's business name.
             city: The prospect's town, if known.
             country: The prospect's country, deciding how an address is read.
+            is_search: Whether the tab opened a « nom + ville » search rather than a stored place link.
 
         Returns:
-            OPENED when a place panel is open, NOT_LISTED when Maps lists no place of that name in that
-            town, UNREACHABLE when Maps showed neither a place nor a list.
+            OPENED when the business's place panel is open, NOT_LISTED when Maps shows no place of that
+            name in that town, UNREACHABLE when Maps showed neither a place nor a list.
         """
         await GoogleScraper.accept_cookies(tab)
         await GoogleScraper.accept_web_modal(tab)
         landing = await self._wait_for_search_landing(tab)
         if landing == "place":
-            return MapsSearchOutcome.OPENED
+            if not is_search:
+                return MapsSearchOutcome.OPENED
+            title = await self._read_place_title(tab)
+            is_business_place = MapsSearchResults.is_named_like(title or "", business_name) and not (
+                MapsSearchResults.is_in_other_town(await self._read_place_address(tab), city=city, country=country)
+            )
+            if is_business_place:
+                return MapsSearchOutcome.OPENED
+            logger.info("Enrichment: the place Maps opened (« %s ») is not %s, passed over", title, business_name)
+            return MapsSearchOutcome.NOT_LISTED
         if landing != "results":
             return MapsSearchOutcome.UNREACHABLE
         for place in MapsSearchResults.places_named_like(await self._read_listed_places(tab), business_name):

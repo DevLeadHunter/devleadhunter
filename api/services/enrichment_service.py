@@ -53,9 +53,10 @@ _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
 _NO_LISTING_REASON = "Rien à lire : aucune fiche Google à ce nom dans cette ville, ni page Facebook."
 _EMPTY_LISTING_REASON = "La fiche Google de l'entreprise est vide : ni avis, ni photo, ni horaires."
 _NOTHING_READ_REASON = "Rien n'a pu être lu (Google a peut-être bloqué la lecture) : relancez l'enrichissement."
+_FACEBOOK_PAGE_FOUND_REASON = "Pas de fiche Google, mais sa page Facebook est trouvée : relancez pour la lire."
 
 
-def _count_filled_fields(data: EnrichmentData | None) -> int:
+def _count_filled_fields(data: EnrichmentData | ProspectEnrichment | None) -> int:
     """Number of rich enrichment fields actually populated (0 = quietly empty)."""
     if data is None:
         return 0
@@ -232,7 +233,9 @@ class EnrichmentService:
             The persisted enrichment record.
         """
         record = self.get_or_create(db, user_id, prospect.id)
-        had_completed_enrichment = record.status == EnrichmentStatus.COMPLETED.value
+        holds_finished_enrichment = (
+            record.status == EnrichmentStatus.COMPLETED.value and _count_filled_fields(record) > 0
+        )
         record.status = EnrichmentStatus.ENRICHING.value
         record.error_message = None
         db.commit()
@@ -274,11 +277,17 @@ class EnrichmentService:
                 record.error_message = f"{mismatch}. Données rejetées — relancez ou éditez manuellement."
                 self._record_diagnostic(prospect, None, error=mismatch)
             elif self._found_nothing(data):
-                if had_completed_enrichment:
+                if holds_finished_enrichment:
                     record.status = EnrichmentStatus.COMPLETED.value
                 else:
                     record.status = EnrichmentStatus.FAILED.value
                     record.error_message = self._nothing_found_reason(data)
+                    if data.maps_listing_found is not None and not (prospect.facebook_url or "").strip():
+                        facebook_page = await self._search_facebook_page(prospect)
+                        if facebook_page:
+                            prospect.facebook_url = facebook_page
+                            db.add(prospect)
+                            record.error_message = _FACEBOOK_PAGE_FOUND_REASON
                 self._record_diagnostic(prospect, data, error=None)
             else:
                 # Facebook photos arrive as short-lived signed fbcdn URLs; the scraper captured the
@@ -355,6 +364,38 @@ class EnrichmentService:
     def _found_nothing(data: EnrichmentData) -> bool:
         """Whether a scrape brought nothing at all: no rich field, no email, no phone, no website."""
         return _count_filled_fields(data) == 0 and not (data.emails or data.phone or data.website)
+
+    @staticmethod
+    async def _search_facebook_page(prospect: ProspectDB) -> str | None:
+        """
+        The business's own Facebook page, found by a web search the way a prospect search finds one.
+
+        Args:
+            prospect: A business Google has nothing about.
+
+        Returns:
+            The page's address, or None when no result is its page or the search failed.
+        """
+        from scrappers.brightdata_client import BrightDataClient
+        from services.prospect_search.candidate_facts import CandidateFacts
+        from services.prospect_search.contact_finder import ContactFinder
+        from services.prospect_search.search_judge import search_judge
+        from services.prospect_search.trade_catalog import TradeCatalog
+
+        trade = TradeCatalog.resolve(prospect.category or "")
+        facts = CandidateFacts(
+            name=prospect.name or "",
+            trade_key=trade.key,
+            country=prospect.country or "FR",
+            origin=prospect.source or "",
+            city=prospect.city,
+            phone=prospect.phone,
+        )
+        try:
+            return await ContactFinder(BrightDataClient(), search_judge).find_facebook_page(facts, trade)
+        except Exception as exc:
+            logger.info("Facebook page search failed for prospect_id=%s: %s", prospect.id, exc)
+            return None
 
     @staticmethod
     def _nothing_found_reason(data: EnrichmentData) -> str:
