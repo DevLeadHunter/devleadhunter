@@ -19,9 +19,9 @@ from typing import Any
 import httpx
 
 from core.config import settings
+from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.normalize import (
     company_similarity,
-    company_tokens,
     fold,
     infer_gender,
     join_dotted_initials,
@@ -37,6 +37,10 @@ _PAPPERS_URL = "https://api.pappers.fr/v2/recherche"
 
 # A company-name match below this similarity is considered a different business.
 _MIN_COMPANY_SIMILARITY = 0.45
+_CEASED_STATE = "C"
+_ENSEIGNE_IN_NAME_RE = re.compile(r"\(([^)]+)\)")
+_GLUED_WORDS_RE = re.compile(r"(?<=[a-zà-ÿ])(?=[A-ZÀ-Ý]|\d)")
+_DOTTED_CAPITALS_RE = re.compile(r"^[A-ZÀ-Ý](?:\.[A-ZÀ-Ý]+)+\.?['’]?$")
 
 # Evidence groups — candidates extracted from the SAME underlying data are one
 # observation, not two (owner replies feed both the regex and the LLM; the
@@ -83,6 +87,22 @@ class TradeName:
     """A business's trade name read the way the registry spells its legal name."""
 
     @staticmethod
+    def searchable(name: str) -> str:
+        """
+        The name as the registry files it: glued words apart, dotted initials joined.
+
+        « ExempleAuto64 » reads « Exemple Auto 64 », « E.XP' Jardins » reads « EXP Jardins ».
+
+        Args:
+            name: The trade name, as the listing or the page writes it.
+
+        Returns:
+            The name to search the registry with; the name itself when nothing needs mending.
+        """
+        words = _GLUED_WORDS_RE.sub(" ", name or "").split()
+        return " ".join(re.sub(r"[.'’]", "", word) if _DOTTED_CAPITALS_RE.match(word) else word for word in words)
+
+    @staticmethod
     def without_trade_words(name: str) -> str:
         """The name without its trade and legal-form words (« Garage Exemple Auto » reads « Exemple Auto »)."""
         words = [word for word in re.split(r"\s+", (name or "").strip()) if word]
@@ -109,17 +129,24 @@ class RegistreGouvStrategy:
 
     async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
         """
-        Query the registry by the company number the search read, else by company name (+ postal code / city).
+        Query the registry by the company number the search read, else by company name in the business's département.
 
-        The registry's full-text search wants every word of the query in the company's legal name: when the
-        trade name carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its
-        trade words is tried next.
+        The registry's full-text search wants every word of the query in the company's legal name: the name as
+        the registry files it (« ExempleAuto64 » as « Exemple Auto 64 ») is tried next, then, when the trade name
+        carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its trade words.
+        The département comes from the postal code, else from the town (a business found on Facebook has none).
         """
         query = (context.company_name or "").strip()
         if not query:
             return []
         siren = self.siren_of(context.registry_number)
+        department = FrenchDepartments.of_postal_code(context.postal_code) or await FrenchDepartments.of_town(
+            context.city
+        )
         queries = [(siren, False)] if siren else [(query, False)]
+        searchable_query = TradeName.searchable(query)
+        if not siren and searchable_query != query:
+            queries.append((searchable_query, False))
         trade_free_query = TradeName.without_trade_words(query)
         if (
             not siren
@@ -129,8 +156,8 @@ class RegistreGouvStrategy:
             queries.append((trade_free_query, True))
         for registry_query, is_trade_free_query in queries:
             params: dict[str, Any] = {"q": registry_query, "page": 1, "per_page": 5}
-            if context.postal_code and not siren:
-                params["code_postal"] = context.postal_code
+            if department and not siren:
+                params["departement"] = department
             try:
                 async with httpx.AsyncClient(timeout=12.0) as client:
                     response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
@@ -140,25 +167,51 @@ class RegistreGouvStrategy:
                 logger.warning("registre_gouv lookup failed for %r: %s", registry_query, exc)
                 return []
             candidates = self.parse_results(
-                payload.get("results") or [], context, is_trade_free_query=is_trade_free_query
+                payload.get("results") or [],
+                context,
+                department=department,
+                is_trade_free_query=is_trade_free_query,
             )
             if candidates:
                 return candidates
         return []
 
     def parse_results(
-        self, results: list[dict[str, Any]], context: ResolutionContext, *, is_trade_free_query: bool = False
+        self,
+        results: list[dict[str, Any]],
+        context: ResolutionContext,
+        *,
+        department: str | None = None,
+        is_trade_free_query: bool = False,
     ) -> list[NameCandidate]:
         """
         Score the registry matches (pure — unit-testable on fixtures); the company of the searched number is the business, whatever its name.
 
         Companies found by the name without its trade words must carry that name almost exactly: « Lb Passion »
-        also finds LB TENNIS PASSION for a garden firm.
+        also finds LB TENNIS PASSION for a garden firm. A ceased company, or one registered in another
+        département, is another business: a homonym, or the business's former structure.
+
+        Args:
+            results: The registry's answer.
+            context: The business looked for.
+            department: The business's département, when known (else read from its postal code).
+            is_trade_free_query: Whether the registry was asked the name without its trade words.
+
+        Returns:
+            One candidate per company that can be the business.
         """
         candidates: list[NameCandidate] = []
         siren = self.siren_of(context.registry_number)
+        department = department or FrenchDepartments.of_postal_code(context.postal_code)
         for result in results[:5]:
             anchored = bool(siren) and str(result.get("siren") or "") == siren
+            company_department = FrenchDepartments.of_postal_code(
+                str((result.get("siege") or {}).get("code_postal") or "")
+            )
+            is_in_department = department is not None and company_department == department
+            is_elsewhere = department is not None and company_department is not None and not is_in_department
+            if not anchored and (str(result.get("etat_administratif") or "") == _CEASED_STATE or is_elsewhere):
+                continue
             if anchored:
                 similarity = 1.0
             elif is_trade_free_query:
@@ -170,7 +223,7 @@ class RegistreGouvStrategy:
             city_ok = anchored or self._city_matches(result, context)
             # Département-level match is enough geo confirmation: artisans are
             # often registered at home, one commune away from where they work.
-            geo_confirmed = city_ok or self._department_matches(result, context)
+            geo_confirmed = city_ok or is_in_department
             base = 0.5 + 0.25 * similarity + (0.15 if city_ok else 0.0)
             found = self._candidates_of(result, base=base, geo_confirmed=geo_confirmed)
             if anchored:
@@ -286,12 +339,43 @@ class RegistreGouvStrategy:
 
     @staticmethod
     def _match_similarity(result: dict[str, Any], context: ResolutionContext) -> float:
-        """Best similarity between the prospect name, or its name without trade words, and the registry names."""
-        names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
-        similarity = max(
-            company_similarity(join_dotted_initials(context.company_name), join_dotted_initials(n)) for n in names
+        """
+        How surely a registry company is the business: its legal names close to the business's, or a trade name that is it.
+
+        The business's name is read as written and as the registry files it (« ExempleAuto64 », « Exemple Auto 64 »).
+        A trade name (« JULES MODELE (EXEMPLE AUTO 64) ») must be the business's name, not share its generic words:
+        « HOME PRO SERVICES » is not « Exemple Home Services ».
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        business_names = {context.company_name, TradeName.searchable(context.company_name)}
+        legal_names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
+        legal_similarity = max(
+            company_similarity(join_dotted_initials(business_name), join_dotted_initials(legal_name))
+            for business_name in business_names
+            for legal_name in legal_names
         )
-        return max(similarity, RegistreGouvStrategy._trade_free_similarity(result, context))
+        is_trading_under_the_name = any(
+            BusinessName.is_same_name(trade_name, business_name)
+            for business_name in business_names
+            for trade_name in RegistreGouvStrategy._trade_names(result)
+        )
+        return max(
+            legal_similarity,
+            1.0 if is_trading_under_the_name else 0.0,
+            RegistreGouvStrategy._trade_free_similarity(result, context),
+        )
+
+    @staticmethod
+    def _trade_names(result: dict[str, Any]) -> list[str]:
+        """The trade names a registry company declares: in brackets after its name, and on its head office."""
+        listed = [str(name) for name in ((result.get("siege") or {}).get("liste_enseignes") or []) if name]
+        return [*RegistreGouvStrategy.names_in(str(result.get("nom_complet") or ""))[1:], *listed]
+
+    @staticmethod
+    def names_in(full_name: str) -> list[str]:
+        """A registry full name and the trade names it carries in brackets (« JULES MODELE (EXEMPLE AUTO 64) »)."""
+        return [full_name, *_ENSEIGNE_IN_NAME_RE.findall(full_name)]
 
     @staticmethod
     def _trade_free_similarity(result: dict[str, Any], context: ResolutionContext) -> float:
@@ -321,15 +405,6 @@ class RegistreGouvStrategy:
 
             return fold(str(siege.get("libelle_commune") or "")) == fold(context.city)
         return False
-
-    @staticmethod
-    def _department_matches(result: dict[str, Any], context: ResolutionContext) -> bool:
-        """True when the registry HQ sits in the prospect's département."""
-        siege = result.get("siege") or {}
-        siege_postal = str(siege.get("code_postal") or "")
-        if not context.postal_code or len(siege_postal) != 5:
-            return False
-        return siege_postal[:2] == context.postal_code[:2]
 
 
 class PappersStrategy:
@@ -469,39 +544,71 @@ class WebRegistryStrategy:
         legal_names = self.extract_company_names(html, enseigne)
         if not legal_names:
             return []
-        # The geo-scoped web query already located the business, so the registry
-        # sub-lookup drops the strict postal filter (a Le Mans artisan can be
-        # registered in 72100 while the prospect address reads 72000) and
-        # geo-confirms on the city instead. Each sub-context carries the RECOVERED
-        # legal name, so the registry's own similarity check compares
-        # legal-name↔registry, not the unmatchable trade name.
-        subs = [replace(context, company_name=name, postal_code=None) for name in legal_names]
+        # Each sub-context carries the RECOVERED legal name, so the registry's own
+        # similarity check compares legal-name↔registry, not the unmatchable trade
+        # name; the registry searches it in the business's département.
+        subs = [replace(context, company_name=name) for name in legal_names]
         results = await asyncio.gather(*(self._registry.resolve(sub) for sub in subs), return_exceptions=True)
         candidates: list[NameCandidate] = []
         for result in results:
             if isinstance(result, BaseException):
                 logger.warning("web_registry registry sub-lookup raised: %s", result)
                 continue
-            candidates.extend(result)
+            candidates.extend(candidate for candidate in result if self.is_company_of(candidate, context))
         return self._retag(candidates)
+
+    @staticmethod
+    def is_company_of(candidate: NameCandidate, context: ResolutionContext) -> bool:
+        """
+        Whether the registry company a web search led to is the business itself (pure — testable).
+
+        A legal name found on the web shares a word with the trade name, which a neighbour's does too
+        (« EXEMPLE HOME RENOV » for « Exemple Home Services »): the company must bear the trade name word for word,
+        or its head must be the person the trade name is named after (« Germain Paysagiste » is SECOMAN Germain).
+
+        Args:
+            candidate: The head of a company the registry gave for a legal name found on the web.
+            context: The business looked for.
+
+        Returns:
+            True when the company is the business.
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        business_names = {context.company_name, TradeName.searchable(context.company_name)}
+        company_names = RegistreGouvStrategy.names_in(str(candidate.raw.get("nom_complet") or ""))
+        if any(
+            BusinessName.is_same_name(company_name, business_name)
+            for company_name in company_names
+            for business_name in business_names
+        ):
+            return True
+        person_words = {fold(word) for word in f"{candidate.first or ''} {candidate.last or ''}".split()}
+        return any(person_words & BusinessName.distinctive_words(name, town=context.city) for name in business_names)
 
     def extract_company_names(self, html: str, enseigne: str) -> list[str]:
         """Pull raison-sociale candidates from a SERP (pure — testable on fixtures).
 
-        Keeps the all-caps runs that share a significant token with the trade
+        Keeps the all-caps runs that share a distinctive word with the trade
         name (the artisan's own name is almost always in both), which filters out
-        the city and generic UI words, and returns the longest spelling of each.
+        the city, generic UI words and the other firms of the same trade (« AB
+        ÉLECTRICITÉ » shares only its trade with « ABS électricité »), and returns
+        the longest spelling of each.
         """
+        from services.prospect_search.business_name import BusinessName
+
         text = unescape(re.sub(r"<[^>]+>", " ", html or ""))
-        enseigne_tokens = company_tokens(enseigne)
-        if not enseigne_tokens:
+        enseigne_words = BusinessName.distinctive_words(enseigne) | BusinessName.distinctive_words(
+            TradeName.searchable(enseigne)
+        )
+        if not enseigne_words:
             return []
         found: dict[str, str] = {}
         for match in self._CAPS_NAME_RE.finditer(text):
             # Drop single-letter words (initials / SERP artefacts like a trailing « P »).
             words = [word for word in re.split(r"\s+", match.group(0)) if len(word) > 1]
             candidate = " ".join(words).strip(" -'’&")
-            if len(words) < 2 or not (company_tokens(candidate) & enseigne_tokens):
+            if len(words) < 2 or not (BusinessName.distinctive_words(candidate) & enseigne_words):
                 continue
             key = fold(candidate)
             if key not in found or len(candidate) > len(found[key]):
@@ -563,6 +670,7 @@ _NAME_LINK_WORDS: frozenset[str] = frozenset(
     {"de", "des", "du", "et", "la", "le", "les", "au", "aux", "en", "sur", "chez", "fils", "freres", "jr", "of", "and"}
 )
 _PERSON_CUE_BEFORE_NAME = r"\b(?:[Vv]oir|[Mm]erci(?:\s+à)?|[Aa]vec|[Dd]emandez|[Aa]ppelez|[Cc]ontactez)"
+_ADDRESSING_CUE_RE = r"\b(?:merci|bonjour|bonsoir|cher|chere|salut|hello|thanks?)\b"
 _MIN_NAME_WORD_CHARS = 3
 
 
@@ -778,6 +886,25 @@ class LlmAggregateStrategy:
             return []
         return self.parse_answer(answer, corpus)
 
+    @staticmethod
+    def _is_addressed_in(quote: str, name: str) -> bool:
+        """
+        Whether the quote addresses the person rather than names its head (« Merci beaucoup Jules pour ton avis »).
+
+        The owner's replies thank or greet the customer who wrote the review: that name is a customer's.
+
+        Args:
+            quote: The extract the model quoted.
+            name: The first name (else the last name) it read there.
+
+        Returns:
+            True when a thanking or greeting word comes just before the name.
+        """
+        if not name:
+            return False
+        addressed_name_re = rf"{_ADDRESSING_CUE_RE}[^.!?\n]{{0,30}}\b{re.escape(fold(name))}\b"
+        return re.search(addressed_name_re, fold(quote)) is not None
+
     def parse_answer(self, answer: str, corpus: str) -> list[NameCandidate]:
         """Validate the LLM answer against the source text (pure — testable)."""
         fields: dict[str, str] = {}
@@ -793,7 +920,7 @@ class LlmAggregateStrategy:
         # The quote must literally exist in the corpus (hallucination gate).
         from services.decision_maker.normalize import fold
 
-        if fold(quote)[:60] not in fold(corpus):
+        if fold(quote)[:60] not in fold(corpus) or self._is_addressed_in(quote, first or last or ""):
             return []
         return [
             NameCandidate(

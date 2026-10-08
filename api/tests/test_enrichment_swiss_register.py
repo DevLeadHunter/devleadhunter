@@ -129,3 +129,39 @@ def test_a_firm_struck_off_lately_is_set_aside_by_the_app(
 
     assert set_aside == [(1, "Entreprise radiée au registre du commerce (Zefix)", None)]
     assert record.contact_first_name is None and record.proposed_first_name is None
+
+
+def test_a_firm_whose_address_is_in_the_business_town_is_the_business(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The firm's seat is the commune, its address the business's village: its manager is the trusted contact."""
+
+    async def address_in_the_village(firm: SwissRegisterFirm) -> tuple[str, str]:
+        return "2900", "Porrentruy"
+
+    monkeypatch.setattr(swiss_registry, "address_of", address_in_the_village)
+    register_firms.append(_firm(seat="Haute-Ajoie"))
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
+
+    assert (record.contact_first_name, record.proposed_first_name) == ("Paul", None)
+
+
+def test_the_only_firm_of_the_name_in_another_region_names_nobody(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A garage of Gland (1196) is not the firm of the same name in Andelfingen (8452): no name, not even proposed."""
+
+    async def address_far_away(firm: SwissRegisterFirm) -> tuple[str, str]:
+        return "8452", "Adlikon b. Andelfingen"
+
+    monkeypatch.setattr(swiss_registry, "address_of", address_far_away)
+    register_firms.append(_firm(seat="Andelfingen"))
+    prospect = _prospect()
+    prospect.address = "Route de Nyon 27, 1196 Gland"
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), prospect, record, uid=None))
+
+    assert (record.contact_first_name, record.proposed_first_name) == (None, None)

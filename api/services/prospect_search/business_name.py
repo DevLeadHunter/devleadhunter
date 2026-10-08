@@ -131,19 +131,55 @@ class BusinessName:
         Returns:
             The share, from 0.5 to 1, or None when the two names are two businesses'.
         """
-        business_words = cls._name_words(business_name)
-        checked_words = cls._name_words(cls.clean(name))
-        town_words = company_tokens(town or "")
-        business_distinctive = cls._distinctive(business_words) - town_words
-        checked_distinctive = cls._distinctive(checked_words) - town_words
+        business_distinctive = cls.distinctive_words(business_name, town=town)
+        checked_distinctive = cls.distinctive_words(cls.clean(name), town=town)
         if not business_distinctive:
-            return 1.0 if business_words and checked_words == business_words else None
+            business_words = cls._name_words(business_name)
+            return 1.0 if business_words and cls._name_words(cls.clean(name)) == business_words else None
         shared = business_distinctive & checked_distinctive
         similarity = len(shared) / len(business_distinctive | checked_distinctive)
         adds_own_word = bool(checked_distinctive - business_distinctive)
         if similarity < _MIN_NAME_SIMILARITY or (len(business_distinctive) == 1 and adds_own_word):
             return None
         return similarity
+
+    @classmethod
+    def is_same_name(cls, name: str, business_name: str) -> bool:
+        """
+        Whether a name is the business's name word for word, legal form, trade words, accents and dotted initials aside.
+
+        Stricter than ``is_named_like``: a registry company bearing it is the business itself (« MATHIEU EXEMPLE »
+        for « Mathieu Exemple Paysagiste »), while « EXEMPLE SERVICES », a cleaning firm, is not « Exemple Services
+        Extérieurs », a landscaper.
+
+        Args:
+            name: A registry company's name, or one of its trade names.
+            business_name: The prospect's business name.
+
+        Returns:
+            True when both names have the same words besides their trade.
+        """
+        business_words = cls._words_beside_trade(business_name)
+        return bool(business_words) and cls._words_beside_trade(cls.clean(name)) == business_words
+
+    @classmethod
+    def _words_beside_trade(cls, name: str) -> set[str]:
+        """The words of a name without its legal form and its trade words."""
+        return {word for word in cls._name_words(name) if not TradeCatalog.is_trade_word(word)}
+
+    @classmethod
+    def distinctive_words(cls, name: str, *, town: str | None = None) -> set[str]:
+        """
+        The words of a name that tell its business from another: no legal form, trade word, common or linking word, nor town.
+
+        Args:
+            name: A business name.
+            town: The business's town, if known.
+
+        Returns:
+            The distinctive words, folded (« Exemple & Fils Électricité » gives « exemple », « fils »).
+        """
+        return cls._distinctive(cls._name_words(name)) - company_tokens(town or "")
 
     @classmethod
     def _name_words(cls, name: str) -> set[str]:

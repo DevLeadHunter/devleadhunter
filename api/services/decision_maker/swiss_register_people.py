@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass, replace
 from datetime import date
 
-from services.decision_maker.normalize import fold, title_case_name
+from services.decision_maker.normalize import fold, infer_gender, title_case_name
 
 _ENTERING_HEADINGS: tuple[str, ...] = (
     "personne(s) inscrite(s)",
@@ -76,7 +76,12 @@ _ROLE_PREFIX_RE: re.Pattern[str] = re.compile(
 _SIGNATURE_SUFFIX_RE: re.Pattern[str] = re.compile(
     r"\s+(?:avec|sans|mit|ohne)\s+(?:signature|unterschrift)\b.*$", re.IGNORECASE
 )
-_DEPARTURE_RE: re.Pattern[str] = re.compile(r"([A-ZÀ-Ý][\w'’-]+(?:[ -][A-ZÀ-Ý][\w'’-]+)+)\s+n['’]est plus\b")
+_PERSON_NAME = r"[A-ZÀ-Ý][\w'’-]+(?:[ -][A-ZÀ-Ý][\w'’-]+)+"
+_DEPARTURE_RE: re.Pattern[str] = re.compile(rf"({_PERSON_NAME})\s+n['’]est plus\b")
+_DEPARTURES_RE: re.Pattern[str] = re.compile(
+    rf"({_PERSON_NAME}(?:\s*,\s*{_PERSON_NAME})*\s+et\s+{_PERSON_NAME})\s+ne sont plus\b"
+)
+_DEPARTED_NAMES_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+et\s+")
 _ORIGIN_RE: re.Pattern[str] = re.compile(r"^(?:de\s|d['’]|von\s|du\s|des\s|tous\s+deux\s+de\s)", re.IGNORECASE)
 _DOMICILE_RE: re.Pattern[str] = re.compile(r"^(?:à|a|in|en)\s", re.IGNORECASE)
 _NOT_A_ROLE_RE: re.Pattern[str] = re.compile(
@@ -84,6 +89,222 @@ _NOT_A_ROLE_RE: re.Pattern[str] = re.compile(
 )
 _COMPANY_RE: re.Pattern[str] = re.compile(r"\b(?:sa|sàrl|sarl|ag|gmbh|fiduciaire|revision|révision)\b|che-\d")
 _LATIN1_READ_UTF8_RE: re.Pattern[str] = re.compile("[ÂÃ][\u0080-¿]")
+
+_COMMON_GIVEN_NAMES: frozenset[str] = frozenset(
+    {
+        "abilio",
+        "adelino",
+        "agostinho",
+        "alberto",
+        "alvaro",
+        "americo",
+        "antonio",
+        "armando",
+        "artur",
+        "augusto",
+        "bernardo",
+        "bruno",
+        "carlos",
+        "custodio",
+        "diogo",
+        "domingos",
+        "duarte",
+        "eduardo",
+        "emanuel",
+        "fabio",
+        "fernando",
+        "filipe",
+        "francisco",
+        "goncalo",
+        "helder",
+        "henrique",
+        "hugo",
+        "ivo",
+        "jaime",
+        "joao",
+        "joaquim",
+        "jorge",
+        "jose",
+        "julio",
+        "luis",
+        "manuel",
+        "marco",
+        "marcos",
+        "mario",
+        "miguel",
+        "nelson",
+        "nuno",
+        "orlando",
+        "paulo",
+        "pedro",
+        "rafael",
+        "raul",
+        "renato",
+        "ricardo",
+        "rodrigo",
+        "rogerio",
+        "rui",
+        "sergio",
+        "silvio",
+        "simao",
+        "tiago",
+        "tomas",
+        "valter",
+        "vasco",
+        "vitor",
+        "ana",
+        "beatriz",
+        "carla",
+        "catarina",
+        "celia",
+        "cristina",
+        "fatima",
+        "filipa",
+        "graca",
+        "helena",
+        "ines",
+        "isabel",
+        "joana",
+        "lurdes",
+        "manuela",
+        "margarida",
+        "marta",
+        "paula",
+        "raquel",
+        "rita",
+        "rosa",
+        "rute",
+        "sonia",
+        "susana",
+        "teresa",
+        "vera",
+        "angelo",
+        "carlo",
+        "domenico",
+        "enzo",
+        "fabrizio",
+        "francesco",
+        "franco",
+        "gianni",
+        "giovanni",
+        "giuseppe",
+        "lorenzo",
+        "luca",
+        "luigi",
+        "massimo",
+        "matteo",
+        "maurizio",
+        "nicola",
+        "paolo",
+        "pietro",
+        "riccardo",
+        "roberto",
+        "salvatore",
+        "stefano",
+        "umberto",
+        "vincenzo",
+        "vittorio",
+        "chiara",
+        "francesca",
+        "giovanna",
+        "giulia",
+        "paola",
+        "valentina",
+        "alejandro",
+        "diego",
+        "ignacio",
+        "javier",
+        "jesus",
+        "joaquin",
+        "juan",
+        "pablo",
+        "ramon",
+        "carmen",
+        "dolores",
+        "mercedes",
+        "pilar",
+        "agron",
+        "ardian",
+        "arben",
+        "arsim",
+        "avni",
+        "bekim",
+        "besnik",
+        "blerim",
+        "bujar",
+        "burim",
+        "dardan",
+        "driton",
+        "fatmir",
+        "fitim",
+        "gezim",
+        "ilir",
+        "isuf",
+        "kushtrim",
+        "labinot",
+        "lirim",
+        "mentor",
+        "naim",
+        "valon",
+        "visar",
+        "arta",
+        "besa",
+        "drita",
+        "mimoza",
+        "teuta",
+        "vjosa",
+        "ahmed",
+        "ahmet",
+        "ali",
+        "amine",
+        "bilal",
+        "hasan",
+        "hassan",
+        "ibrahim",
+        "ismail",
+        "karim",
+        "kemal",
+        "khalid",
+        "mehdi",
+        "mehmet",
+        "mohamed",
+        "mohammed",
+        "murat",
+        "mustafa",
+        "nabil",
+        "omer",
+        "osman",
+        "rachid",
+        "said",
+        "sofiane",
+        "soufiane",
+        "yassine",
+        "youssef",
+        "yusuf",
+        "nadia",
+        "samira",
+        "beat",
+        "fritz",
+        "hans",
+        "heinz",
+        "jurg",
+        "kurt",
+        "markus",
+        "reto",
+        "rolf",
+        "ruedi",
+        "stefan",
+        "ueli",
+        "urs",
+        "walter",
+        "werner",
+        "brigitte",
+        "regula",
+        "ruth",
+        "ursula",
+        "verena",
+    }
+)
 
 _OWNER_ROLES: tuple[str, ...] = ("titulaire", "inhaber", "inhaberin")
 _CHAIR_ROLES: tuple[str, ...] = (
@@ -167,8 +388,11 @@ class SwissRegisterPeople:
                     people[person.identity_key] = (
                         person if person.roles or known is None else replace(person, roles=known.roles)
                     )
-            for departure in _DEPARTURE_RE.finditer(clean):
-                words = departure.group(1).split()
+            departed_names = [departure.group(1) for departure in _DEPARTURE_RE.finditer(clean)]
+            for departures in _DEPARTURES_RE.finditer(clean):
+                departed_names.extend(_DEPARTED_NAMES_SEPARATOR_RE.split(departures.group(1)))
+            for departed_name in departed_names:
+                words = departed_name.split()
                 people.pop(fold(" ".join([*words[:-1], words[-1]])), None)
                 people.pop(fold(" ".join([*words[1:], words[0]])), None)
         return list(people.values())
@@ -228,6 +452,28 @@ class SwissRegisterPeople:
         return text
 
     @staticmethod
+    def _split_name_without_comma(words: list[str]) -> tuple[str, str]:
+        """
+        The last name and first names of an older « Nom Prénom » written without a comma.
+
+        The first names are the known given names that end it (« Da Costa Carvalho Pedro Sérgio » gives
+        « Pedro Sérgio »), the last word when none is known; the first word always belongs to the last name.
+
+        Args:
+            words: The name's words, last name first.
+
+        Returns:
+            ``(last name, first names)``.
+        """
+        given_count = 0
+        for word in reversed(words[1:]):
+            if fold(word) not in _COMMON_GIVEN_NAMES and infer_gender(word) is None:
+                break
+            given_count += 1
+        given_count = max(given_count, 1)
+        return " ".join(words[:-given_count]), " ".join(words[-given_count:])
+
+    @staticmethod
     def _person(entry: str, *, heading: str) -> RegisteredPerson | None:
         """
         One person of a section entry, or ``None`` when the entry names a company (an auditor) or nobody.
@@ -251,7 +497,8 @@ class SwissRegisterPeople:
             words = parts[0].split()
             if len(words) < 2:
                 return None
-            last_name, first_name, details = " ".join(words[:-1]), words[-1], parts[1:]
+            last_name, first_name = SwissRegisterPeople._split_name_without_comma(words)
+            details = parts[1:]
             is_name_certain = len(words) == 2
         if not re.match(r"^[A-ZÀ-Ý]", last_name):
             return None

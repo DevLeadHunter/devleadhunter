@@ -591,7 +591,7 @@ class EnrichmentService:
             record: Its enrichment, completed in place.
             uid: The company number the search read (« CHE-… »), when it read one.
         """
-        from services.decision_maker.normalize import infer_gender
+        from services.decision_maker.normalize import fold, infer_gender
         from services.decision_maker.swiss_register_people import SwissRegisterPeople
         from services.prospect_search.swiss_registry import swiss_registry
 
@@ -616,6 +616,11 @@ class EnrichmentService:
             )
             if firm is None or swiss_registry.closing_words(firm) is not None:
                 return
+            if not is_firm_matched_exactly:
+                firm_postal_code, firm_town = await swiss_registry.address_of(firm)
+                is_firm_matched_exactly = bool(firm_town) and fold(firm_town or "") == fold(prospect.city or "")
+                if not is_firm_matched_exactly and self._is_in_another_swiss_region(prospect, record, firm_postal_code):
+                    return
             leads = SwissRegisterPeople.lead_people(
                 SwissRegisterPeople.registered_people(await swiss_registry.publications(firm))
             )
@@ -640,6 +645,32 @@ class EnrichmentService:
             db.commit()
         except Exception as exc:
             logger.warning("Swiss register read failed for prospect %s: %s", prospect.id, exc)
+
+    @staticmethod
+    def _is_in_another_swiss_region(
+        prospect: ProspectDB, record: ProspectEnrichment, firm_postal_code: str | None
+    ) -> bool:
+        """
+        Whether a firm of the business's name sits in another postal region than the business.
+
+        The first digit of a Swiss postal code is its region: a garage of Gland (1196) is not the firm of the
+        same name in Andelfingen (8452).
+
+        Args:
+            prospect: The Swiss business.
+            record: Its enrichment, whose Maps place may carry the postal code its address lacks.
+            firm_postal_code: The postal code of the firm's registered address, if known.
+
+        Returns:
+            True only when both postal codes are known and their regions differ.
+        """
+        if not firm_postal_code:
+            return False
+        postal_match = CountryProfiles.get("CH").postal_code_regex.search(prospect.address or "")
+        business_postal_code = postal_match.group(1) if postal_match else record.place_postal_code
+        if not business_postal_code:
+            return False
+        return business_postal_code.strip()[:1] != firm_postal_code.strip()[:1]
 
     @staticmethod
     def _store_trusted_contact(record: ProspectEnrichment, candidate: NameCandidate) -> None:
@@ -841,6 +872,27 @@ class EnrichmentService:
         )
 
     @staticmethod
+    def _is_registered_under_its_name(prospect: ProspectDB, candidate: NameCandidate) -> bool:
+        """
+        Whether the registry company of a candidate bears the business's own name, or carries it as its trade name.
+
+        Such a company in the business's département is the business, whatever activity code it declared
+        (« ABC Exemple & Piscine » files under building works for its pools).
+
+        Args:
+            prospect: The business.
+            candidate: A registry candidate.
+
+        Returns:
+            True when one of the company's names is the business's.
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy
+        from services.prospect_search.business_name import BusinessName
+
+        registry_names = RegistreGouvStrategy.names_in(str(candidate.raw.get("nom_complet") or ""))
+        return any(BusinessName.is_same_name(name, prospect.name or "") for name in registry_names if name)
+
+    @staticmethod
     def _activity_check(prospect: ProspectDB, candidate: NameCandidate | None) -> tuple[bool | None, str | None]:
         """Cross-check the registry match's declared activity against the trade.
 
@@ -867,6 +919,8 @@ class EnrichmentService:
         coherent = activity_consistency(trade, naf)
         if coherent is not False:
             return coherent, None
+        if EnrichmentService._is_registered_under_its_name(prospect, candidate):
+            return None, None
         label = str(candidate.raw.get("activite_label") or "").strip()
         declared = f"« {label} » (NAF {naf})" if label else f"NAF {naf}"
         detail = (

@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 _SEARCH_URL: str = "https://www.zefix.ch/ZefixREST/api/v1/firm/search.json"
 _FIRM_URL: str = "https://www.zefix.ch/ZefixREST/api/v1/firm/{register_id}.json"
 _UID_RE: re.Pattern[str] = re.compile(r"^CHE-\d{3}\.\d{3}\.\d{3}$")
+_CANTON_SUFFIX_RE: re.Pattern[str] = re.compile(r"\s+[A-Z]{2}$")
 _TIMEOUT_SECONDS: float = 15.0
 _MAX_FIRMS: int = 10
 _ACTIVE_STATUS: str = "EXISTIEREND"
@@ -173,6 +174,30 @@ class SwissRegistry:
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}", published_on):
                 publications.append((date.fromisoformat(published_on), str(publication.get("message") or "")))
         return publications
+
+    async def address_of(self, firm: SwissRegisterFirm) -> tuple[str | None, str | None]:
+        """
+        The postal code and town of a firm's registered address, which a village business shares with its firm.
+
+        Args:
+            firm: A firm the register listed.
+
+        Returns:
+            ``(postal code, town)``, each None when the register does not say or does not answer.
+        """
+        if firm.register_id is None:
+            return None, None
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
+                response = await http.get(_FIRM_URL.format(register_id=firm.register_id))
+        except httpx.HTTPError as exc:
+            logger.warning("Zefix address of %s failed: %s", firm.name, exc)
+            return None, None
+        if response.status_code != 200:
+            return None, None
+        address = response.json().get("address") or {}
+        town = _CANTON_SUFFIX_RE.sub("", str(address.get("town") or "").strip())
+        return str(address.get("swissZipCode") or "") or None, town or None
 
     @staticmethod
     def register_name(name: str) -> str:

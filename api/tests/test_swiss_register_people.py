@@ -89,13 +89,38 @@ def test_the_manager_named_after_the_associates_is_the_lead() -> None:
 
 
 def test_a_long_older_name_leaves_its_first_name_unsure() -> None:
-    """« Exemple Modèle Jean Paul » cannot tell where the last name stops: the name is only proposed."""
+    """« Exemple Modèle Jean Paul » ends with the known given names, but nothing proves it: the name is only proposed."""
     publication = (
         date(2016, 9, 8),
         "Gérant: l'associé Exemple Modèle Jean Paul avec signature individuelle. Fin.",
     )
 
-    assert _leads(publication) == [("Paul", "Exemple Modèle Jean", False)]
+    assert _leads(publication) == [("Jean Paul", "Exemple Modèle", False)]
+
+
+def test_an_older_portuguese_name_keeps_both_its_first_names() -> None:
+    """« Modèle Exemple Pedro Sérgio »: two given names after two last names, the first word always a last name."""
+    publication = (
+        date(2022, 5, 30),
+        "Associé-gérant: Modèle Exemple Pedro Sérgio, du Portugal, à Bernex, pour 200 parts de CHF 100. Fin.",
+    )
+
+    assert _leads(publication) == [("Pedro Sérgio", "Modèle Exemple", False)]
+
+
+def test_board_members_leaving_together_are_struck_off() -> None:
+    """« Exemple Paul et Modèle Luc ne sont plus administrateurs »: the chair named in their place runs the company."""
+    entry = (
+        date(2020, 7, 2),
+        "Administration: Exemple Paul, de Genève, à Genève, président, avec signature individuelle. Fin.",
+    )
+    departure = (
+        date(2023, 5, 5),
+        "Exemple Paul et Modèle Luc ne sont plus administrateurs; leurs pouvoirs sont radiés. Administration: "
+        "Témoin Anne, de Genève, à Genève, présidente, avec signature individuelle. Fin.",
+    )
+
+    assert _leads(entry, departure) == [("Anne", "Témoin", True)]
 
 
 def test_the_board_chair_of_an_older_list_runs_the_company() -> None:

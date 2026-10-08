@@ -136,8 +136,8 @@ def test_registre_department_counts_as_geo_confirmation() -> None:
     assert candidates[0].geo_confirmed is True
 
 
-def test_registre_other_department_is_not_geo_confirmed() -> None:
-    """The seed-test homonym: same name, another département → no geo confirmation."""
+def test_registre_other_department_is_another_business() -> None:
+    """The seed-test homonym: same name, another département → another business, not even proposed."""
     results = [
         {
             "nom_complet": "DUBOIS Michel",
@@ -150,11 +150,28 @@ def test_registre_other_department_is_not_geo_confirmed() -> None:
             ],
         }
     ]
-    candidates = RegistreGouvStrategy().parse_results(results, _context())
+    assert RegistreGouvStrategy().parse_results(results, _context()) == []
+
+
+def test_registre_homonym_stays_unconfirmed_when_the_departement_is_unknown() -> None:
+    """Without the business's département, a namesake elsewhere is only proposed, never used alone."""
+    results = [
+        {
+            "nom_complet": "DUBOIS Michel",
+            "nom_raison_sociale": "PLOMBERIE DUBOIS",
+            "nature_juridique": "1000",
+            "siren": "987654321",
+            "siege": {"code_postal": "59000", "libelle_commune": "LILLE"},
+            "dirigeants": [
+                {"nom": "DUBOIS", "prenoms": "Michel", "qualite": "", "type_dirigeant": "personne physique"}
+            ],
+        }
+    ]
+    context = ResolutionContext(company_name="Plomberie Dubois", city="Rennes", postal_code=None)
+    candidates = RegistreGouvStrategy().parse_results(results, context)
     assert candidates[0].geo_confirmed is False
-    assert candidates[0].confidence >= 0.8  # still a strong-name match…
     resolution = DecisionMakerResolver(strategies=[]).pick_best(candidates)
-    assert resolution.status == NameResolution.PROPOSED  # …but never used alone
+    assert resolution.status == NameResolution.PROPOSED
 
 
 def test_registre_multi_dirigeants_scores_below_solo() -> None:
@@ -494,8 +511,8 @@ def test_web_registry_recovers_legal_name_then_delegates_to_registry() -> None:
     assert candidate.source == "web_registry"
     assert candidate.primary and candidate.geo_confirmed
     assert candidate.provenance.startswith("Recherche web →")
-    # The registry was queried with the RECOVERED legal name and without the strict postal filter.
-    assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code is None for call in registry.calls)
+    # The registry was queried with the RECOVERED legal name, in the business's département.
+    assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code == "72000" for call in registry.calls)
 
 
 def test_registry_siren_reads_a_siren_or_a_siret_and_nothing_else() -> None:

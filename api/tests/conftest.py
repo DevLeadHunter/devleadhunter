@@ -15,6 +15,7 @@ import services.prospect_search.swiss_directory as swiss_directory_module
 from core.config import settings
 from core.database import Base
 from scrappers.google_website_button import google_website_button
+from services.decision_maker.french_departments import FrenchDepartments
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.prospect_search.swiss_registry import SwissRegisterFirm, swiss_registry
 from services.r2_storage_service import r2_storage
@@ -65,7 +66,22 @@ def swiss_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     async def no_firm(name: str) -> list[SwissRegisterFirm]:
         return []
 
+    async def no_address(firm: SwissRegisterFirm) -> tuple[None, None]:
+        return None, None
+
     monkeypatch.setattr(swiss_registry, "firms_named", no_firm)
+    monkeypatch.setattr(swiss_registry, "address_of", no_address)
+
+
+@pytest.fixture(autouse=True)
+def french_communes_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The official list of communes answers nothing unless a test scripts it: a run never calls geo.api.gouv.fr."""
+
+    async def no_answer(town: str) -> None:
+        return None
+
+    monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(no_answer))
+    monkeypatch.setattr(FrenchDepartments, "_department_by_town", {})
 
 
 @pytest.fixture(autouse=True)
