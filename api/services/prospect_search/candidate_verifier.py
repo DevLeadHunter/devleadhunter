@@ -641,6 +641,12 @@ class CandidateVerifier:
         return any(host == known or host.endswith(f".{known}") for known in _EXTRA_THIRD_PARTY_HOSTS)
 
     @classmethod
+    def is_own_website(cls, website: str) -> bool:
+        """Whether *website* can be the business's own site, not a social, platform, directory or network page."""
+        host = (urlparse(website if "//" in website else f"//{website}").hostname or "").lower().removeprefix("www.")
+        return validation_service.is_valid_website(website) and not cls.is_known_third_party(website, host)
+
+    @classmethod
     def consider_website(cls, facts: CandidateFacts, website: str, *, source: str, proof_url: str) -> None:
         """Keep *website* as the business's own unless it is a social page, a platform or a directory."""
         if validation_service.is_social_url(website):
@@ -649,9 +655,7 @@ class CandidateVerifier:
                 facts.facebook_url = facebook_page
                 facts.add_evidence("facebook", facebook_page, source=source, url=proof_url)
             return
-        parsed = urlparse(website if "//" in website else f"//{website}")
-        host = (parsed.hostname or "").lower().removeprefix("www.")
-        if not validation_service.is_valid_website(website) or cls.is_known_third_party(website, host):
+        if not cls.is_own_website(website):
             return
         if facts.website is None:
             facts.website = website

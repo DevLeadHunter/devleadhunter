@@ -269,3 +269,17 @@ Même lot, après correction :
   en réserve, contrôlé à la main (actif au registre, pas de site, pas de refus de publicité) : n° 371.
 - Une fiche sans avis ni photo prend encore près de 3 minutes (rechargements faits pour une fiche
   complète) : à accélérer.
+
+## Le garage qui remplace le n° 302, fermé (8 octobre, soir)
+
+- Trois garages de la réserve de la recherche n° 14 contrôlés à la main : un actif depuis 2001, garage, à
+  la bonne adresse, sans site à lui, email à son nom (accepté : n° 372) ; un fermé au registre (refusé) ;
+  un dont l'email appartient à une société d'un autre nom et d'une autre adresse (laissé en attente).
+- Enrichi par l'app : 19 photos, logo, horaires, patron validé seul par le registre.
+- Écart : l'app a enregistré comme site du garage sa page sur le site de son réseau de pièces
+  (« ….myautoconseil.com »), que la recherche ne compte pas comme un site. Corrigé : l'enrichissement et la
+  lecture des pages Facebook par la recherche suivent la règle de la recherche (une page de réseau,
+  d'annuaire, de plateforme ou de réseau social n'est jamais le site de l'entreprise). Contrôle de tous les
+  prospects : un seul autre cas, une annonce autoscout24 enregistrée comme site (n° 339), corrigé.
+- Reste à faire : la recherche française ne lit pas l'état du registre d'un candidat trouvé par son nom ;
+  deux garages fermés sont passés (n° 302 et un candidat de la réserve). La Suisse le fait déjà (Zefix).

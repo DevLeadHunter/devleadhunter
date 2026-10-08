@@ -317,21 +317,12 @@ class EnrichmentService:
                 if emails or not prospect.emails:
                     sync_prospect_emails(prospect, add=emails)
                     db.add(prospect)
-                # A re-run must not leave a stale social page (Instagram, TikTok…) parked in the website
-                # field from an earlier enrichment or import — demote it first so it gets re-evaluated.
-                if (prospect.website or "").strip() and not validation_service.is_valid_website(prospect.website):
-                    logger.info("Enrichment demoted a social page stored as website for prospect_id=%s", prospect.id)
-                    prospect.website = None
-                    db.add(prospect)
-                # Double-check for a website: a REAL one on the Maps listing means the prospect isn't
-                # the « no website » target after all — fill it in when we had none. Social pages
-                # (Instagram, TikTok, Facebook…) are NOT websites: is_valid_website rejects them all,
-                # so an Instagram-only food truck never gets wrongly flagged as « has a site ».
-                website = (data.website or "").strip()
-                if website and validation_service.is_valid_website(website) and not (prospect.website or "").strip():
+                website = self._own_website(prospect.website, listed=data.website)
+                if website != ((prospect.website or "").strip() or None):
+                    logger.info("Enrichment set the website of prospect_id=%s to %s", prospect.id, website)
                     prospect.website = website
+                    prospect.website_status = None
                     db.add(prospect)
-                    logger.info("Enrichment found a website for prospect_id=%s: %s", prospect.id, website)
                 # Phone from the page (Facebook « Coordonnées ») — Facebook-discovered prospects
                 # start with no contact data at all, so the enrichment fills the gap.
                 phone = (getattr(data, "phone", None) or "").strip()
@@ -452,6 +443,30 @@ class EnrichmentService:
                 candidate = website
         candidate = str(candidate or "").strip()
         return candidate or None
+
+    @staticmethod
+    def _own_website(stored: str | None, *, listed: str | None) -> str | None:
+        """
+        The website a prospect keeps once its listing is read: its own site only.
+
+        A social page, a booking platform, a directory or a network's page (a garage's page on its
+        supplier's site) never makes a business « has a site »: a stored one is dropped, a listed one is
+        ignored, and the business stays a « no website » target. A real stored website wins over the
+        listed one.
+
+        Args:
+            stored: The website the prospect has.
+            listed: The website its listing shows.
+
+        Returns:
+            The website to keep, or None.
+        """
+        from services.prospect_search.candidate_verifier import CandidateVerifier
+
+        for website in ((stored or "").strip(), (listed or "").strip()):
+            if website and CandidateVerifier.is_own_website(website):
+                return website
+        return None
 
     async def _resolve_contact(self, db: Session, prospect: ProspectDB, record: ProspectEnrichment) -> None:
         """Run the decision-maker cascade and persist its 3-way outcome.

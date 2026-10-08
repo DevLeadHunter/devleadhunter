@@ -95,7 +95,7 @@ class FacebookContactRecorder:
                 facts.phone = read.phone
                 facts.add_evidence("phone", read.phone, source="Page Facebook", url=page_url)
                 has_learnt_phone = True
-            if read.website and facts.website is None and validation_service.is_valid_website(read.website):
+            if read.website and facts.website is None and CandidateVerifier.is_own_website(read.website):
                 facts.website = read.website
                 status = await website_liveness_service.check_website_status(read.website)
                 facts.website_status = status.value if status is not None else None
