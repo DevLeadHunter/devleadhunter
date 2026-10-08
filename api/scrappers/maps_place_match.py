@@ -1,10 +1,10 @@
 """
-Which places of a Google Maps results list can be the prospect's business.
+Whether a Google Maps place found by a « nom + ville » search is the prospect's business.
 
-A « nom + ville » search that Maps cannot settle on one place lands on a list of results:
-namesakes, neighbours of the same trade, adverts. The first one is often none of them the
-business, so a listed place is opened only when it carries the business's name, the
-closest name first, and a place whose address puts it in another town is passed over.
+Maps opens the place it thinks the search means, or lists results when it is not sure:
+namesakes, neighbours of the same trade, adverts. A place is the business's only when it
+carries the business's name and is not in another town; in a list, the closest name is
+opened first.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from services.decision_maker.normalize import company_tokens, join_dotted_initia
 from services.prospect_search.business_name import COMMON_NAME_WORDS, NAME_LINK_WORDS, BusinessName
 from services.prospect_search.trade_catalog import TradeCatalog
 
-MIN_LISTED_NAME_SIMILARITY: float = 0.5
+MIN_NAME_SIMILARITY: float = 0.5
 MAX_LISTED_PLACES_OPENED: int = 3
 _UNKNOWN_CITY: str = "Inconnue"
 
@@ -38,8 +38,8 @@ class ListedPlace:
     link: str
 
 
-class MapsSearchResults:
-    """Tells which places of a Maps results list can be the prospect's business."""
+class MapsPlaceMatch:
+    """Tells whether a Maps place, opened by Maps or listed in its results, is the prospect's business."""
 
     @classmethod
     def places_named_like(cls, places: list[ListedPlace], business_name: str, *, town: str | None) -> list[ListedPlace]:
@@ -99,7 +99,7 @@ class MapsSearchResults:
         shared = business_distinctive & place_distinctive
         similarity = len(shared) / len(business_distinctive | place_distinctive)
         adds_own_word = bool(place_distinctive - business_distinctive)
-        if similarity < MIN_LISTED_NAME_SIMILARITY or (len(business_distinctive) == 1 and adds_own_word):
+        if similarity < MIN_NAME_SIMILARITY or (len(business_distinctive) == 1 and adds_own_word):
             return None
         return similarity
 

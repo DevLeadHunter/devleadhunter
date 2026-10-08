@@ -22,7 +22,7 @@ from typing import Any
 
 from scrappers import scrape_signals
 from scrappers.google_scraper import GoogleScraper
-from scrappers.maps_search_results import ListedPlace, MapsSearchOutcome, MapsSearchResults
+from scrappers.maps_place_match import ListedPlace, MapsPlaceMatch, MapsSearchOutcome
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
@@ -1104,8 +1104,8 @@ class EnrichmentScraper:
             if not is_search:
                 return MapsSearchOutcome.OPENED
             title = await self._read_place_title(tab)
-            is_business_place = MapsSearchResults.is_named_like(title or "", business_name, town=city) and not (
-                MapsSearchResults.is_in_other_town(await self._read_place_address(tab), city=city, country=country)
+            is_business_place = MapsPlaceMatch.is_named_like(title or "", business_name, town=city) and not (
+                MapsPlaceMatch.is_in_other_town(await self._read_place_address(tab), city=city, country=country)
             )
             if is_business_place:
                 return MapsSearchOutcome.OPENED
@@ -1113,12 +1113,12 @@ class EnrichmentScraper:
             return MapsSearchOutcome.NOT_LISTED
         if landing != "results":
             return MapsSearchOutcome.UNREACHABLE
-        for place in MapsSearchResults.places_named_like(await self._read_listed_places(tab), business_name, town=city):
+        for place in MapsPlaceMatch.places_named_like(await self._read_listed_places(tab), business_name, town=city):
             await NodriverDom.navigate(tab, place.link)
             if not await self._open_place_panel(tab):
                 continue
             address = await self._read_place_address(tab)
-            if MapsSearchResults.is_in_other_town(address, city=city, country=country):
+            if MapsPlaceMatch.is_in_other_town(address, city=city, country=country):
                 logger.info("Enrichment: listed place « %s » is in another town (%s), passed over", place.name, address)
                 continue
             return MapsSearchOutcome.OPENED

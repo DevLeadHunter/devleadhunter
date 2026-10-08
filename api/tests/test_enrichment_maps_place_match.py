@@ -17,7 +17,7 @@ from enums.enrichment_status import EnrichmentStatus
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from scrappers.enrichment_scraper import EnrichmentData
-from scrappers.maps_search_results import ListedPlace, MapsSearchResults
+from scrappers.maps_place_match import ListedPlace, MapsPlaceMatch
 from services.enrichment_service import EnrichmentService, enrichment_service
 from services.professional_license_service import professional_license_service
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -50,7 +50,7 @@ def _listed(*names: str) -> list[ListedPlace]:
 
 def _opened(places: list[ListedPlace], business_name: str, town: str = "Pau") -> list[str]:
     """The names of the listed places the enrichment opens for this business, in order."""
-    return [place.name for place in MapsSearchResults.places_named_like(places, business_name, town=town)]
+    return [place.name for place in MapsPlaceMatch.places_named_like(places, business_name, town=town)]
 
 
 def test_a_one_word_name_is_not_read_in_a_namesake_listed_first() -> None:
@@ -99,14 +99,14 @@ def test_at_most_three_places_are_opened() -> None:
 
 def test_the_place_maps_opens_itself_must_carry_the_owner_s_full_name() -> None:
     """Maps opened a namesake sharing the owner's first name for a sole trader: it is not the business."""
-    assert not MapsSearchResults.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
-    assert MapsSearchResults.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+    assert not MapsPlaceMatch.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+    assert MapsPlaceMatch.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
 
 
 def test_trade_words_and_linking_words_do_not_count_against_a_name() -> None:
     """« Exemple & Fils Électricité Générale » is « Exemple Et Fils », « Modèle Électricité » is « Eurl Modèle Elec »."""
-    assert MapsSearchResults.is_named_like("Exemple & Fils Electricite Generale", "Exemple Et Fils", town="Pau")
-    assert MapsSearchResults.is_named_like("Modèle Electricité", "Eurl Modèle Elec", town="Pau")
+    assert MapsPlaceMatch.is_named_like("Exemple & Fils Electricite Generale", "Exemple Et Fils", town="Pau")
+    assert MapsPlaceMatch.is_named_like("Modèle Electricité", "Eurl Modèle Elec", town="Pau")
 
 
 def test_a_name_made_of_a_trade_and_a_town_must_match_word_for_word() -> None:
@@ -142,7 +142,7 @@ def test_a_place_in_another_town_is_passed_over(
     address: str | None, city: str, country: str, is_elsewhere: bool
 ) -> None:
     """The town the address names decides; a place listed without an address is kept."""
-    assert MapsSearchResults.is_in_other_town(address, city=city, country=country) is is_elsewhere
+    assert MapsPlaceMatch.is_in_other_town(address, city=city, country=country) is is_elsewhere
 
 
 @pytest.mark.parametrize(
