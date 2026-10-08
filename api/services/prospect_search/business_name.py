@@ -59,6 +59,22 @@ COMMON_NAME_WORDS: frozenset[str] = frozenset(
         "amenagement",
         "amenagements",
         "exterieurs",
+        "espace",
+        "espaces",
+        "vert",
+        "verts",
+        "parc",
+        "parcs",
+        "nature",
+        "garden",
+        "deneigement",
+        "telecom",
+        "telecoms",
+        "controle",
+        "controles",
+        "expert",
+        "experts",
+        "passion",
     }
 )
 

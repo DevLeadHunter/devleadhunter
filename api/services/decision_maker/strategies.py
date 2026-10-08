@@ -266,7 +266,7 @@ class RegistreGouvStrategy:
         from services.prospect_search.business_name import BusinessName
 
         name_words = sorted(
-            BusinessName.distinctive_words(context.company_name, town=context.city), key=len, reverse=True
+            BusinessName.distinctive_words(context.company_name, town=context.city), key=lambda word: (-len(word), word)
         )
         keywords = [RegistryKeyword(word) for word in name_words if len(word) >= _MIN_KEYWORD_CHARS][
             :_MAX_NAME_KEYWORDS

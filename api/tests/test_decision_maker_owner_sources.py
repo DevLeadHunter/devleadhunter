@@ -421,3 +421,12 @@ def test_a_name_saying_more_than_a_family_name_skips_the_activity_check() -> Non
 
     assert EnrichmentService._activity_check(landscaper, sole_trader) == (None, None)
     assert EnrichmentService._activity_check(garage, plumber)[0] is False
+
+
+def test_generic_trade_words_are_never_searched_and_the_order_never_changes() -> None:
+    """« espaces verts » names a trade, not a business; words of equal length are searched in a fixed order."""
+    generic = ResolutionContext(company_name="Aristo Espaces Verts: entretien")
+    equal_lengths = ResolutionContext(company_name="Zorro Abeil")
+
+    assert [keyword.text for keyword in RegistreGouvStrategy._keywords(generic)] == ["aristo"]
+    assert [keyword.text for keyword in RegistreGouvStrategy._keywords(equal_lengths)] == ["abeil", "zorro"]

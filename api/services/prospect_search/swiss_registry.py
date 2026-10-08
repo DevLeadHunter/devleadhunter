@@ -230,7 +230,7 @@ class SwissRegistry:
     @staticmethod
     def _searched_words(name: str, town: str | None) -> list[str]:
         """The distinctive words of a name worth a register search on their own, longest first."""
-        words = sorted(BusinessName.distinctive_words(name, town=town), key=len, reverse=True)
+        words = sorted(BusinessName.distinctive_words(name, town=town), key=lambda word: (-len(word), word))
         return [word for word in words if len(word) >= 3][:_MAX_SEARCHED_WORDS]
 
     async def publications(self, firm: SwissRegisterFirm) -> list[tuple[date, str]]:
