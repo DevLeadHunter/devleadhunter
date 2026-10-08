@@ -147,6 +147,7 @@ _NON_PROSE_KEYS: frozenset[str] = frozenset(
         "reviews",
         "openingHours",
         "social",
+        "country",
     }
 )
 

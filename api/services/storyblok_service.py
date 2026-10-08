@@ -24,6 +24,7 @@ from typing import Any
 import httpx
 
 from core.config import settings
+from services.country_profiles import CountryProfiles
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
 from services.templates.default_images import apply_default_images
@@ -146,7 +147,8 @@ class StoryblokService:
             theme: Optional color palette (primary, secondary, accent).
             enrichment: Optional rich data merged into the content (photos, reviews…).
             country: ISO code of the prospect's country — its regional words and phone shape are applied
-                to the built content (Québec reads « soumission » for « devis »).
+                to the built content (Québec reads « soumission » for « devis »), and a flat site carries it
+                so its layer words its own labels the same way.
 
         Returns:
             Storyblok-compatible content object.
@@ -172,6 +174,7 @@ class StoryblokService:
                 enrichment=enrichment,
             )
             site_content = apply_country_conventions(site_content, country)
+            site_content["country"] = CountryProfiles.get(country).code
             # Seed empty image slots with the template's own default images so they reach Storyblok
             # (uploaded as real, editable assets) — not just the render-time layer fallback.
             apply_default_images(site_content, template_id)

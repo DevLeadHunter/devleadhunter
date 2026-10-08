@@ -121,3 +121,10 @@ def test_a_new_demo_is_provisioned_in_the_prospect_country(monkeypatch: pytest.M
     assert result == "provisioned"
     assert "soumission" in seeded["content"]
     assert "devis" not in seeded["content"]
+
+
+def test_a_flat_site_carries_its_country_for_the_labels_its_layer_writes() -> None:
+    """The layers word their own labels (« Courriel », « Soumission gratuite ») from this code (8 Oct 2026)."""
+    assert json.loads(_build("CA"))["country"] == "CA"
+    assert json.loads(_build("CH"))["country"] == "CH"
+    assert json.loads(_build("XX"))["country"] == "FR"
