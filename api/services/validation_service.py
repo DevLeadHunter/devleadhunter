@@ -318,7 +318,7 @@ class ValidationService:
         from scrappers.maps_search_results import MapsSearchResults
         from services.decision_maker.normalize import town_key
 
-        if place_title and not MapsSearchResults.is_named_like(place_title, prospect_name):
+        if place_title and not MapsSearchResults.is_named_like(place_title, prospect_name, town=prospect_city):
             return f"La fiche Google Maps trouvée (« {place_title} ») ne correspond pas au nom du prospect"
 
         if prospect_postal_code and place_postal_code and len(place_postal_code) == 5:

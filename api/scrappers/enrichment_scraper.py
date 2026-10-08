@@ -1104,7 +1104,7 @@ class EnrichmentScraper:
             if not is_search:
                 return MapsSearchOutcome.OPENED
             title = await self._read_place_title(tab)
-            is_business_place = MapsSearchResults.is_named_like(title or "", business_name) and not (
+            is_business_place = MapsSearchResults.is_named_like(title or "", business_name, town=city) and not (
                 MapsSearchResults.is_in_other_town(await self._read_place_address(tab), city=city, country=country)
             )
             if is_business_place:
@@ -1113,7 +1113,7 @@ class EnrichmentScraper:
             return MapsSearchOutcome.NOT_LISTED
         if landing != "results":
             return MapsSearchOutcome.UNREACHABLE
-        for place in MapsSearchResults.places_named_like(await self._read_listed_places(tab), business_name):
+        for place in MapsSearchResults.places_named_like(await self._read_listed_places(tab), business_name, town=city):
             await NodriverDom.navigate(tab, place.link)
             if not await self._open_place_panel(tab):
                 continue

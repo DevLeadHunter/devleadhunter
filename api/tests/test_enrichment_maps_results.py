@@ -48,9 +48,9 @@ def _listed(*names: str) -> list[ListedPlace]:
     ]
 
 
-def _opened(places: list[ListedPlace], business_name: str) -> list[str]:
+def _opened(places: list[ListedPlace], business_name: str, town: str = "Pau") -> list[str]:
     """The names of the listed places the enrichment opens for this business, in order."""
-    return [place.name for place in MapsSearchResults.places_named_like(places, business_name)]
+    return [place.name for place in MapsSearchResults.places_named_like(places, business_name, town=town)]
 
 
 def test_a_one_word_name_is_not_read_in_a_namesake_listed_first() -> None:
@@ -99,8 +99,20 @@ def test_at_most_three_places_are_opened() -> None:
 
 def test_the_place_maps_opens_itself_must_carry_the_owner_s_full_name() -> None:
     """Maps opened a namesake sharing the owner's first name for a sole trader: it is not the business."""
-    assert not MapsSearchResults.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules")
-    assert MapsSearchResults.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules")
+    assert not MapsSearchResults.is_named_like("Exemple Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+    assert MapsSearchResults.is_named_like("Modèle Jules", "Entreprise Individuelle Modèle Jules", town="Pau")
+
+
+def test_trade_words_and_linking_words_do_not_count_against_a_name() -> None:
+    """« Exemple & Fils Électricité Générale » is « Exemple Et Fils », « Modèle Électricité » is « Eurl Modèle Elec »."""
+    assert MapsSearchResults.is_named_like("Exemple & Fils Electricite Generale", "Exemple Et Fils", town="Pau")
+    assert MapsSearchResults.is_named_like("Modèle Electricité", "Eurl Modèle Elec", town="Pau")
+
+
+def test_a_name_made_of_a_trade_and_a_town_must_match_word_for_word() -> None:
+    """« Garage de Morges » is not the body shop of the same town."""
+    places = _listed("Carrosserie de Morges", "Garage de Morges Sàrl")
+    assert _opened(places, "Garage de Morges", town="Morges") == ["Garage de Morges Sàrl"]
 
 
 def test_the_server_refuses_a_namesake_the_way_the_scraper_does() -> None:
