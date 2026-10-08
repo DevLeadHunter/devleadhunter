@@ -191,3 +191,81 @@ Après correction (commits `cf1662ea`, `dc3cb4d2`, `9adf55a0`), même lot :
   entreprise individuelle au nom du patron (adresse mail, registre), d'une raison individuelle suisse
   sans publication, d'un entrepreneur québécois (répondant de la licence RBQ) ; descriptions et
   services des annuaires.
+
+## Manche 3 — 7 leads bloqués sur une liste de résultats Google (8 octobre, matin)
+
+Les 7 leads du vivier dont l'enrichissement échouait sur « la fiche trouvée (« Résultats ») ne correspond
+pas au nom » : des électriciens trouvés par un registre, sans lien de fiche ni de page.
+
+| Lead | Cas | Ce que le moteur doit faire |
+|---|---|---|
+| n° 253 | électricien français (registre RGE), nom d'un seul mot | trouver sa fiche dans la liste, derrière un homonyme d'un autre métier |
+| n° 310 | électricien français (RGE), trois fiches au nom de la famille | ouvrir la bonne |
+| n° 243 | électricien français (RGE), aucune fiche | dire « pas de fiche » |
+| n° 295 | électricien québécois (registre RBQ), seules fiche et page proches = une autre entreprise | idem, sans prendre la page de l'autre |
+| n° 326, 327, 328 | électriciens québécois (RBQ), aucune fiche à leur nom | idem ; trouver la page Facebook de n° 327 |
+
+### À la main
+
+15 minutes pour les 7. Ce que la main a trouvé :
+
+- Les 7 recherches « nom + ville » tombent sur une liste de résultats, jamais sur une fiche.
+- 2 sur 7 ont leur fiche dans la liste : n° 253 en 2ᵉ position, derrière un podologue du même nom ;
+  n° 310 en 3ᵉ, derrière l'ancienne fiche familiale et un homonyme d'une autre ville (sans adresse ni
+  avis, mais avec ses horaires).
+- Les autres résultats sont des homonymes, des électriciens voisins ou des publicités.
+- n° 327 a une page Facebook, au même numéro, trouvée par une simple recherche web.
+- Les répondants des licences québécoises sont listés par ville dans un annuaire professionnel des
+  électriciens.
+- Aucun site : les domaines des adresses mail de n° 243 et 328 affichent une page d'attente ou une erreur.
+
+### Par l'app (avant correction)
+
+Les 7 en échec. L'app lisait le titre de la liste, « Résultats », comme le nom de la fiche, et le
+garde-fou d'identité rejetait tout. Quand la liste arrivait à temps, elle ouvrait le premier résultat :
+le podologue pour n° 253, une publicité pour les Québécois.
+
+Sur le reste du vivier, une lecture qui ne trouvait rien n'était pas enregistrée : ni registre, ni
+licence, ni décisionnaire pour ces leads (n° 311 et 313 sans gérant, n° 370 jamais repassé au registre
+suisse).
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| 7 leads rejetés sur « Résultats » | Le titre de la liste était lu comme le nom de la fiche ; sinon le premier résultat était ouvert | La liste est lue : seules les fiches au nom de l'entreprise sont ouvertes, la plus proche d'abord, au plus 3, et une fiche d'une autre ville est passée ; sinon « pas de fiche » (`bc10fc0e`) |
+| Leads sans rien à lire jamais passés au registre | La CLI n'enregistrait pas une lecture vide | Une réponse sûre de Google (pas de fiche, fiche vide) est enregistrée : échec avec la raison écrite dans la fiche, mais registre, licence et décisionnaire quand même. Une lecture vide ne défait jamais un enrichissement qui contient quelque chose (`bc10fc0e`) |
+| Page Facebook jamais cherchée (n° 327) | L'enrichissement ne cherchait pas de page quand le prospect n'en avait pas | Quand Google n'a rien, l'API cherche la page ; la CLI la lit dans la foulée, le drawer dit de relancer (`6520517b`) |
+| La fiche d'un homonyme gardée (n° 311 : même prénom, autre nom ; sa note, son avis, ses horaires), vue au contrôle de la 1re relance | Google l'ouvrait d'office, et le garde-fou se contentait de 20 % de mots en commun | Une seule règle de nom pour la fiche ouverte d'office, celles de la liste et le garde-fou du serveur : on compare les mots qui distinguent l'entreprise (sans forme juridique, mot de métier, « et », ville ni slogan) ; un nom fait d'un seul de ces mots n'accepte pas de mot en plus (« Exemple Électricité » oui, « Exemple Jules » non) ; un nom fait d'un métier et d'une ville doit être identique (`6520517b`, `993cf6bd`) |
+| La page Facebook d'un homonyme prise, avec son adresse mail ajoutée au prospect (n° 295), vue au contrôle de la 2ᵉ relance | La recherche de page reprise de la recherche de prospects se contente du nom et du métier ; ses trouvailles y sont contrôlées ensuite, pas ici | Pour l'enrichissement, la page doit porter le nom de l'entreprise, montrer son téléphone ou nommer sa ville, et aucun autre numéro (`c420de5f`) |
+
+Contrôle après la règle de nom : les fiches de tous les prospects enrichis par une recherche « nom +
+ville » ont été repassées à la nouvelle règle. Seule celle de n° 311 était fausse ; la règle a été
+affinée sur deux faux refus (« … & Fils Électricité Générale » pour « … Et Fils », « … Électricité »
+pour « Eurl … Elec »). Les données fausses de n° 311 et 295 ont été effacées, puis les deux leads
+relancés.
+
+### Résultat
+
+Même lot, après correction :
+
+| Lead | Avant | Après |
+|---|---|---|
+| n° 253 | 1 sur 3 | 3 sur 3 : sa fiche, 5,0 sur 5 avis, 1 photo, gérant |
+| n° 310 | 1 sur 2 | 2 sur 2 : ses horaires, gérant |
+| n° 243 | 1 sur 1 | 1 sur 1 : « pas de fiche » au lieu d'un faux échec, gérant |
+| n° 295 | 1 sur 2 | 1 sur 2 : « pas de fiche », la page de l'homonyme refusée ; répondant toujours absent |
+| n° 326 | 1 sur 2 | 1 sur 2 : idem |
+| n° 327 | 1 sur 3 | 3 sur 3 : page Facebook trouvée et lue (27 photos de chantier, logo, 5,0 sur 7 avis, présentation), répondant proposé à confirmer, licence |
+| n° 328 | 1 sur 2 | 1 sur 2 : « pas de fiche » ; répondant toujours absent |
+| **Total** | **7 sur 15 (47 %)** | **12 sur 15 (80 %)** |
+
+- Mieux que la main sur n° 327 : la main avait trouvé la page, l'app la lit entière.
+- Reste moins bien que la main : les répondants des 3 électriciens québécois sans fiche (annuaire
+  professionnel des électriciens, par ville).
+- Le reste du vivier sans données passe maintenant par le registre et dit pourquoi il est vide :
+  « rien à lire » (n° 311, 313, 309, 252, 245, 243, 242), « fiche Google vide » (n° 370).
+- La case des électriciens suisses (9 sur 10) a été complétée par un candidat de la recherche n° 15 resté
+  en réserve, contrôlé à la main (actif au registre, pas de site, pas de refus de publicité) : n° 371.
+- Une fiche sans avis ni photo prend encore près de 3 minutes (rechargements faits pour une fiche
+  complète) : à accélérer.
