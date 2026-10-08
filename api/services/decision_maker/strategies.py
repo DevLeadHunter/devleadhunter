@@ -31,6 +31,7 @@ from services.decision_maker.normalize import (
     company_similarity,
     fold,
     infer_gender,
+    initials_in,
     join_dotted_initials,
     split_registry_full_name,
     title_case_name,
@@ -48,7 +49,8 @@ _PAPPERS_URL = "https://api.pappers.fr/v2/recherche"
 # A company-name match below this similarity is considered a different business.
 _MIN_COMPANY_SIMILARITY = 0.45
 _CEASED_STATE = "C"
-_PROPERTY_COMPANY_LEGAL_CATEGORY = "654"
+_CIVIL_COMPANY_LEGAL_CATEGORY = "65"
+_REAL_ESTATE_ACTIVITY = "68."
 _SOLE_TRADER_LEGAL_CATEGORY = "1000"
 _MIN_KEYWORD_CHARS = 4
 _MAX_NAME_KEYWORDS = 2
@@ -436,10 +438,14 @@ class RegistreGouvStrategy:
         ]
         return any(BusinessName.is_exact_name(name, context.company_name) for name in names if name)
 
-    @staticmethod
-    def _is_property_company(result: dict[str, Any]) -> bool:
-        """Whether a registry company is a property company (SCI and its kinds, legal categories 654x)."""
-        return str(result.get("nature_juridique") or "").startswith(_PROPERTY_COMPANY_LEGAL_CATEGORY)
+    @classmethod
+    def _is_property_company(cls, result: dict[str, Any]) -> bool:
+        """
+        Whether a registry company holds property rather than runs a trade: a civil company (legal categories 65xx,
+        the SCI among them) or a company renting or selling property (activity 68.xx).
+        """
+        is_civil_company = str(result.get("nature_juridique") or "").startswith(_CIVIL_COMPANY_LEGAL_CATEGORY)
+        return is_civil_company or cls._activity_of(result).startswith(_REAL_ESTATE_ACTIVITY)
 
     def _candidates_of(self, result: dict[str, Any], *, base: float, geo_confirmed: bool) -> list[NameCandidate]:
         """The person a registry company names: the EI holder, its sole dirigeant, else its gérant/président."""
@@ -766,15 +772,17 @@ class WebRegistryStrategy:
             candidates.extend(candidate for candidate in result if self.is_company_of(candidate, context))
         return self._retag(candidates)
 
-    @staticmethod
-    def is_company_of(candidate: NameCandidate, context: ResolutionContext) -> bool:
+    @classmethod
+    def is_company_of(cls, candidate: NameCandidate, context: ResolutionContext) -> bool:
         """
         Whether the registry company a web search led to is the business itself (pure — testable).
 
         A legal name found on the web shares a word with the trade name, which a neighbour's does too
         (« EXEMPLE HOME RENOV » for « Exemple Home Services »): the company must bear the trade name word for word,
-        or its head must be the person the trade name is named after (« Germain Paysagiste » is SECOMAN Germain),
-        in the same trade: « Exemple des Jardins » is not the painter of the Exemple family.
+        or bear it beside the trade words in the same trade (« EX », masons, is not « EX Paysagiste »), unless the
+        trade name spells its head's initials (« JM Services Jardinage » is Jules Modèle's « JM SERVICES », filed as
+        cleaners), or its head must be the person the trade name is named after (« Germain Paysagiste » is SECOMAN
+        Germain), in the same trade: « Exemple des Jardins » is not the painter of the Exemple family.
 
         Args:
             candidate: The head of a company the registry gave for a legal name found on the web.
@@ -788,18 +796,31 @@ class WebRegistryStrategy:
 
         business_names = {context.company_name, TradeName.searchable(context.company_name)}
         company_names = RegistreGouvStrategy.names_in(str(candidate.raw.get("nom_complet") or ""))
-        if any(
-            BusinessName.is_same_name(company_name, business_name)
-            for company_name in company_names
-            for business_name in business_names
-        ):
+        name_pairs = [
+            (company_name, business_name) for company_name in company_names for business_name in business_names
+        ]
+        if any(BusinessName.is_exact_name(company_name, business_name) for company_name, business_name in name_pairs):
             return True
+        is_of_its_trade = activity_consistency(TradeNormalizer.normalize(context.trade), candidate.raw.get("activite"))
+        if any(BusinessName.is_same_name(company_name, business_name) for company_name, business_name in name_pairs):
+            return is_of_its_trade is not False or cls._spells_head_initials(candidate, context)
         person_words = {fold(word) for word in f"{candidate.first or ''} {candidate.last or ''}".split()}
         is_named_after_its_head = any(
             person_words & BusinessName.distinctive_words(name, town=context.city) for name in business_names
         )
-        trade = TradeNormalizer.normalize(context.trade)
-        return is_named_after_its_head and activity_consistency(trade, candidate.raw.get("activite")) is not False
+        return is_named_after_its_head and is_of_its_trade is not False
+
+    @staticmethod
+    def _spells_head_initials(candidate: NameCandidate, context: ResolutionContext) -> bool:
+        """Whether the trade name holds the initials of the company's head (« JM » for Jules Modèle)."""
+        from services.prospect_search.business_name import BusinessName
+
+        name_words = re.split(r"[\s-]+", f"{candidate.first or ''} {candidate.last or ''}".strip())
+        head_initials = {
+            ((candidate.first or "")[:1] + (candidate.last or "")[:1]).upper(),
+            "".join(word[:1] for word in name_words if word).upper(),
+        }
+        return bool(head_initials & set(initials_in(BusinessName.without_legal_form(context.company_name or ""))))
 
     def extract_company_names(self, html: str, enseigne: str) -> list[str]:
         """Pull raison-sociale candidates from a SERP (pure — testable on fixtures).
@@ -887,6 +908,12 @@ _NAME_LINK_WORDS: frozenset[str] = frozenset(
 _PERSON_CUE_BEFORE_NAME = r"\b(?:[Vv]oir|[Mm]erci(?:\s+à)?|[Aa]vec|[Dd]emandez|[Aa]ppelez|[Cc]ontactez)"
 _ADDRESSING_CUE_RE = r"\b(?:merci|bonjour|bonsoir|cher|chere|salut|hello|thanks?)\b"
 _MIN_NAME_WORD_CHARS = 3
+_MIN_REVIEWS_NAMING_THE_INITIALS = 2
+_NO_CIVILITY_BEFORE = r"(?<!\bM\. )(?<!\bM )(?<!\bMr )(?<!\bMme )(?<!Monsieur )(?<!Madame )"
+_TRADE_SHORT_WORDS: frozenset[str] = frozenset(
+    {"elec", "auto", "autos", "meca", "moto", "motos", "reno", "renov", "clim", "telecom", "energie", "depannage"}
+)
+_CAPITALIZED_WORD_RE = re.compile(r"(?<![\w'’-])[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]+(?![\w'’-])")
 
 
 class OwnerResponseStrategy:
@@ -933,8 +960,8 @@ class BusinessNameOwnerStrategy:
     """Supporting — the owner named in the business's own name, when customers call him by that first name.
 
     « Garage Jules Exemple » with reviews saying « je vais voir Jules pour réparer ma voiture »: Jules is
-    the first name and Exemple the last name of the person behind the business. Never a primary source,
-    so a proposal at best.
+    the first name and Exemple the last name of the person behind the business. « Atelier Exemple JX » with
+    reviews thanking Jules: Jules is the J of the initials. Never a primary source, so a proposal at best.
     """
 
     name = "business_name"
@@ -949,7 +976,9 @@ class BusinessNameOwnerStrategy:
 
         Both words are capitalized name words of the business name (not « des », « Fils », « JANTES ALU »),
         the business name holds more than them (« Modèle Jules » does not tell which is the first name),
-        and a review calls the first one as a person: « voir Jules », « merci à Jules », never « chez Otobox ».
+        and a review calls the first one as a person: « voir Jules », « merci à Jules », never « chez Otobox »;
+        a common first name needs no such word before it (« Jules prend le temps d'expliquer »). A business named
+        with initials gives the first name customers call the owner by, when it opens the initials.
         """
         company_words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
         if all(self._is_name_word(word) for word in company_words):
@@ -958,7 +987,8 @@ class BusinessNameOwnerStrategy:
         for first, last in pairwise(company_words):
             if not (self._is_name_word(first) and self._is_name_word(last)):
                 continue
-            addressed = re.compile(rf"{_PERSON_CUE_BEFORE_NAME}\s+{re.escape(first)}\b(?!\s+{re.escape(last)}\b)")
+            cue = _NO_CIVILITY_BEFORE if GivenNames.is_common_given_name(first) else rf"{_PERSON_CUE_BEFORE_NAME}\s+"
+            addressed = re.compile(rf"{cue}(?<![\w'’-]){re.escape(first)}\b(?![\s-]+{re.escape(last)}\b)(?!-)")
             mentions = sum(1 for text in customer_texts if addressed.search(text))
             if mentions:
                 first_name, last_name = title_case_name(first), title_case_name(last)
@@ -978,19 +1008,64 @@ class BusinessNameOwnerStrategy:
                         raw={"mentions": mentions},
                     )
                 ]
-        return []
+        return self._first_name_of_initials(context)
+
+    def _first_name_of_initials(self, context: ResolutionContext) -> list[NameCandidate]:
+        """
+        The first name customers call the owner by, when the business is named with initials it opens.
+
+        « Atelier Exemple JX » whose reviews say « merci Jules » twice: Jules is the J of JX. One such first name only,
+        in two reviews at least; the last name stays unknown.
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        initials = initials_in(BusinessName.without_legal_form(context.company_name or ""))
+        if len(initials) != 1:
+            return []
+        reviews_by_first_name: dict[str, int] = {}
+        for text in context.review_texts:
+            first_names = {
+                word
+                for word in _CAPITALIZED_WORD_RE.findall(text or "")
+                if GivenNames.is_common_given_name(word) and fold(word)[:1] == initials[0][:1].lower()
+            }
+            for first_name in first_names:
+                reviews_by_first_name[first_name] = reviews_by_first_name.get(first_name, 0) + 1
+        if len(reviews_by_first_name) != 1:
+            return []
+        first_name, mentions = next(iter(reviews_by_first_name.items()))
+        if mentions < _MIN_REVIEWS_NAMING_THE_INITIALS:
+            return []
+        return [
+            NameCandidate(
+                first=title_case_name(first_name),
+                gender=infer_gender(first_name),
+                source=self.name,
+                confidence=0.6,
+                evidence_group=_GROUP_CUSTOMER_REVIEWS,
+                provenance=(
+                    f"Initiales « {initials[0]} » du nom de l'entreprise, et les clients l'appellent « {first_name} »"
+                    f" dans {mentions} avis"
+                ),
+                raw={"mentions": mentions},
+            )
+        ]
 
     @staticmethod
     def _is_name_word(word: str) -> bool:
         """Whether a word of the business name can be a first or last name: capitalized, not a trade or link word."""
+        from services.prospect_search.business_name import COMMON_NAME_WORDS
+        from services.prospect_search.trade_catalog import TradeCatalog
+
         parts = [part for part in re.split(r"[-']", word) if part]
         is_capitalized = bool(parts) and all(part[:1].isupper() and part[1:] == part[1:].lower() for part in parts)
         folded = fold(word)
         return (
             is_capitalized
             and len(word) >= _MIN_NAME_WORD_CHARS
-            and folded not in _TRADE_AND_LEGAL_FORM_WORDS
+            and folded not in _TRADE_AND_LEGAL_FORM_WORDS | _TRADE_SHORT_WORDS | COMMON_NAME_WORDS
             and folded not in _NAME_LINK_WORDS
+            and not TradeCatalog.is_trade_word(folded)
         )
 
 

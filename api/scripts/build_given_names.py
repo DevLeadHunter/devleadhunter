@@ -12,7 +12,9 @@ sex nearly all of them have (« M », « F »), else « X ». The French file de
 knows: the Québec girls' file repeats some boys' rows (« MAXIME », « JONATHAN ») and only adds names.
 
 Each name is also marked common or rare: a rare given name is often a last name (« Marty », « Roy »),
-so only a common one may tell where a last name stops. The two files count too few people of the Swiss
+so only a common one may tell where a last name stops. It also carries the spelling most of its bearers have
+in France (« Stéphane » for « stephane »), since a registry writes names without their accents; the Québec
+file has no accents at all. The two files count too few people of the Swiss
 German, Albanian, Portuguese, Italian or Spanish communities: their common names come from
 COMMON_FOREIGN_NAMES, and the ones the files lack altogether from SUPPLEMENTARY_NAMES.
 
@@ -28,7 +30,7 @@ import io
 import os
 import sys
 import zipfile
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import httpx
 
@@ -168,8 +170,8 @@ COMMON_FOREIGN_NAMES: frozenset[str] = frozenset(
 )
 
 
-def french_births() -> dict[str, list[int]]:
-    """Births per name and sex in France since 1900, from the INSEE national file."""
+def french_births(spellings: dict[str, Counter[str]]) -> dict[str, list[int]]:
+    """Births per name and sex in France since 1900, from the INSEE national file; each spelling counted in *spellings*."""
     births: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     archive = zipfile.ZipFile(io.BytesIO(httpx.get(INSEE_URL, timeout=120, follow_redirects=True).content))
     with archive.open(archive.namelist()[0]) as handle:
@@ -177,6 +179,7 @@ def french_births() -> dict[str, list[int]]:
             if row["prenom"].startswith("_") or not row["valeur"].isdigit():
                 continue
             births[fold(row["prenom"])][int(row["sexe"]) - 1] += int(row["valeur"])
+            spellings[fold(row["prenom"])][row["prenom"].title()] += int(row["valeur"])
     return births
 
 
@@ -193,6 +196,11 @@ def quebec_births() -> dict[str, list[int]]:
     return births
 
 
+def usual_spelling(name: str, spellings: dict[str, Counter[str]]) -> str:
+    """The spelling most bearers of a name have in France (« Stéphane »), else the name in title case."""
+    return spellings[name].most_common(1)[0][0] if spellings.get(name) else name.title()
+
+
 def sex_of(male_births: int, female_births: int) -> str:
     """« M » or « F » when nearly all bearers have that sex, else « X »."""
     total = male_births + female_births
@@ -204,10 +212,11 @@ def sex_of(male_births: int, female_births: int) -> str:
 
 
 def main() -> None:
-    """Download both files and write the merged list, one « name<TAB>sex<TAB>common » line per name."""
+    """Download both files and write the merged list, one « name<TAB>sex<TAB>common<TAB>spelling » line per name."""
     lines: dict[str, tuple[str, bool]] = {}
+    spellings: dict[str, Counter[str]] = defaultdict(Counter)
     sources = (
-        (french_births(), MIN_FRENCH_BIRTHS, COMMON_FRENCH_BIRTHS),
+        (french_births(spellings), MIN_FRENCH_BIRTHS, COMMON_FRENCH_BIRTHS),
         (quebec_births(), MIN_QUEBEC_BIRTHS, COMMON_QUEBEC_BIRTHS),
     )
     for births, floor, common_floor in sources:
@@ -220,7 +229,10 @@ def main() -> None:
     for name, sex in SUPPLEMENTARY_NAMES.items():
         lines.setdefault(name, (sex, True))
     with open(OUTPUT_PATH, "w", encoding="utf-8", newline="\n") as handle:
-        handle.writelines(f"{name}\t{sex}\t{int(is_common)}\n" for name, (sex, is_common) in sorted(lines.items()))
+        handle.writelines(
+            f"{name}\t{sex}\t{int(is_common)}\t{usual_spelling(name, spellings)}\n"
+            for name, (sex, is_common) in sorted(lines.items())
+        )
     print(f"{len(lines)} given names written to {OUTPUT_PATH}")
 
 

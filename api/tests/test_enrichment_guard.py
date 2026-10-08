@@ -217,6 +217,7 @@ def test_context_uses_place_identity_when_address_has_no_postal_code() -> None:
         email=None,
         emails=None,
         category=None,
+        country="FR",
     )
     enrichment = SimpleNamespace(
         description=None,
@@ -244,6 +245,7 @@ def test_context_prefers_the_prospect_own_address() -> None:
         email=None,
         emails=None,
         category=None,
+        country="FR",
     )
     enrichment = SimpleNamespace(
         description=None,
@@ -272,6 +274,7 @@ def test_context_drops_dead_and_placeholder_websites() -> None:
             email=None,
             emails=None,
             category=None,
+            country="FR",
         )
 
     assert context_from_prospect(prospect_with_status("dead")).website is None

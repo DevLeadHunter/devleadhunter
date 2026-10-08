@@ -242,6 +242,19 @@ def test_a_property_company_bearing_the_business_name_is_its_landlord() -> None:
     assert BusinessName.is_exact_name("ABC EXEMPLE & PISCINE", "ABC Exemple & Piscine")
 
 
+def test_a_civil_company_renting_land_under_the_business_words_is_not_the_garage() -> None:
+    """« TERRE EXEMPLE », a civil company renting land (6599, 68.20B), is not « TERRE EXEMPLE AUTO », a garage."""
+    context = ResolutionContext(company_name="TERRE EXEMPLE AUTO", city="Dijon", postal_code="21000")
+    land = _registry_company(
+        "TERRE EXEMPLE",
+        nature_juridique="6599",
+        siege={"code_postal": "21000", "activite_principale": "68.20B"},
+        dirigeants=[{"nom": "MODELE", "prenoms": "Jules"}],
+    )
+
+    assert RegistreGouvStrategy().parse_results([land], context, department="21") == []
+
+
 def test_plural_and_feminine_spellings_of_a_name_are_the_same_name() -> None:
     """« Arbres aux paysages Exemple » is « Arbre aux paysages Exemple »; « Extérieure » is « Extérieur »."""
     assert BusinessName.is_named_like("Arbres aux paysages Exemple", "Arbre aux paysages Exemple", town=None)
@@ -392,7 +405,7 @@ def test_a_short_first_name_in_the_address_is_the_registry_s_person() -> None:
     assert [candidate.first for candidate in email_candidates] == ["Fred"]
     assert (resolution.status, resolution.candidate.first if resolution.candidate else None) == (
         NameResolution.AUTO,
-        "Frederic",
+        "Frédéric",
     )
 
 

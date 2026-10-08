@@ -36,8 +36,9 @@ class NameCandidate:
     raw: dict[str, Any] = field(default_factory=dict)
     #: Read from the company the prospect search tied to the business by its number.
     anchored: bool = False
-    #: The business names this person itself in two places (its email address and its own name): as
-    #: trustworthy as a registry for automatic use.
+    #: The business names this person itself in two places (its email address and its own name), or the
+    #: person says it on their own profile, or the business on its own page: as trustworthy as a registry
+    #: for automatic use.
     self_declared: bool = False
 
     @property
@@ -138,6 +139,8 @@ class ResolutionContext:
     licence_number: str | None = None
     #: The business's trade as the prospect carries it (« électricien », « garage »…).
     trade: str | None = None
+    #: The business's country code (« FR », « CH », « CA »), to search the web where it works.
+    country: str | None = None
 
 
 @runtime_checkable

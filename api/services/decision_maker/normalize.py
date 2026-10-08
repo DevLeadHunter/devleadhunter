@@ -42,6 +42,7 @@ _COMPANY_NOISE: frozenset[str] = frozenset(
 )
 
 _DOTTED_INITIAL_RE: re.Pattern[str] = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
+_INITIALS_RE: re.Pattern[str] = re.compile(r"(?<![\w.])((?:[A-Z]\.?){2,3})(?!\w)")
 
 
 def fold(value: str) -> str:
@@ -104,6 +105,11 @@ def infer_gender(first_name: str | None) -> str | None:
 def join_dotted_initials(name: str) -> str:
     """The name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
     return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
+
+
+def initials_in(name: str) -> list[str]:
+    """The initials a business name holds, without their dots (« JX » in « Atelier Exemple JX », « AE » in « A.E »)."""
+    return [token.replace(".", "") for token in _INITIALS_RE.findall(name or "")]
 
 
 def company_tokens(name: str) -> set[str]:

@@ -9,6 +9,7 @@ from dataclasses import replace
 
 from enums.website_status import WebsiteStatus
 from services.decision_maker.email_owner import EmailOwnerStrategy
+from services.decision_maker.given_names import GivenNames
 from services.decision_maker.strategies import (
     BusinessNameOwnerStrategy,
     LegalMentionsStrategy,
@@ -20,6 +21,7 @@ from services.decision_maker.strategies import (
     WebRegistryStrategy,
 )
 from services.decision_maker.types import NameCandidate, NameResolution, NameStrategy, ResolutionContext
+from services.decision_maker.web_owner import WebOwnerStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +118,25 @@ class DecisionMakerResolver:
         is_trustworthy_source = (best.primary and best.geo_confirmed) or best.self_declared
         auto_eligible = is_trustworthy_source and best.confidence >= CONFIDENCE_THRESHOLD and not demoted
         status = NameResolution.AUTO if auto_eligible else NameResolution.PROPOSED
-        return NameResolution(status=status, candidate=best, candidates=boosted)
+        return NameResolution(status=status, candidate=self._with_best_spelling(best, boosted), candidates=boosted)
+
+    @classmethod
+    def _with_best_spelling(cls, best: NameCandidate, candidates: list[NameCandidate]) -> NameCandidate:
+        """
+        The best candidate written with its accents: the spelling another source gives the same name (« Jérôme »
+        over « Jerome »), else the usual spelling of a first name written without any (a registry's « STEPHANE »).
+        """
+        same_name = [candidate for candidate in candidates if candidate.identity_key() == best.identity_key()]
+        spelled = max(same_name, key=cls._accent_count, default=best)
+        if cls._accent_count(spelled) > cls._accent_count(best):
+            best = replace(best, first=spelled.first, last=spelled.last)
+        usual_first_name = GivenNames.usual_spelling(best.first) if best.first and best.first.isascii() else None
+        return replace(best, first=usual_first_name) if usual_first_name else best
+
+    @staticmethod
+    def _accent_count(candidate: NameCandidate) -> int:
+        """How many accented letters a candidate's name is written with."""
+        return sum(1 for char in f"{candidate.first or ''}{candidate.last or ''}" if not char.isascii())
 
     @staticmethod
     def _selection_key(candidate: NameCandidate) -> tuple[bool, float, bool, bool]:
@@ -196,6 +216,7 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
         emails=[email for email in (prospect.emails or [prospect.email]) if email],
         licence_number=licence_number,
         trade=prospect.category,
+        country=prospect.country,
     )
 
 
@@ -207,5 +228,6 @@ public_text_resolver = DecisionMakerResolver(
         BusinessNameOwnerStrategy(),
         EmailOwnerStrategy(),
         RbqOfficerStrategy(),
+        WebOwnerStrategy(),
     ]
 )

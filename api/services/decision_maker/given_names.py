@@ -23,6 +23,7 @@ class GivenNames:
 
     _sex_by_name: ClassVar[dict[str, str] | None] = None
     _common_names: ClassVar[frozenset[str]] = frozenset()
+    _spelling_by_name: ClassVar[dict[str, str]] = {}
 
     @classmethod
     def is_given_name(cls, word: str | None) -> bool:
@@ -66,10 +67,25 @@ class GivenNames:
         return sex if sex in _SEXES else None
 
     @classmethod
+    def usual_spelling(cls, word: str | None) -> str | None:
+        """
+        The spelling most bearers of a first name have in France, accents included (« Stéphane » for « STEPHANE »).
+
+        Args:
+            word: A first name, in any case and with or without accents.
+
+        Returns:
+            The usual spelling; None for an unknown name.
+        """
+        cls._names()
+        return cls._spelling_by_name.get(fold(word or ""))
+
+    @classmethod
     def _names(cls) -> dict[str, str]:
-        """The sex of every listed name (« M », « F », « X » for both), read once with the common ones."""
+        """The sex of every listed name (« M », « F », « X » for both), read once with the common ones and spellings."""
         if cls._sex_by_name is None:
             rows = [line.split("\t") for line in _LIST_PATH.read_text(encoding="utf-8").splitlines() if line]
-            cls._common_names = frozenset(name for name, _, common in rows if common == _COMMON_MARK)
-            cls._sex_by_name = {name: sex for name, sex, _ in rows}
+            cls._common_names = frozenset(row[0] for row in rows if row[2] == _COMMON_MARK)
+            cls._spelling_by_name = {row[0]: row[3] for row in rows}
+            cls._sex_by_name = {row[0]: row[1] for row in rows}
         return cls._sex_by_name

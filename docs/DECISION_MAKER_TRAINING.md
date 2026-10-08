@@ -178,3 +178,72 @@ de la manche 1 sur le nom exact laissait passer), 58 manqués.
 - France : le registre interrogé par l'adresse de l'établissement ; les mentions légales d'un site.
 - Données de prospects à reprendre : le site d'une autre entreprise (n° 284), le téléphone d'un autre
   entrepreneur (n° 283), une fiche qui mélange deux entreprises (n° 256), une entreprise fermée (n° 302).
+
+## Manche 3 — le Québec : garages et paysagistes sans registre (8 octobre, soir)
+
+Demande de Léo : continuer en commençant par le Québec, où l'app ne trouvait le patron que des
+électriciens (registre des licences RBQ).
+
+### À la main
+
+- Les 15 garages et paysagistes québécois du vivier (la main de la manche 2 a servi de vérité, revue
+  pour les 7 restés sans nom) : 12 patrons trouvés (9 sûrs, dont deux co-propriétaires à égalité, et 3
+  probables), 3 introuvables.
+- Ce qui les nomme : le profil LinkedIn ou Facebook du patron (« X - Propriétaire chez … »,
+  « propriétaire at … »), la signature sur la page Facebook de l'entreprise (« Cordialement, X
+  Propriétaire … »), la presse locale, les publications des groupes « Spotted » de la région, les avis
+  qui appellent le patron par son prénom, les initiales de l'enseigne.
+- Le registre des entreprises du Québec ne publie pas le nom des personnes dans ses données ouvertes, et
+  sa recherche en ligne a un captcha : il n'est pas utilisé.
+
+### Par l'app (avant correction)
+
+Garages et paysagistes : 1 patron sur 15, validé seul (le prénom et le nom dans l'enseigne et l'adresse
+mail). Électriciens : 5 sur 5 par le registre RBQ.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Patron nommé sur son profil, ou signé sur la page de l'entreprise, jamais lu | Aucune recherche web du patron hors de France | Recherche Google « "nom de l'entreprise" propriétaire » : profil « X - Propriétaire chez … », « propriétaire at … », signature sur la page de l'entreprise, phrase « son propriétaire X » ; la personne doit être rattachée à l'entreprise par son nom ou son téléphone, dans la même phrase, et dans sa ville quand le résultat la donne |
+| Faux candidats (testés à blanc) : un article ou un annuaire qui cite plusieurs entreprises | Lecture au-delà de la phrase du rôle | Le rôle et l'entreprise doivent être dans la même phrase |
+| Homonyme aux mêmes initiales, à Montréal | — | Un résultat qui place la personne dans une autre ville nomme un homonyme |
+| Ancien patron, co-propriétaires, « propriétaire de notre bâtisse » | — | Jamais retenus |
+| « Jules est très à l'écoute » pour « Garage Jules … » ignoré | Il fallait « voir Jules », « merci Jules » | Un prénom courant cité seul suffit, sauf après « M. » (un nom de famille) |
+| Initiales « JX » et deux avis qui remercient « Jules » | Jamais rapprochés | Prénom proposé à confirmer quand les initiales commencent par lui |
+| Recherche Google vide une fois sur deux | Bright Data sous charge | La recherche est relancée (trois fois, avec une pause) |
+| « Jerome », « Helene », « Francois » sans accents | Le registre français écrit les noms sans accents | Orthographe la plus courante du fichier officiel des prénoms, ou celle d'une autre source qui nomme la même personne |
+
+### Résultat (mesure à blanc avec le code final)
+
+| Garages et paysagistes du Québec (15) | Avant | Après |
+|---|---|---|
+| Faux | 0 | **0** |
+| Juste et validé seul par l'app | 1 | **4** |
+| Juste, proposé à confirmer (prénom seul) | 0 | 1 |
+| Rien, alors que la main a trouvé | 11 | 7 |
+| Rien des deux côtés | 3 | 3 |
+
+- Électriciens : toujours 5 sur 5. Un premier passage en rétrogradait un (le patron d'une autre
+  entreprise lu dans un article) : corrigé par la règle de la phrase.
+- Restent manqués : les patrons que seuls les groupes « Spotted », la presse ou l'adresse d'une page
+  d'enseigne nomment (« …/centre-de-l-auto-prenom-nom »), et les familles où l'on ne sait pas qui a repris.
+- Contrôle des 114 décisionnaires sûrs avec le nouveau moteur : aucun ne devient faux. Il a révélé des
+  faiblesses, toutes corrigées :
+  - le fondateur d'un homonyme suisse (« X, fondateur de … Garage », sans ville ni téléphone) aurait été
+    validé seul : une déclaration lue sur le web ne valide seule que si le résultat place la personne dans
+    la ville de l'entreprise ou montre son téléphone ; sinon c'est une proposition ;
+  - une société civile de location de terrains au nom proche (« … ROUGE » pour « … ROUGE AUTO ») bloquait
+    le vrai patron d'un garage : une société civile ou immobilière n'est plus jamais l'entreprise ;
+  - une société de maçonnerie nommée par deux lettres (« EX » pour « EX Paysagiste ») bloquait le vrai
+    patron : une société au nom seulement proche doit être du même métier, sauf si l'enseigne porte les
+    initiales de son dirigeant (« JM Services Jardinage », inscrite en nettoyage par Jules Modèle) ;
+  - « Elec » de « Eurl … Elec » était lu comme un nom de famille.
+- Les accents : quatre patrons du vivier étaient écrits sans accents par le registre.
+
+### Données de prospects reprises
+
+- Le garage fermé n° 302 est remplacé par un garage actif de la réserve de la recherche n° 14 (n° 372),
+  contrôlé à la main et enrichi par l'app ; voir `docs/ENRICHMENT_TRAINING.md`.
+- n° 283 : le nom et le téléphone venaient d'une autre fiche ; repris de la page Facebook de l'entreprise.
+- n° 284 : le site enregistré était celui d'un concurrent ; le nom est celui de la page de l'entreprise.

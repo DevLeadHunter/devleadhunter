@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import fold, infer_gender, title_case_name
 from services.decision_maker.types import NameCandidate, ResolutionContext
-from services.prospect_search.trade_catalog import TradeCatalog
 
 _LOCAL_PART_SEPARATOR_RE: re.Pattern[str] = re.compile(r"[._+\-\d]+")
 _BUSINESS_NAME_SEPARATOR_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
@@ -112,6 +111,7 @@ class PersonInEmail:
             The person; ``None`` for an address of the business (« info@ », the business name) or without a full name.
         """
         from services.prospect_search.business_name import COMMON_NAME_WORDS, BusinessName
+        from services.prospect_search.trade_catalog import TradeCatalog
 
         business_name_words = [
             word

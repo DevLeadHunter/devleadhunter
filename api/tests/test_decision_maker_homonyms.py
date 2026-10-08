@@ -191,3 +191,43 @@ def test_a_firm_sharing_only_the_region_and_generic_words_is_another_business() 
 
     assert WebRegistryStrategy.is_company_of(cleaning_firm, context) is False
     assert EnrichmentService._activity_check(prospect, cleaning_firm)[0] is False
+
+
+def test_a_firm_bearing_the_name_beside_the_trade_words_must_be_of_the_trade() -> None:
+    """« EX », masons, is not « EX Paysagiste »; « EX PAYSAGISTE », word for word, is it whatever it declares."""
+    context = ResolutionContext(company_name="EX Paysagiste", city="Pau", postal_code="64000", trade="paysagiste")
+    masons = NameCandidate(
+        first="Anne",
+        last="Temoin",
+        source="registre_gouv",
+        confidence=0.75,
+        primary=True,
+        raw={"nom_complet": "EX", "activite": "43.99C"},
+    )
+    itself = NameCandidate(
+        first="Jules",
+        last="Modele",
+        source="registre_gouv",
+        confidence=0.95,
+        primary=True,
+        raw={"nom_complet": "JULES MODELE (EX PAYSAGISTE)", "activite": "43.99C"},
+    )
+
+    assert [WebRegistryStrategy.is_company_of(candidate, context) for candidate in (masons, itself)] == [False, True]
+
+
+def test_a_firm_named_with_its_head_initials_is_the_business_whatever_its_filed_activity() -> None:
+    """« JM Services Jardinage » is Jules Modele's « JM SERVICES », filed as cleaners: its initials are his."""
+    context = ResolutionContext(
+        company_name="JM Services Jardinage", city="Pau", postal_code="64000", trade="paysagiste"
+    )
+    holder = NameCandidate(
+        first="Jules",
+        last="Modele",
+        source="registre_gouv",
+        confidence=0.75,
+        primary=True,
+        raw={"nom_complet": "JULES MODELE (JM SERVICES)", "activite": "81.21Z"},
+    )
+
+    assert WebRegistryStrategy.is_company_of(holder, context)
