@@ -427,3 +427,15 @@ Précision de l'app = bons prospects parmi les fiches qu'elle a gardées (les «
 - Les fiches « à confirmer » rapportent peu (1 bon sur 5 dans la reprise de la n° 11) : l'app a raison de les montrer à part.
 - Coût : 35 requêtes par prospect dans la n° 13, environ 80 dans les n° 11 et 12 (électriciens, grandes villes), soit 0,05 à 0,12 $ par prospect (0,0015 $ la requête).
 - Ce qui demande encore un humain : les fiches « à confirmer » (Google sans réponse, email sans preuve franche, page Facebook sans téléphone ou sans le métier dans son nom) et les cas limites (un homme à tout faire qui entretient des jardins).
+
+## Les fermetures françaises (8 octobre, nuit)
+
+- En remplaçant le garage fermé n° 302, un second garage fermé est apparu dans la réserve de la recherche
+  n° 14 : la recherche française ne lisait pas l'état du registre. La Suisse le faisait déjà (Zefix).
+- Corrigé : pour chaque candidat français proposé, le registre des entreprises est lu par le nom (tel quel,
+  sans les mots du métier, puis sans les communes qu'il cite). Une société de ce nom, à son code postal ou
+  dans sa ville, fermée depuis moins de trois ans, ferme le candidat ; une société ouverte à son nom, ou du
+  même patron à son adresse ou dans le département (un artisan passé en société), le garde ouvert ; un
+  nouveau venu à la même adresse est une autre affaire.
+- Contrôle sur les 135 prospects français : un seul autre fermé (n° 151, écarté), et une fausse alerte
+  corrigée pendant le contrôle (le même patron, une société du même nom dans la commune voisine).

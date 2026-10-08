@@ -257,10 +257,73 @@ mail). Électriciens : 5 sur 5 par le registre RBQ.
 - Vivier de la campagne : **109 décisionnaires sûrs** (107 avant) ; 103 places sur 115 en ont un, les 12
   autres partiront avec « Bonjour ».
 
+## Manche 3, suite — la Suisse et la France (8 octobre, nuit)
+
+Demande de Léo : continuer avec la Suisse et la France. Banc d'essai : les 24 prospects suisses et français
+où la main de la manche 2 a trouvé le patron alors que l'app non (ou seulement en proposition).
+
+### Ce que la main avait utilisé et que l'app ignorait
+
+- Suisse : une « autre adresse » inscrite au registre (l'atelier n'est pas au siège) ; un nom inscrit collé
+  (« Garage EXauto - … » pour « Garage EX Auto ») ; un prénom albanais que la liste ne connaissait pas ; un
+  nom ancien « Nom Prénom1 Prénom2 » sans virgule, que l'adresse mail, les avis ou les initiales de l'enseigne
+  permettent de couper ; la présentation de l'entreprise (« Prénom Nom - Paysagiste indépendant »).
+- France : l'adresse de l'établissement (le registre la cherche, et dit si l'établissement y est ouvert ou
+  fermé) ; le profil LinkedIn « Prénom Nom - Gérant | Enseigne » ; l'entrepreneur individuel qui porte le
+  nom de l'enseigne mais s'est inscrit sous une autre activité.
+- Ni l'extrait cantonal vaudois (il passe par un captcha) ni le registre du Québec ne sont utilisés.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Atelier à une autre adresse que le siège | Seule l'adresse du siège était comparée | Les « Autre adresse » des publications comptent aussi |
+| Nom inscrit collé (« EXauto ») | Initiales cherchées seules | Les initiales collées au mot suivant sont cherchées, et comparées lettre à lettre |
+| Prénoms albanais inconnus | Les fichiers de naissances français et québécois en comptent trop peu | 24 prénoms courants ajoutés à la liste |
+| « Nom Prénom1 Prénom2 » laissé en proposition | La coupe entre nom et prénoms est incertaine | La coupe est sûre quand les avis citent le premier prénom, quand l'adresse mail porte le nom, quand l'enseigne porte les initiales ou le dernier mot du nom |
+| Présentation « Prénom Nom - Paysagiste indépendant » lue seulement par l'IA, en proposition | — | Lue telle quelle : l'entreprise se présente sous ce nom |
+| Société introuvable par le nom (France) | L'enseigne n'est déclarée nulle part | Recherche par numéro et rue : la société qui a un établissement ouvert du métier à cette adresse exacte |
+| « Gérant » sur LinkedIn ignoré | La recherche web ne tournait pas en France | Elle tourne quand registres et autres sources n'ont rien trouvé ; « gérant » compte en France et en Suisse, pas au Québec |
+| Fondateur d'un homonyme à Marrakech proposé | Ni ville ni téléphone dans le résultat | Un résultat sans la ville ni le téléphone de l'entreprise ne nomme plus personne |
+| Entrepreneur inscrit sous une autre activité (nettoyage pour un jardinier) | Recherche filtrée sur le métier | Proposé (jamais validé seul) quand il est le seul entrepreneur individuel de ce nom dans le département |
+| Réponses aux avis signées « Prénom Nom, Gérant. » d'un autre prénom que le registre | Seule l'IA lisait la signature : un passage où elle n'a pas répondu a validé seul le prénom du registre | La signature complète est lue sans l'IA ; jamais validée seule, elle confirme le registre ou le garde en proposition |
+
+### Résultat (mesure à blanc avec le code final, sur les 24)
+
+| Suisse et France | Avant | Après |
+|---|---|---|
+| Faux | 1 (proposé) | **0** |
+| Juste et validé seul par l'app | 0 | **10** |
+| Juste, proposé à confirmer | 4 | 1 |
+| Rien, alors que la main a trouvé | 16 | 10 |
+
+- Restent manqués : 6 cas que la main ne jugeait que « probables » (deux co-gérants, une famille, un groupe
+  de sociétés), une entreprise suisse non inscrite que seul l'annuaire nomme, un garage que seule la page
+  d'un club cite, un autre qu'un article d'agence web nomme, et une enseigne de deux lettres que la recherche
+  web ne trouve qu'un passage sur deux.
+- Bright Data rend encore des pages vides : un même lead sort validé à un passage et vide au suivant.
+
+### Non-régression (les 114 patrons déjà validés, relus avec le code final)
+
+- 100 identiques, 6 identiques mais en proposition, 7 trouvés seulement à la main, 1 autre prénom (le
+  registre contre la signature des réponses aux avis, maintenant en proposition à chaque passage), 0 faux.
+- Par rapport au matin : 16 passent de rien ou de proposé à validé seul, et un faux validé disparaît
+  (l'homonyme de Marrakech).
+- Un seul prospect sur 143 signe ses réponses aux avis avec son nom complet.
+
+### La recherche de prospects voit les fermetures françaises
+
+- Deux garages fermés étaient passés par la recherche française (le n° 302 et un candidat de la réserve).
+  Comme pour la Suisse, le registre est maintenant lu pour chaque candidat proposé : une société du nom de
+  l'entreprise, à son code postal ou dans sa ville, fermée depuis moins de trois ans, ferme l'entreprise ;
+  une société ouverte à son nom, ou du même patron à son adresse ou dans le département, la garde ouverte.
+- Audit des 135 prospects français : un seul fermé de plus (n° 151, écarté). Une fausse alerte trouvée et
+  corrigée pendant l'audit : un artisan passé en société du même nom, avec le siège dans la commune voisine.
+
 ### Reste à faire (manche 4)
 
 - Québec : les publications des groupes « Spotted » (« Prénom Nom. Enseigne »), l'adresse de la page
   d'une enseigne de réseau qui porte le nom du patron.
-- France : la recherche web du patron n'y tourne pas encore (« gérant » y nomme le patron, au Québec un
-  employé : à mesurer avant) ; le registre interrogé par l'adresse.
-- Suisse : l'annuaire search.ch pour les entreprises non inscrites ; l'extrait cantonal vaudois.
+- Suisse : l'annuaire search.ch pour les entreprises non inscrites (par nom et ville, pas seulement par
+  téléphone).
+- France : les co-gérants et les groupes de sociétés (une personne morale entre l'enseigne et le patron).
