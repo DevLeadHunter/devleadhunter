@@ -141,6 +141,8 @@ class ResolutionContext:
     trade: str | None = None
     #: The business's country code (« FR », « CH », « CA »), to search the web where it works.
     country: str | None = None
+    #: The business's street address as its listing writes it (« 23 Rue Exemple, 87000 Limoges »).
+    address: str | None = None
 
 
 @runtime_checkable

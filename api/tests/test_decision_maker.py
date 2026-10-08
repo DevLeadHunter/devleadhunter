@@ -656,6 +656,37 @@ def test_a_closing_word_is_never_a_signature() -> None:
     assert asyncio.run(OwnerResponseStrategy().resolve(context)) == []
 
 
+def test_a_reply_signed_with_a_full_name_keeps_another_registry_head_a_proposal() -> None:
+    """Replies signed « Jules Exemple, Gérant. » while the registry names Paul: only the AI read it (8 Oct 2026)."""
+    context = ResolutionContext(
+        company_name="Exemple Elec",
+        owner_responses=["Merci pour votre confiance, je transmettrai à l'équipe !\nJules Exemple, Gérant."],
+    )
+
+    candidates = asyncio.run(OwnerResponseStrategy().resolve(context))
+
+    assert [(candidate.first, candidate.last, candidate.primary) for candidate in candidates] == [
+        ("Jules", "Exemple", False)
+    ]
+    resolution = DecisionMakerResolver().pick_best([_registry("Paul", "Exemple", 0.9, True), *candidates])
+    assert resolution.status == NameResolution.PROPOSED
+    agreeing = DecisionMakerResolver().pick_best([_registry("Jules", "Exemple", 0.9, True), *candidates])
+    assert agreeing.status == NameResolution.AUTO
+
+
+def test_a_signature_names_the_head_only() -> None:
+    """Another role, a Québec « gérant » (a shop manager) or a closing formula signs for nobody to greet."""
+    france = ResolutionContext(company_name="Exemple Elec", country="FR")
+    quebec = ResolutionContext(company_name="Exemple Elec", country="CA")
+
+    assert OwnerResponseStrategy.full_name_signed("Merci !\nJules Exemple", quebec) == ("Jules", "Exemple")
+    assert OwnerResponseStrategy.full_name_signed("Merci !\n— Jules Exemple, fondateur", france) == ("Jules", "Exemple")
+    assert OwnerResponseStrategy.full_name_signed("Merci !\nJules Exemple, apprenti", france) is None
+    assert OwnerResponseStrategy.full_name_signed("Merci !\nJules Exemple, gérant", quebec) is None
+    assert OwnerResponseStrategy.full_name_signed("Merci pour votre avis.\nBelle Journée", france) is None
+    assert OwnerResponseStrategy.full_name_signed("Merci !\nJules Plomberie", france) is None
+
+
 def test_a_company_found_without_the_trade_words_must_carry_that_name() -> None:
     """« Lb Jardin Passion » searched as « Lb Passion » also found LB TENNIS PASSION: not the garden firm."""
     context = ResolutionContext(company_name="Lb Jardin Passion", city="Cahors", postal_code="46000")

@@ -44,8 +44,10 @@ _POSTAL_CODE_RE = re.compile(r"\b(\d{5})\b")
 class DecisionMakerResolver:
     """Runs every strategy, merges candidates, applies the confidence rules."""
 
-    def __init__(self, strategies: list[NameStrategy] | None = None) -> None:
-        """Wire the default cascade (order is cosmetic — they run in parallel)."""
+    def __init__(
+        self, strategies: list[NameStrategy] | None = None, fallback_strategies: list[NameStrategy] | None = None
+    ) -> None:
+        """Wire the default cascade (order is cosmetic — they run in parallel), and the sources asked only when it finds nobody."""
         self.strategies: list[NameStrategy] = strategies or [
             RegistreGouvStrategy(),
             PappersStrategy(),
@@ -56,20 +58,27 @@ class DecisionMakerResolver:
             BusinessNameOwnerStrategy(),
             EmailOwnerStrategy(),
         ]
+        self.fallback_strategies: list[NameStrategy] = fallback_strategies or []
 
     async def resolve(self, context: ResolutionContext) -> NameResolution:
-        """Run the cascade and classify the outcome (AUTO / PROPOSED / NONE)."""
-        results = await asyncio.gather(
-            *(strategy.resolve(context) for strategy in self.strategies),
-            return_exceptions=True,
-        )
+        """Run the cascade and classify the outcome (AUTO / PROPOSED / NONE); when it finds nobody, ask the fallback sources too."""
+        candidates = await self._candidates_of(self.strategies, context)
+        resolution = self.pick_best(candidates)
+        if resolution.status == NameResolution.NONE and self.fallback_strategies:
+            resolution = self.pick_best([*candidates, *await self._candidates_of(self.fallback_strategies, context)])
+        return resolution
+
+    @staticmethod
+    async def _candidates_of(strategies: list[NameStrategy], context: ResolutionContext) -> list[NameCandidate]:
+        """The named candidates the strategies give, a failing one left out."""
+        results = await asyncio.gather(*(strategy.resolve(context) for strategy in strategies), return_exceptions=True)
         candidates: list[NameCandidate] = []
-        for strategy, result in zip(self.strategies, results):
+        for strategy, result in zip(strategies, results):
             if isinstance(result, BaseException):
                 logger.warning("decision-maker strategy %s raised: %s", strategy.name, result)
                 continue
             candidates.extend(c for c in result if c.has_name)
-        return self.pick_best(candidates)
+        return candidates
 
     def pick_best(self, candidates: list[NameCandidate]) -> NameResolution:
         """Merge candidates and classify the best one (pure).
@@ -217,10 +226,11 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
         licence_number=licence_number,
         trade=prospect.category,
         country=prospect.country,
+        address=prospect.address,
     )
 
 
-decision_maker_resolver = DecisionMakerResolver()
+decision_maker_resolver = DecisionMakerResolver(fallback_strategies=[WebOwnerStrategy()])
 public_text_resolver = DecisionMakerResolver(
     [
         OwnerResponseStrategy(),

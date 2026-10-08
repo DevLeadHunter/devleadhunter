@@ -344,7 +344,7 @@ def test_among_the_family_the_company_of_the_trade_s_main_activity_is_the_busine
             _registry_company("JULES MODELE", dirigeants=[{"nom": "MODELE", "prenoms": "Jules"}]),
         ]
 
-    monkeypatch.setattr(RegistreGouvStrategy, "_search", staticmethod(registry_answer))
+    monkeypatch.setattr(RegistreGouvStrategy, "search", staticmethod(registry_answer))
     context = ResolutionContext(
         company_name="ABC électricité", review_texts=["Monsieur Modele est sérieux."], trade="électricien"
     )
@@ -368,7 +368,7 @@ def test_a_word_naming_a_town_is_never_searched_as_the_business(monkeypatch: pyt
         ]
 
     monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(communes_named))
-    monkeypatch.setattr(RegistreGouvStrategy, "_search", staticmethod(registry_answer))
+    monkeypatch.setattr(RegistreGouvStrategy, "search", staticmethod(registry_answer))
     context = ResolutionContext(company_name="Garage Pau-Lescar", city="Pau", trade="garage")
 
     candidates = asyncio.run(RegistreGouvStrategy()._search_by_keywords(context, "64"))
@@ -443,3 +443,105 @@ def test_generic_trade_words_are_never_searched_and_the_order_never_changes() ->
 
     assert [keyword.text for keyword in RegistreGouvStrategy._keywords(generic)] == ["aristo"]
     assert [keyword.text for keyword in RegistreGouvStrategy._keywords(equal_lengths)] == ["abeil", "zorro"]
+
+
+def test_the_company_open_at_the_business_address_is_the_business(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Garage EX services », 23 rue Exemple: the registry's « LIMOGES EXEMPLE SERVICES » is open there, in the trade."""
+    open_there = _registry_company(
+        "LIMOGES EXEMPLE SERVICES",
+        nature_juridique="5499",
+        siege={"code_postal": "87000", "activite_principale": "45.20A"},
+        dirigeants=[{"nom": "MODELE", "prenoms": "Jules"}],
+        matching_etablissements=[
+            {"adresse": "23 RUE EXEMPLE 87000 LIMOGES", "etat_administratif": "A", "activite_principale": "45.20A"}
+        ],
+    )
+    former_tenant = _registry_company(
+        "TEMOIN AUTOS",
+        nature_juridique="5499",
+        siege={"code_postal": "87170", "activite_principale": "45.20A"},
+        dirigeants=[{"nom": "TEMOIN", "prenoms": "Anne"}],
+        matching_etablissements=[
+            {"adresse": "23 RUE EXEMPLE 87000 LIMOGES", "etat_administratif": "F", "activite_principale": "45.11Z"}
+        ],
+    )
+    asked: list[str] = []
+
+    async def search(query: str, **_options: object) -> list[dict[str, object]]:
+        asked.append(query)
+        return [open_there, former_tenant]
+
+    monkeypatch.setattr(RegistreGouvStrategy, "search", staticmethod(search))
+    context = ResolutionContext(
+        company_name="Garage EX services",
+        address="23 Rue Exemple, 87000 Limoges",
+        city="Limoges",
+        postal_code="87000",
+        trade="garage automobile",
+    )
+
+    [candidate] = asyncio.run(RegistreGouvStrategy()._search_by_address(context, "87"))
+
+    assert (candidate.first, candidate.last, candidate.primary, candidate.geo_confirmed) == (
+        "Jules",
+        "Modele",
+        True,
+        True,
+    )
+    assert asked == ["23 rue exemple"]
+    assert RegistreGouvStrategy.street_of("12 Av. Exemple, 87350 Panazol") == "12 avenue exemple"
+    assert RegistreGouvStrategy.street_of("Le Grand-Rain 3, 1553 Exemple") is None
+
+
+def test_the_only_sole_trader_bearing_the_business_name_is_proposed_whatever_his_activity() -> None:
+    """« Exemple Entretien parc et jardin »: Jules Exemple, filed as a cleaner, is the only Exemple of the département."""
+    holder = _registry_company(
+        "JULES EXEMPLE",
+        siege={"code_postal": "87000", "activite_principale": "81.21Z"},
+        dirigeants=[{"nom": "EXEMPLE", "prenoms": "Jules"}],
+    )
+    company = _registry_company(
+        "EXEMPLE SERVICES",
+        nature_juridique="5499",
+        siege={"code_postal": "87000", "activite_principale": "81.21Z"},
+        dirigeants=[{"nom": "EXEMPLE", "prenoms": "Anne"}],
+    )
+
+    assert RegistreGouvStrategy.is_sole_holder_named(holder, "exemple", "87")
+    assert not RegistreGouvStrategy.is_sole_holder_named(company, "exemple", "87")
+    assert not RegistreGouvStrategy.is_sole_holder_named(holder, "exemple", "21")
+
+
+def test_the_fallback_sources_are_asked_only_when_the_cascade_finds_nobody() -> None:
+    """The web is searched for a French business only when its registries name nobody."""
+    asked: list[str] = []
+
+    class _Source:
+        """A source answering a fixed candidate."""
+
+        def __init__(self, name: str, candidates: list[NameCandidate]) -> None:
+            """Remember what to answer."""
+            self.name = name
+            self._candidates = candidates
+
+        async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
+            """Answer and note the call."""
+            asked.append(self.name)
+            return self._candidates
+
+    web = NameCandidate(first="Luc", last="Exemple", source="web_owner", confidence=0.75, self_declared=True)
+    registry = NameCandidate(
+        first="Jules", last="Modele", source="registre_gouv", confidence=0.9, primary=True, geo_confirmed=True
+    )
+    context = ResolutionContext(company_name="Exemple Services")
+
+    found = asyncio.run(DecisionMakerResolver([_Source("registry", [])], [_Source("web", [web])]).resolve(context))
+    asked_when_found = len(asked)
+    trusted = asyncio.run(
+        DecisionMakerResolver([_Source("registry", [registry])], [_Source("web", [web])]).resolve(context)
+    )
+
+    assert found.candidate is not None and found.candidate.first == "Luc"
+    assert asked_when_found == 2
+    assert trusted.candidate is not None and trusted.candidate.first == "Jules"
+    assert asked[asked_when_found:] == ["registry"]

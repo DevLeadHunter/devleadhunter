@@ -103,37 +103,39 @@ def test_a_former_owner_a_co_owner_or_the_owner_of_something_else_is_not_the_hea
     )
     others = _result(
         "Garage Témoin (@garagetemoin) - Mentions",
-        "Une journée chez CX services mécaniques ... Michel Exemple, propriétaire de Garage Témoin.",
+        "Une journée chez CX services mécaniques ... Michel Exemple, propriétaire de Garage Témoin à Victoriaville.",
         link="https://www.facebook.com/garagetemoin/mentions/",
     )
     co_owners = _result(
         "Exemple Terrassement",
-        "Les propriétaires, Jean Exemple et Paul Modèle, répondent à vos demandes de soumission.",
+        "Les propriétaires, Jean Exemple et Paul Modèle, répondent à vos demandes à Victoriaville.",
         link="https://exemple-terrassement.com/",
     )
     article = _result(
         "Les entrepreneurs de la région",
-        "Luc Témoin, propriétaire ... Modèle, fondateur et gérant, Modèle Électrique, et ...",
+        "Luc Témoin, propriétaire ... Modèle, fondateur et gérant, Modèle Électrique, à Victoriaville ...",
         link="https://journal-exemple.ca/entrepreneurs",
     )
     directory = _result(
         "Garages près de Exempleville, QC",
-        "... Garage Paul Exemple - Mécanique ... Le propriétaire Hervé Témoin est très serviable ...",
+        "... Garage Paul Exemple - Mécanique à Victoriaville ... Le propriétaire Hervé Témoin est serviable ...",
         link="https://annuaire-exemple.ca/garages",
     )
     own_page_owner = _result(
         "Exemple Terrassement",
-        "Le propriétaire, Jean Exemple, répond à vos demandes de soumission.",
+        "Le propriétaire, Jean Exemple, répond à vos demandes à Victoriaville.",
         link="https://exemple-terrassement.com/",
     )
 
-    assert _owners([own_page_owner], ResolutionContext(company_name="Exemple Terrassement")) == [("Jean", "Exemple")]
+    here = ResolutionContext(company_name="Exemple Terrassement", city="Victoriaville")
+
+    assert _owners([own_page_owner], here) == [("Jean", "Exemple")]
     assert _owners([former], ResolutionContext(company_name="Entretien JXM", city="Victoriaville")) == []
     assert _owners([building], ResolutionContext(company_name="Garage Modèle et Fils inc.", city="Repentigny")) == []
     assert _owners([others], ResolutionContext(company_name="C.X. Services Mécaniques", city="Victoriaville")) == []
     assert _owners([co_owners], ResolutionContext(company_name="Exemple Terrassement", city="Victoriaville")) == []
-    assert _owners([article], ResolutionContext(company_name="Modèle Électrique Inc")) == []
-    assert _owners([directory], ResolutionContext(company_name="Garage Paul Exemple")) == []
+    assert _owners([article], ResolutionContext(company_name="Modèle Électrique Inc", city="Victoriaville")) == []
+    assert _owners([directory], ResolutionContext(company_name="Garage Paul Exemple", city="Victoriaville")) == []
 
 
 def test_a_name_saying_only_a_trade_and_a_town_is_never_searched() -> None:
@@ -260,7 +262,7 @@ def test_a_trade_word_or_a_last_name_said_with_monsieur_names_nobody() -> None:
     assert strategy.candidates_of(civility) == []
 
 
-def test_an_owner_placed_nowhere_and_without_the_phone_is_only_a_proposal() -> None:
+def test_an_owner_placed_nowhere_and_without_the_phone_names_nobody() -> None:
     """« Jean Modèle, fondateur de Exemple Garage » on a page naming no town nor phone may be a namesake's owner."""
     context = ResolutionContext(company_name="Exemple Garage", city="Lausanne", phone="021 555 01 99", country="CH")
     results = [
@@ -271,7 +273,38 @@ def test_an_owner_placed_nowhere_and_without_the_phone_is_only_a_proposal() -> N
         )
     ]
 
-    [candidate] = OwnerMentions.candidates_in(results, context)
+    assert _owners(results, context) == []
 
-    assert (candidate.first, candidate.last) == ("Jean", "Modèle")
-    assert not candidate.self_declared
+
+def test_a_french_manager_is_the_head_and_a_quebec_one_is_not() -> None:
+    """« Gérant | Exemple Services Extérieurs … à Pau » names the head in France; in Québec a gérant runs a shop."""
+    profile = _result(
+        "Luc Exemple - Gérant | Exemple Services Extérieurs",
+        "Luc Exemple · Gérant | Exemple Services Extérieurs | Jardinier Paysagiste à Pau",
+        link="https://fr.linkedin.com/in/exemple",
+    )
+    france = ResolutionContext(company_name="Exemple Services Extérieurs", city="Pau", country="FR")
+    quebec = ResolutionContext(company_name="Exemple Services Extérieurs", city="Pau", country="CA")
+
+    [candidate] = OwnerMentions.candidates_in([profile], france)
+
+    assert (candidate.first, candidate.last, candidate.self_declared) == ("Luc", "Exemple", True)
+    assert _owners([profile], quebec) == []
+
+
+def test_a_presentation_opening_with_a_person_and_a_trade_names_the_owner() -> None:
+    """The business presents itself as « Luc Exemple - Paysagiste indépendant »: Luc Exemple runs it."""
+    context = ResolutionContext(
+        company_name="Modèle Paysage",
+        city="Exempleville",
+        description="Luc Exemple - Paysagiste indépendant à Exempleville. Tonte, taille, création.",
+    )
+    without_trade = ResolutionContext(
+        company_name="Modèle Paysage", description="Luc Exemple - Merci de votre visite !"
+    )
+
+    [candidate] = OwnerMentions.in_presentation(context)
+
+    assert (candidate.first, candidate.last, candidate.self_declared) == ("Luc", "Exemple", True)
+    assert candidate.evidence_group == "scraped_text"
+    assert OwnerMentions.in_presentation(without_trade) == []
