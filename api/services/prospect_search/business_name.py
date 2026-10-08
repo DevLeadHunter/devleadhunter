@@ -26,6 +26,42 @@ _LEGAL_FORM_RE: re.Pattern[str] = re.compile(
     re.IGNORECASE,
 )
 
+# Words too common in business names to tell one business from another.
+COMMON_NAME_WORDS: frozenset[str] = frozenset(
+    {
+        "garage",
+        "jardin",
+        "jardins",
+        "paysage",
+        "paysages",
+        "paysagiste",
+        "service",
+        "services",
+        "entretien",
+        "entreprise",
+        "automobile",
+        "automobiles",
+        "plomberie",
+        "chauffage",
+        "sanitaire",
+        "electricite",
+        "electricien",
+        "atelier",
+        "artisan",
+        "renovation",
+        "travaux",
+        "centre",
+        "multiservices",
+        "amenagement",
+        "amenagements",
+        "exterieurs",
+    }
+)
+
+NAME_LINK_WORDS: frozenset[str] = frozenset(
+    {"du", "de", "des", "la", "le", "les", "et", "di", "da", "del", "von", "und", "and", "the", "of"}
+)
+
 
 class BusinessName:
     """Cleans the name a listing gives a business."""

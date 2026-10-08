@@ -50,6 +50,10 @@ logger = logging.getLogger(__name__)
 # Registre/Pappers are shared rate-limited APIs — a scraping job must not fire dozens of lookups at once.
 _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
 
+_NO_LISTING_REASON = "Rien à lire : aucune fiche Google à ce nom dans cette ville, ni page Facebook."
+_EMPTY_LISTING_REASON = "La fiche Google de l'entreprise est vide : ni avis, ni photo, ni horaires."
+_NOTHING_READ_REASON = "Rien n'a pu être lu (Google a peut-être bloqué la lecture) : relancez l'enrichissement."
+
 
 def _count_filled_fields(data: EnrichmentData | None) -> int:
     """Number of rich enrichment fields actually populated (0 = quietly empty)."""
@@ -228,6 +232,7 @@ class EnrichmentService:
             The persisted enrichment record.
         """
         record = self.get_or_create(db, user_id, prospect.id)
+        had_completed_enrichment = record.status == EnrichmentStatus.COMPLETED.value
         record.status = EnrichmentStatus.ENRICHING.value
         record.error_message = None
         db.commit()
@@ -268,6 +273,13 @@ class EnrichmentService:
                 record.status = EnrichmentStatus.FAILED.value
                 record.error_message = f"{mismatch}. Données rejetées — relancez ou éditez manuellement."
                 self._record_diagnostic(prospect, None, error=mismatch)
+            elif self._found_nothing(data):
+                if had_completed_enrichment:
+                    record.status = EnrichmentStatus.COMPLETED.value
+                else:
+                    record.status = EnrichmentStatus.FAILED.value
+                    record.error_message = self._nothing_found_reason(data)
+                self._record_diagnostic(prospect, data, error=None)
             else:
                 # Facebook photos arrive as short-lived signed fbcdn URLs; the scraper captured the
                 # usable ones as base64 data URIs. Move them to permanent R2 storage now, so the record
@@ -338,6 +350,20 @@ class EnrichmentService:
 
         db.refresh(record)
         return record
+
+    @staticmethod
+    def _found_nothing(data: EnrichmentData) -> bool:
+        """Whether a scrape brought nothing at all: no rich field, no email, no phone, no website."""
+        return _count_filled_fields(data) == 0 and not (data.emails or data.phone or data.website)
+
+    @staticmethod
+    def _nothing_found_reason(data: EnrichmentData) -> str:
+        """Why an enrichment holds nothing, in the words the drawer shows."""
+        if data.maps_listing_found is False:
+            return _NO_LISTING_REASON
+        if data.maps_listing_found:
+            return _EMPTY_LISTING_REASON
+        return _NOTHING_READ_REASON
 
     @staticmethod
     def _facebook_scrape_is_empty(prospect: ProspectDB, data: EnrichmentData) -> bool:

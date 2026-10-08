@@ -25,7 +25,7 @@ from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
 from services.decision_maker.normalize import company_similarity, company_tokens, fold
-from services.prospect_search.business_name import BusinessName
+from services.prospect_search.business_name import COMMON_NAME_WORDS, NAME_LINK_WORDS, BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.facebook_page_results import FacebookPageResults
@@ -85,42 +85,6 @@ _DISTINCTIVE_TOKEN_MIN_CHARS: int = 5
 _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
-
-# Words too common in business names to tell one business from another.
-_COMMON_NAME_WORDS: frozenset[str] = frozenset(
-    {
-        "garage",
-        "jardin",
-        "jardins",
-        "paysage",
-        "paysages",
-        "paysagiste",
-        "service",
-        "services",
-        "entretien",
-        "entreprise",
-        "automobile",
-        "automobiles",
-        "plomberie",
-        "chauffage",
-        "sanitaire",
-        "electricite",
-        "electricien",
-        "atelier",
-        "artisan",
-        "renovation",
-        "travaux",
-        "centre",
-        "multiservices",
-        "amenagement",
-        "amenagements",
-        "exterieurs",
-    }
-)
-
-_NAME_LINK_WORDS: frozenset[str] = frozenset(
-    {"du", "de", "des", "la", "le", "les", "et", "di", "da", "del", "von", "und", "and", "the", "of"}
-)
 
 # Outlets of these networks are run by a group: the person reading the email does not decide.
 _CHAIN_NAME_MARKERS: tuple[str, ...] = (
@@ -497,8 +461,8 @@ class CandidateVerifier:
         return {
             token
             for token in company_tokens(facts.name)
-            if token not in _NAME_LINK_WORDS
-            and token not in _COMMON_NAME_WORDS
+            if token not in NAME_LINK_WORDS
+            and token not in COMMON_NAME_WORDS
             and token not in trade_words
             and token not in town_words
         }

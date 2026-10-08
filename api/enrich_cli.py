@@ -104,11 +104,21 @@ def _is_meaningful(data: EnrichmentData) -> bool:
     )
 
 
-async def _persist(api: OperatorApi, prospect_id: int, data: EnrichmentData) -> str:
-    """Post the scraped data to the API for persistence; return the resulting enrichment status."""
+def _is_worth_persisting(data: EnrichmentData) -> bool:
+    """True when the scrape found something, or Maps answered for sure about the business's place.
+
+    A blocked or unread scrape is not posted, so it never overwrites good data. A sure answer is, even
+    empty: the API then records why the enrichment holds nothing, and still reads the registers.
+    """
+    return _is_meaningful(data) or data.maps_listing_found is not None
+
+
+async def _persist(api: OperatorApi, prospect_id: int, data: EnrichmentData) -> dict[str, object]:
+    """Post the scraped data to the API for persistence; return the resulting enrichment record."""
     response = await api.post(f"/prospects/{prospect_id}/enrichment/run", json=asdict(data))
     response.raise_for_status()
-    return str(response.json().get("status") or "unknown")
+    record = response.json()
+    return record if isinstance(record, dict) else {}
 
 
 async def _enrich_one(api: OperatorApi, prospect: dict[str, object]) -> dict[str, object]:
@@ -120,15 +130,23 @@ async def _enrich_one(api: OperatorApi, prospect: dict[str, object]) -> dict[str
     except Exception as exc:
         return {"prospect_id": prospect_id, "name": name, "status": "scrape_failed", "error": str(exc)}
 
-    if not _is_meaningful(data):
+    if not _is_worth_persisting(data):
         return {"prospect_id": prospect_id, "name": name, "status": "empty", "photos": 0}
 
     try:
-        persisted_status = await _persist(api, prospect_id, data)
+        record = await _persist(api, prospect_id, data)
     except Exception as exc:
         return {"prospect_id": prospect_id, "name": name, "status": "persist_failed", "error": str(exc)}
 
-    return {"prospect_id": prospect_id, "name": name, "status": persisted_status, "photos": len(data.photos)}
+    row: dict[str, object] = {
+        "prospect_id": prospect_id,
+        "name": name,
+        "status": str(record.get("status") or "unknown"),
+        "photos": len(data.photos),
+    }
+    if record.get("error_message"):
+        row["error"] = record["error_message"]
+    return row
 
 
 async def _cleanup() -> None:

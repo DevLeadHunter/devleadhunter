@@ -22,6 +22,7 @@ from typing import Any
 
 from scrappers import scrape_signals
 from scrappers.google_scraper import GoogleScraper
+from scrappers.maps_search_results import ListedPlace, MapsSearchOutcome, MapsSearchResults
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
@@ -59,6 +60,7 @@ class EnrichmentData:
     # Phone found on the page (Facebook « Coordonnées ») — backfills the prospect when it
     # has none. Transport-only: not persisted on the enrichment record (no column).
     phone: str | None = None
+    maps_listing_found: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dict (matches the ProspectEnrichment columns)."""
@@ -432,14 +434,26 @@ _CLOSE_GALLERY_JS = r"""
 })()
 """
 
-# Click the first result when a « nom + ville » search lands on the results feed instead of a place.
-_OPEN_FIRST_PLACE_JS = r"""
+_SEARCH_LANDING_JS = r"""
 (() => {
-    const link = document.querySelector("div[role='feed'] a[href*='/maps/place/']");
-    if (link) { link.removeAttribute('target'); link.click(); return true; }
-    return false;
+    if (document.querySelector("div[role='feed'] a[href*='/maps/place/'][aria-label]")) return 'results';
+    const title = ((document.querySelector('h1') || {}).innerText || '').trim();
+    const isResultsHeading = /^(résultats|results)$/i.test(title);
+    if (title && !isResultsHeading && !location.hostname.startsWith('consent.')) return 'place';
+    return '';
 })()
 """
+
+_LISTED_PLACES_JS = r"""
+JSON.stringify([...document.querySelectorAll("div[role='feed'] a[href*='/maps/place/'][aria-label]")].map((link) => ({
+    name: (link.getAttribute('aria-label') || '').trim(),
+    link: link.href,
+})))
+"""
+
+_PLACE_ADDRESS_SELECTORS: list[str] = ["button[data-item-id='address']", "[data-item-id^='address']"]
+_SEARCH_LANDING_TIMEOUT_S: float = 15.0
+_RESULTS_LIST_RENDER_DELAY_S: float = 1.0
 
 # A « complete » place panel carries a rating+review count or an « Avis » tab. Google intermittently
 # serves logged-out scrapers a STRIPPED panel (no count, only Présentation / À propos) — but that
@@ -817,7 +831,7 @@ class EnrichmentScraper:
         if NODRIVER_AVAILABLE:
 
             async def task() -> EnrichmentData:
-                return await self._enrich_nodriver(business_name, city, google_maps_url)
+                return await self._enrich_nodriver(business_name, city, google_maps_url, country)
 
             data = await run_nodriver_task(task, timeout=180)
         else:
@@ -912,6 +926,7 @@ class EnrichmentScraper:
         business_name: str,
         city: str | None,
         google_maps_url: str | None,
+        country: str,
     ) -> EnrichmentData:
         """nodriver implementation: open the place panel and extract rich data."""
         browser = NodriverBrowser(ephemeral=True)
@@ -923,7 +938,11 @@ class EnrichmentScraper:
                 url = f"https://www.google.com/maps/search/{query}"
 
             tab = await browser.get_tab(url)
-            if not await self._open_place_panel(tab):
+            listing = await self._open_listing(tab, business_name=business_name, city=city, country=country)
+            if listing is MapsSearchOutcome.NOT_LISTED:
+                logger.info("Enrichment: Maps lists no place named like %s in %s", business_name, city)
+                return EnrichmentData(maps_listing_found=False)
+            if listing is not MapsSearchOutcome.OPENED:
                 logger.info("Enrichment: place panel not found for %s", business_name)
                 try:
                     page_html = await NodriverDom.evaluate(tab, "document.documentElement.outerHTML", by_value=True)
@@ -964,6 +983,7 @@ class EnrichmentScraper:
                 await self._open_place_panel(tab)
 
             data = await self._extract_with_retries(tab, business_name=business_name, city=city)
+            data.maps_listing_found = True
             if place_title:
                 data.place_title = place_title
 
@@ -1047,14 +1067,88 @@ class EnrichmentScraper:
         return False
 
     async def _open_place_panel(self, tab: Any) -> bool:
-        """Dismiss consent, open the first result when on a feed, and wait for the place h1."""
+        """Dismiss consent and wait for the place h1."""
         await GoogleScraper.accept_cookies(tab)
         await GoogleScraper.accept_web_modal(tab)
-        if "/maps/place/" not in NodriverDom.tab_url(tab):
-            opened = await NodriverDom.evaluate(tab, _OPEN_FIRST_PLACE_JS, by_value=True)
-            if opened is True:
-                await asyncio.sleep(1.0)
         return await NodriverDom.wait_for_selector(tab, "h1", timeout_s=12.0)
+
+    async def _open_listing(self, tab: Any, *, business_name: str, city: str | None, country: str) -> MapsSearchOutcome:
+        """
+        Open the business's place, and only it.
+
+        Maps opens a place itself when it is sure of the search; otherwise it lists results, and only a
+        listed place carrying the business's name, in the business's town, is opened. The list's own
+        heading (« Résultats ») is never read as a place.
+
+        Args:
+            tab: The tab on the Maps search or place URL.
+            business_name: The prospect's business name.
+            city: The prospect's town, if known.
+            country: The prospect's country, deciding how an address is read.
+
+        Returns:
+            OPENED when a place panel is open, NOT_LISTED when Maps lists no place of that name in that
+            town, UNREACHABLE when Maps showed neither a place nor a list.
+        """
+        await GoogleScraper.accept_cookies(tab)
+        await GoogleScraper.accept_web_modal(tab)
+        landing = await self._wait_for_search_landing(tab)
+        if landing == "place":
+            return MapsSearchOutcome.OPENED
+        if landing != "results":
+            return MapsSearchOutcome.UNREACHABLE
+        for place in MapsSearchResults.places_named_like(await self._read_listed_places(tab), business_name):
+            await NodriverDom.navigate(tab, place.link)
+            if not await self._open_place_panel(tab):
+                continue
+            address = await self._read_place_address(tab)
+            if MapsSearchResults.is_in_other_town(address, city=city, country=country):
+                logger.info("Enrichment: listed place « %s » is in another town (%s), passed over", place.name, address)
+                continue
+            return MapsSearchOutcome.OPENED
+        return MapsSearchOutcome.NOT_LISTED
+
+    async def _wait_for_search_landing(self, tab: Any) -> str:
+        """
+        Wait until the search shows a place or a results list, the list's later cards included.
+
+        Returns:
+            « place », « results », or '' when Maps showed neither in time.
+        """
+        deadline = asyncio.get_running_loop().time() + _SEARCH_LANDING_TIMEOUT_S
+        while asyncio.get_running_loop().time() < deadline:
+            landing = await NodriverDom.evaluate(tab, _SEARCH_LANDING_JS, by_value=True)
+            if landing == "results":
+                await asyncio.sleep(_RESULTS_LIST_RENDER_DELAY_S)
+                return "results"
+            if landing == "place":
+                return "place"
+            if "consent." in NodriverDom.tab_url(tab):
+                await GoogleScraper.accept_cookies(tab)
+            await asyncio.sleep(0.5)
+        return ""
+
+    @staticmethod
+    async def _read_listed_places(tab: Any) -> list[ListedPlace]:
+        """The places of the results list on screen, in the list's order, each once."""
+        raw = await NodriverDom.evaluate(tab, _LISTED_PLACES_JS, by_value=True)
+        try:
+            cards = json.loads(raw) if isinstance(raw, str) else []
+        except json.JSONDecodeError:
+            return []
+        places_by_link: dict[str, ListedPlace] = {}
+        for card in cards:
+            name, link = str(card.get("name") or "").strip(), str(card.get("link") or "").strip()
+            if name and link:
+                places_by_link.setdefault(link, ListedPlace(name=name, link=link))
+        return list(places_by_link.values())
+
+    @staticmethod
+    async def _read_place_address(tab: Any) -> str | None:
+        """The address the open place's panel shows, or None for a place listed without one."""
+        if not await NodriverDom.wait_for_selector(tab, _PLACE_ADDRESS_SELECTORS[0], timeout_s=3.0):
+            return None
+        return await NodriverDom.inner_text_chain(tab, _PLACE_ADDRESS_SELECTORS)
 
     async def _ensure_complete_panel(self, tab: Any, url: str) -> str:
         """Reload the place until Google serves the FULL panel, and return the place URL for re-anchors.

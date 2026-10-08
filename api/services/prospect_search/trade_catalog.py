@@ -240,6 +240,17 @@ class TradeCatalog:
         return _PROFILES
 
     @classmethod
+    def is_trade_word(cls, word: str) -> bool:
+        """Whether a word of a business name says a trade the catalog knows (« électrique », « paysagiste »)."""
+        folded_word = fold(word)
+        return any(
+            folded_word.startswith(keyword)
+            for profile in _PROFILES
+            for keyword in (*profile.category_keywords, *profile.aliases)
+            if " " not in keyword
+        )
+
+    @classmethod
     def resolve(cls, typed_trade: str) -> TradeProfile:
         """
         Find the profile of a trade typed by the user.

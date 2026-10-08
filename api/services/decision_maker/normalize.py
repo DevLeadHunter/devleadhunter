@@ -39,6 +39,8 @@ _COMPANY_NOISE: frozenset[str] = frozenset(
     }
 )
 
+_DOTTED_INITIAL_RE: re.Pattern[str] = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
+
 # Compact gender lookup for common French first names — used ONLY for the
 # « Bonjour M./Mme {Nom} » case (last name without first name). Deliberately
 # conservative: an unknown first name yields no gender, hence a neutral greeting.
@@ -233,6 +235,11 @@ def fold(value: str) -> str:
     return text.strip().lower()
 
 
+def town_key(town: str) -> str:
+    """Comparison key of a town: folded, letters and digits only (« Clermont-Ferrand » = « Clermont Ferrand »)."""
+    return re.sub(r"[^a-z0-9]", "", fold(town))
+
+
 def title_case_name(value: str | None) -> str | None:
     """Normalise a person-name fragment to clean title-case.
 
@@ -274,6 +281,11 @@ def infer_gender(first_name: str | None) -> str | None:
         if probe in _FEMALE_FIRST_NAMES:
             return "F"
     return None
+
+
+def join_dotted_initials(name: str) -> str:
+    """The name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
+    return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
 
 
 def company_tokens(name: str) -> set[str]:

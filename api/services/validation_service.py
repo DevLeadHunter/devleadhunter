@@ -314,11 +314,7 @@ class ValidationService:
         Returns:
             A human-readable French mismatch reason, or None when coherent.
         """
-        from services.decision_maker.normalize import company_similarity, fold
-
-        def city_key(city: str) -> str:
-            """Alphanumeric-only comparison key (« Clermont-Ferrand » = « Clermont Ferrand »)."""
-            return re.sub(r"[^a-z0-9]", "", fold(city))
+        from services.decision_maker.normalize import company_similarity, town_key
 
         if place_title:
             similarity = company_similarity(prospect_name, place_title)
@@ -331,7 +327,7 @@ class ValidationService:
                     f"La fiche Google Maps trouvée est dans un autre département "
                     f"({place_postal_code} au lieu de {prospect_postal_code}) — homonyme probable"
                 )
-        elif prospect_city and place_city and city_key(place_city) != city_key(prospect_city):
+        elif prospect_city and place_city and town_key(place_city) != town_key(prospect_city):
             return f"La fiche Google Maps trouvée est à {place_city}, pas à {prospect_city} — homonyme probable"
 
         return None

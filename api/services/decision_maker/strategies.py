@@ -24,6 +24,7 @@ from services.decision_maker.normalize import (
     company_tokens,
     fold,
     infer_gender,
+    join_dotted_initials,
     split_registry_full_name,
     title_case_name,
 )
@@ -76,16 +77,10 @@ _TRADE_AND_LEGAL_FORM_WORDS: frozenset[str] = frozenset(
 )
 _MIN_REGISTRY_QUERY_CHARS = 3
 _MIN_TRADE_FREE_SIMILARITY = 0.75
-_DOTTED_INITIAL_RE = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
 
 
 class TradeName:
     """A business's trade name read the way the registry spells its legal name."""
-
-    @staticmethod
-    def with_initials_joined(name: str) -> str:
-        """The name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
-        return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
 
     @staticmethod
     def without_trade_words(name: str) -> str:
@@ -294,8 +289,7 @@ class RegistreGouvStrategy:
         """Best similarity between the prospect name, or its name without trade words, and the registry names."""
         names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
         similarity = max(
-            company_similarity(TradeName.with_initials_joined(context.company_name), TradeName.with_initials_joined(n))
-            for n in names
+            company_similarity(join_dotted_initials(context.company_name), join_dotted_initials(n)) for n in names
         )
         return max(similarity, RegistreGouvStrategy._trade_free_similarity(result, context))
 
@@ -312,8 +306,7 @@ class RegistreGouvStrategy:
             return 0.0
         names = [str(result.get("nom_complet") or ""), str(result.get("nom_raison_sociale") or "")]
         similarity = max(
-            company_similarity(TradeName.with_initials_joined(trade_free_name), TradeName.with_initials_joined(n))
-            for n in names
+            company_similarity(join_dotted_initials(trade_free_name), join_dotted_initials(n)) for n in names
         )
         return similarity if similarity >= _MIN_TRADE_FREE_SIMILARITY else 0.0
 
