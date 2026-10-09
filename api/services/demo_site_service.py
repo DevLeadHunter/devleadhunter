@@ -39,8 +39,8 @@ from services.demo_site_verification_service import (
 from services.demo_slug_guard import DemoSlugGuard
 from services.enrichment_service import enrichment_service
 from services.french_date_formatter import FrenchDateFormatter
-from services.photo_labeling_service import photo_labeling_service
-from services.photo_labels import is_card_worthy, labels_for_urls
+from services.photo_labeling_service import photo_family_for_category, photo_labeling_service
+from services.photo_labels import PHOTO_FAMILY_CRAFT, craft_labels_for_urls, is_card_worthy, labels_for_urls
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164
 from services.prospect_photo_storage_service import prospect_photo_storage
@@ -49,6 +49,11 @@ from services.service_card_suggestion_service import (
     ServiceCardsConfig,
     ServiceCardsUnavailableError,
     service_card_suggestion_service,
+)
+from services.site_personalization_service import (
+    BusinessFacts,
+    SitePersonalization,
+    site_personalization_service,
 )
 from services.sms_prospecting_rules import SmsProspectingRules
 from services.storyblok_service import (
@@ -64,6 +69,7 @@ from services.templates.site_content import (
     from_storyblok_site_content,
     usable_site_photos,
 )
+from services.trade_normalizer import TradeNormalizer
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +81,9 @@ _SERVICE_CARD_SOURCES: frozenset[str] = frozenset({"manual", "ai", "ai_auto"})
 # Budget for composing the cards with the AI at creation (photo labelling + writing) before the
 # generated cards are kept instead — a bulk generation must stay bounded.
 _AUTO_SERVICE_CARDS_TIMEOUT_SECONDS = 120.0
+# Same bound for the personalisation of a craft site at creation; its photo labelling gets a share of it.
+_AUTO_PERSONALIZATION_TIMEOUT_SECONDS = 150.0
+_PERSONALIZATION_LABELS_BUDGET_SECONDS = 60.0
 
 _storyblok_swap_locks: dict[int, asyncio.Lock] = {}
 
@@ -552,7 +561,7 @@ class DemoSiteService:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
                 allowed = set(pool)
                 images: dict[str, str] = {}
-                for key in ("faq", "aboutSecondary"):
+                for key in template_registry.section_image_slots(demo_site.template_id):
                     url = section_images.get(key)
                     if isinstance(url, str) and url.strip() and url.strip() in allowed:
                         images[key] = url.strip()
@@ -726,6 +735,158 @@ class DemoSiteService:
         overrides["services_source"] = "ai_auto"
         demo_site.section_overrides = overrides
         db.commit()
+
+    # ------------------------------------------------------------------ #
+    # Automatic personalisation (every craft template)
+    # ------------------------------------------------------------------ #
+
+    async def personalize_site(
+        self, db: Session, demo_site: DemoSite, enrichment: dict | None, *, replace_description: bool
+    ) -> dict | None:
+        """
+        Write the site in the business's own words and photos, and store it as the site's overrides.
+
+        The prospect's photos are labelled first (within a budget), then the hero sentence, the « À propos », the
+        cards, the realizations, the badge, the facts under the title and every photo slot are composed
+        (:mod:`services.site_personalization_service`). A food business keeps its own dish cards flow.
+
+        Args:
+            db: Active database session.
+            demo_site: The demo site, linked to a prospect.
+            enrichment: The prospect's enrichment as the site reads it.
+            replace_description: Whether the composed hero sentence replaces a sentence the site already has.
+
+        Returns:
+            The enrichment with the photos in their personalised order, or None when nothing was personalised.
+        """
+        prospect_id: int | None = demo_site.prospect_id
+        if not prospect_id or not enrichment or self._service_cards_config(demo_site).enabled:
+            return None
+        prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
+        record = enrichment_service.get_for_prospect(db, demo_site.user_id, prospect_id)
+        if prospect is None or record is None or photo_family_for_category(prospect.category) != PHOTO_FAMILY_CRAFT:
+            return None
+        trade: str = TradeNormalizer.normalize(prospect.category)
+        photos_before_labels: list[str] = usable_site_photos(enrichment)
+        await photo_labeling_service.ensure_labels(
+            db,
+            record,
+            photos_before_labels,
+            family=PHOTO_FAMILY_CRAFT,
+            trade=trade,
+            time_budget_seconds=_PERSONALIZATION_LABELS_BUDGET_SECONDS,
+        )
+        labelled: dict = {**enrichment, "photo_labels": record.photo_labels}
+        pool: list[str] = usable_site_photos(labelled)
+        labels = craft_labels_for_urls(record.photo_labels, pool)
+        facts = BusinessFacts(
+            business_name=demo_site.business_name,
+            trade=trade,
+            city=demo_site.city or prospect.city or "",
+            country=CountryProfiles.get(prospect.country).code,
+            boss_first_name=record.contact_first_name,
+            boss_last_name=record.contact_last_name,
+            description=str(record.description or ""),
+            services_listed=[str(service) for service in record.services or [] if str(service).strip()],
+            reviews=[
+                str(review.get("text")).strip()
+                for review in record.reviews or []
+                if isinstance(review, dict)
+                and str(review.get("text") or "").strip()
+                and isinstance(review.get("rating"), (int, float))
+                and review["rating"] >= 4
+            ],
+            rating=float(record.rating) if isinstance(record.rating, (int, float)) else None,
+            reviews_count=int(record.reviews_count) if isinstance(record.reviews_count, (int, float)) else None,
+        )
+        personalization = await site_personalization_service.personalize(
+            facts=facts, template_id=demo_site.template_id, pool=pool, labels=labels
+        )
+        if personalization is None:
+            return None
+        self._apply_personalization(demo_site, personalization, pool, replace_description=replace_description)
+        db.commit()
+        db.refresh(demo_site)
+        ordered: list[str] = self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot)
+        return {**labelled, "photos": ordered + [url for url in pool if url not in ordered]}
+
+    @staticmethod
+    def _apply_personalization(
+        demo_site: DemoSite, personalization: SitePersonalization, pool: list[str], *, replace_description: bool
+    ) -> None:
+        """
+        Store a personalisation as the site's overrides, photo order and hero sentence (left for the caller to commit).
+
+        Args:
+            demo_site: The demo site.
+            personalization: The composed content.
+            pool: The site's photos the personalisation chose from.
+            replace_description: Whether the hero sentence replaces a sentence the site already has.
+        """
+        overrides: dict = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
+        if personalization.about:
+            overrides["about"] = personalization.about
+        if personalization.service_cards:
+            overrides["services"] = personalization.service_cards
+            overrides["services_source"] = "ai_auto"
+        if personalization.portfolio:
+            overrides["portfolio"] = personalization.portfolio
+        if personalization.hero_badge:
+            overrides["heroBadge"] = personalization.hero_badge
+        if personalization.hero_points:
+            overrides["heroPoints"] = personalization.hero_points
+        if personalization.section_images:
+            existing_images = overrides.get("images") if isinstance(overrides.get("images"), dict) else {}
+            overrides["images"] = {**existing_images, **personalization.section_images}
+        overrides["personalization"] = {"source": "auto", "at": datetime.now(UTC).isoformat()}
+        demo_site.section_overrides = overrides
+        demo_site.image_order = personalization.photo_order if personalization.photo_order != pool else None
+        demo_site.image_pool_snapshot = list(pool)
+        if personalization.hero_sentence and (replace_description or not demo_site.description):
+            demo_site.description = personalization.hero_sentence
+
+    async def _personalize_at_creation(self, db: Session, demo_site: DemoSite, enrichment: dict | None) -> dict | None:
+        """
+        Personalise a site being created, best-effort and bounded: any failure keeps the template's content.
+
+        Args:
+            db: Active database session.
+            demo_site: The site being created.
+            enrichment: The prospect's enrichment.
+
+        Returns:
+            The enrichment with the photos in their personalised order, or None when nothing was personalised.
+        """
+        try:
+            return await asyncio.wait_for(
+                self.personalize_site(db, demo_site, enrichment, replace_description=False),
+                timeout=_AUTO_PERSONALIZATION_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            logger.warning("Automatic personalisation skipped for slug=%s: %s", demo_site.slug, exc)
+            return None
+
+    async def repersonalize_demo_site(self, db: Session, demo_site: DemoSite) -> DemoSite:
+        """
+        Compose the site's personalisation again from the business's current data and photos, then republish it.
+
+        The new proposal replaces the texts and photos of the previous one, a hero sentence included.
+
+        Args:
+            db: Active database session.
+            demo_site: The demo site.
+
+        Returns:
+            The regenerated site.
+
+        Raises:
+            ValueError: When the site cannot be personalised (no prospect, food template, no model answered).
+        """
+        enrichment = self._enrichment_dict_for_site(db, demo_site)
+        personalized = await self.personalize_site(db, demo_site, enrichment, replace_description=True)
+        if personalized is None:
+            raise ValueError("Ce site ne peut pas être personnalisé automatiquement pour le moment.")
+        return await self.regenerate_demo_site(db, demo_site)
 
     def get_site_images(self, db: Session, demo_site: DemoSite) -> dict[str, list[str]]:
         """Return the site's photo pool and its current placement order.
@@ -947,6 +1108,10 @@ class DemoSiteService:
         # Food-type templates: compose the « Nos spécialités » cards with the AI right away (best-effort,
         # bounded), so even a bulk-generated site never shows the truck under a dish title.
         await self._seed_auto_service_cards(db, demo_site, enrichment_dict)
+        # Craft templates: the business's own words and photos instead of the template's (best-effort, bounded).
+        personalized_enrichment = await self._personalize_at_creation(db, demo_site, enrichment_dict)
+        if personalized_enrichment is not None:
+            enrichment_dict = personalized_enrichment
         # Personalise the action colour from the prospect's logo at first generation, not only on regenerate.
         palette: dict[str, str] = self._apply_brand_color(
             theme or self._default_theme_for_template(template_id), template_id, enrichment_dict
@@ -959,7 +1124,7 @@ class DemoSiteService:
                 phone=phone,
                 email=normalized_email or "",
                 city=city,
-                description=description,
+                description=demo_site.description,
                 template_id=template_id,
                 collaborator_email=normalized_email or "",
                 preview_url=self.demo_url_for_slug(slug),

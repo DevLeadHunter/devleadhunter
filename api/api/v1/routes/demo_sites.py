@@ -484,6 +484,21 @@ async def regenerate_demo_site(
     return _serialize_demo_site(site, include_brand_color=True)
 
 
+@router.post("/{demo_site_id}/personalize", response_model=DemoSiteResponse)
+async def personalize_demo_site(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Write the site again in the business's own words and photos (a new proposal replaces the previous one)."""
+    site = _get_editable_demo_site(db, current_user.id, demo_site_id)
+    try:
+        site = await demo_site_service.repersonalize_demo_site(db, site)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _serialize_demo_site(site, include_brand_color=True)
+
+
 @router.post("/{demo_site_id}/storyblok-space", response_model=DemoSiteResponse)
 async def provision_demo_site_storyblok_space(
     demo_site_id: int,

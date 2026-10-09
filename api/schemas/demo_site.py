@@ -95,7 +95,7 @@ class DemoSiteUpdateRequest(BaseModel):
     services: list[DemoSiteServiceCard] | None = Field(default=None, max_length=12)
     # Where the saved cards come from (display only): manual edits, or an AI suggestion kept as-is.
     services_source: Literal["manual", "ai"] | None = None
-    # Curated FAQ / 2nd about photo URLs (stored in ``section_overrides["images"]``).
+    # The template's other photos, slot → URL (stored in ``section_overrides["images"]``).
     section_images: dict[str, str] | None = None
     hero_badge: str | None = Field(default=None, max_length=80)
     # « À propos » text written for this business (stored in ``section_overrides["about"]``, kept

@@ -30,7 +30,7 @@ from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
-from services.photo_labeling_service import photo_labeling_service, should_label_for_category
+from services.photo_labeling_service import photo_labeling_service
 from services.professional_license_service import professional_license_service
 from services.prospect_emails import sync_prospect_emails
 from services.prospect_photo_storage_service import prospect_photo_storage
@@ -341,9 +341,9 @@ class EnrichmentService:
 
         db.commit()
 
-        # Photo labelling (vision, best-effort, in the background) for food trades, so site generation
-        # and the specialties editor know which photos show a dish. Other trades label on demand.
-        if record.status == EnrichmentStatus.COMPLETED.value and should_label_for_category(prospect.category):
+        # Photo labelling (vision, best-effort, in the background), so site generation knows which photos show
+        # a dish, a job done or the premises, and which ones are flyers it must never show.
+        if record.status == EnrichmentStatus.COMPLETED.value:
             photo_labeling_service.schedule(prospect.id)
 
         # Decision-maker name resolution (best-effort, never blocks enrichment).

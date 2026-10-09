@@ -1,7 +1,7 @@
 """
 Photo labels: normalisation of the vision output (kind synonyms, prompt version), ranking of
-card-worthy photos, batch parsing, the time budget of a labelling run and the enrichment-time
-trigger (food trades only).
+card-worthy photos, batch parsing, the time budget of a labelling run, and the two label families
+(food trades, every other trade read as a craft).
 """
 
 import asyncio
@@ -9,16 +9,24 @@ import asyncio
 import pytest
 
 import services.photo_labeling_service as labeling_module
-from services.photo_labeling_service import PhotoLabelingService, should_label_for_category
+from services.photo_labeling_service import PhotoLabelingService, photo_family_for_category
 from services.photo_labels import (
+    CRAFT_KIND_PREMISES,
+    CRAFT_KIND_WORK,
+    CRAFT_PHOTO_LABEL_VERSION,
+    PHOTO_FAMILY_CRAFT,
+    PHOTO_FAMILY_FOOD,
+    PHOTO_KIND_LOGO_OR_FLYER,
     PHOTO_LABEL_VERSION,
     canonical_kind,
+    craft_labels_for_urls,
     is_card_worthy,
     is_current_label,
     is_unfit_for_card,
     labels_for_urls,
     normalize_label,
     rank_card_photos,
+    rank_craft_photos,
 )
 
 
@@ -117,14 +125,11 @@ def test_parse_batch_answer_falls_back_to_position_without_index() -> None:
 def test_label_photos_runs_batches_sequentially_saves_each_and_stops_at_the_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    urls = [f"https://cdn/{i}.jpg" for i in range(9)]  # 3 batches of 3
+    urls = [f"https://cdn/{i}.jpg" for i in range(3)]  # one photo per call
     calls: list[list[str]] = []
     clock = {"now": 0.0}
 
-    async def fake_resolve() -> str:
-        return "vision-model"
-
-    async def fake_request(self: PhotoLabelingService, batch: list[str], model: str) -> dict:
+    async def fake_request(self: PhotoLabelingService, batch: list[str], family: str, trade: str) -> dict:
         calls.append(list(batch))
         clock["now"] += 30.0  # each batch "takes" 30 s
         return {
@@ -133,7 +138,6 @@ def test_label_photos_runs_batches_sequentially_saves_each_and_stops_at_the_budg
         }
 
     monkeypatch.setattr(type(labeling_module.llm_service), "is_configured", property(lambda self: True))
-    monkeypatch.setattr(labeling_module.llm_service, "resolve_vision_model", fake_resolve)
     monkeypatch.setattr(PhotoLabelingService, "_request_labels", fake_request)
     monkeypatch.setattr(labeling_module.time, "monotonic", lambda: clock["now"])
     saved: list[int] = []
@@ -143,16 +147,16 @@ def test_label_photos_runs_batches_sequentially_saves_each_and_stops_at_the_budg
             urls, time_budget_seconds=45.0, on_batch_labelled=lambda batch: saved.append(len(batch))
         )
     )
-    # Batch 1 at t=0, batch 2 at t=30 (within budget); batch 3 would start at t=60, so it waits for the next call.
-    assert calls == [urls[0:3], urls[3:6]]
-    assert saved == [3, 3]
-    assert len(labels) == 6
+    # Photo 1 at t=0, photo 2 at t=30 (within budget); photo 3 would start at t=60, so it waits for the next call.
+    assert calls == [[urls[0]], [urls[1]]]
+    assert saved == [1, 1]
+    assert len(labels) == 2
 
 
 def test_label_batch_falls_back_to_one_call_per_photo_when_the_batch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     answers: list[list[str]] = []
 
-    async def fake_request(self: PhotoLabelingService, batch: list[str], model: str) -> dict:
+    async def fake_request(self: PhotoLabelingService, batch: list[str], family: str, trade: str) -> dict:
         answers.append(list(batch))
         if len(batch) > 1 or batch == ["bad"]:
             return {}
@@ -161,14 +165,64 @@ def test_label_batch_falls_back_to_one_call_per_photo_when_the_batch_fails(monke
         }
 
     monkeypatch.setattr(PhotoLabelingService, "_request_labels", fake_request)
-    labels = asyncio.run(PhotoLabelingService()._label_batch(["ok1", "bad", "ok2"], "vision-model"))
+    labels = asyncio.run(PhotoLabelingService()._label_batch(["ok1", "bad", "ok2"], "food", ""))
     assert answers == [["ok1", "bad", "ok2"], ["ok1"], ["bad"], ["ok2"]]
     assert set(labels) == {"ok1", "ok2"}
 
 
-def test_should_label_for_category_targets_food_trades() -> None:
-    assert should_label_for_category("Food truck")
-    assert should_label_for_category("Restaurant de tacos")
-    assert should_label_for_category("Traiteur")
-    assert not should_label_for_category("Plombier")
-    assert not should_label_for_category(None)
+def test_photo_family_for_category_reads_food_trades_and_crafts() -> None:
+    assert photo_family_for_category("Food truck") == PHOTO_FAMILY_FOOD
+    assert photo_family_for_category("Restaurant de tacos") == PHOTO_FAMILY_FOOD
+    assert photo_family_for_category("Traiteur") == PHOTO_FAMILY_FOOD
+    assert photo_family_for_category("Plombier") == PHOTO_FAMILY_CRAFT
+    assert photo_family_for_category(None) == PHOTO_FAMILY_CRAFT
+
+
+def test_a_craft_answer_is_read_as_craft_labels_even_as_a_bare_list() -> None:
+    answer = [
+        {"index": 1, "kind": "chantier", "description": "Haie taillée", "services": ["taille de haies"], "appeal": 4},
+        {"index": 2, "kind": "flyer", "description": "Carte de vœux", "texte": True, "appeal": 5},
+    ]
+
+    labels = PhotoLabelingService.parse_batch_answer(answer, ["u1", "u2"], family=PHOTO_FAMILY_CRAFT)
+
+    assert labels["u1"] == {
+        "family": PHOTO_FAMILY_CRAFT,
+        "kind": CRAFT_KIND_WORK,
+        "description": "Haie taillée",
+        "services": ["taille de haies"],
+        "text": False,
+        "appeal": 4,
+        "version": CRAFT_PHOTO_LABEL_VERSION,
+    }
+    assert labels["u2"]["kind"] == PHOTO_KIND_LOGO_OR_FLYER
+    assert labels["u2"]["text"] is True
+
+
+def test_craft_and_food_labels_never_read_each_other() -> None:
+    stored = {
+        "craft": {"family": PHOTO_FAMILY_CRAFT, "kind": "work", "appeal": 4, "version": CRAFT_PHOTO_LABEL_VERSION},
+        "food": {"kind": "dish", "appeal": 4, "version": PHOTO_LABEL_VERSION},
+    }
+
+    assert set(craft_labels_for_urls(stored, ["craft", "food"])) == {"craft"}
+    assert set(labels_for_urls(stored, ["craft", "food"])) == {"food"}
+
+
+def test_craft_photos_rank_showable_ones_by_preferred_kind_then_appeal_and_drop_flyers() -> None:
+    labels = {
+        "flyer": {"kind": PHOTO_KIND_LOGO_OR_FLYER, "appeal": 5},
+        "work": {"kind": CRAFT_KIND_WORK, "appeal": 3},
+        "premises": {"kind": CRAFT_KIND_PREMISES, "appeal": 2},
+        "work_best": {"kind": CRAFT_KIND_WORK, "appeal": 5},
+        "customer": {"kind": "customer", "appeal": 5},
+    }
+    urls = ["flyer", "work", "premises", "work_best", "customer", "unlabelled"]
+
+    assert rank_craft_photos(urls, labels, preferred_kinds=(CRAFT_KIND_PREMISES, CRAFT_KIND_WORK)) == [
+        "premises",
+        "work_best",
+        "work",
+        "unlabelled",
+    ]
+    assert rank_craft_photos(urls, labels, exclude={"work_best"}) == ["work", "premises", "unlabelled"]
