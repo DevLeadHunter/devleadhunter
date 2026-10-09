@@ -43,11 +43,13 @@ from schemas.campaign_results import (
     CampaignResultsReply,
     CampaignResultsResponse,
 )
+from schemas.campaign_videos import CampaignVideoRequestsCreate, CampaignVideoRequestsResponse, CampaignVideosResponse
 from services.auth_service import get_current_user
 from services.campaign_follow_up_rules import CampaignFollowUpRules
 from services.campaign_queue_service import CampaignQueueService
 from services.campaign_results_service import campaign_results_service
 from services.campaign_service import campaign_service
+from services.campaign_videos_service import CampaignVideosService
 from services.sms.send_window import france_send_window
 from services.sms.templates import find_sms_template
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
@@ -1099,6 +1101,29 @@ async def backfill_ready_prospects(
         )
     added = CampaignQueueService(db).backfill_ready_prospects(campaign)
     return {"success": True, "enqueued": added}
+
+
+@router.get("/{campaign_id}/videos", response_model=CampaignVideosResponse)
+async def get_campaign_videos(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignVideosResponse:
+    """Where the videos of the campaign's demo sites stand, and whether the owner's PC is on to build them."""
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    return CampaignVideosService.summarize(db, campaign)
+
+
+@router.post("/{campaign_id}/videos/requests", response_model=CampaignVideoRequestsResponse)
+async def request_campaign_videos(
+    campaign_id: int,
+    payload: CampaignVideoRequestsCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignVideoRequestsResponse:
+    """Ask the owner's PC for the videos the campaign's demo sites lack (``redo``: for all of them)."""
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    return CampaignVideosService.request_videos(db, campaign, redo=payload.redo)
 
 
 @router.get("/{campaign_id}/stats", response_model=CampaignStats)

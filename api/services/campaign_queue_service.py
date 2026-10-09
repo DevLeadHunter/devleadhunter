@@ -435,6 +435,37 @@ class CampaignQueueService:
             for template in (template_a, template_b)
         )
 
+    def uses_site_video(self, campaign: Campaign) -> bool:
+        """
+        Whether the campaign's messages carry the prospect's site video (``{lien_video}`` / ``{vignette_video}``).
+
+        An email campaign carries it only while its « Joindre la vidéo » switch is on, through its first email or
+        any relance; an SMS campaign, through its first-contact template or a relance.
+
+        Args:
+            campaign: The campaign to inspect.
+
+        Returns:
+            True when a message of the campaign shows the video.
+        """
+        if campaign.channel == "sms":
+            template_keys: list[str] = [campaign.sms_template_key or DEFAULT_FIRST_CONTACT_KEY]
+            template_keys.extend(step.sms_template_key for step in campaign.follow_ups if step.sms_template_key)
+            sms_templates: list[SmsTemplate | None] = [find_sms_template(key) for key in template_keys]
+            return any(template is not None and template.uses(SmsVariables.VIDEO_LINK) for template in sms_templates)
+        if not campaign.include_video:
+            return False
+        template_a: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.template_id) if campaign.template_id else None
+        )
+        template_b: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.ab_template_id_b) if campaign.ab_template_id_b else None
+        )
+        return any(
+            self._template_uses_video(template)
+            for template in self._campaign_email_templates(campaign, template_a, template_b)
+        )
+
     def _enqueue_single_ready_prospect(self, campaign: Campaign, prospect_id: int) -> bool:
         """
         Append one pending J1 send for a now-ready prospect in one active campaign, if it qualifies.
@@ -2095,7 +2126,7 @@ class CampaignQueueService:
             stmt = stmt.where(EmailQueue.status == status)
         return self.db.execute(stmt.order_by(EmailQueue.scheduled_at.asc()).limit(limit).offset(offset)).scalars().all()
 
-    def _active_demos_by_prospect(self, prospect_ids: list[int], user_id: int) -> dict[int, DemoSite]:
+    def active_demos_by_prospect(self, prospect_ids: list[int], user_id: int) -> dict[int, DemoSite]:
         """
         Map each prospect to its latest ACTIVE demo site in a single query (no N+1).
 
@@ -2168,7 +2199,7 @@ class CampaignQueueService:
             .all()
         )
 
-        demos: dict[int, DemoSite] = self._active_demos_by_prospect([i.prospect_id for i in items], user_id)
+        demos: dict[int, DemoSite] = self.active_demos_by_prospect([i.prospect_id for i in items], user_id)
 
         forecast: list[dict[str, object]] = []
         for item in items:
