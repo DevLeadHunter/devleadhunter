@@ -325,6 +325,26 @@ class DemoSiteService:
         return apply_section_overrides(content, demo_site.section_overrides, enrichment)
 
     @staticmethod
+    def hero_line(demo_site: DemoSite) -> str:
+        """
+        The sentence under the site's title (« Phrase d'accroche » in Storyblok), as the prospect reads it.
+
+        The video's editor demo retypes it, so it is the stored line, written for this business and worded
+        the local way; the trade default only for a site whose content holds none.
+
+        Args:
+            demo_site: The demo site.
+
+        Returns:
+            The hero sentence.
+        """
+        content: object = demo_site.content_json
+        stored_line: object = content.get("subtitle") if isinstance(content, dict) else None
+        if isinstance(stored_line, str) and stored_line.strip():
+            return stored_line.strip()
+        return template_registry.default_subtitle(demo_site.template_id, demo_site.city or "votre secteur")
+
+    @staticmethod
     def _apply_brand_color(
         palette: dict[str, str],
         template_id: str,

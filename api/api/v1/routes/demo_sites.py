@@ -56,7 +56,6 @@ from services.service_card_suggestion_service import ServiceCardsUnavailableErro
 from services.site_export_service import site_export_service
 from services.site_legal import site_legal_notice_service
 from services.storyblok_service import StoryblokProvisionError, storyblok_service
-from services.templates.registry import default_subtitle
 from services.video_pipeline import VideoGenerationError
 
 logger = logging.getLogger(__name__)
@@ -750,9 +749,7 @@ async def get_demo_site_video_background_context(
         site_seconds = min(max(presenter.site_seconds, _MIN_SITE_SCROLL_SECONDS), total_seconds)
     else:
         site_seconds = max(_MIN_SITE_SCROLL_SECONDS, total_seconds - _EDITOR_SEQUENCE_BUDGET_SECONDS)
-    # Trade-aware hero line typed in the editor demo, so a landscaper site never shows
-    # a barber phrase (the previous hardcoded one). Falls back inside the sidecar.
-    accroche = default_subtitle(site.template_id, site.city or "votre région")
+    accroche = demo_site_service.hero_line(site)
     # First name + presenter durations let the sidecar do the FULL montage locally
     # (greeting « Bonjour {prénom} », webcam PiP timing) — no VPS round-trip.
     first_name: str | None = None
