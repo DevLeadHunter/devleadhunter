@@ -514,6 +514,24 @@
           </div>
 
           <div class="card p-5">
+            <h2 class="text-sm font-semibold text-[var(--app-ink)]">Personnalisation automatique</h2>
+            <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
+              Réécrit le site avec les vraies données de l'entreprise : sa phrase d'accroche, son « À propos », ses
+              prestations et ses propres photos.
+            </p>
+            <button
+              type="button"
+              class="btn-secondary mt-3 h-10 text-xs"
+              :disabled="personalizing"
+              @click="personalizeSiteModalRef?.open()"
+            >
+              <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
+              {{ personalizing ? 'Personnalisation… (environ une minute)' : 'Personnaliser automatiquement' }}
+            </button>
+            <p v-if="personalizeError" class="mt-2 text-xs text-[var(--app-red)]">{{ personalizeError }}</p>
+          </div>
+
+          <div class="card p-5">
             <h2 class="text-sm font-semibold text-[var(--app-ink)]">Code du site</h2>
             <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
               Un zip prêt à lancer, avec le contenu du prospect : pour un travail sur mesure après la vente.
@@ -593,6 +611,14 @@
         confirm-text="Supprimer"
         cancel-text="Annuler"
         @confirm="handleDeleteVideoConfirmed"
+      />
+      <UiConfirmModal
+        ref="personalizeSiteModalRef"
+        title="Personnaliser automatiquement"
+        message="Les textes et les photos du site seront remplacés par une nouvelle proposition écrite à partir des vraies données de l'entreprise. Ce que vous y avez modifié à la main sera perdu. Continuer ?"
+        confirm-text="Personnaliser"
+        cancel-text="Annuler"
+        @confirm="handlePersonalize"
       />
       <UiConfirmModal
         ref="resetServiceCardsModalRef"
@@ -781,6 +807,9 @@ const deleting: Ref<boolean> = ref(false)
 const inviting: Ref<boolean> = ref(false)
 const refreshingCms: Ref<boolean> = ref(false)
 const exporting: Ref<boolean> = ref(false)
+const personalizing: Ref<boolean> = ref(false)
+const personalizeError: Ref<string | null> = ref(null)
+const personalizeSiteModalRef: Ref<{ open: () => void } | null> = ref(null)
 const generatingVideo: Ref<boolean> = ref(false)
 const videoPrepStatus: Ref<string> = ref('')
 const deletingVideo: Ref<boolean> = ref(false)
@@ -1236,6 +1265,27 @@ async function refreshCmsStatusSilently(): Promise<void> {
     site.value = await DemoSiteService.refreshDemoSiteCmsStatus(demoSiteId)
   } catch {
     // Best-effort : en cas d'échec on garde le statut déjà affiché.
+  }
+}
+
+/**
+ * Write the site again in the business's own words and photos, then reload its editors and its preview.
+ * @returns A promise resolved once the site is personalised, or its failure shown under the button.
+ */
+async function handlePersonalize(): Promise<void> {
+  if (!site.value) return
+  personalizing.value = true
+  personalizeError.value = null
+  try {
+    site.value = await DemoSiteService.personalizeDemoSite(demoSiteId)
+    await Promise.all([loadImages(), loadServiceCards()])
+    resetPendingChanges()
+    previewReloadNonce.value += 1
+    toast.success('Site réécrit avec les textes et les photos de l’entreprise')
+  } catch (error) {
+    personalizeError.value = error instanceof Error ? error.message : 'La personnalisation a échoué.'
+  } finally {
+    personalizing.value = false
   }
 }
 

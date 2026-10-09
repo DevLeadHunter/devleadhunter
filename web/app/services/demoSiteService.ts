@@ -358,6 +358,15 @@ export class DemoSiteService {
   }
 
   /**
+   * Write the site again in the business's own words and photos: a new proposal replaces its texts and photos.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The regenerated site.
+   */
+  static async personalizeDemoSite(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/personalize`, {})
+  }
+
+  /**
    * Fetch the site's photo pool and current placement (hero/about/gallery by order).
    * @param demoSiteId - Id of the demo site.
    */

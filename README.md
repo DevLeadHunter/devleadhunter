@@ -137,10 +137,11 @@ Pre-commit hook (root): `npm --prefix web run lint`
 
 ## Demo site builder
 
-Generate temporary client websites from templates (14-day hosting on `demo.dibodev.fr/{slug}`):
+Generate temporary client websites from templates (online on `demo.dibodev.fr/{slug}` for 21 days after the link is first sent):
 
 - Dashboard stepper: `/dashboard/demo-sites/create`
 - API: `POST /api/v1/demo-sites`
+- Automatic personalisation: every craft site is written at creation in the business's own words and photos (hero sentence, « À propos », service cards, realizations, photo slots), from its enrichment and the vision labels of its photos (`MISTRAL_API_KEY`, Groq as fallback); `POST /api/v1/demo-sites/{id}/personalize` (« Plus » panel of the site page) writes a new proposal
 - Public renderer: `demo-host/` (deploy to Vercel → `demo.dibodev.fr`)
 - Storyblok: set `STORYBLOK_MANAGEMENT_TOKEN` on the API for live CMS spaces
 
