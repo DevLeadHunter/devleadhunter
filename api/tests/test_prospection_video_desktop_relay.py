@@ -497,11 +497,12 @@ def test_the_dashboard_follows_the_video_while_it_waits_then_while_it_is_built(
     client = _client(db, demo_sites_router)
 
     before = client.get(f"{prefix}/{site.id}/video/state").json()
-    client.post(f"{prefix}/{site.id}/video/desktop-request")
+    asked = client.post(f"{prefix}/{site.id}/video/desktop-request").json()
     waiting = client.get(f"{prefix}/{site.id}/video/state").json()
     client.post(f"{prefix}/{site.id}/video/desktop-claim")
     building = client.get(f"{prefix}/{site.id}/video/state").json()
 
+    assert asked["storyblok_space_id"] == _STORYBLOK_SPACE_ID
     assert before["video_desktop_requested_at"] is None
     assert waiting["video_desktop_requested_at"] is not None
     assert waiting["is_video_desktop_build_started"] is False
@@ -521,6 +522,7 @@ def test_the_site_page_tells_a_request_waits_for_the_storyblok_space(db: Session
     asked = client.post(f"{prefix}/{site.id}/video/desktop-request").json()
     state = client.get(f"{prefix}/{site.id}/video/state").json()
 
+    assert asked["storyblok_space_id"] is None
     assert asked["is_video_waiting_for_storyblok_space"] is True
     assert state["is_video_waiting_for_storyblok_space"] is True
     assert client.get(f"{prefix}/video/desktop-requests").json() == []

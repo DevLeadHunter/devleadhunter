@@ -925,7 +925,7 @@ const isVideoWaitingForDesktop: ComputedRef<boolean> = computed((): boolean =>
   Boolean(site.value?.video_desktop_requested_at),
 )
 
-const hasStoryblokSpace: ComputedRef<boolean> = computed((): boolean => Boolean(site.value?.storyblok_editor_url))
+const hasStoryblokSpace: ComputedRef<boolean> = computed((): boolean => Boolean(site.value?.storyblok_space_id))
 
 const videoFailureMessage: ComputedRef<string | null> = computed((): string | null => {
   if (site.value?.video_status === 'failed') return site.value.video_error || 'La génération a échoué.'

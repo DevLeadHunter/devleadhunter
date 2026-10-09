@@ -229,6 +229,7 @@ class DemoSiteResponse(BaseModel):
     demo_url_live: bool = False
     local_demo_url: str | None = None
     verification_message: str | None = None
+    storyblok_space_id: int | None = None
     storyblok_editor_url: str | None = None
     storyblok_login_email: str | None = None
     storyblok_login_password: str | None = None

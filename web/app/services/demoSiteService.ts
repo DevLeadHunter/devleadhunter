@@ -183,6 +183,7 @@ export type DemoSite = {
   demo_url_live?: boolean
   local_demo_url?: string | null
   verification_message?: string | null
+  storyblok_space_id?: number | null
   storyblok_editor_url?: string | null
   storyblok_login_email?: string | null
   storyblok_login_password?: string | null
