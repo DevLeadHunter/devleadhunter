@@ -1,11 +1,8 @@
-name: 🚑 Recover API (restart + reset stuck video status)
+name: 🚑 Recover API (restart)
 
-# Manual recovery for the case where a demo-video generation (headless Chromium +
-# ffmpeg) blows past the service MemoryMax and the OOM killer takes the API down,
-# leaving demo_sites stuck in video_status='generating' (the failing status write
-# is lost when MySQL connections reset during the OOM). systemctl restart kills the
-# whole cgroup (uvicorn + any lingering ffmpeg/Chromium children), then the stuck
-# rows are cleared so the dashboard stops polling forever.
+# Manual recovery for the case where the API is stuck or was taken down by the OOM killer:
+# systemctl restart kills the whole cgroup (uvicorn + any lingering child process), then the
+# local health check confirms the API answers again.
 
 on:
   workflow_dispatch:
@@ -14,7 +11,7 @@ jobs:
   recover:
     runs-on: ubuntu-latest
     steps:
-      - name: 🔁 Restart service and clear stuck video generations (SSH)
+      - name: 🔁 Restart service (SSH)
         uses: appleboy/ssh-action@v0.1.6
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -24,13 +21,12 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
             SERVICE_NAME="devleadhunter-api.service"
 
             echo "===== memory before ====="
             free -m || true
 
-            echo "===== restart service (kills the whole cgroup: uvicorn + ffmpeg/Chromium) ====="
+            echo "===== restart service (kills the whole cgroup) ====="
             sudo systemctl restart "$SERVICE_NAME"
 
             echo "===== wait for local health ====="
@@ -42,41 +38,6 @@ jobs:
               fi
               sleep 5
             done
-
-            echo "===== reset demo_sites stuck in generating ====="
-            cd "$TARGET_DIR/api"
-            ../.venv/bin/python - <<'PY'
-            from sqlalchemy import create_engine, text
-
-            env = {}
-            with open(".env", encoding="utf-8") as handle:
-                for line in handle:
-                    line = line.strip()
-                    if not line or line.startswith("#") or "=" not in line:
-                        continue
-                    key, value = line.split("=", 1)
-                    env[key] = value
-
-            url = env["DATABASE_URL"]
-            if url.startswith("mysql://"):
-                url = "mysql+pymysql://" + url[len("mysql://") :]
-
-            engine = create_engine(url)
-            with engine.begin() as connection:
-                stuck = connection.execute(
-                    text("SELECT id, slug FROM demo_sites WHERE video_status = 'generating'")
-                ).fetchall()
-                for row in stuck:
-                    print(f"  stuck: #{row[0]} {row[1]}")
-                result = connection.execute(
-                    text(
-                        "UPDATE demo_sites SET video_status = 'failed', "
-                        "video_error = 'Interrompu par un OOM du serveur - relancez la generation' "
-                        "WHERE video_status = 'generating'"
-                    )
-                )
-                print(f"rows reset to failed: {result.rowcount}")
-            PY
 
             echo "===== memory after ====="
             free -m || true

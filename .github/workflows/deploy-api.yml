@@ -78,8 +78,8 @@ jobs:
             TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
             cd "$TARGET_DIR"
             sudo apt-get update -y --allow-releaseinfo-change || true
-            # ffmpeg porte tout le pipeline vidéo (mesure de durée, normalisation,
-            # montage) : sans lui l'API rend une erreur trompeuse sur chaque upload.
+            # ffmpeg porte la prise en charge des clips webcam (mesure de durée,
+            # normalisation) : sans lui l'API rend une erreur trompeuse sur chaque upload.
             sudo apt-get install -y python3-venv ffmpeg
             if [ ! -x ".venv/bin/python" ]; then
               python3 -m venv .venv
@@ -87,33 +87,7 @@ jobs:
             . .venv/bin/activate
             python -m pip install --upgrade pip wheel
             pip install -r api/requirements.txt --no-cache-dir
-            # pip n'installe QUE le binding python de Playwright : sans ces deux lignes,
-            # la vidéo de prospection échoue sur "Executable doesn't exist". install-deps
-            # (root) pose les libs système, install (utilisateur du service) télécharge
-            # Chromium dans ~/.cache/ms-playwright — les deux sont idempotents.
-            sudo "$TARGET_DIR/.venv/bin/python" -m playwright install-deps chromium
-            python -m playwright install chromium
             deactivate
-
-      # Le service ne lance Chromium qu'au moment de générer une vidéo : sans ce
-      # smoke test, une install ratée passe inaperçue jusqu'au premier prospect.
-      - name: 🎭 Verify Playwright browser (SSH)
-        uses: appleboy/ssh-action@v0.1.6
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
-            "$TARGET_DIR/.venv/bin/python" - <<'PY'
-            from playwright.sync_api import sync_playwright
-
-            with sync_playwright() as playwright:
-                playwright.chromium.launch(headless=True).close()
-            print("Playwright chromium OK")
-            PY
 
       - name: ⚙️ Create .env file (SSH)
         uses: appleboy/ssh-action@v0.1.6
