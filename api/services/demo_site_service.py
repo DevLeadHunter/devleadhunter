@@ -309,8 +309,12 @@ class DemoSiteService:
         return apply_section_overrides(content, demo_site.section_overrides, enrichment)
 
     def content_json_for_public(self, db: Session, demo_site: DemoSite) -> dict:
-        """Published demo payload with operator overrides layered on stored ``content_json``."""
+        """
+        Published demo payload with operator overrides layered on stored ``content_json``, and the prospect's
+        country, which a Storyblok round trip drops and the template needs to word its own labels.
+        """
         content: dict = dict(demo_site.content_json) if isinstance(demo_site.content_json, dict) else {}
+        content["country"] = CountryProfiles.get(self._prospect_country_for_site(db, demo_site)).code
         enrichment = self._enrichment_dict_for_site(db, demo_site)
         if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
             pool: list[str] = usable_site_photos(enrichment)

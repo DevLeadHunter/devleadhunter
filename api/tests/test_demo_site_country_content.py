@@ -128,3 +128,17 @@ def test_a_flat_site_carries_its_country_for_the_labels_its_layer_writes() -> No
     assert json.loads(_build("CA"))["country"] == "CA"
     assert json.loads(_build("CH"))["country"] == "CH"
     assert json.loads(_build("XX"))["country"] == "FR"
+
+
+def test_the_published_site_tells_its_country_even_after_a_storyblok_round_trip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Québec site synced back from Storyblok had lost « country » and showed « Devis gratuit » (9 Oct 2026)."""
+    monkeypatch.setattr(DemoSiteService, "_prospect_country_for_site", lambda self, db, site: "CA")
+    monkeypatch.setattr(DemoSiteService, "_enrichment_dict_for_site", lambda self, db, site: {})
+    site = _site(content_json={"businessName": "Paysagement Tremblay", "about": "Texte publié dans Storyblok."})
+
+    content = DemoSiteService().content_json_for_public(_FakeDB(), site)
+
+    assert content["country"] == "CA"
+    assert content["about"] == "Texte publié dans Storyblok."
