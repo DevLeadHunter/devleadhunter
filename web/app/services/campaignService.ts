@@ -10,6 +10,7 @@ import type {
   CampaignResultsReply,
   CampaignResultsResponse,
 } from '~/types/CampaignResults'
+import type { CampaignVideoRequestsResponse, CampaignVideosResponse } from '~/types/CampaignVideos'
 
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused' | 'cancelled'
 
@@ -465,5 +466,24 @@ export class CampaignService {
    */
   static async addManualReply(campaignId: number, payload: CampaignManualReplyPayload): Promise<CampaignResultsReply> {
     return ApiClient.post<CampaignResultsReply>(`/api/v1/campaigns/${campaignId}/replies`, payload)
+  }
+
+  /**
+   * Fetch where the videos of the campaign's demo sites stand, and whether the owner's PC is on to build them.
+   * @param campaignId - Campaign ID.
+   * @returns The sites sorted by the state of their video.
+   */
+  static async getVideos(campaignId: number): Promise<CampaignVideosResponse> {
+    return ApiClient.get<CampaignVideosResponse>(`/api/v1/campaigns/${campaignId}/videos`)
+  }
+
+  /**
+   * Ask the owner's PC for the videos the campaign's demo sites lack, or for all of them.
+   * @param campaignId - Campaign ID.
+   * @param redo - Also redo the videos already made with the clip in use.
+   * @returns How many videos were asked, and the sites left aside with their reason.
+   */
+  static async requestVideos(campaignId: number, redo: boolean): Promise<CampaignVideoRequestsResponse> {
+    return ApiClient.post<CampaignVideoRequestsResponse>(`/api/v1/campaigns/${campaignId}/videos/requests`, { redo })
   }
 }
