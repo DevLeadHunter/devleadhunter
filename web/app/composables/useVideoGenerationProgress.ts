@@ -23,7 +23,6 @@ export type UseVideoGenerationProgressReturn = {
   elapsedSeconds: Ref<number>
   errorMessage: Ref<string>
   start: (slug: string, finalStepLabel: string) => void
-  note: (message: string) => void
   finish: () => void
   fail: (message: string) => void
   close: () => void
@@ -117,7 +116,7 @@ export function useVideoGenerationProgress(
       if (!progress || !isRunning.value) return
       // Ignore the previous build's leftover entry (the new one overwrites it within seconds).
       if (progress.updatedAt * 1000 < startedAtMs - 2000) return
-      if (progress.step === 'error') return // the caller decides (fail / server fallback)
+      if (progress.step === 'error') return // the caller reports the failure
       const key: string = progress.step === 'done' ? 'finalize' : progress.step
       if (phaseKeys.includes(key) || key === 'finalize') currentStepKey.value = key
       if (progress.step !== lastLoggedStep && progress.message) {
@@ -125,14 +124,6 @@ export function useVideoGenerationProgress(
         appendLog(progress.message)
       }
     }, PROGRESS_POLL_MS)
-  }
-
-  /**
-   * Append an app-side event to the log (fallback, retry, upload…).
-   * @param message - What just happened.
-   */
-  function note(message: string): void {
-    appendLog(message)
   }
 
   /** Mark the build successful: every step turns done and the timers stop. */
@@ -166,5 +157,5 @@ export function useVideoGenerationProgress(
     stopTimers()
   })
 
-  return { isOpen, isRunning, steps, logLines, elapsedSeconds, errorMessage, start, note, finish, fail, close }
+  return { isOpen, isRunning, steps, logLines, elapsedSeconds, errorMessage, start, finish, fail, close }
 }

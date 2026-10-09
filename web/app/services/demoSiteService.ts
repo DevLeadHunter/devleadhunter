@@ -1,3 +1,4 @@
+import type { ProspectionVideoState, ProspectionVideoStatus } from '~/types/ProspectionVideo'
 import { ApiClient } from '~/services/api'
 import { daysUntil } from '~/utils/date'
 
@@ -200,30 +201,22 @@ export type DemoSite = {
   use_brand_color?: boolean
   /** Colour extracted from the prospect logo (detail/update responses), for the Logo pill. */
   brand_color?: string | null
-  video_status?: DemoSiteVideoStatus | null
+  video_status?: ProspectionVideoStatus | null
   video_error?: string | null
   video_generated_at?: string | null
   video_page_url?: string | null
   video_thumbnail_url?: string | null
-  /** Set while the video, asked from a device without the desktop app, waits for the owner's computer. */
+  /** Set while the video waits for the owner's computer, which builds it. */
   video_desktop_requested_at?: string | null
   is_video_desktop_build_started?: boolean
+  is_video_waiting_for_storyblok_space?: boolean
+  is_video_made_with_older_clip?: boolean
 }
 
-/** Lifecycle of a demo site's prospection video (null = never generated). */
-export type DemoSiteVideoStatus = 'pending' | 'generating' | 'ready' | 'failed'
-
 /** Where a site's prospection video stands: the part of the site followed while a generation runs. */
-export type DemoSiteVideoState = Pick<
-  DemoSite,
-  | 'video_status'
-  | 'video_error'
-  | 'video_generated_at'
-  | 'video_page_url'
-  | 'video_thumbnail_url'
-  | 'video_desktop_requested_at'
-  | 'is_video_desktop_build_started'
->
+export type DemoSiteVideoState = ProspectionVideoState & {
+  is_video_waiting_for_storyblok_space: boolean
+}
 
 /** A site whose prospection video waits for the owner's desktop app. */
 export type DemoSiteDesktopVideoRequest = {
@@ -404,54 +397,12 @@ export class DemoSiteService {
   }
 
   /**
-   * Start background generation of the prospection video (webcam + capture du site).
-   * @param demoSiteId - Id of the demo site.
-   * @returns The site with ``video_status`` set to ``pending``.
-   */
-  static async generateDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
-    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video`, {})
-  }
-
-  /**
    * Fetch the context the desktop sidecar needs to render the video background.
    * @param demoSiteId - Id of the demo site.
    * @returns The demo url, Storyblok space/story ids and target durations.
    */
   static async getVideoBackgroundContext(demoSiteId: number): Promise<DemoSiteVideoBackgroundContext> {
     return ApiClient.get<DemoSiteVideoBackgroundContext>(`${BASE_URL}/${demoSiteId}/video-background-context`)
-  }
-
-  /**
-   * Upload a desktop-produced video background (site scroll + Storyblok editor).
-   *
-   * The shared api client only handles JSON, so this posts the multipart body
-   * directly with the auth token.
-   * @param demoSiteId - Id of the demo site.
-   * @param clip - The rendered background mp4.
-   * @throws When the upload fails (message from the API when available).
-   */
-  static async uploadVideoBackground(demoSiteId: number, clip: Blob): Promise<void> {
-    const userStore: ReturnType<typeof useUserStore> = useUserStore()
-    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const formData: FormData = new FormData()
-    formData.append('file', clip, `${demoSiteId}-background.mp4`)
-    const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/video-background`, {
-      method: 'POST',
-      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
-      body: formData,
-    })
-    if (!response.ok) {
-      const errorText: string = await response.text().catch(() => '')
-      let errorMessage: string = `Envoi du fond vidéo échoué : ${response.statusText}`
-      if (errorText) {
-        try {
-          errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
-        } catch {
-          errorMessage = errorText
-        }
-      }
-      throw new Error(errorMessage)
-    }
   }
 
   /**
@@ -529,7 +480,7 @@ export class DemoSiteService {
   }
 
   /**
-   * Ask the owner's desktop app to build the prospection video, from a device that cannot build it.
+   * Ask the owner's desktop app to build the prospection video; a site without its Storyblok space waits for it.
    * @param demoSiteId - Id of the demo site.
    * @returns The site, waiting for the desktop app.
    * @throws Error carrying the API message when the video cannot be generated now.
@@ -548,7 +499,7 @@ export class DemoSiteService {
   }
 
   /**
-   * List the videos asked from another device that this desktop app has to build.
+   * List the site videos this desktop app has to build, their site ready to be filmed.
    * @returns The waiting sites, oldest request first.
    */
   static async listDesktopVideoRequests(): Promise<DemoSiteDesktopVideoRequest[]> {

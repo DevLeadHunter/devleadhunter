@@ -145,16 +145,9 @@ export type UseDragToReorderReturn<T> = {
   cancelDrag: () => Promise<void>
 }
 
-export type VideoGenerationCheckPace = {
-  untilMinutes: number
-  everySeconds: number
-}
-
-export type UseVideoGenerationChecksReturn = {
-  isTakingLongerThanExpected: Ref<boolean>
-  startChecks: () => void
-  stopChecks: () => void
-  checkNow: () => Promise<void>
+export type UseDesktopVideoRequestFollowUpReturn = {
+  startFollowUp: () => void
+  stopFollowUp: () => void
 }
 
 export type PullToRefreshOptions = {

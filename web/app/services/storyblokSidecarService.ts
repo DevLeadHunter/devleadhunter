@@ -4,10 +4,10 @@
  * The video *background* (linear site scroll + real Storyblok editor edit) can only
  * be produced on the user's machine, where their Storyblok session lives, so it runs
  * in the bundled sidecar. This service drives it: read the session state, open the
- * one-time login window, and produce + upload a site's background before the montage.
+ * one-time login window, and build + upload a site's whole video.
  *
  * Every call is a no-op (returns a neutral value) outside the desktop shell, so the
- * web build simply falls back to the site-only video.
+ * web build leaves the video to the owner's desktop app instead.
  *
  * @module services/storyblokSidecarService
  */
@@ -34,20 +34,11 @@ export type StoryblokSessionInfo = {
 }
 
 /**
- * Outcome of preparing a site's video background before generation.
- * - `uploaded`: the editor background was produced and stored.
- * - `needs_login`: the Storyblok session is expired/absent — the caller must prompt a reconnect.
- * - `skipped`: no editor sequence this time (transient), montage proceeds site-only.
- * - `unavailable`: not the desktop shell — the web build uses the server-side fallback.
- */
-export type BackgroundPreparation = 'uploaded' | 'needs_login' | 'skipped' | 'unavailable'
-
-/**
  * Outcome of a full desktop video build.
  * - `done`: the whole video was rendered locally and stored.
  * - `needs_login`: the Storyblok session is expired/absent — prompt a reconnect.
- * - `unavailable`: not the desktop shell — the caller uses the server-side path.
- * - `failed`: something went wrong locally — the caller falls back to the server.
+ * - `unavailable`: not the desktop shell — the caller asks the owner's desktop app instead.
+ * - `failed`: something went wrong locally — the caller shows why.
  */
 export type FullVideoBuildStatus = 'done' | 'needs_login' | 'unavailable' | 'failed'
 
@@ -145,7 +136,7 @@ export class StoryblokSidecarService {
    * Fetches the context + presenter clip, has the sidecar render everything with its
    * bundled ffmpeg, then uploads the finished video — the VPS is never involved.
    * Returns `unavailable` off the desktop, `needs_login` when Storyblok is expired,
-   * `failed` (with a message) on any local error so the caller can fall back.
+   * `failed` (with a message) on any local error so the caller can show it.
    * @param demoSiteId - The demo site to generate.
    * @returns The build outcome.
    */
@@ -273,50 +264,5 @@ export class StoryblokSidecarService {
     if (outcome.kind === 'timeout') return { status: 'failed', message: 'Génération trop longue — réessayez.' }
     if (outcome.reason === 'needs_login') return { status: 'needs_login' }
     return { status: 'failed', message: outcome.message }
-  }
-
-  /**
-   * Produce a site's video background on the sidecar and upload it to the API.
-   *
-   * Best-effort: returns `skipped` when there is no Storyblok session (the montage
-   * then composes without the editor sequence) and `unavailable` outside the desktop
-   * shell. Runs the browser capture, so it takes a minute or two.
-   *
-   * @param demoSiteId - The demo site to prepare.
-   * @returns What happened, for the caller to message the user.
-   */
-  static async prepareVideoBackground(demoSiteId: number): Promise<BackgroundPreparation> {
-    const info: Awaited<ReturnType<typeof getScraperSidecarInfo>> = await getScraperSidecarInfo()
-    if (!info) return 'unavailable'
-
-    const context: Record<string, unknown> = await DemoSiteService.getVideoBackgroundContext(demoSiteId)
-
-    let response: Response
-    try {
-      response = await fetch(`http://127.0.0.1:${info.port}/storyblok/background-clip`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'X-Sidecar-Token': info.token },
-        body: JSON.stringify(context),
-      })
-    } catch {
-      return 'skipped'
-    }
-
-    // 409 = no usable Storyblok session. reason=needs_login means the session is
-    // expired/absent → the caller prompts a reconnect (never a silent VPS fallback);
-    // any other 409 is a transient skip (montage proceeds site-only).
-    if (response.status === 409) {
-      const reason: string | null = await response
-        .json()
-        .then((body: { reason?: string }): string | null => body?.reason ?? null)
-        .catch((): null => null)
-      return reason === 'needs_login' ? 'needs_login' : 'skipped'
-    }
-    // Any other failure is surfaced so the cause (session, capture, upload) is visible.
-    if (!response.ok) throw new Error(await readSidecarError(response))
-
-    const clip: Blob = await response.blob()
-    await DemoSiteService.uploadVideoBackground(demoSiteId, clip)
-    return 'uploaded'
   }
 }
