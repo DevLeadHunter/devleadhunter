@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _STATUS_PENDING: str = "pending"
 _MISSING_SPACE_PASS_INTERVAL: timedelta = timedelta(minutes=10)
 _MISSING_SPACE_REFUSAL_PAUSE: timedelta = timedelta(hours=1)
-_NEW_SITE_WINDOW: timedelta = timedelta(days=7)
+_NEW_SITE_WINDOW: timedelta = timedelta(days=14)
 
 
 class StoryblokPreswapService:
@@ -67,7 +67,8 @@ class StoryblokPreswapService:
     def next_site_without_space(cls, db: Session, now: datetime) -> DemoSite | None:
         """
         The active site without a CMS space that needs one first: the one whose pending outreach comes soonest,
-        else the oldest site generated this week and never sent (older sites already went out without one).
+        else the oldest site generated these last two weeks and never sent (older sites already went out without
+        one; a campaign of 120 sites takes six nights at Storyblok's daily limit).
 
         Args:
             db: Database session.
