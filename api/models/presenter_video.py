@@ -29,6 +29,8 @@ class PresenterVideo(Base):
     take_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     # Exactly one take per user and module: the one every prospection video is built with.
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    # When the take became the one in use: the videos published before were made with an older take.
+    in_use_since: Mapped[datetime | None] = mapped_column(nullable=True)
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     duration_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

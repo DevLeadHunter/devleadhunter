@@ -1,9 +1,7 @@
 """Demo site routes for the website builder tunnel."""
 
 import logging
-import shutil
-import tempfile
-from pathlib import Path
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
@@ -14,13 +12,11 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
-from enums.demo_video_status import DemoVideoStatus
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.user import User
 from schemas.demo_site import (
     DemoSiteCreateRequest,
-    DemoSiteDesktopVideoFailureRequest,
     DemoSiteDesktopVideoRequestResponse,
     DemoSiteImagesResponse,
     DemoSiteImagesUpdateRequest,
@@ -36,10 +32,10 @@ from schemas.demo_site import (
     DemoSiteUpdateRequest,
     DemoSiteVideoStateResponse,
 )
+from schemas.prospection_video import ProspectionVideoDesktopFailureRequest
 from services.auth_service import get_current_active_user
 from services.brand_color_service import brand_color_service
 from services.demo_site_service import demo_site_service, reenqueue_campaigns_after_demo_ready
-from services.demo_video_desktop_relay import ALREADY_BUILDING_MESSAGE, demo_video_desktop_relay
 from services.demo_video_service import (
     demo_video_service,
     has_ready_video,
@@ -51,6 +47,8 @@ from services.email_variables import EmailVariables
 from services.presenter_video_service import presenter_video_service
 from services.prospect_phones import first_mobile_e164
 from services.prospect_search.desktop_app_presence import desktop_app_presence
+from services.prospection_video_desktop_relay import demo_video_desktop_relay
+from services.prospection_video_service import ALREADY_BUILDING_MESSAGE
 from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
@@ -86,11 +84,31 @@ class DemoSiteReviewRequest(BaseModel):
     reviewed: bool = Field(default=True)
 
 
-def _serialize_demo_site(site, *, include_brand_color: bool = False) -> DemoSiteResponse:
+def _serialize_demo_site(db: Session, site: DemoSite, *, include_brand_color: bool = False) -> DemoSiteResponse:
+    """
+    One site as the dashboard reads it, its video compared with the website clip in use.
+
+    Args:
+        db: Active database session.
+        site: The demo site.
+        include_brand_color: Whether to extract the prospect's logo colour (see :func:`_demo_site_response`).
+
+    Returns:
+        The site's response.
+    """
+    clip_in_use_since = demo_video_service.clip_in_use_since(db, site.user_id)
+    return _demo_site_response(site, clip_in_use_since, include_brand_color=include_brand_color)
+
+
+def _demo_site_response(
+    site: DemoSite, clip_in_use_since: datetime | None, *, include_brand_color: bool = False
+) -> DemoSiteResponse:
     """Build API response including theme extracted from content JSON.
 
     ``include_brand_color`` extracts the prospect's logo colour (a download) for the Logo/Template
     action-colour picker — only the single-site detail/update paths ask for it, never list views.
+    ``clip_in_use_since`` is when the website clip in use was chosen: a video published before was made with
+    an older clip.
     """
     payload = DemoSiteResponse.model_validate(site).model_dump()
     content = site.content_json if isinstance(site.content_json, dict) else {}
@@ -113,13 +131,15 @@ def _serialize_demo_site(site, *, include_brand_color: bool = False) -> DemoSite
     if has_ready_video(site):
         payload["video_page_url"] = video_page_url(site.slug)
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
-    payload["is_video_desktop_build_started"] = demo_video_desktop_relay.is_build_started(site)
+    payload["is_video_desktop_build_started"] = demo_video_service.is_desktop_build_started(site)
+    payload["is_video_waiting_for_storyblok_space"] = demo_video_service.is_waiting_for_storyblok_space(site)
+    payload["is_video_made_with_older_clip"] = demo_video_service.is_made_with_older_clip(site, clip_in_use_since)
     return DemoSiteResponse(**payload)
 
 
 def _refuse_while_desktop_builds(site: DemoSite) -> None:
-    """Refuse to replace, withdraw or delete a video the owner's desktop app is building: it would publish it anyway."""
-    if demo_video_desktop_relay.is_build_started(site):
+    """Refuse to withdraw or delete a video the owner's desktop app is building: it would publish it anyway."""
+    if demo_video_service.is_desktop_build_started(site):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_BUILDING_MESSAGE)
 
 
@@ -238,8 +258,9 @@ async def list_my_demo_sites(
 ) -> DemoSiteListResponse:
     """List demo sites created by the authenticated user."""
     items = demo_site_service.list_for_user(db, current_user.id)
+    clip_in_use_since = demo_video_service.clip_in_use_since(db, current_user.id)
     return DemoSiteListResponse(
-        items=[_serialize_demo_site(item) for item in items],
+        items=[_demo_site_response(item, clip_in_use_since) for item in items],
         total=len(items),
     )
 
@@ -272,7 +293,7 @@ async def create_demo_site(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/bulk")
@@ -364,7 +385,7 @@ async def verify_demo_site(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Demo site can no longer be verified")
 
     site = await demo_site_service.verify_and_update(db, site)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/{demo_site_id}/review", response_model=DemoSiteResponse)
@@ -384,7 +405,7 @@ async def review_demo_site(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
 
     site = demo_site_service.set_reviewed(db, site, payload.reviewed)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.get("/{demo_site_id}", response_model=DemoSiteResponse)
@@ -397,7 +418,7 @@ async def get_demo_site(
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
-    return _serialize_demo_site(site, include_brand_color=True)
+    return _serialize_demo_site(db, site, include_brand_color=True)
 
 
 @router.get("/{demo_site_id}/export")
@@ -468,7 +489,7 @@ async def update_demo_site(
         site = await demo_site_service.update_demo_site(db, site, **update_data)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_demo_site(site, include_brand_color=True)
+    return _serialize_demo_site(db, site, include_brand_color=True)
 
 
 @router.post("/{demo_site_id}/regenerate", response_model=DemoSiteResponse)
@@ -481,7 +502,7 @@ async def regenerate_demo_site(
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.regenerate_demo_site(db, site)
     reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
-    return _serialize_demo_site(site, include_brand_color=True)
+    return _serialize_demo_site(db, site, include_brand_color=True)
 
 
 @router.post("/{demo_site_id}/storyblok-space", response_model=DemoSiteResponse)
@@ -498,7 +519,7 @@ async def provision_demo_site_storyblok_space(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except StoryblokProvisionError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/{demo_site_id}/restore-images", response_model=DemoSiteResponse)
@@ -519,7 +540,7 @@ async def restore_demo_site_images(
     await demo_site_service.persist_content_images_to_r2(site)
     db.commit()
     db.refresh(site)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.get("/{demo_site_id}/images", response_model=DemoSiteImagesResponse)
@@ -546,7 +567,7 @@ async def update_demo_site_images(
     """Save a user-curated photo placement and regenerate the site so it goes live."""
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.set_site_images(db, site, payload.order)
-    return _serialize_demo_site(site, include_brand_color=True)
+    return _serialize_demo_site(db, site, include_brand_color=True)
 
 
 @router.get("/{demo_site_id}/service-cards", response_model=DemoSiteServiceCardsResponse)
@@ -583,25 +604,6 @@ async def suggest_demo_site_service_cards(
     return DemoSiteServiceCardsSuggestionResponse(**result)
 
 
-@router.post("/{demo_site_id}/video", response_model=DemoSiteResponse, status_code=status.HTTP_202_ACCEPTED)
-async def generate_demo_site_video(
-    demo_site_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-) -> DemoSiteResponse:
-    """Start background generation of the prospection video for a demo site."""
-    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
-    if not site:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
-    _refuse_while_desktop_builds(site)
-    try:
-        site = demo_video_service.request_generation(db, site, current_user.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    site = demo_video_desktop_relay.clear_request(db, site)
-    return _serialize_demo_site(site)
-
-
 @router.get("/{demo_site_id}/video/state", response_model=DemoSiteVideoStateResponse)
 async def get_demo_site_video_state(
     demo_site_id: int,
@@ -613,12 +615,15 @@ async def get_demo_site_video_state(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
     is_video_ready = has_ready_video(site)
+    clip_in_use_since = demo_video_service.clip_in_use_since(db, current_user.id)
     return DemoSiteVideoStateResponse(
         video_status=site.video_status,
         video_error=site.video_error,
         video_generated_at=site.video_generated_at,
         video_desktop_requested_at=site.video_desktop_requested_at,
-        is_video_desktop_build_started=demo_video_desktop_relay.is_build_started(site),
+        is_video_desktop_build_started=demo_video_service.is_desktop_build_started(site),
+        is_video_made_with_older_clip=demo_video_service.is_made_with_older_clip(site, clip_in_use_since),
+        is_video_waiting_for_storyblok_space=demo_video_service.is_waiting_for_storyblok_space(site),
         video_page_url=video_page_url(site.slug) if is_video_ready else None,
         video_thumbnail_url=public_thumbnail_url(site.slug, site.video_generated_at) if is_video_ready else None,
     )
@@ -629,7 +634,7 @@ async def list_desktop_video_requests(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[DemoSiteDesktopVideoRequestResponse]:
-    """Videos asked from another device that the caller's desktop app must build. Only the desktop app calls this."""
+    """Site videos the caller's desktop app must build, their site ready to be filmed. Only the desktop app calls this."""
     desktop_app_presence.mark_seen(current_user.id)
     return [
         DemoSiteDesktopVideoRequestResponse(
@@ -638,7 +643,7 @@ async def list_desktop_video_requests(
             business_name=site.business_name,
             requested_at=site.video_desktop_requested_at,
         )
-        for site in demo_video_desktop_relay.waiting_sites(db, current_user.id)
+        for site in demo_video_desktop_relay.waiting_subjects(db, current_user.id)
     ]
 
 
@@ -650,7 +655,7 @@ async def request_demo_site_video_from_desktop(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> DemoSiteResponse:
-    """Ask the owner's desktop app to build the prospection video, from a device that cannot build it."""
+    """Ask the owner's desktop app to build the prospection video; a site without its Storyblok space waits for it."""
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
@@ -658,7 +663,7 @@ async def request_demo_site_video_from_desktop(
         site = demo_video_desktop_relay.request(db, site, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.delete("/{demo_site_id}/video/desktop-request", response_model=DemoSiteResponse)
@@ -672,7 +677,7 @@ async def cancel_demo_site_video_desktop_request(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
     _refuse_while_desktop_builds(site)
-    return _serialize_demo_site(demo_video_desktop_relay.clear_request(db, site))
+    return _serialize_demo_site(db, demo_video_desktop_relay.clear_request(db, site))
 
 
 @router.post("/{demo_site_id}/video/desktop-claim", response_model=DemoSiteResponse)
@@ -689,13 +694,13 @@ async def claim_demo_site_video_desktop_request(
         demo_video_desktop_relay.claim(site)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/{demo_site_id}/video/desktop-failure", response_model=DemoSiteResponse)
 async def report_demo_site_video_desktop_failure(
     demo_site_id: int,
-    payload: DemoSiteDesktopVideoFailureRequest,
+    payload: ProspectionVideoDesktopFailureRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> DemoSiteResponse:
@@ -707,7 +712,7 @@ async def report_demo_site_video_desktop_failure(
         site = demo_video_desktop_relay.record_failure(db, site, payload.message)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.get("/{demo_site_id}/video-background-context")
@@ -721,7 +726,7 @@ async def get_demo_site_video_background_context(
     (linear site scroll + Storyblok editor edit), sized to the presenter clip.
 
     The background is produced on the desktop because it needs the owner's Storyblok
-    session; the sidecar posts it back via ``POST /{id}/video-background``.
+    session; the sidecar montages the whole video and the app posts it via ``POST /{id}/video-final``.
     """
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
@@ -775,28 +780,6 @@ async def get_demo_site_video_background_context(
     }
 
 
-@router.post("/{demo_site_id}/video-background", response_model=DemoSiteResponse)
-async def upload_demo_site_video_background(
-    demo_site_id: int,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-) -> DemoSiteResponse:
-    """Store a desktop-produced video background on R2 for the montage to pick up."""
-    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
-    if not site:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        temp_path = Path(buffer.name)
-    try:
-        await r2_storage.upload_file_async(temp_path, r2_storage.website_background_key(site.slug), "video/mp4")
-    finally:
-        temp_path.unlink(missing_ok=True)
-    return _serialize_demo_site(site)
-
-
 @router.post("/{demo_site_id}/video-final", response_model=DemoSiteResponse)
 async def upload_demo_site_video_final(
     demo_site_id: int,
@@ -821,7 +804,7 @@ async def upload_demo_site_video_final(
     except VideoGenerationError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     site = demo_video_desktop_relay.clear_request(db, site)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.delete("/{demo_site_id}/video", response_model=DemoSiteResponse)
@@ -834,15 +817,10 @@ async def delete_demo_site_video(
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
-    if site.video_status == DemoVideoStatus.GENERATING.value:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Une génération est en cours — attendez qu'elle se termine.",
-        )
     _refuse_while_desktop_builds(site)
     site = demo_video_service.clear_video(db, site)
     site = demo_video_desktop_relay.clear_request(db, site)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/{demo_site_id}/invite-cms", response_model=DemoSiteResponse)
@@ -857,7 +835,7 @@ async def invite_demo_site_client_to_cms(
         site = await demo_site_service.invite_client_to_cms(db, site)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.post("/{demo_site_id}/refresh-cms-status", response_model=DemoSiteResponse)
@@ -871,7 +849,7 @@ async def refresh_demo_site_cms_status(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
     site = await demo_site_service.refresh_cms_collaborator_status(db, site)
-    return _serialize_demo_site(site)
+    return _serialize_demo_site(db, site)
 
 
 @router.delete("/{demo_site_id}", status_code=status.HTTP_204_NO_CONTENT)

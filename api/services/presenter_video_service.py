@@ -259,6 +259,8 @@ class PresenterVideoService:
         Returns:
             The take, now in use.
         """
+        if not take.is_active:
+            take.in_use_since = naive_utc_now()
         for candidate in self.list_takes(db, take.user_id, take.module):
             candidate.is_active = candidate.id == take.id
         db.commit()
@@ -673,6 +675,7 @@ class PresenterVideoService:
             module=module,
             take_number=(highest_take_number or 0) + 1,
             is_active=take_in_use is None,
+            in_use_since=naive_utc_now() if take_in_use is None else None,
             auto_generate=take_in_use.auto_generate if take_in_use is not None else auto_generate,
         )
         db.add(take)

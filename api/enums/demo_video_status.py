@@ -7,10 +7,8 @@ class DemoVideoStatus(str, Enum):
     """
     Lifecycle of a demo site's prospection video.
 
-    The column is NULL when no video was ever requested.
+    The column is NULL until the owner's PC publishes the video or gives it up.
     """
 
-    PENDING = "pending"
-    GENERATING = "generating"
     READY = "ready"
     FAILED = "failed"

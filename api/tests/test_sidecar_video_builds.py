@@ -99,12 +99,12 @@ def test_a_payload_that_is_not_json_is_refused() -> None:
     assert refusal.value.detail == "Demande de génération invalide (payload)."
 
 
-def test_the_background_clip_request_checks_its_slug_and_story() -> None:
+def test_the_site_build_request_checks_its_slug_and_story() -> None:
     with pytest.raises(ValidationError):
-        sidecar.StoryblokBackgroundClipRequest(**{**_SITE_CONTEXT, "slug": "../x"})
+        sidecar.SiteVideoBuildRequest(**{**_SITE_CONTEXT, "slug": "../x"})
     with pytest.raises(ValidationError):
-        sidecar.StoryblokBackgroundClipRequest(**{**_SITE_CONTEXT, "space_id": "287465/../1"})
-    assert sidecar.StoryblokBackgroundClipRequest(**_SITE_CONTEXT).site_seconds == 11.5
+        sidecar.SiteVideoBuildRequest(**{**_SITE_CONTEXT, "space_id": "287465/../1"})
+    assert sidecar.SiteVideoBuildRequest(**_SITE_CONTEXT).site_seconds == 11.5
 
 
 def _receptionist_request(slug: str) -> sidecar.DesktopVideoBuildRequest:

@@ -63,7 +63,6 @@ from services.prospect_search.service import prospect_search_service
 from services.scheduled_email_service import scheduled_email_service
 from services.send_queue_watchdog_service import run_send_queue_watchdog_loop
 from services.sms_automation_service import run_sms_automation_loop
-from services.video_generation_watchdog import video_generation_watchdog
 
 ensure_proactor_event_loop()
 
@@ -164,7 +163,6 @@ async def startup_event() -> None:
         run_send_queue_watchdog_loop(),
         run_sms_automation_loop(),
         scheduled_email_service.run_loop(),
-        video_generation_watchdog.run_forever(),
     ):
         task = asyncio.create_task(coro)
         _background_tasks.add(task)

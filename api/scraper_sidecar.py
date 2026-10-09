@@ -209,12 +209,6 @@ class StoryblokEditorSequence(BaseModel):
     hold_seconds: float = Field(default=1.0, ge=0)
 
 
-class StoryblokBackgroundClipRequest(StoryblokEditorSequence, SidecarVideoTarget):
-    """Everything the sidecar needs to render a prospect's video background."""
-
-    total_seconds: float | None = Field(default=None, gt=0)
-
-
 class DesktopVideoBuildRequest(SidecarVideoTarget):
     """A complete desktop build: the page to film, and the presenter clip's timings the montage needs."""
 
@@ -544,63 +538,6 @@ async def storyblok_logout() -> dict[str, bool]:
     await storyblok_login_helper.close()
     storyblok_session_service.logout()
     return {"logged_out": True}
-
-
-@app.post("/storyblok/background-clip", dependencies=[Depends(require_sidecar_token)])
-async def storyblok_background_clip(request: StoryblokBackgroundClipRequest) -> object:
-    """
-    Render the video background (linear site scroll + Storyblok editor edit).
-
-    Resolves the session cascade (machine browser → dedicated profile). Returns the
-    mp4 file; when no session is available, returns ``{"skipped": true}`` so the
-    caller composes the video without the editor sequence.
-    """
-    from fastapi.responses import FileResponse, JSONResponse
-    from starlette.background import BackgroundTask
-
-    from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
-    from services.storyblok_session_service import storyblok_session_service
-
-    # Dedicated in-app profile wins; machine (Firefox) seed is the fallback, skipped
-    # after an explicit logout — so the user really chooses the account.
-    seed, user_data_dir = storyblok_session_service.resolve_capture_source()
-    if seed is None and user_data_dir is None:
-        return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
-
-    work_dir = Path(tempfile.mkdtemp(prefix=f"sb-bg-{request.slug}-"))
-    output_path = work_dir / "background.mp4"
-    try:
-        await asyncio.to_thread(
-            storyblok_editor_clip_service.build_background,
-            demo_url=request.demo_url,
-            space_id=request.space_id,
-            story_id=request.story_id,
-            output_path=output_path,
-            seed=seed,
-            user_data_dir=user_data_dir,
-            accroche=request.accroche,
-            executable_path=_chrome_path or find_installed_chrome(),
-            site_seconds=request.site_seconds,
-            hold_seconds=request.hold_seconds,
-            total_seconds=request.total_seconds,
-            out_width=request.out_width,
-            out_height=request.out_height,
-            fps=request.fps,
-        )
-    except StoryblokEditorClipError as exc:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        message = str(exc)
-        # A session that expired mid-capture is a reconnect prompt, not a hard error.
-        if message.startswith("needs_login:"):
-            return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
-
-    return FileResponse(
-        output_path,
-        media_type="video/mp4",
-        filename=f"{request.slug}-background.mp4",
-        background=BackgroundTask(shutil.rmtree, work_dir, ignore_errors=True),
-    )
 
 
 @app.get("/video/build-progress", dependencies=[Depends(require_sidecar_token)])

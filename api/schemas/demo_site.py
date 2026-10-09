@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from schemas.prospection_video import ProspectionVideoStateResponse
 from schemas.site_legal_notice import SiteLegalNotice
 
 
@@ -254,6 +255,10 @@ class DemoSiteResponse(BaseModel):
     video_desktop_requested_at: datetime | None = None
     # Injected by the route: the desktop app took the request and is building the video.
     is_video_desktop_build_started: bool = False
+    # Injected by the route: the request waits for the site's Storyblok space, the video films its editor.
+    is_video_waiting_for_storyblok_space: bool = False
+    # Injected by the route: the video was published before the website clip in use was chosen.
+    is_video_made_with_older_clip: bool = False
     # Injected by the route when the video is ready (not model columns).
     video_page_url: str | None = None
     video_thumbnail_url: str | None = None
@@ -305,16 +310,10 @@ class DemoSiteListResponse(BaseModel):
     total: int
 
 
-class DemoSiteVideoStateResponse(BaseModel):
+class DemoSiteVideoStateResponse(ProspectionVideoStateResponse):
     """Where a site's prospection video stands, light enough to be read every few seconds."""
 
-    video_status: str | None = None
-    video_error: str | None = None
-    video_generated_at: datetime | None = None
-    video_desktop_requested_at: datetime | None = None
-    is_video_desktop_build_started: bool = False
-    video_page_url: str | None = None
-    video_thumbnail_url: str | None = None
+    is_video_waiting_for_storyblok_space: bool = False
 
 
 class DemoSiteDesktopVideoRequestResponse(BaseModel):
@@ -324,9 +323,3 @@ class DemoSiteDesktopVideoRequestResponse(BaseModel):
     slug: str
     business_name: str
     requested_at: datetime
-
-
-class DemoSiteDesktopVideoFailureRequest(BaseModel):
-    """Why the desktop app could not build a requested video."""
-
-    message: str = Field(min_length=1, max_length=1000)

@@ -129,6 +129,25 @@ def test_choosing_a_take_moves_the_next_videos_to_it(db: Session, storage: _Fake
     assert presenter_video_service.get_for_user(db, _OWNER.id).id == second.id
 
 
+def test_a_take_is_dated_when_it_comes_into_use_and_not_when_it_is_chosen_again(
+    db: Session, storage: _FakeStorage
+) -> None:
+    first = _import_take(db)
+    second = _import_take(db)
+    first_in_use_since = first.in_use_since
+
+    assert first_in_use_since is not None
+    assert second.in_use_since is None
+
+    presenter_video_service.activate_take(db, second)
+    second_in_use_since = second.in_use_since
+    presenter_video_service.activate_take(db, second)
+
+    assert second_in_use_since is not None and second_in_use_since >= first_in_use_since
+    assert second.in_use_since == second_in_use_since
+    assert presenter_video_service.get_for_user(db, _OWNER.id).in_use_since == second_in_use_since
+
+
 def test_the_take_in_use_goes_only_once_it_is_the_last_one(db: Session, storage: _FakeStorage) -> None:
     first = _import_take(db)
     second = _import_take(db)
