@@ -216,13 +216,16 @@ def test_craft_photos_rank_showable_ones_by_preferred_kind_then_appeal_and_drop_
         "premises": {"kind": CRAFT_KIND_PREMISES, "appeal": 2},
         "work_best": {"kind": CRAFT_KIND_WORK, "appeal": 5},
         "customer": {"kind": "customer", "appeal": 5},
+        "flowers": {"kind": "other", "appeal": 5},
+        "blurry": {"kind": "other", "appeal": 2},
     }
-    urls = ["flyer", "work", "premises", "work_best", "customer", "unlabelled"]
+    urls = ["flyer", "work", "premises", "work_best", "customer", "flowers", "blurry", "unlabelled"]
 
     assert rank_craft_photos(urls, labels, preferred_kinds=(CRAFT_KIND_PREMISES, CRAFT_KIND_WORK)) == [
         "premises",
         "work_best",
         "work",
+        "flowers",
         "unlabelled",
     ]
-    assert rank_craft_photos(urls, labels, exclude={"work_best"}) == ["work", "premises", "unlabelled"]
+    assert rank_craft_photos(urls, labels, exclude={"work_best"}) == ["flowers", "work", "premises", "unlabelled"]

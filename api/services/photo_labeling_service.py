@@ -137,8 +137,9 @@ _CRAFT_SYSTEM_PROMPT = (
     '{"photos": [{"index": 1, "kind": "work", "description": "…", "services": ["…"], "texte": false, '
     '"appeal": 4}]} avec exactement une entrée par photo, dans l\'ordre reçu.\n'
     "kind, une valeur parmi (en anglais, exactement) :\n"
-    "- work : un travail de l'entreprise, fini ou en cours (jardin aménagé, haie taillée, terrasse, clôture, "
-    "tableau électrique, luminaires posés, véhicule en réparation, moteur ouvert, coupe de cheveux réalisée)\n"
+    "- work : un travail de l'entreprise, fini ou en cours, ou ce qu'elle soigne (jardin aménagé, massif fleuri, "
+    "plantes, haie taillée, terrasse, clôture, tableau électrique, luminaires posés, véhicule en réparation, "
+    "moteur ouvert, coupe de cheveux réalisée)\n"
     "- premises : les locaux de l'entreprise (atelier, garage, salon, cabinet, entrepôt, façade, bureau, magasin)\n"
     "- team : le patron ou l'équipe en sujet principal, au travail ou en portrait\n"
     "- vehicle : les véhicules ou engins de l'entreprise (camionnette, utilitaire, mini-pelle, remorque)\n"
@@ -146,7 +147,7 @@ _CRAFT_SYSTEM_PROMPT = (
     "- customer : un client ou une personne étrangère à l'entreprise en sujet principal, un visage en gros plan\n"
     "- logo_or_flyer : logo, carte de visite, affiche, flyer, visuel promotionnel, carte de vœux, capture d'écran, "
     "document, photo couverte de texte\n"
-    "- other : tout le reste (paysage sans travail visible, photo floue ou sans sujet clair)\n"
+    "- other : tout le reste (une photo sans rapport avec le métier, floue ou sans sujet clair)\n"
     "description : une phrase en français de 120 caractères maximum, factuelle, qui dit précisément ce qu'on voit "
     "(« Haie de thuyas taillée au carré le long d'une allée en graviers »). N'invente rien que la photo ne montre "
     "pas.\n"

@@ -231,7 +231,8 @@ CRAFT_KINDS: frozenset[str] = frozenset(
 CRAFT_SHOWABLE_KINDS: frozenset[str] = frozenset(
     {CRAFT_KIND_WORK, CRAFT_KIND_PREMISES, CRAFT_KIND_TEAM, CRAFT_KIND_VEHICLE, CRAFT_KIND_EQUIPMENT}
 )
-CRAFT_PHOTO_LABEL_VERSION = 1
+CRAFT_PHOTO_LABEL_VERSION = 2
+MIN_APPEAL_OF_A_SHOWABLE_OTHER_PHOTO = 4
 
 _CRAFT_KIND_SYNONYMS: dict[str, str] = {
     "chantier": CRAFT_KIND_WORK,
@@ -338,8 +339,16 @@ def craft_labels_for_urls(photo_labels: Any, urls: list[str]) -> dict[str, dict[
 
 
 def is_showable_craft_photo(label: dict[str, Any] | None) -> bool:
-    """Whether a craft-labelled photo may appear on the site (never a flyer, a customer or a photo without subject)."""
-    return isinstance(label, dict) and str(label.get("kind", "")) in CRAFT_SHOWABLE_KINDS
+    """Whether a craft-labelled photo may appear on the site: never a flyer or a customer, an « other » only when good.
+
+    A well-made photo the vision could not file (a flower bed read as a landscape) still beats a stock photo.
+    """
+    if not isinstance(label, dict):
+        return False
+    kind = str(label.get("kind", ""))
+    if kind == PHOTO_KIND_OTHER:
+        return int(label.get("appeal", 0)) >= MIN_APPEAL_OF_A_SHOWABLE_OTHER_PHOTO
+    return kind in CRAFT_SHOWABLE_KINDS
 
 
 def has_text_overlay(label: dict[str, Any] | None) -> bool:
