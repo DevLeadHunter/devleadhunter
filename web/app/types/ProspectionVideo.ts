@@ -1,5 +1,7 @@
 export type ProspectionVideoStatus = 'ready' | 'failed'
 
+export type ProspectionVideoStatusTone = 'waiting' | ProspectionVideoStatus
+
 export type ProspectionVideoState = {
   video_status: ProspectionVideoStatus | null
   video_error: string | null

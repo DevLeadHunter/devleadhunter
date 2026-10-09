@@ -331,13 +331,7 @@
                           {{ copied ? 'Lien copié !' : 'Copier le lien vidéo' }}
                         </button>
                         <template v-if="!isVideoWaitingForDesktop">
-                          <p
-                            v-if="site.is_video_made_with_older_clip"
-                            class="flex items-center gap-1.5 text-xs text-[var(--app-accent-ink)]"
-                          >
-                            <UIcon name="i-lucide-history" class="h-3.5 w-3.5 shrink-0" />
-                            Faite avec un ancien clip
-                          </p>
+                          <UiVideoMadeWithOlderClipNotice v-if="site.is_video_made_with_older_clip" />
                           <button
                             type="button"
                             class="btn-secondary w-full text-xs"
@@ -637,6 +631,7 @@ import type { AtelierTool } from '~/types/AtelierToolSheet'
 import { filterSelectableTemplates, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 import type { ServiceCardDraft } from '~/types/ServiceCardsEditor'
 import type { TemplatePreviewDevice, TemplateThemeColorKey } from '~/types/TemplatePicker'
+import type { ProspectionVideoStatusTone } from '~/types/ProspectionVideo'
 import type { ComponentPublicInstance, ComputedRef, Ref } from 'vue'
 import type {
   DemoSite,
@@ -664,6 +659,13 @@ import { ServiceCards } from '~/utils/serviceCards'
 import { useAtelierToolSheet } from '~/composables/useAtelierToolSheet'
 import { ATELIER_PREVIEW_DEVICES } from '~/constants/atelierPreviewDevices'
 import { useCoarsePointer } from '~/composables/useCoarsePointer'
+import { ProspectionVideoLabels } from '~/utils/prospectionVideoLabels'
+
+const VIDEO_STATUS_CLASSES: Record<ProspectionVideoStatusTone, string> = {
+  waiting: 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]',
+  ready: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
+  failed: 'bg-[var(--app-red)]/20 text-[var(--app-red)]',
+}
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth', shouldFillDashboardViewport: true })
 
@@ -922,36 +924,22 @@ const previewMessage: ComputedRef<Record<string, unknown>> = computed(
 )
 
 const isVideoWaitingForDesktop: ComputedRef<boolean> = computed((): boolean =>
-  Boolean(site.value?.video_desktop_requested_at),
+  site.value ? ProspectionVideoLabels.isWaitingForDesktop(site.value) : false,
 )
 
 const hasStoryblokSpace: ComputedRef<boolean> = computed((): boolean => Boolean(site.value?.storyblok_space_id))
 
-const videoFailureMessage: ComputedRef<string | null> = computed((): string | null => {
-  if (site.value?.video_status === 'failed') return site.value.video_error || 'La génération a échoué.'
-  if (site.value?.video_status === 'ready' && site.value.video_error) {
-    return `La nouvelle génération a échoué, la vidéo actuelle reste en ligne. ${site.value.video_error}`
-  }
-  return null
-})
+const videoFailureMessage: ComputedRef<string | null> = computed((): string | null =>
+  site.value ? ProspectionVideoLabels.failureMessage(site.value) : null,
+)
 
-const videoStatusLabel: ComputedRef<string | null> = computed(() => {
-  if (isVideoWaitingForDesktop.value) return site.value?.is_video_desktop_build_started ? 'En cours' : 'En attente'
-  switch (site.value?.video_status) {
-    case 'ready':
-      return 'Prête'
-    case 'failed':
-      return 'Échec'
-    default:
-      return null
-  }
-})
+const videoStatusLabel: ComputedRef<string | null> = computed((): string | null =>
+  site.value ? ProspectionVideoLabels.statusLabel(site.value) : null,
+)
 
-const videoStatusClass: ComputedRef<string> = computed(() => {
-  if (isVideoWaitingForDesktop.value) return 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
-  if (site.value?.video_status === 'ready') return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
-  if (site.value?.video_status === 'failed') return 'bg-[var(--app-red)]/20 text-[var(--app-red)]'
-  return 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+const videoStatusClass: ComputedRef<string> = computed((): string => {
+  const tone: ProspectionVideoStatusTone | null = site.value ? ProspectionVideoLabels.statusTone(site.value) : null
+  return tone ? VIDEO_STATUS_CLASSES[tone] : ''
 })
 
 /** CMS handover state, derived from the persisted status with a sensible fallback. */
