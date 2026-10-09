@@ -1,8 +1,7 @@
-import type { CampaignResponse } from '~/services/campaignService'
 import type { CampaignVideoSite } from '~/types/CampaignVideos'
 
 export type CampaignVideosCardProps = {
-  campaign: CampaignResponse
+  campaignId: number
 }
 
 export type CampaignVideoStateKey =
@@ -29,3 +28,5 @@ export type CampaignVideoStateLine = {
   label: string
   sites: CampaignVideoSite[]
 }
+
+export type CampaignVideosRequestScope = 'missing' | 'all'

@@ -480,10 +480,12 @@ export class CampaignService {
   /**
    * Ask the owner's PC for the videos the campaign's demo sites lack, or for all of them.
    * @param campaignId - Campaign ID.
-   * @param redo - Also redo the videos already made with the clip in use.
+   * @param shouldRedoAllVideos - Also redo the videos already made with the clip in use.
    * @returns How many videos were asked, and the sites left aside with their reason.
    */
-  static async requestVideos(campaignId: number, redo: boolean): Promise<CampaignVideoRequestsResponse> {
-    return ApiClient.post<CampaignVideoRequestsResponse>(`/api/v1/campaigns/${campaignId}/videos/requests`, { redo })
+  static async requestVideos(campaignId: number, shouldRedoAllVideos: boolean): Promise<CampaignVideoRequestsResponse> {
+    return ApiClient.post<CampaignVideoRequestsResponse>(`/api/v1/campaigns/${campaignId}/videos/requests`, {
+      redo: shouldRedoAllVideos,
+    })
   }
 }

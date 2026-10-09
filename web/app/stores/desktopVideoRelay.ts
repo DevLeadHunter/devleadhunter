@@ -1,16 +1,11 @@
 /**
- * Desktop video relay store — the desktop app builds the prospection videos of demo sites and receptionists
- * asked from a tablet, a phone or the automatic generation.
+ * Desktop video relay store — the desktop app builds every prospection video left waiting for it.
  */
 import type { AiAssistantDesktopVideoRequest } from '~/types/AiAssistant'
 import type { UseToastReturn } from '~/types/Composables'
-import type {
-  DesktopVideoBuildOutcome,
-  DesktopVideoRequest,
-  DesktopVideoSubjectKind,
-  DesktopVideoSubjectRelay,
-} from '~/types/DesktopVideoRelay'
+import type { DesktopVideoRequest, DesktopVideoSubjectKind, DesktopVideoSubjectRelay } from '~/types/DesktopVideoRelay'
 import type { DemoSiteDesktopVideoRequest } from '~/services/demoSiteService'
+import type { FullVideoBuildResult } from '~/services/storyblokSidecarService'
 import { defineStore } from 'pinia'
 import { useToast } from '~/composables/useToast'
 import { AiAssistantService } from '~/services/aiAssistantService'
@@ -34,7 +29,7 @@ const SUBJECT_RELAYS: Record<DesktopVideoSubjectKind, DesktopVideoSubjectRelay> 
     claim: async (subjectId: number): Promise<void> => {
       await DemoSiteService.claimDesktopVideo(subjectId)
     },
-    build: (subjectId: number): Promise<DesktopVideoBuildOutcome> => StoryblokSidecarService.buildFullVideo(subjectId),
+    build: (subjectId: number): Promise<FullVideoBuildResult> => StoryblokSidecarService.buildFullVideo(subjectId),
     reportFailure: async (subjectId: number, message: string): Promise<void> => {
       await DemoSiteService.reportDesktopVideoFailure(subjectId, message)
     },
@@ -44,7 +39,7 @@ const SUBJECT_RELAYS: Record<DesktopVideoSubjectKind, DesktopVideoSubjectRelay> 
     claim: async (subjectId: number): Promise<void> => {
       await AiAssistantService.claimDesktopVideo(subjectId)
     },
-    build: (subjectId: number): Promise<DesktopVideoBuildOutcome> => AssistantSidecarService.buildFullVideo(subjectId),
+    build: (subjectId: number): Promise<FullVideoBuildResult> => AssistantSidecarService.buildFullVideo(subjectId),
     reportFailure: async (subjectId: number, message: string): Promise<void> => {
       await AiAssistantService.reportDesktopVideoFailure(subjectId, message)
     },
@@ -66,7 +61,7 @@ export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => 
    * @param build - The outcome of the local build.
    * @returns The reason, with what to do next.
    */
-  function describeBuildFailure(build: DesktopVideoBuildOutcome): string {
+  function describeBuildFailure(build: FullVideoBuildResult): string {
     if (build.status === 'needs_login') {
       return STORYBLOK_DISCONNECTED_MESSAGE
     }
@@ -120,8 +115,8 @@ export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => 
     } catch {
       return
     }
-    toast.info(`${videoName} demandée depuis un autre appareil : ce PC la génère.`)
-    let build: DesktopVideoBuildOutcome
+    toast.info(`${videoName} : ce PC la génère.`)
+    let build: FullVideoBuildResult
     try {
       build = await subjectRelay.build(request.subjectId)
     } catch (err: unknown) {

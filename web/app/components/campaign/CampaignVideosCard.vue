@@ -57,7 +57,7 @@
                 class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)] transition-transform group-open:rotate-180"
               />
             </summary>
-            <ul class="space-y-1 px-3 pb-3 pl-[38px]">
+            <ul class="space-y-1 px-3 pb-3 pl-9.5">
               <li v-for="site in line.sites" :key="site.demo_site_id">
                 <NuxtLink
                   :to="`/dashboard/demo-sites/${site.demo_site_id}`"
@@ -76,10 +76,10 @@
           type="button"
           class="app-btn-primary h-8 px-3 text-xs"
           :disabled="missingVideoCount === 0 || isRequestingVideos"
-          @click="requestVideos(false)"
+          @click="requestVideos('missing')"
         >
           <UIcon name="i-lucide-clapperboard" class="h-3.5 w-3.5" />
-          {{ isRequestingVideos ? 'Envoi à votre PC…' : 'Générer les vidéos manquantes' }}
+          {{ requestingVideosScope === 'missing' ? 'Envoi à votre PC…' : 'Générer les vidéos manquantes' }}
         </button>
         <button
           type="button"
@@ -88,7 +88,7 @@
           @click="redoConfirmModal?.open()"
         >
           <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
-          Refaire toutes les vidéos
+          {{ requestingVideosScope === 'all' ? 'Envoi à votre PC…' : 'Refaire toutes les vidéos' }}
         </button>
       </div>
 
@@ -126,14 +126,13 @@
       confirm-text="Tout refaire"
       cancel-text="Annuler"
       confirm-button-variant="primary"
-      @confirm="requestVideos(true)"
+      @confirm="requestVideos('all')"
     />
   </section>
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType, Ref } from 'vue'
-import type { CampaignResponse } from '~/services/campaignService'
+import type { ComputedRef, Ref } from 'vue'
 import type {
   CampaignVideoRequestsResponse,
   CampaignVideoSkippedSite,
@@ -143,6 +142,7 @@ import type {
   CampaignVideoStateLine,
   CampaignVideoStateWording,
   CampaignVideosCardProps,
+  CampaignVideosRequestScope,
 } from '~/types/CampaignVideosCard'
 import type { UseToastReturn } from '~/types/Composables'
 import type { UiConfirmModalHandle } from '~/types/UiConfirmModal'
@@ -153,8 +153,8 @@ import { CampaignResultsFormat } from '~/utils/campaignResultsFormat'
 
 /** Where the videos of the campaign's demo sites stand, with the buttons that ask the owner's PC for them. */
 const props: CampaignVideosCardProps = defineProps({
-  campaign: {
-    type: Object as PropType<CampaignResponse>,
+  campaignId: {
+    type: Number,
     required: true,
   },
 })
@@ -218,7 +218,7 @@ const VIDEO_STATE_WORDINGS: CampaignVideoStateWording[] = [
 const videoSummary: Ref<CampaignVideosResponse | null> = ref(null)
 const loadErrorMessage: Ref<string> = ref('')
 const isLoadingSummary: Ref<boolean> = ref(false)
-const isRequestingVideos: Ref<boolean> = ref(false)
+const requestingVideosScope: Ref<CampaignVideosRequestScope | null> = ref(null)
 const lastRequestSkippedSites: Ref<CampaignVideoSkippedSite[]> = ref([])
 const redoConfirmModal: Ref<UiConfirmModalHandle | null> = ref(null)
 
@@ -264,12 +264,14 @@ const hasVideosUnderWay: ComputedRef<boolean> = computed((): boolean => {
   return summary.building.length + summary.waiting_for_desktop.length + summary.waiting_for_storyblok_space.length > 0
 })
 
+const isRequestingVideos: ComputedRef<boolean> = computed((): boolean => requestingVideosScope.value !== null)
+
 const lastRequestSkippedSitesLabel: ComputedRef<string> = computed((): string =>
   CampaignResultsFormat.count(lastRequestSkippedSites.value.length, 'site laissé de côté', 'sites laissés de côté'),
 )
 
 /**
- * Read where the campaign's videos stand; only the latest read is shown when several cross.
+ * Read where the campaign's videos stand.
  * @returns A promise resolved once the state is shown, or the failure is.
  */
 async function loadVideoSummary(): Promise<void> {
@@ -277,7 +279,7 @@ async function loadVideoSummary(): Promise<void> {
   const loadNumber: number = latestSummaryLoadNumber
   isLoadingSummary.value = true
   try {
-    const summary: CampaignVideosResponse = await CampaignService.getVideos(props.campaign.id)
+    const summary: CampaignVideosResponse = await CampaignService.getVideos(props.campaignId)
     if (loadNumber === latestSummaryLoadNumber) {
       videoSummary.value = summary
       loadErrorMessage.value = ''
@@ -320,18 +322,18 @@ function stopSummaryRefresh(): void {
 
 /**
  * Ask the owner's PC for the campaign's missing videos, or for all of them.
- * @param shouldRedoAllVideos - Also redo the videos already made with the clip in use.
+ * @param scope - `missing` for the videos the sites lack or made with an older clip, `all` to redo every one.
  * @returns A promise resolved once the videos are asked and the counts re-read, or the request was refused.
  */
-async function requestVideos(shouldRedoAllVideos: boolean): Promise<void> {
+async function requestVideos(scope: CampaignVideosRequestScope): Promise<void> {
   if (isRequestingVideos.value) {
     return
   }
-  isRequestingVideos.value = true
+  requestingVideosScope.value = scope
   try {
     const outcome: CampaignVideoRequestsResponse = await CampaignService.requestVideos(
-      props.campaign.id,
-      shouldRedoAllVideos,
+      props.campaignId,
+      scope === 'all',
     )
     lastRequestSkippedSites.value = outcome.skipped
     if (outcome.requested_count > 0) {
@@ -347,12 +349,12 @@ async function requestVideos(shouldRedoAllVideos: boolean): Promise<void> {
       error instanceof Error && error.message ? error.message : "Les vidéos n'ont pas pu être demandées à votre PC.",
     )
   } finally {
-    isRequestingVideos.value = false
+    requestingVideosScope.value = null
   }
 }
 
 watch(
-  (): CampaignResponse => props.campaign,
+  (): number => props.campaignId,
   (): void => {
     loadVideoSummary()
   },
