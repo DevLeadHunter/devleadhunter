@@ -4,8 +4,10 @@ Pure helpers around photo labels (what a prospect photo shows) — no I/O, no mo
 Shared by site generation (templates), the demo-site service and the vision labelling service, so
 the template modules can rank photos without pulling the LLM client in.
 
-A label is ``{"kind": str, "description": str, "dishes": list[str], "appeal": int}`` keyed by
-photo URL in ``ProspectEnrichment.photo_labels``.
+A food label is ``{"kind": str, "description": str, "dishes": list[str], "appeal": int}`` keyed by
+photo URL in ``ProspectEnrichment.photo_labels``. Every other trade (landscaper, garage, electrician…)
+gets a craft label, ``{"family": "craft", "kind": str, "description": str, "services": list[str],
+"appeal": int}``, read with the ``craft_*`` helpers.
 """
 
 from __future__ import annotations
@@ -40,6 +42,10 @@ CARD_WORTHY_KINDS: frozenset[str] = frozenset({PHOTO_KIND_DISH, PHOTO_KIND_DRINK
 # Bump when the labelling prompt changes materially: stored labels with an older version are
 # re-labelled at the next use instead of living forever with the old reading.
 PHOTO_LABEL_VERSION = 2
+
+# The two label families: a craft label (every non-food trade) carries its family, a food label carries none.
+PHOTO_FAMILY_FOOD = "food"
+PHOTO_FAMILY_CRAFT = "craft"
 
 # Wordings the model uses instead of the canonical kinds (French, synonyms): mapped, never dropped.
 # Ordered from the most specific to the most generic wording, because a wording that is not an
@@ -156,12 +162,15 @@ def is_unfit_for_card(label: dict[str, Any] | None) -> bool:
 
 
 def labels_for_urls(photo_labels: Any, urls: list[str]) -> dict[str, dict[str, Any]]:
-    """The stored labels restricted (and normalised) to the given URLs; labels of an older prompt version are skipped."""
+    """The stored food labels restricted (and normalised) to the given URLs; older versions and craft labels skipped."""
     if not isinstance(photo_labels, dict):
         return {}
     result: dict[str, dict[str, Any]] = {}
     for url in urls:
-        label = normalize_label(photo_labels.get(url))
+        stored = photo_labels.get(url)
+        if isinstance(stored, dict) and stored.get("family") == PHOTO_FAMILY_CRAFT:
+            continue
+        label = normalize_label(stored)
         if label is not None and is_current_label(label):
             result[url] = label
     return result
@@ -198,3 +207,188 @@ def rank_card_photos(
             unknown.append(url)
     worthy.sort(key=lambda item: -item[0])
     return [url for _appeal, url in worthy] + unknown
+
+
+CRAFT_KIND_WORK = "work"
+CRAFT_KIND_PREMISES = "premises"
+CRAFT_KIND_TEAM = "team"
+CRAFT_KIND_VEHICLE = "vehicle"
+CRAFT_KIND_EQUIPMENT = "equipment"
+CRAFT_KIND_CUSTOMER = "customer"
+CRAFT_KINDS: frozenset[str] = frozenset(
+    {
+        CRAFT_KIND_WORK,
+        CRAFT_KIND_PREMISES,
+        CRAFT_KIND_TEAM,
+        CRAFT_KIND_VEHICLE,
+        CRAFT_KIND_EQUIPMENT,
+        CRAFT_KIND_CUSTOMER,
+        PHOTO_KIND_LOGO_OR_FLYER,
+        PHOTO_KIND_OTHER,
+    }
+)
+# What a craft business's site may show: a flyer, a customer's face or a photo without a subject never.
+CRAFT_SHOWABLE_KINDS: frozenset[str] = frozenset(
+    {CRAFT_KIND_WORK, CRAFT_KIND_PREMISES, CRAFT_KIND_TEAM, CRAFT_KIND_VEHICLE, CRAFT_KIND_EQUIPMENT}
+)
+CRAFT_PHOTO_LABEL_VERSION = 2
+MIN_APPEAL_OF_A_SHOWABLE_OTHER_PHOTO = 4
+
+_CRAFT_KIND_SYNONYMS: dict[str, str] = {
+    "chantier": CRAFT_KIND_WORK,
+    "réalisation": CRAFT_KIND_WORK,
+    "realisation": CRAFT_KIND_WORK,
+    "travail": CRAFT_KIND_WORK,
+    "job": CRAFT_KIND_WORK,
+    "atelier": CRAFT_KIND_PREMISES,
+    "locaux": CRAFT_KIND_PREMISES,
+    "façade": CRAFT_KIND_PREMISES,
+    "facade": CRAFT_KIND_PREMISES,
+    "storefront": CRAFT_KIND_PREMISES,
+    "workshop": CRAFT_KIND_PREMISES,
+    "exterior": CRAFT_KIND_PREMISES,
+    "interior": CRAFT_KIND_PREMISES,
+    "équipe": CRAFT_KIND_TEAM,
+    "equipe": CRAFT_KIND_TEAM,
+    "people": CRAFT_KIND_TEAM,
+    "staff": CRAFT_KIND_TEAM,
+    "camionnette": CRAFT_KIND_VEHICLE,
+    "utilitaire": CRAFT_KIND_VEHICLE,
+    "camion": CRAFT_KIND_VEHICLE,
+    "truck": CRAFT_KIND_VEHICLE,
+    "van": CRAFT_KIND_VEHICLE,
+    "matériel": CRAFT_KIND_EQUIPMENT,
+    "materiel": CRAFT_KIND_EQUIPMENT,
+    "outil": CRAFT_KIND_EQUIPMENT,
+    "tool": CRAFT_KIND_EQUIPMENT,
+    "product": CRAFT_KIND_EQUIPMENT,
+    "client": CRAFT_KIND_CUSTOMER,
+    "logo": PHOTO_KIND_LOGO_OR_FLYER,
+    "flyer": PHOTO_KIND_LOGO_OR_FLYER,
+    "affiche": PHOTO_KIND_LOGO_OR_FLYER,
+    "poster": PHOTO_KIND_LOGO_OR_FLYER,
+    "document": PHOTO_KIND_LOGO_OR_FLYER,
+    "screenshot": PHOTO_KIND_LOGO_OR_FLYER,
+    "text": PHOTO_KIND_LOGO_OR_FLYER,
+}
+_MAX_SERVICES_PER_PHOTO = 6
+_MAX_SERVICE_CHARS = 40
+
+
+def canonical_craft_kind(raw_kind: Any) -> str | None:
+    """The craft kind for a model wording (``work``, ``atelier``, ``flyer``…), or None when empty."""
+    kind = str(raw_kind or "").strip().lower().replace("-", "_")
+    if not kind:
+        return None
+    if kind in CRAFT_KINDS:
+        return kind
+    for synonym, canonical in _CRAFT_KIND_SYNONYMS.items():
+        if synonym in kind:
+            return canonical
+    return PHOTO_KIND_OTHER
+
+
+def normalize_craft_label(raw: Any) -> dict[str, Any] | None:
+    """Coerce a raw model entry (or stored craft label) into the craft label shape, or None when unusable."""
+    if not isinstance(raw, dict):
+        return None
+    kind = canonical_craft_kind(raw.get("kind"))
+    if kind is None:
+        return None
+    services: list[str] = []
+    raw_services = raw.get("services")
+    if isinstance(raw_services, list):
+        for item in raw_services:
+            text = " ".join(str(item or "").split())[:_MAX_SERVICE_CHARS]
+            if text and text not in services:
+                services.append(text)
+            if len(services) >= _MAX_SERVICES_PER_PHOTO:
+                break
+    try:
+        appeal = int(raw.get("appeal", 0))
+    except (TypeError, ValueError):
+        appeal = 0
+    try:
+        version = int(raw.get("version", CRAFT_PHOTO_LABEL_VERSION))
+    except (TypeError, ValueError):
+        version = CRAFT_PHOTO_LABEL_VERSION
+    return {
+        "family": PHOTO_FAMILY_CRAFT,
+        "kind": kind,
+        "description": " ".join(str(raw.get("description", "") or "").split())[:_MAX_DESCRIPTION_CHARS],
+        "services": services,
+        "text": raw.get("texte", raw.get("text")) is True,
+        "appeal": max(0, min(5, appeal)),
+        "version": version,
+    }
+
+
+def craft_labels_for_urls(photo_labels: Any, urls: list[str]) -> dict[str, dict[str, Any]]:
+    """The stored craft labels restricted (and normalised) to the given URLs; food labels and older versions skipped."""
+    if not isinstance(photo_labels, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for url in urls:
+        stored = photo_labels.get(url)
+        if not isinstance(stored, dict) or stored.get("family") != PHOTO_FAMILY_CRAFT:
+            continue
+        label = normalize_craft_label(stored)
+        if label is not None and label["version"] == CRAFT_PHOTO_LABEL_VERSION:
+            result[url] = label
+    return result
+
+
+def is_showable_craft_photo(label: dict[str, Any] | None) -> bool:
+    """Whether a craft-labelled photo may appear on the site: never a flyer or a customer, an « other » only when good.
+
+    A well-made photo the vision could not file (a flower bed read as a landscape) still beats a stock photo.
+    """
+    if not isinstance(label, dict):
+        return False
+    kind = str(label.get("kind", ""))
+    if kind == PHOTO_KIND_OTHER:
+        return int(label.get("appeal", 0)) >= MIN_APPEAL_OF_A_SHOWABLE_OTHER_PHOTO
+    return kind in CRAFT_SHOWABLE_KINDS
+
+
+def has_text_overlay(label: dict[str, Any] | None) -> bool:
+    """Whether a labelled photo carries added or readable text (a caption, a logo, a phone number, a watermark)."""
+    return isinstance(label, dict) and label.get("text") is True
+
+
+def rank_craft_photos(
+    urls: list[str],
+    labels: dict[str, dict[str, Any]],
+    *,
+    preferred_kinds: tuple[str, ...] = (),
+    exclude: set[str] | None = None,
+) -> list[str]:
+    """Order a craft business's photos for a slot: clean showable ones first, by preferred kind then appeal.
+
+    Args:
+        urls: Candidate photo URLs, in their site order (the stable tie-breaker).
+        labels: Craft labels keyed by URL (a missing entry = not analysed yet).
+        preferred_kinds: Kinds that suit the slot best, most wanted first (e.g. ``("premises", "work")``).
+        exclude: URLs already used elsewhere, dropped from the result.
+
+    Returns:
+        The usable candidates, best first: labelled showable photos without text, those with text, then
+        unlabelled ones; never a photo labelled unshowable.
+    """
+    excluded = exclude or set()
+    seen: set[str] = set()
+    showable: list[tuple[bool, int, int, int, str]] = []
+    unknown: list[str] = []
+    for position, url in enumerate(urls):
+        if not isinstance(url, str) or not url.strip() or url in excluded or url in seen:
+            continue
+        seen.add(url)
+        label = labels.get(url)
+        if label is None:
+            unknown.append(url)
+        elif is_showable_craft_photo(label):
+            kind = str(label.get("kind", ""))
+            kind_rank = preferred_kinds.index(kind) if kind in preferred_kinds else len(preferred_kinds)
+            showable.append((has_text_overlay(label), kind_rank, -int(label.get("appeal", 0)), position, url))
+    showable.sort()
+    return [url for *_rank, url in showable] + unknown

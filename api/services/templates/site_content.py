@@ -26,7 +26,15 @@ from datetime import datetime
 from typing import Any
 
 from services.country_profiles import CountryProfiles
-from services.photo_labels import labels_for_urls, rank_card_photos
+from services.photo_labels import (
+    CRAFT_KIND_EQUIPMENT,
+    CRAFT_KIND_WORK,
+    craft_labels_for_urls,
+    is_showable_craft_photo,
+    labels_for_urls,
+    rank_card_photos,
+    rank_craft_photos,
+)
 from services.regional_lexicon import RegionalLexicon
 from services.sms.phone_normalizer import format_phone_for_display
 from services.validation_service import validation_service
@@ -39,6 +47,9 @@ MAX_SERVICE_CARD_DESCRIPTION_CHARS = 240
 MAX_PORTFOLIO_ITEMS = 6
 MAX_PORTFOLIO_TITLE_CHARS = 120
 MAX_PORTFOLIO_CATEGORY_CHARS = 40
+# The facts under a site's title (``DemoSite.section_overrides["heroPoints"]``): shape limits.
+MAX_HERO_POINTS = 3
+MAX_HERO_POINT_CHARS = 40
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
@@ -241,17 +252,20 @@ def usable_site_photos(enrichment: dict[str, Any] | None) -> list[str]:
 
     This is the exact pool the generated site draws from — ``[0]`` hero, ``[1]`` about, ``[2:]`` gallery.
     Exposed so the demo-site image editor shows precisely what will render, and so a user-curated order
-    can be validated against the same set.
+    can be validated against the same set. A photo the vision labelled a flyer, a customer or a photo
+    without subject is left out: a craft business's site never shows it.
     """
     enrichment = enrichment or {}
     logo_photo: str = str(enrichment.get("logo_url") or "").strip()
-    return [
+    photos = [
         url
         for url in _dedupe_preserve_order(
             [p.strip() for p in enrichment.get("photos", []) if isinstance(p, str) and p.strip()]
         )
         if url != logo_photo and not _is_unrehostable_photo(url)
     ]
+    craft_labels = craft_labels_for_urls(enrichment.get("photo_labels"), photos)
+    return [url for url in photos if url not in craft_labels or is_showable_craft_photo(craft_labels[url])]
 
 
 def format_rating_value(rating: Any) -> str | None:
@@ -467,6 +481,26 @@ def clean_service_cards(
     return cleaned
 
 
+def clean_hero_points(points: Any) -> list[str]:
+    """
+    Validate the facts written under a site's title into at most three short texts.
+
+    Args:
+        points: Raw facts (stored override).
+
+    Returns:
+        The non-empty facts, trimmed and capped, in order.
+    """
+    if not isinstance(points, list):
+        return []
+    cleaned: list[str] = []
+    for point in points:
+        text = " ".join(str(point or "").split()).strip()[:MAX_HERO_POINT_CHARS]
+        if text:
+            cleaned.append(text)
+    return cleaned[:MAX_HERO_POINTS]
+
+
 def clean_portfolio_items(
     items: Any,
     *,
@@ -523,16 +557,23 @@ def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str,
     extra = [
         url for url in (site_content.get("heroImage"), site_content.get("aboutImage")) if isinstance(url, str) and url
     ]
-    labels = labels_for_urls((enrichment or {}).get("photo_labels"), gallery + extra)
+    photo_labels = (enrichment or {}).get("photo_labels")
+    labels = labels_for_urls(photo_labels, gallery + extra)
+    craft_labels = craft_labels_for_urls(photo_labels, gallery + extra)
     used = {
         card["image"]
         for card in services
         if isinstance(card, dict) and isinstance(card.get("image"), str) and card["image"].strip()
     }
     # Without any label, stay position-based on the gallery (legacy behaviour, hero/about untouched).
-    candidates = (
-        rank_card_photos(gallery + extra, labels, exclude=used) if labels else [u for u in gallery if u not in used]
-    )
+    if craft_labels:
+        candidates = rank_craft_photos(
+            gallery + extra, craft_labels, preferred_kinds=(CRAFT_KIND_WORK, CRAFT_KIND_EQUIPMENT), exclude=used
+        )
+    elif labels:
+        candidates = rank_card_photos(gallery + extra, labels, exclude=used)
+    else:
+        candidates = [url for url in gallery if url not in used]
     for card in services:
         if not isinstance(card, dict) or (isinstance(card.get("image"), str) and card["image"].strip()):
             continue
@@ -551,8 +592,10 @@ def apply_section_overrides(
     Currently ``services``: the curated cards replace the generated menu / prestations wholesale
     (title, description, photo); cards saved without a photo get the best unused real photo.
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
-    realizations with its own photos and what they show. The override lives on the demo site, so it
-    survives every regeneration — a colour tweak no longer wipes the specialties or the text typed by hand.
+    realizations with its own photos and what they show, ``images`` the template's other photos
+    (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it.
+    The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
+    wipes the specialties or the text typed by hand.
     """
     if not isinstance(overrides, dict):
         return site_content
@@ -564,15 +607,17 @@ def apply_section_overrides(
     if isinstance(raw_images, dict):
         existing = site_content.get("images")
         merged: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
-        for key in ("faq", "aboutSecondary"):
-            url = raw_images.get(key)
-            if isinstance(url, str) and url.strip():
+        for key, url in raw_images.items():
+            if isinstance(key, str) and isinstance(url, str) and url.strip():
                 merged[key] = url.strip()
         if merged:
             site_content["images"] = merged
     badge = overrides.get("heroBadge")
     if isinstance(badge, str) and badge.strip():
         site_content["heroBadge"] = badge.strip()
+    points = clean_hero_points(overrides.get("heroPoints"))
+    if points:
+        site_content["heroPoints"] = points
     about = overrides.get("about")
     if isinstance(about, str) and about.strip():
         site_content["about"] = about.strip()
