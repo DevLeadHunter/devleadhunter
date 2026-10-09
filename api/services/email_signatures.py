@@ -8,10 +8,19 @@ follow-ups, the preview and the one-off composer.
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.email_signature import EmailSignature
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
+from services.regional_lexicon import RegionalLexicon
+from services.sms.phone_normalizer import format_phone_for_reader, to_e164
+
+_PHONE_LINK = re.compile(r'(<a\b[^>]*\bhref="tel:([^"]+)"[^>]*>)(.*?)(</a>)', re.IGNORECASE | re.DOTALL)
+_TEXT_AFTER_LAST_TAG = re.compile(r"[^<>]*$")
+_DIALLED_NUMBER = re.compile(r"^\+?[\d\s.()\-]*\d$")
 
 
 def get_default_signature(db: Session, user_id: int) -> EmailSignature | None:
@@ -79,5 +88,38 @@ def render_signature_html(
     if variables:
         for key, value in variables.items():
             html = html.replace(f"{{{key}}}", str(value))
+        html = _phone_links_for_reader(html, variables.get(RegionalLexicon.COUNTRY_KEY))
 
     return f'<div style="margin-top:16px;">{html}</div>'
+
+
+def _phone_links_for_reader(html: str, reader_country: str | None) -> str:
+    """Write the number shown by each phone link the way a prospect abroad dials it (« +33 6 12 34 56 78 »).
+
+    The link already calls from anywhere; only its text, dialled by hand from Switzerland or Québec, failed.
+    A French reader keeps the number as the sender wrote it, and a link whose text is not a number is left alone.
+
+    Args:
+        html: The signature HTML.
+        reader_country: ISO code of the prospect's country (``None`` reads as France).
+
+    Returns:
+        The HTML with the number of each phone link written for the reader.
+    """
+    if CountryProfiles.get(reader_country).code == DEFAULT_COUNTRY_CODE:
+        return html
+
+    def rewrite(link: re.Match[str]) -> str:
+        opening, number, inner, closing = link.groups()
+        shown: str = _TEXT_AFTER_LAST_TAG.search(inner).group(0)
+        shown_number: str = shown.strip()
+        if not _DIALLED_NUMBER.match(shown_number.replace("&nbsp;", " ")) or to_e164(number) is None:
+            return link.group(0)
+        readable: str = format_phone_for_reader(
+            number, number_country=DEFAULT_COUNTRY_CODE, reader_country=reader_country
+        )
+        if "&nbsp;" in shown_number:
+            readable = readable.replace(" ", "&nbsp;")
+        return f"{opening}{inner[: len(inner) - len(shown)]}{shown.replace(shown_number, readable)}{closing}"
+
+    return _PHONE_LINK.sub(rewrite, html)
