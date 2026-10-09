@@ -1123,7 +1123,7 @@ async def request_campaign_videos(
 ) -> CampaignVideoRequestsResponse:
     """Ask the owner's PC for the videos the campaign's demo sites lack (``redo``: for all of them)."""
     campaign = _get_or_404(db, campaign_id, current_user.id)
-    return CampaignVideosService.request_videos(db, campaign, redo=payload.redo)
+    return CampaignVideosService.request_videos(db, campaign, should_redo_all_videos=payload.redo)
 
 
 @router.get("/{campaign_id}/stats", response_model=CampaignStats)

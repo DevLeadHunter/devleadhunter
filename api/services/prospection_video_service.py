@@ -44,7 +44,7 @@ THUMBNAIL_UPLOAD_FAILED_MESSAGE = (
 INVALID_DESKTOP_ARCHIVE_MESSAGE = "Archive vidéo invalide (video.mp4 + thumbnail.jpg attendus)."
 ALREADY_BUILDING_MESSAGE = "L'ordinateur génère déjà cette vidéo."
 
-_MAXIMUM_ERROR_MESSAGE_LENGTH = 1000
+MAXIMUM_ERROR_MESSAGE_LENGTH = 1000
 _DESKTOP_VIDEO_NAME = "video.mp4"
 _DESKTOP_THUMBNAIL_NAME = "thumbnail.jpg"
 
@@ -400,7 +400,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         try:
             db.rollback()
             subject.video_status = DemoVideoStatus.FAILED.value
-            subject.video_error = message[:_MAXIMUM_ERROR_MESSAGE_LENGTH]
+            subject.video_error = message[:MAXIMUM_ERROR_MESSAGE_LENGTH]
             db.commit()
         except Exception:
             logger.exception("[Video] could not record the failed video of slug=%s", slug)

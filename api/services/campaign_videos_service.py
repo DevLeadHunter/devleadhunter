@@ -65,7 +65,9 @@ class CampaignVideosService:
         return summary
 
     @classmethod
-    def request_videos(cls, db: Session, campaign: Campaign, *, redo: bool) -> CampaignVideoRequestsResponse:
+    def request_videos(
+        cls, db: Session, campaign: Campaign, *, should_redo_all_videos: bool
+    ) -> CampaignVideoRequestsResponse:
         """
         Ask the owner's PC for the videos the campaign's demo sites lack, or for all of them.
 
@@ -75,7 +77,7 @@ class CampaignVideosService:
         Args:
             db: Active database session.
             campaign: The user's campaign.
-            redo: Ask again for the videos already made with the presenter clip in use.
+            should_redo_all_videos: Ask again for the videos already made with the presenter clip in use.
 
         Returns:
             How many videos were asked, and the sites left aside with their reason.
@@ -89,7 +91,7 @@ class CampaignVideosService:
             has_video_with_clip_in_use = has_ready_video(site) and not demo_video_service.is_made_with_older_clip(
                 site, clip_in_use_since
             )
-            if has_video_with_clip_in_use and not redo:
+            if has_video_with_clip_in_use and not should_redo_all_videos:
                 continue
             try:
                 demo_video_desktop_relay.request(db, site, campaign.user_id)

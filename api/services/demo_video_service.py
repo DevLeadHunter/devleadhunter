@@ -1,6 +1,6 @@
 """Prospection video generation for demo sites.
 
-Assembles, per prospect, a short (~30-45 s) video from:
+The owner's PC assembles, per prospect, a short (~30-45 s) video from:
   - the user's generic presenter clip (webcam + voice, uploaded once —
     see ``presenter_video_service``), full-screen for the intro/outro;
   - a capture of the prospect's OWN generated demo site, filmed by the owner's desktop app:

@@ -19,11 +19,14 @@ from enums.demo_video_status import DemoVideoStatus
 from services.assistant_video_service import assistant_video_service
 from services.demo_video_service import demo_video_service
 from services.presenter_video_service import presenter_video_service
-from services.prospection_video_service import ALREADY_BUILDING_MESSAGE, ProspectionVideoService, VideoSubjectT
+from services.prospection_video_service import (
+    ALREADY_BUILDING_MESSAGE,
+    MAXIMUM_ERROR_MESSAGE_LENGTH,
+    ProspectionVideoService,
+    VideoSubjectT,
+)
 
 logger = logging.getLogger(__name__)
-
-_MAXIMUM_ERROR_MESSAGE_LENGTH = 1000
 
 NO_REQUEST_MESSAGE = "Aucune demande de vidéo n'attend l'ordinateur."
 
@@ -170,7 +173,7 @@ class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
             raise ValueError(NO_REQUEST_MESSAGE)
         self._video_service.forget_desktop_build(subject)
         subject.video_desktop_requested_at = None
-        subject.video_error = message[:_MAXIMUM_ERROR_MESSAGE_LENGTH]
+        subject.video_error = message[:MAXIMUM_ERROR_MESSAGE_LENGTH]
         if subject.video_status != DemoVideoStatus.READY.value:
             subject.video_status = DemoVideoStatus.FAILED.value
         db.commit()

@@ -214,7 +214,7 @@ def test_the_missing_videos_are_asked_from_the_pc(db: Session, presenter_clip: N
     waiting = _site_for(db, campaign, "Attend le PC", requested=True)
     offline = _site_for(db, campaign, "Hors ligne", demo_url=None)
 
-    outcome = CampaignVideosService.request_videos(db, campaign, redo=False)
+    outcome = CampaignVideosService.request_videos(db, campaign, should_redo_all_videos=False)
 
     assert outcome.requested_count == 4
     for asked in (older, failed, missing, without_space):
@@ -236,7 +236,7 @@ def test_redoing_every_video_asks_for_the_ones_made_with_the_clip_in_use_too(
     built = _site_for(db, campaign, "En cours", requested=True)
     demo_video_service.mark_desktop_build_started(built)
 
-    outcome = CampaignVideosService.request_videos(db, campaign, redo=True)
+    outcome = CampaignVideosService.request_videos(db, campaign, should_redo_all_videos=True)
 
     assert outcome.requested_count == 1
     assert current.video_desktop_requested_at is not None
@@ -252,7 +252,7 @@ def test_no_video_is_asked_without_a_presenter_clip(db: Session, monkeypatch: py
     campaign = _campaign(db)
     _site_for(db, campaign, "Sans video")
 
-    outcome = CampaignVideosService.request_videos(db, campaign, redo=False)
+    outcome = CampaignVideosService.request_videos(db, campaign, should_redo_all_videos=False)
 
     assert outcome.requested_count == 0
     assert outcome.skipped[0].reason.startswith("Aucun clip de présentation")

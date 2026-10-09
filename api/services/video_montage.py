@@ -44,7 +44,7 @@ PHOTO_BRIGHTNESS_LIFT = 1.12
 # Supersampling factor for a clean circle edge on the bubble mask.
 _PHOTO_MASK_SUPERSAMPLE = 4
 
-# ffmpeg thread cap: on the small fallback VPS, letting x264 grab every core
+# ffmpeg thread cap: on the small VPS, letting x264 grab every core
 # spikes memory and strangles the single-worker API.
 FFMPEG_THREADS = "2"
 # Desktop value: "0" lets ffmpeg size itself on the machine's cores, and the
