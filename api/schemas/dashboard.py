@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from enums.city_geocoding import CityGeocodingStatus
+
 
 class DashboardStatsResponse(BaseModel):
     """Aggregated KPIs shown on the dashboard home page."""
@@ -56,6 +58,16 @@ class DashboardActivityResponse(BaseModel):
     days: list[ActivityPoint]
 
 
+class CityLocation(BaseModel):
+    """Centre of a city on the coverage map; the commune codes are French-only (empty abroad)."""
+
+    latitude: float
+    longitude: float
+    insee_code: str = ""
+    department_code: str = ""
+    region_code: str = ""
+
+
 class CoverageCity(BaseModel):
     """Prospect count for one city (coverage map)."""
 
@@ -63,6 +75,36 @@ class CoverageCity(BaseModel):
     count: int
     # ISO alpha-2 country of the city, so homonyms (Fribourg FR vs CH) geocode apart.
     country: str = "FR"
+    geocoding: CityGeocodingStatus = CityGeocodingStatus.PENDING
+    location: CityLocation | None = None
+
+
+class CityToPlace(BaseModel):
+    """A coverage-map city the dashboard could not place yet."""
+
+    city: str = Field(min_length=1, max_length=120)
+    country: str = Field(default="FR", min_length=2, max_length=2)
+
+
+class PlaceCitiesRequest(BaseModel):
+    """A few cities to place, asked in small batches so the map fills in as they come."""
+
+    cities: list[CityToPlace] = Field(min_length=1, max_length=12)
+
+
+class PlacedCity(BaseModel):
+    """Where a city of the request lies, « pending » again when the geocoder did not answer."""
+
+    city: str
+    country: str
+    geocoding: CityGeocodingStatus
+    location: CityLocation | None = None
+
+
+class PlaceCitiesResponse(BaseModel):
+    """One answer per city of the request, in its order."""
+
+    cities: list[PlacedCity]
 
 
 class CoverageCountry(BaseModel):

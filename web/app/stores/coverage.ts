@@ -4,12 +4,24 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { AddressGeo, CityGeo, GeocodableCity } from '~/composables/useFranceGeo'
-import { geocodeAddresses, geocodeCities, lookupCity } from '~/composables/useFranceGeo'
-import type { CoverageCity, CoverageResponse } from '~/services/dashboardService'
+import type { AddressGeo, CityGeo } from '~/composables/useFranceGeo'
+import {
+  cityGeoEntries,
+  geocodeAddresses,
+  hasCityGeo,
+  lookupCity,
+  runBoundedGeocoding,
+} from '~/composables/useFranceGeo'
+import type { CityToPlace, CoverageCity, CoverageResponse, PlaceCitiesResponse } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
 import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
+
+/** Cities per placement request: a request answers when its slowest city does, so small batches fill the map steadily. */
+const PLACEMENT_BATCH_SIZE: number = 3
+
+/** Placement requests in flight at once, kept low so the burst stays under the public geocoders' rate limits. */
+const PLACEMENT_PARALLEL_BATCHES: number = 4
 
 /**
  * Normalise a city name for comparison (lowercase, accent-free, trimmed).
@@ -31,6 +43,8 @@ export const useCoverageStore = defineStore('coverage', () => {
   const isLoading: Ref<boolean> = ref(false)
   const hasLoaded: Ref<boolean> = ref(false)
   const availableCategories: Ref<string[]> = ref([])
+  const placingCityCount: Ref<number> = ref(0)
+  let latestLoadId: number = 0
 
   /**
    * Split the scope value into an API scope + optional member id.
@@ -43,27 +57,28 @@ export const useCoverageStore = defineStore('coverage', () => {
   }
 
   /**
-   * Load coverage for the current scope + trade filter, then geocode cities.
-   * @returns A promise resolved once loaded.
+   * Load coverage for the current scope + trade filter and show it at once; pending cities are placed afterwards.
+   * @returns A promise resolved once the coverage is shown, while its cities may still be placed.
    */
   async function load(): Promise<void> {
+    const loadId: number = ++latestLoadId
     isLoading.value = true
-    try {
-      const [scopeName, memberId]: [string, number | undefined] = parseScope(scope.value)
-      const data: CoverageResponse = await DashboardService.getCoverage(scopeName, memberId, selectedCategories.value)
+    const [scopeName, memberId]: [string, number | undefined] = parseScope(scope.value)
+    const data: CoverageResponse | null = await DashboardService.getCoverage(
+      scopeName,
+      memberId,
+      selectedCategories.value,
+    ).catch((): null => null)
+    if (loadId !== latestLoadId) {
+      return
+    }
+    if (data) {
       coverage.value = data
-      if (data.available_categories.length > 0) availableCategories.value = data.available_categories
-      cityGeo.value = await geocodeCities(
-        data.cities.map((city: CoverageCity): GeocodableCity => ({ city: city.city, country: city.country })),
-      )
-      // Le géocodage rue n'est PAS attendu : la carte s'affiche sur les villes, puis se repeint quand
-      // les adresses arrivent. Un échec laisse simplement les points au centre-ville.
-      void geocodeAddresses(data.points, cityGeo.value)
-        .then((resolved: Record<string, AddressGeo | null>): void => {
-          addressGeo.value = { ...addressGeo.value, ...resolved }
-        })
-        .catch((): void => {})
-    } catch {
+      if (data.available_categories.length > 0) {
+        availableCategories.value = data.available_categories
+      }
+      cityGeo.value = { ...cityGeo.value, ...cityGeoEntries(data.cities) }
+    } else {
       coverage.value = {
         scope: scope.value,
         cities: [],
@@ -73,9 +88,75 @@ export const useCoverageStore = defineStore('coverage', () => {
         members: coverage.value?.members ?? [],
         available_categories: availableCategories.value,
       }
-    } finally {
-      isLoading.value = false
-      hasLoaded.value = true
+    }
+    isLoading.value = false
+    hasLoaded.value = true
+    if (data) {
+      placeCoverage(data, loadId)
+    }
+  }
+
+  /**
+   * Place the cities the coverage left pending, then each prospect at its street address.
+   * @param data - The coverage answer to complete.
+   * @param loadId - The load it belongs to; a newer load stops it.
+   * @returns A promise resolved once the cities and the addresses are placed.
+   */
+  async function placeCoverage(data: CoverageResponse, loadId: number): Promise<void> {
+    await placePendingCities(data.cities, loadId)
+    if (loadId !== latestLoadId) {
+      return
+    }
+    const resolved: Record<string, AddressGeo | null> = await geocodeAddresses(data.points, cityGeo.value)
+    addressGeo.value = { ...addressGeo.value, ...resolved }
+  }
+
+  /**
+   * Have the API place the cities still pending, French ones first since their geocoder answers at once.
+   * @param cities - Cities of the coverage answer.
+   * @param loadId - The load they belong to; a newer load stops the placement.
+   * @returns A promise resolved once every batch has answered.
+   */
+  async function placePendingCities(cities: CoverageCity[], loadId: number): Promise<void> {
+    const pendingCities: CityToPlace[] = cities
+      .filter(
+        (city: CoverageCity): boolean =>
+          city.geocoding === 'pending' && !hasCityGeo(cityGeo.value, city.city, city.country),
+      )
+      .sort(
+        (first: CoverageCity, second: CoverageCity): number =>
+          Number(first.country !== 'FR') - Number(second.country !== 'FR'),
+      )
+      .map((city: CoverageCity): CityToPlace => ({ city: city.city, country: city.country }))
+    const batches: CityToPlace[][] = Array.from(
+      { length: Math.ceil(pendingCities.length / PLACEMENT_BATCH_SIZE) },
+      (_: unknown, index: number): CityToPlace[] =>
+        pendingCities.slice(index * PLACEMENT_BATCH_SIZE, (index + 1) * PLACEMENT_BATCH_SIZE),
+    )
+    placingCityCount.value = pendingCities.length
+    await runBoundedGeocoding(
+      batches,
+      (batch: CityToPlace[]): Promise<void> => placeCityBatch(batch, loadId),
+      PLACEMENT_PARALLEL_BATCHES,
+    )
+  }
+
+  /**
+   * Place one batch of cities and paint them; a failed batch leaves its cities off the map until the next visit.
+   * @param batch - Cities sent in one request.
+   * @param loadId - The load the batch belongs to.
+   * @returns A promise resolved once the batch has answered.
+   */
+  async function placeCityBatch(batch: CityToPlace[], loadId: number): Promise<void> {
+    if (loadId !== latestLoadId) {
+      return
+    }
+    const answer: PlaceCitiesResponse | null = await DashboardService.placeCoverageCities(batch).catch((): null => null)
+    if (answer) {
+      cityGeo.value = { ...cityGeo.value, ...cityGeoEntries(answer.cities) }
+    }
+    if (loadId === latestLoadId) {
+      placingCityCount.value -= batch.length
     }
   }
 
@@ -148,6 +229,7 @@ export const useCoverageStore = defineStore('coverage', () => {
     isLoading,
     hasLoaded,
     availableCategories,
+    placingCityCount,
     load,
     selectAllCategories,
     toggleCategory,

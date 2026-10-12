@@ -50,6 +50,36 @@ export type CoverageCity = {
   city: string
   count: number
   country: string
+  geocoding: CityGeocodingStatus
+  location: CityLocation | null
+}
+
+export type CityGeocodingStatus = 'placed' | 'unknown' | 'pending'
+
+/** Centre of a city; the commune codes are French-only (empty abroad). */
+export type CityLocation = {
+  latitude: number
+  longitude: number
+  insee_code: string
+  department_code: string
+  region_code: string
+}
+
+export type CityToPlace = {
+  city: string
+  country: string
+}
+
+/** Where a city of a placement request lies, « pending » again when the geocoder did not answer. */
+export type PlacedCity = {
+  city: string
+  country: string
+  geocoding: CityGeocodingStatus
+  location: CityLocation | null
+}
+
+export type PlaceCitiesResponse = {
+  cities: PlacedCity[]
 }
 
 /** Prospect count for one country (coverage choropleth). */
@@ -145,6 +175,15 @@ export class DashboardService {
     if (memberId != null) params.set('member_id', String(memberId))
     for (const category of categories) params.append('categories', category)
     return ApiClient.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
+  }
+
+  /**
+   * Place cities the coverage answer left pending; the API keeps the answers for every later map.
+   * @param cities - A few cities (12 at most) with their country.
+   * @returns One answer per city, in order.
+   */
+  static async placeCoverageCities(cities: CityToPlace[]): Promise<PlaceCitiesResponse> {
+    return ApiClient.post<PlaceCitiesResponse>('/api/v1/dashboard/coverage/geocode', { cities })
   }
 
   /**

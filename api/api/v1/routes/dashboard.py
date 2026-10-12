@@ -30,9 +30,12 @@ from schemas.dashboard import (
     DashboardStatsResponse,
     HotLeadResponse,
     HotLeadsResponse,
+    PlaceCitiesRequest,
+    PlaceCitiesResponse,
 )
 from services.auth_service import get_current_active_user
 from services.behavior_service import behavior_service
+from services.city_geocoding_service import city_geocoding_service
 from services.order_service import order_service
 from services.organization_service import organization_service
 
@@ -223,7 +226,9 @@ async def dashboard_coverage(
     can build its trade selector from real values only.
 
     Cities are grouped case-insensitively by (city, country) so foreign homonyms
-    (Fribourg FR vs CH) stay distinct for geocoding; empty cities are excluded. The
+    (Fribourg FR vs CH) stay distinct for geocoding; empty cities are excluded. Each
+    city carries the centre the shared geocoding cache knows; the others come back
+    « pending » and the dashboard places them through ``POST /coverage/geocode``. The
     ``members`` list is filled only when the user belongs to an organization, so
     the frontend can offer a scope selector.
     """
@@ -256,7 +261,9 @@ async def dashboard_coverage(
 
     stmt = stmt.group_by(func.lower(city_col), country_norm).order_by(func.count().desc())
     rows = db.execute(stmt).all()
-    cities = [CoverageCity(city=str(row.city), count=int(row.count), country=str(row.country)) for row in rows]
+    cities = city_geocoding_service.with_cached_placements(
+        db, [CoverageCity(city=str(row.city), count=int(row.count), country=str(row.country)) for row in rows]
+    )
     total = sum(c.count for c in cities)
 
     # Les mêmes prospects, un par un : le front les géocode à l'adresse pour le zoom rue.
@@ -312,6 +319,22 @@ async def dashboard_coverage(
         members=members,
         available_categories=available_categories,
     )
+
+
+@router.post("/coverage/geocode", response_model=PlaceCitiesResponse)
+async def place_coverage_cities(
+    payload: PlaceCitiesRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> PlaceCitiesResponse:
+    """
+    Place the cities the coverage answer left « pending », and keep the answers for every later map.
+
+    The dashboard asks a few cities at a time so the map fills in as they come. A city whose
+    geocoder did not answer comes back « pending » and is asked again on the next visit.
+    """
+    del current_user
+    return PlaceCitiesResponse(cities=await city_geocoding_service.place_cities(db, payload.cities))
 
 
 @router.get("/coverage/prospects", response_model=CoverageProspectsResponse)

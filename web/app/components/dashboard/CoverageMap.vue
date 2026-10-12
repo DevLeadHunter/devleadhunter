@@ -14,7 +14,7 @@
         :aria-pressed="option.code === selectedCountry"
         @click="selectCountry(option.code)"
       >
-        <span>{{ option.flag }}</span>
+        <UiCountryFlag :code="option.code" :hide-france="false" size="default" />
         <span>{{ option.label }}</span>
         <span class="tabular-nums opacity-60">{{ option.prospectCount }}</span>
       </button>
@@ -72,6 +72,15 @@
         class="coverage-map__canvas min-h-[420px] w-full flex-1 overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300"
         :class="store.isLoading ? 'opacity-60' : 'opacity-100'"
       ></div>
+
+      <p
+        v-if="store.placingCityCount > 0"
+        class="pointer-events-none absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-2.5 py-1 text-[11px] text-[var(--app-ink-soft)] shadow-sm"
+        role="status"
+      >
+        <UIcon name="i-lucide-loader-circle" class="h-3 w-3 animate-spin" />
+        Ajout de {{ store.placingCityCount }} ville{{ store.placingCityCount > 1 ? 's' : '' }} à la carte…
+      </p>
 
       <div
         v-if="tip.show"
@@ -132,8 +141,8 @@ import type {
   MapGeoJSONFeature,
   MapMouseEvent,
 } from 'maplibre-gl'
-import type { ComputedRef, Ref } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { ComputedRef, Ref, ShallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { AddressGeo, CityGeo, ReverseGeocodedCommune } from '~/composables/useFranceGeo'
 import { addressKey, lookupCity, reverseGeocodeCommune } from '~/composables/useFranceGeo'
@@ -151,6 +160,8 @@ import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
 import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectSearches } from '~/utils/prospectSearches'
+import type { RegionContourFeature } from '~/utils/regionContours'
+import { RegionContours } from '~/utils/regionContours'
 
 /**
  * Metropolitan region contours (simplified, ~220 KB, france-geojson from IGN Admin Express), served from the public
@@ -197,7 +208,7 @@ const FOREIGN_REGIONS_SOURCE_ID: string = 'dlh-foreign-regions'
 const FOREIGN_REGIONS_FILL_LAYER_ID: string = 'dlh-foreign-regions-fill'
 const FOREIGN_REGIONS_LINE_LAYER_ID: string = 'dlh-foreign-regions-line'
 
-/** Placeholder source data until the foreign region contours have loaded. */
+/** Placeholder source data until the region contours have loaded. */
 const EMPTY_COLLECTION: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
 /** Framing that fits France plus Belgium, Switzerland and Luxembourg. */
@@ -259,8 +270,10 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
   return totals
 })
 
+const franceRegions: ShallowRef<FeatureCollection | null> = shallowRef(null)
+
 /** Region contours outside France (cantons, provinces, districts, Québec regions), loaded once for the choropleth. */
-const foreignRegions: Ref<ForeignRegionCollection | null> = ref(null)
+const foreignRegions: ShallowRef<ForeignRegionCollection | null> = shallowRef(null)
 
 /** Country whose regions + stats the top cards currently show (driven by the selector). */
 const selectedCountry: Ref<ProspectCountry> = ref('FR')
@@ -474,7 +487,9 @@ function buildProspectsCollection(): FeatureCollection<Point, ProspectFeaturePro
  */
 function addMapOverlays(): void {
   const map: MaplibreMap | null = mapInstance
-  if (!map || map.getSource(REGIONS_SOURCE_ID)) return
+  if (!map || map.getSource(FOREIGN_REGIONS_SOURCE_ID)) {
+    return
+  }
   const dark: boolean = theme.value === 'dark'
 
   // Foreign cantons/provinces first, so France's detailed regions paint alongside them.
@@ -501,7 +516,7 @@ function addMapOverlays(): void {
 
   map.addSource(REGIONS_SOURCE_ID, {
     type: 'geojson',
-    data: REGIONS_GEOJSON_URL,
+    data: franceRegions.value ?? EMPTY_COLLECTION,
     attribution: FRANCE_REGIONS_ATTRIBUTION,
   })
   map.addSource(CITIES_SOURCE_ID, { type: 'geojson', data: buildCitiesCollection() })
@@ -568,10 +583,24 @@ function refreshMapData(): void {
   source?.setData(buildCitiesCollection())
   const prospectSource: GeoJSONSource | undefined = map.getSource(PROSPECTS_SOURCE_ID) as GeoJSONSource | undefined
   prospectSource?.setData(buildProspectsCollection())
-  const foreignSource: GeoJSONSource | undefined = map.getSource(FOREIGN_REGIONS_SOURCE_ID) as GeoJSONSource | undefined
-  if (foreignRegions.value) foreignSource?.setData(foreignRegions.value)
   map.setPaintProperty(REGIONS_FILL_LAYER_ID, 'fill-color', choroplethFillColor(regionTotals.value))
   map.setPaintProperty(FOREIGN_REGIONS_FILL_LAYER_ID, 'fill-color', choroplethFillColor(foreignRegionTotals.value))
+}
+
+/** Hand the region contours to the map once loaded; data reloads skip them since they never change. */
+function refreshRegionContours(): void {
+  const map: MaplibreMap | null = mapInstance
+  if (!map || !isMapReady.value) {
+    return
+  }
+  const franceSource: GeoJSONSource | undefined = map.getSource(REGIONS_SOURCE_ID) as GeoJSONSource | undefined
+  if (franceRegions.value) {
+    franceSource?.setData(franceRegions.value)
+  }
+  const foreignSource: GeoJSONSource | undefined = map.getSource(FOREIGN_REGIONS_SOURCE_ID) as GeoJSONSource | undefined
+  if (foreignRegions.value) {
+    foreignSource?.setData(foreignRegions.value)
+  }
 }
 
 /**
@@ -887,17 +916,21 @@ watch(mapContainer, (container: HTMLElement | null): void => {
 // Repaint whenever the store data changes (scope / trade filter reloads).
 // Les adresses arrivent après les villes : sans elles ici, les points resteraient au centre-ville.
 watch(
-  (): [
-    typeof store.coverage,
-    Record<string, CityGeo | null>,
-    Record<string, AddressGeo | null>,
-    ForeignRegionCollection | null,
-  ] => [store.coverage, store.cityGeo, store.addressGeo, foreignRegions.value],
+  (): [typeof store.coverage, Record<string, CityGeo | null>, Record<string, AddressGeo | null>] => [
+    store.coverage,
+    store.cityGeo,
+    store.addressGeo,
+  ],
   (): void => {
     refreshMapData()
   },
   { deep: false },
 )
+
+watch([franceRegions, foreignRegions], (): void => {
+  refreshRegionContours()
+  refreshMapData()
+})
 
 // Until the user picks a country, the selector follows the most prospected one.
 watch(
@@ -923,7 +956,11 @@ watch(theme, (mode: AppTheme): void => {
 })
 
 onMounted(async (): Promise<void> => {
-  foreignRegions.value = await fetchForeignRegions()
+  const [franceContours, foreignContours]: [RegionContourFeature[], ForeignRegionCollection | null] = await Promise.all(
+    [RegionContours.read(REGIONS_GEOJSON_URL), fetchForeignRegions()],
+  )
+  franceRegions.value = franceContours.length > 0 ? { type: 'FeatureCollection', features: franceContours } : null
+  foreignRegions.value = foreignContours
 })
 
 onBeforeUnmount((): void => {

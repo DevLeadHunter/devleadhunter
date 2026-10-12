@@ -67,6 +67,11 @@ région étrangère couverte ouvre ses prospects ; Photon préfère la ville à 
 Fribourg, Luxembourg). Le géocodage ne garde plus un appel raté comme une ville inconnue (cache
 `dlh-cities-v6`, `dlh-fr-addresses-v2`) : c'est ce qui vidait la carte de toutes ses zones.
 
+**Carte de couverture (12/10)** : le centre de chaque ville vient de l'API (table `geocoded_cities`, une seule
+recherche par ville pour tous les appareils, `POST /dashboard/coverage/geocode` pour les villes encore inconnues) ;
+la carte s'affiche sans attendre et se complète au fil des réponses ; les contours se lisent en JSON même quand
+l'app Windows sert les `.geojson` en `text/html`, ce qui effaçait toutes les zones sur le PC.
+
 **Encore ouvert** : Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
 probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; achat

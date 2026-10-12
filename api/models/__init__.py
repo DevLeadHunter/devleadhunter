@@ -34,6 +34,7 @@ from models.email_template import EmailTemplate
 from models.email_template_library_hide import EmailTemplateLibraryHide
 from models.email_unsubscribe import EmailUnsubscribe
 from models.facebook_exclusion import FacebookPageExclusion
+from models.geocoded_city import GeocodedCity
 from models.health import HealthStatus
 from models.notification import Notification
 from models.order import Order
@@ -95,6 +96,7 @@ __all__ = [
     "EmailTemplateLibraryHide",
     "EmailUnsubscribe",
     "FacebookPageExclusion",
+    "GeocodedCity",
     "HealthStatus",
     "Notification",
     "Order",

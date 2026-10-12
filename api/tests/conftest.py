@@ -15,6 +15,7 @@ import services.prospect_search.swiss_directory as swiss_directory_module
 from core.config import settings
 from core.database import Base
 from scrappers.google_website_button import google_website_button
+from services.city_geocoding_service import CityGeocodingService
 from services.decision_maker.french_departments import FrenchDepartments
 from services.prospect_search.french_registry import FrenchRegistry
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
@@ -98,6 +99,17 @@ def french_communes_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(no_answer))
     monkeypatch.setattr(FrenchDepartments, "_department_by_town", {})
     monkeypatch.setattr(FrenchDepartments, "_is_town_by_word", {})
+
+
+@pytest.fixture(autouse=True)
+def city_geocoders_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The town geocoders never answer unless a test scripts them: a run never calls geo.api.gouv.fr nor Photon."""
+
+    async def no_answer(client: object, url: str, params: dict[str, str | int]) -> None:
+        return None
+
+    monkeypatch.setattr(CityGeocodingService, "_get_json", staticmethod(no_answer))
+    monkeypatch.setattr(CityGeocodingService, "_RETRY_DELAY_SECONDS", 0.0)
 
 
 @pytest.fixture(autouse=True)

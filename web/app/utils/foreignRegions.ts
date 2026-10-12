@@ -4,6 +4,8 @@
  */
 
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import type { RegionContourFeature } from '~/utils/regionContours'
+import { RegionContours } from '~/utils/regionContours'
 
 /** Properties carried by each foreign region feature (region code, display name, ISO alpha-2 country). */
 export type ForeignRegionProperties = {
@@ -24,24 +26,13 @@ export type ForeignRegionCollection = FeatureCollection<Polygon | MultiPolygon, 
  */
 const FOREIGN_REGION_FILES: string[] = ['/regions-ch-be-lu.geojson', '/regions-ca-qc.geojson']
 
-/** Files loaded once then reused: the contours never change during a session. */
-const loadedFiles: Map<string, ForeignRegionFeature[]> = new Map()
-
 /**
- * Load one contour file, cached for the session. A failed load is not cached, so the next call tries again.
- * @param url - Public path of the file.
- * @returns The file's features, or none when it cannot be loaded.
+ * Whether a contour carries what a foreign region needs: its display name and its country.
+ * @param feature - A contour read from one of the files.
+ * @returns True for a usable foreign region.
  */
-async function loadRegionFile(url: string): Promise<ForeignRegionFeature[]> {
-  const cached: ForeignRegionFeature[] | undefined = loadedFiles.get(url)
-  if (cached) return cached
-  try {
-    const collection: ForeignRegionCollection = await $fetch<ForeignRegionCollection>(url)
-    loadedFiles.set(url, collection.features)
-    return collection.features
-  } catch {
-    return []
-  }
+function isForeignRegion(feature: RegionContourFeature): feature is ForeignRegionFeature {
+  return typeof feature.properties.name === 'string' && typeof feature.properties.country === 'string'
 }
 
 /**
@@ -49,8 +40,10 @@ async function loadRegionFile(url: string): Promise<ForeignRegionFeature[]> {
  * @returns The merged collection, or null when no file could be loaded.
  */
 export async function fetchForeignRegions(): Promise<ForeignRegionCollection | null> {
-  const files: ForeignRegionFeature[][] = await Promise.all(FOREIGN_REGION_FILES.map(loadRegionFile))
-  const features: ForeignRegionFeature[] = files.flat()
+  const files: RegionContourFeature[][] = await Promise.all(
+    FOREIGN_REGION_FILES.map((url: string): Promise<RegionContourFeature[]> => RegionContours.read(url)),
+  )
+  const features: ForeignRegionFeature[] = files.flat().filter(isForeignRegion)
   return features.length > 0 ? { type: 'FeatureCollection', features } : null
 }
 
