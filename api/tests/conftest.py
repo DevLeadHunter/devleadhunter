@@ -3,6 +3,8 @@
 import importlib
 import pkgutil
 from collections.abc import Iterator
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from sqlalchemy import create_engine
@@ -11,16 +13,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import models
+import services.email_sending_service as sending
 import services.prospect_search.swiss_directory as swiss_directory_module
 from core.config import settings
 from core.database import Base
+from enums.sending_provider import SendingProvider
 from scrappers.google_website_button import google_website_button
 from services.city_geocoding_service import CityGeocodingService
 from services.decision_maker.french_departments import FrenchDepartments
+from services.email_sending_service import EmailSendingService
 from services.prospect_search.french_registry import FrenchRegistry
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.prospect_search.swiss_registry import SwissRegisterFirm, swiss_registry
 from services.r2_storage_service import r2_storage
+from services.resend_service import ResendService
 
 for _module in pkgutil.iter_modules(models.__path__):
     importlib.import_module("models." + _module.name)
@@ -138,3 +144,32 @@ def db(engine: Engine) -> Iterator[Session]:
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture
+def resend_payloads(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """The payloads handed to Resend, the sending identity and the funnel capture being stubbed."""
+    payloads: list[dict[str, Any]] = []
+
+    async def send_email(_self: ResendService, **kwargs: Any) -> dict[str, str]:
+        payloads.append(kwargs)
+        return {"message_id": f"msg_{len(payloads)}", "provider": "resend"}
+
+    async def no_capture(_self: EmailSendingService, **_kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(
+        sending,
+        "resolve_sending_identity",
+        lambda _db, _user_id: SimpleNamespace(
+            provider=SendingProvider.RESEND.value,
+            gmail_account=None,
+            from_email="jean@mail.example.com",
+            from_name="Jean",
+            resend_api_key="re_test",
+        ),
+    )
+    monkeypatch.setattr(sending.settings, "dev_email_redirect", None)
+    monkeypatch.setattr(ResendService, "send_email", send_email)
+    monkeypatch.setattr(EmailSendingService, "_capture_email_sent", no_capture)
+    return payloads

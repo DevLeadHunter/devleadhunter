@@ -9,14 +9,11 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from sqlalchemy.orm import Session
 
-import services.email_sending_service as sending
-from enums.sending_provider import SendingProvider
 from models.campaign import Campaign, CampaignStatus
 from models.email_log import EmailLog
 from models.email_queue import EmailQueue
@@ -25,40 +22,10 @@ from models.prospect_db import ProspectDB
 from models.user import User
 from services.campaign_queue_service import CampaignQueueService
 from services.email_sending_service import EmailSendingService
-from services.resend_service import ResendService
 from services.unsubscribe_service import POSTAL_ADDRESS_MISSING_REFUSAL
 
 _ADDRESS = "12 rue des Lilas, 35000 Rennes, France"
 _SENDER_LINE = "Envoyé par Dibodev (Jean Dupont), 12 rue des Lilas, 35000 Rennes, France"
-
-
-@pytest.fixture
-def sent_emails(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
-    """The payloads handed to Resend, the sending identity and the funnel capture being stubbed."""
-    payloads: list[dict[str, Any]] = []
-
-    async def send_email(_self: ResendService, **kwargs: Any) -> dict[str, str]:
-        payloads.append(kwargs)
-        return {"message_id": f"msg_{len(payloads)}", "provider": "resend"}
-
-    async def no_capture(_self: EmailSendingService, **_kwargs: Any) -> None:
-        return None
-
-    monkeypatch.setattr(
-        sending,
-        "resolve_sending_identity",
-        lambda _db, _user_id: SimpleNamespace(
-            provider=SendingProvider.RESEND.value,
-            gmail_account=None,
-            from_email="jean@mail.example.com",
-            from_name="Jean",
-            resend_api_key="re_test",
-        ),
-    )
-    monkeypatch.setattr(sending.settings, "dev_email_redirect", None)
-    monkeypatch.setattr(ResendService, "send_email", send_email)
-    monkeypatch.setattr(EmailSendingService, "_capture_email_sent", no_capture)
-    return payloads
 
 
 def _sender(db: Session, *, postal_address: str | None) -> User:
@@ -114,7 +81,7 @@ def _claimed_first_email(db: Session, sender: User, prospect: ProspectDB) -> Ema
 
 
 def test_a_canadian_email_is_held_back_until_the_profile_has_a_postal_address(
-    db: Session, sent_emails: list[dict[str, Any]]
+    db: Session, resend_payloads: list[dict[str, Any]]
 ) -> None:
     sender = _sender(db, postal_address=None)
     item = _claimed_first_email(db, sender, _prospect(db, sender, country="CA"))
@@ -123,12 +90,12 @@ def test_a_canadian_email_is_held_back_until_the_profile_has_a_postal_address(
 
     assert item.status == "skipped"
     assert item.skip_reason == POSTAL_ADDRESS_MISSING_REFUSAL
-    assert sent_emails == []
+    assert resend_payloads == []
     assert db.query(EmailLog).count() == 0
 
 
 def test_a_canadian_email_leaves_with_the_sender_identification_once_the_address_is_set(
-    db: Session, sent_emails: list[dict[str, Any]]
+    db: Session, resend_payloads: list[dict[str, Any]]
 ) -> None:
     sender = _sender(db, postal_address=_ADDRESS)
     item = _claimed_first_email(db, sender, _prospect(db, sender, country="CA"))
@@ -136,23 +103,25 @@ def test_a_canadian_email_leaves_with_the_sender_identification_once_the_address
     asyncio.run(CampaignQueueService(db)._dispatch(item))
 
     assert item.status == "sent"
-    assert len(sent_emails) == 1
-    assert _SENDER_LINE in sent_emails[0]["html_body"]
+    assert len(resend_payloads) == 1
+    assert _SENDER_LINE in resend_payloads[0]["html_body"]
 
 
-def test_a_french_email_leaves_without_any_postal_address(db: Session, sent_emails: list[dict[str, Any]]) -> None:
+def test_a_french_email_leaves_without_any_postal_address(db: Session, resend_payloads: list[dict[str, Any]]) -> None:
     sender = _sender(db, postal_address=None)
     item = _claimed_first_email(db, sender, _prospect(db, sender, country="FR"))
 
     asyncio.run(CampaignQueueService(db)._dispatch(item))
 
     assert item.status == "sent"
-    assert len(sent_emails) == 1
-    assert "Envoyé par" not in sent_emails[0]["html_body"]
-    assert "Se désabonner" in sent_emails[0]["html_body"]
+    assert len(resend_payloads) == 1
+    assert "Envoyé par" not in resend_payloads[0]["html_body"]
+    assert "Se désabonner" in resend_payloads[0]["html_body"]
 
 
-def test_an_immediate_follow_up_to_canada_answers_the_reason(db: Session, sent_emails: list[dict[str, Any]]) -> None:
+def test_an_immediate_follow_up_to_canada_answers_the_reason(
+    db: Session, resend_payloads: list[dict[str, Any]]
+) -> None:
     sender = _sender(db, postal_address=None)
     prospect = _prospect(db, sender, country="CA")
     item = _claimed_first_email(db, sender, prospect)
@@ -160,11 +129,11 @@ def test_an_immediate_follow_up_to_canada_answers_the_reason(db: Session, sent_e
     result = asyncio.run(CampaignQueueService(db).send_followup_now(item.campaign, prospect.id, item.template_id))
 
     assert result == {"success": False, "error": POSTAL_ADDRESS_MISSING_REFUSAL}
-    assert sent_emails == []
+    assert resend_payloads == []
 
 
 def test_the_shared_send_path_refuses_a_canadian_email_without_an_address(
-    db: Session, sent_emails: list[dict[str, Any]]
+    db: Session, resend_payloads: list[dict[str, Any]]
 ) -> None:
     """Even without the check the routes run first, the shared send path refuses and logs nothing."""
     sender = _sender(db, postal_address=None)
@@ -182,12 +151,12 @@ def test_the_shared_send_path_refuses_a_canadian_email_without_an_address(
                 prospect_id=str(prospect.id),
             )
         )
-    assert sent_emails == []
+    assert resend_payloads == []
     assert db.query(EmailLog).count() == 0
 
 
 def test_a_transactional_email_to_a_canadian_client_is_never_held_back(
-    db: Session, sent_emails: list[dict[str, Any]]
+    db: Session, resend_payloads: list[dict[str, Any]]
 ) -> None:
     sender = _sender(db, postal_address=None)
     prospect = _prospect(db, sender, country="CA")
@@ -204,4 +173,4 @@ def test_a_transactional_email_to_a_canadian_client_is_never_held_back(
     )
 
     assert result["success"] is True
-    assert len(sent_emails) == 1
+    assert len(resend_payloads) == 1

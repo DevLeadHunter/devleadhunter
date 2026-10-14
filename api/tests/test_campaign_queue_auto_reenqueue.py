@@ -204,7 +204,9 @@ def test_send_guard_skip_matrix(monkeypatch):
     monkeypatch.setattr(cqs.CampaignQueueService, "_demo_link_for_prospect", lambda self, pid, uid, v: "")
     # Demo template, no active demo → "demo".
     assert (
-        service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=False, include_video=True, uses_assistant=False)
+        service._send_guard_skip(
+            1, 7, None, uses_demo=True, uses_video_only=False, include_video=True, uses_assistant=False
+        )
         == "demo"
     )
 
@@ -212,25 +214,29 @@ def test_send_guard_skip_matrix(monkeypatch):
     monkeypatch.setattr(cqs.CampaignQueueService, "_video_for_prospect", lambda self, pid, uid, v: ("", ""))
     # Video-only template, no ready video → "video".
     assert (
-        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=True, include_video=True, uses_assistant=False)
+        service._send_guard_skip(
+            1, 7, None, uses_demo=False, uses_video_only=True, include_video=True, uses_assistant=False
+        )
         == "video"
     )
     # Combo template (demo + video) never blocks on the video — it degrades to the demo link.
     assert (
-        service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=True, include_video=True, uses_assistant=False)
+        service._send_guard_skip(
+            1, 7, None, uses_demo=True, uses_video_only=False, include_video=True, uses_assistant=False
+        )
         is None
     )
     # Video-only template with the campaign video toggle off → "video".
     assert (
         service._send_guard_skip(
-            1, 7, None, uses_demo=False, uses_video=True, include_video=False, uses_assistant=False
+            1, 7, None, uses_demo=False, uses_video_only=True, include_video=False, uses_assistant=False
         )
         == "video"
     )
     # Plain template (no demo, no video) is always allowed.
     assert (
         service._send_guard_skip(
-            1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=False
+            1, 7, None, uses_demo=False, uses_video_only=False, include_video=True, uses_assistant=False
         )
         is None
     )
@@ -238,12 +244,16 @@ def test_send_guard_skip_matrix(monkeypatch):
     monkeypatch.setattr(cqs.CampaignQueueService, "_has_active_assistant", lambda self, pid, uid: False)
     # Assistant template, no active assistant → "assistant".
     assert (
-        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=True)
+        service._send_guard_skip(
+            1, 7, None, uses_demo=False, uses_video_only=False, include_video=True, uses_assistant=True
+        )
         == "assistant"
     )
     monkeypatch.setattr(cqs.CampaignQueueService, "_has_active_assistant", lambda self, pid, uid: True)
     assert (
-        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=True)
+        service._send_guard_skip(
+            1, 7, None, uses_demo=False, uses_video_only=False, include_video=True, uses_assistant=True
+        )
         is None
     )
 
@@ -253,6 +263,19 @@ def test_send_guard_skip_matrix(monkeypatch):
     monkeypatch.setattr(cqs.CampaignQueueService, "_has_ready_assistant_video", lambda self, pid, uid: True)
     assert service._send_guard_skip(1, 7, None, False, False, True, True, uses_assistant_video_only=True) is None
     assert service._send_guard_skip(1, 7, None, False, False, False, True, uses_assistant_video_only=True) == "video"
+
+
+def test_a_site_video_template_is_video_only_unless_it_carries_the_demo_link():
+    video_and_expiry_date = SimpleNamespace(
+        subject="votre site, en 30 secondes",
+        body_html="<p>{vignette_video}</p><p>Je le retire le {date_expiration}.</p>",
+    )
+    combo = SimpleNamespace(subject="x", body_html="<p>{vignette_video} {lien_demo}</p>")
+    plain = SimpleNamespace(subject="x", body_html="<p>{lien_demo}</p>")
+    assert CampaignQueueService._template_uses_video_only(video_and_expiry_date) is True
+    assert CampaignQueueService._template_uses_video_only(combo) is False
+    assert CampaignQueueService._template_uses_video_only(plain) is False
+    assert CampaignQueueService._template_uses_video_only(None) is False
 
 
 def test_a_receptionist_video_template_is_video_only_unless_it_carries_the_live_link():

@@ -72,6 +72,7 @@ _NO_ASSISTANT_SKIP_REASON = "Pas d'assistant IA actif"
 # Skip reason stored on a queue row whose video-only template needs the receptionist's generated video.
 _NO_ASSISTANT_VIDEO_SKIP_REASON = "Pas de vidéo de réceptionniste prête"
 _NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON = "Pas de vidéo prête pour la relance"
+_NO_SITE_VIDEO_SKIP_REASON = "Pas de vidéo prête"
 _REPLIED_SKIP_REASON = "Le prospect a répondu"
 
 # Template variables that only render with the prospect's active AI assistant (link, video, thumbnail).
@@ -208,8 +209,8 @@ class CampaignQueueService:
         template_b: EmailTemplate | None = self.db.get(EmailTemplate, ab_template_id_b) if ab_template_id_b else None
         uses_demo_a: bool = self._template_uses_demo_link(template_a)
         uses_demo_b: bool = self._template_uses_demo_link(template_b)
-        uses_video_a: bool = self._template_uses_video(template_a)
-        uses_video_b: bool = self._template_uses_video(template_b)
+        uses_video_only_a: bool = self._template_uses_video_only(template_a)
+        uses_video_only_b: bool = self._template_uses_video_only(template_b)
         uses_assistant_a: bool = self._template_uses_assistant_link(template_a)
         uses_assistant_b: bool = self._template_uses_assistant_link(template_b)
         uses_assistant_video_only_a: bool = self._template_uses_assistant_video_only(template_a)
@@ -262,7 +263,7 @@ class CampaignQueueService:
                 variant = "A" if idx % 2 == 0 else "B"
                 tpl_id = template_id if variant == "A" else ab_template_id_b
                 uses_demo = uses_demo_a if variant == "A" else uses_demo_b
-                uses_video = uses_video_a if variant == "A" else uses_video_b
+                uses_video_only = uses_video_only_a if variant == "A" else uses_video_only_b
                 uses_assistant = uses_assistant_a if variant == "A" else uses_assistant_b
                 uses_assistant_video_only = (
                     uses_assistant_video_only_a if variant == "A" else uses_assistant_video_only_b
@@ -272,7 +273,7 @@ class CampaignQueueService:
                 variant = None
                 tpl_id = template_id
                 uses_demo = uses_demo_a
-                uses_video = uses_video_a
+                uses_video_only = uses_video_only_a
                 uses_assistant = uses_assistant_a
                 uses_assistant_video_only = uses_assistant_video_only_a
                 uses_loyalty_card_link = uses_loyalty_card_link_a
@@ -283,7 +284,7 @@ class CampaignQueueService:
                 campaign.user_id,
                 variant,
                 uses_demo,
-                uses_video,
+                uses_video_only,
                 campaign.include_video,
                 uses_assistant,
                 uses_assistant_video_only=uses_assistant_video_only,
@@ -530,7 +531,7 @@ class CampaignQueueService:
             campaign.user_id,
             variant,
             self._template_uses_demo_link(template),
-            self._template_uses_video(template),
+            self._template_uses_video_only(template),
             campaign.include_video,
             self._template_uses_assistant_link(template),
             uses_assistant_video_only=self._template_uses_assistant_video_only(template),
@@ -1149,6 +1150,13 @@ class CampaignQueueService:
         return f"{{{EmailVariables.VIDEO_LINK}}}" in haystack or f"{{{EmailVariables.VIDEO_THUMBNAIL}}}" in haystack
 
     @staticmethod
+    def _template_uses_video_only(template: EmailTemplate | None) -> bool:
+        """Return True when the site video is a template's only door (no ``{lien_demo}`` to fall back on)."""
+        return CampaignQueueService._template_uses_video(template) and not CampaignQueueService._template_uses_any(
+            template, (EmailVariables.DEMO_LINK,)
+        )
+
+    @staticmethod
     def _template_uses_any(template: EmailTemplate | None, variables: tuple[str, ...]) -> bool:
         """Return True when a template's subject or body references any of ``variables``."""
         if template is None:
@@ -1308,7 +1316,7 @@ class CampaignQueueService:
         user_id: int,
         variant: str | None,
         uses_demo: bool,
-        uses_video: bool,
+        uses_video_only: bool,
         include_video: bool,
         uses_assistant: bool,
         *,
@@ -1332,7 +1340,7 @@ class CampaignQueueService:
             user_id: Owner of the prospect's demo/video.
             variant: A/B variant assigned to this prospect (None outside A/B).
             uses_demo: Whether the assigned template references ``{lien_demo}``.
-            uses_video: Whether it references ``{lien_video}``/``{vignette_video}``.
+            uses_video_only: Whether the site video is its only door.
             include_video: The campaign's video toggle.
             uses_assistant: Whether it references an assistant link/video variable.
             uses_assistant_video_only: Whether the receptionist's video is its only door.
@@ -1343,7 +1351,7 @@ class CampaignQueueService:
         """
         if uses_demo and not self._demo_link_for_prospect(prospect_id, user_id, variant):
             return "demo"
-        if uses_video and not uses_demo:
+        if uses_video_only:
             has_video: bool = include_video and bool(self._video_for_prospect(prospect_id, user_id, variant)[0])
             if not has_video:
                 return "video"
@@ -1484,9 +1492,10 @@ class CampaignQueueService:
         video_link, video_thumbnail_url = "", ""
         if uses_video and campaign.include_video:
             video_link, video_thumbnail_url = self._video_for_prospect(prospect.id, item.user_id, item.ab_variant)
-        if uses_video and not uses_demo and not video_link:
+        if self._template_uses_video_only(template) and not video_link:
             logger.info("[Queue] Skipping send for prospect %d — video-only template, no video ready", prospect.id)
             item.status = _STATUS_SKIPPED
+            item.skip_reason = _NO_SITE_VIDEO_SKIP_REASON
             self.db.commit()
             return
 
