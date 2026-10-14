@@ -2,8 +2,8 @@
 
 The first prospecting message a prospect receives (email or SMS) is his first contact, the next SMS his
 relance, and nothing automated follows. A legacy row and a manual SMS end the sequence; a send smsmode
-refused reached nobody and counts for nothing. The automated loops (J+30 relance, cold SMS) text
-France only, while a send the user starts himself follows the country profiles.
+refused reached nobody and counts for nothing. The automated J+30 relance texts France only and never
+makes a first contact, while a send the user starts himself follows the country profiles.
 """
 
 import asyncio
@@ -161,7 +161,6 @@ class TestNextTouch:
         prospect = _prospect(db, name="Garage Martin", slug="garage-martin")
         _sms(db, prospect, kind=SmsMessageKind.SERVICE.value)
 
-        assert SmsProspectingRules.has_received_a_prospecting_sms(db, _USER_ID, prospect.id) is False
         assert SmsProspectingRules.next_touch(db, _USER_ID, prospect.id) is SmsMessageKind.FIRST_CONTACT
 
 
@@ -184,42 +183,56 @@ class TestSelections:
 
         assert _relance_candidate_ids(db) == set()
 
-    def test_the_cold_selection_leaves_out_any_prospect_already_texted(self, db: Session) -> None:
-        fresh = _prospect(db, name="Garage Martin", slug="garage-martin")
-        texted = _prospect(db, name="Plomberie Vidal", slug="plomberie-vidal")
-        _sms(db, texted, kind=SmsMessageKind.FIRST_CONTACT.value)
-        refused = _prospect(db, name="Garage Durand", slug="garage-durand")
-        _sms(db, refused, kind=SmsMessageKind.FIRST_CONTACT.value, status="failed", provider_message_id=None)
-
-        cold_ids = {candidate.prospect.id for candidate in sms_relance_service.find_cold_candidates(db, _USER_ID)}
-
-        assert cold_ids == {fresh.id, refused.id}
-
-    def test_a_belgian_prospect_is_never_selected(self, db: Session) -> None:
-        belgian = _prospect(db, name="Garage Peeters", slug="garage-peeters", country="BE")
-        belgian.phone = "0470 12 34 56"
-        db.commit()
-
-        assert sms_relance_service.find_cold_candidates(db, _USER_ID) == []
-
 
 class TestAutomationReasons:
     def test_the_automation_names_what_blocks_a_planned_sms(self, db: Session) -> None:
         texted = _prospect(db, name="Garage Martin", slug="garage-martin", contacted=True)
         _sms(db, texted, kind=SmsMessageKind.FIRST_CONTACT.value, days_ago=10)
 
-        assert sms_automation_service._ineligibility_reason(db, _USER_ID, texted, "cold") == "Déjà contacté par SMS"
-        assert sms_automation_service._ineligibility_reason(db, _USER_ID, texted, "relance") is None
+        assert sms_automation_service._ineligibility_reason(db, _USER_ID, texted) is None
         _sms(db, texted, kind=SmsMessageKind.FOLLOW_UP.value)
-        assert sms_automation_service._ineligibility_reason(db, _USER_ID, texted, "relance") == (
+        assert sms_automation_service._ineligibility_reason(db, _USER_ID, texted) == (
             "Déjà relancé par SMS (ou SMS envoyé à la main)"
         )
 
     def test_a_closed_country_is_named_as_the_reason(self, db: Session) -> None:
         belgian = _prospect(db, name="Garage Peeters", slug="garage-peeters", country="BE")
 
-        assert sms_automation_service._ineligibility_reason(db, _USER_ID, belgian, "cold") == (
+        assert sms_automation_service._ineligibility_reason(db, _USER_ID, belgian) == (
             "Pas de SMS de prospection vers ce pays (Belgique)"
+        )
+
+
+class TestNoAutomaticFirstContact:
+    def test_the_automated_loop_plans_only_the_j30_relance(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(sms_auto_campaign_service, "ensure", lambda db, user_id, **kwargs: SimpleNamespace(id=1))
+        monkeypatch.setattr(sms_auto_campaign_service, "attach_prospect", lambda db, campaign, prospect_id: None)
+        emailed = _prospect(db, name="Plomberie Vidal", slug="plomberie-vidal", email="vidal@example.com")
+        _email(db, emailed, days_ago=40)
+        _prospect(db, name="Garage Martin", slug="garage-martin")
+        config = SmsConfig(user_id=_USER_ID, sender="Dibodev", auto_relance_enabled=True, auto_relance_after_days=30)
+        db.add(config)
+        db.commit()
+
+        sms_automation_service._plan_user(db, config)
+        planned_rows = db.query(SmsAutoQueue).all()
+
+        assert [(row.prospect_id, row.kind) for row in planned_rows] == [(emailed.id, "relance")]
+
+    def test_a_first_contact_row_still_pending_is_cancelled(self, db: Session) -> None:
+        prospect = _prospect(db, name="Garage Martin", slug="garage-martin")
+        db.add(SmsConfig(user_id=_USER_ID, sender="Dibodev", auto_relance_enabled=True))
+        planned_first_contact = SmsAutoQueue(
+            user_id=_USER_ID, prospect_id=prospect.id, kind="cold", status="pending", scheduled_at=_NOW
+        )
+        db.add(planned_first_contact)
+        db.commit()
+
+        sms_automation_service.revalidate(db)
+
+        assert (planned_first_contact.status, planned_first_contact.skip_reason) == (
+            "cancelled",
+            "Automatisation désactivée",
         )
 
 
@@ -254,7 +267,7 @@ class TestAutomaticLoopsStayInFrance:
     def test_a_planned_swiss_row_is_skipped_with_its_reason(self, db: Session) -> None:
         swiss = _prospect(db, name="Garage Favre", slug="garage-favre", country="CH")
 
-        assert sms_automation_service._ineligibility_reason(db, _USER_ID, swiss, "cold") == (
+        assert sms_automation_service._ineligibility_reason(db, _USER_ID, swiss) == (
             "Pas de SMS automatique vers ce pays (Suisse) : campagne ou envoi à la main"
         )
         assert SmsProspectingRules.automatic_country_refusal(_prospect(db, name="Garage Martin", slug="g-m")) is None

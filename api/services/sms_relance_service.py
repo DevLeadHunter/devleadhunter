@@ -1,12 +1,10 @@
-"""Find prospects to SMS (relance or cold) and send, reviving the demo if dormant.
+"""Find prospects to SMS (relance) and send, reviving the demo if dormant.
 
-The SMS pushes a prospect back to their demo site. Two selections:
+The SMS pushes a prospect back to their demo site. One selection:
 - **Relance**: a prospect emailed a while ago who did NOT reply, owns a mobile, never
   got his relance SMS, and was not opted out of the relance. More natural than a cold SMS.
   Opens and clicks do NOT bar a relance — they are too noisy (bot prefetch, the
   operator's own demo visits) to read as a real reaction.
-- **Cold**: a prospect with a mobile but NO email — the SMS is the first touch, so a
-  prospect already contacted (any channel, manual included) is never selected.
 
 A prospect's demo may have gone dormant (EXPIRED) since its 21-day TTL lapsed; the send
 revives it (from ``content_json``, no re-scrape) and restarts a fresh 21-day TTL, so the
@@ -18,7 +16,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from enums.demo_site_status import DemoSiteStatus
@@ -53,17 +51,15 @@ class SmsRelanceCandidate:
         demo_site: DemoSite,
         demo_url: str,
         emailed_at: datetime | None = None,
-        cold: bool = False,
     ) -> None:
         self.prospect = prospect
         self.demo_site = demo_site
         self.demo_url = demo_url
         self.emailed_at = emailed_at
-        self.cold = cold
 
 
 class SmsRelanceService:
-    """Select prospects to SMS (relance + cold) and send, reviving dormant demos."""
+    """Select prospects to SMS (relance) and send, reviving dormant demos."""
 
     def find_candidates(
         self,
@@ -172,40 +168,7 @@ class SmsRelanceService:
         for prospect, emailed_at in rows:
             if skip_contact_locked and contact_lock_service.is_locked_for_module(prospect, MODULE_WEBSITES, now):
                 continue
-            candidate = self._build_candidate(db, user_id, prospect, emailed_at=emailed_at, cold=False)
-            if candidate is not None:
-                candidates.append(candidate)
-            if len(candidates) >= limit:
-                break
-        return candidates
-
-    def find_cold_candidates(self, db: Session, user_id: int, *, limit: int = 50) -> list[SmsRelanceCandidate]:
-        """Return the user's prospects for a cold SMS (a mobile but no email, never texted).
-
-        Args:
-            db: Active database session.
-            user_id: Owner.
-            limit: Max candidates to return.
-
-        Returns:
-            Eligible cold candidates.
-        """
-        rows = db.execute(
-            select(ProspectDB)
-            .where(
-                ProspectDB.user_id == user_id,
-                ProspectDB.phone.isnot(None),
-                or_(ProspectDB.email.is_(None), ProspectDB.email == ""),
-                ProspectDB.contacted.is_(False),
-                ProspectDB.id.notin_(SmsProspectingRules.texted_prospect_ids(user_id)),
-            )
-            .order_by(ProspectDB.created_at.asc())
-            .limit(limit * 3)
-        ).all()
-
-        candidates: list[SmsRelanceCandidate] = []
-        for (prospect,) in rows:
-            candidate = self._build_candidate(db, user_id, prospect, emailed_at=None, cold=True)
+            candidate = self._build_candidate(db, user_id, prospect, emailed_at=emailed_at)
             if candidate is not None:
                 candidates.append(candidate)
             if len(candidates) >= limit:
@@ -213,7 +176,7 @@ class SmsRelanceService:
         return candidates
 
     def _build_candidate(
-        self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None, cold: bool
+        self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None
     ) -> SmsRelanceCandidate | None:
         """Turn a prospect into a candidate when it is SMS-reachable with a demo, else ``None``."""
         # The mobile can sit anywhere in the list (the primary is often a business landline).
@@ -225,22 +188,16 @@ class SmsRelanceService:
         # Per-prospect opt-out of every automated SMS (the operator handles it by hand).
         if prospect.sms_auto_excluded:
             return None
-        # A cold SMS is a FIRST touch: a prospect already contacted (any channel, manual
-        # included) must never receive one — the operator owns that conversation.
-        if cold and prospect.contacted:
-            return None
         if sms_service.is_suppressed(db, user_id, to_e164):
             return None
         site = self.demo_for_prospect(db, user_id, prospect.id)
         if site is None:
             return None
         demo_url = sms_tracked_link(demo_site_service.demo_url_for_slug(site.slug))
-        return SmsRelanceCandidate(
-            prospect=prospect, demo_site=site, demo_url=demo_url, emailed_at=emailed_at, cold=cold
-        )
+        return SmsRelanceCandidate(prospect=prospect, demo_site=site, demo_url=demo_url, emailed_at=emailed_at)
 
     def candidate_for(
-        self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None, cold: bool
+        self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None
     ) -> SmsRelanceCandidate | None:
         """Re-check one prospect right before a planned send (same gates as the selection).
 
@@ -248,13 +205,12 @@ class SmsRelanceService:
             db: Active database session.
             user_id: Owner.
             prospect: The recipient to re-verify.
-            emailed_at: First-email date anchoring a relance (``None`` for cold).
-            cold: Whether the planned SMS is a cold first contact.
+            emailed_at: First-email date anchoring a relance.
 
         Returns:
             A sendable candidate, or ``None`` when eligibility was lost since planning.
         """
-        return self._build_candidate(db, user_id, prospect, emailed_at=emailed_at, cold=cold)
+        return self._build_candidate(db, user_id, prospect, emailed_at=emailed_at)
 
     def demo_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> DemoSite | None:
         """The prospect's newest reachable demo (ACTIVE, else dormant EXPIRED), or ``None``."""
@@ -273,7 +229,7 @@ class SmsRelanceService:
     async def send_relance(
         self, db: Session, user_id: int, candidate: SmsRelanceCandidate, *, template_key: str | None = None
     ) -> bool:
-        """Send one SMS (relance or cold) — revive a dormant demo first, then restart its TTL.
+        """Send one SMS (relance) — revive a dormant demo first, then restart its TTL.
 
         A sent SMS is a websites-module contact: it stamps the cross-module lock.
 
@@ -301,7 +257,6 @@ class SmsRelanceService:
             prospect=candidate.prospect,
             config=config,
             demo_url=candidate.demo_url,
-            cold=candidate.cold,
             template_key=template_key,
             video_url=video_url,
         )

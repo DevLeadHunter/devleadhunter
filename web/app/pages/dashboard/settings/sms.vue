@@ -44,11 +44,11 @@
     </section>
 
     <section class="app-card p-5">
-      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Automatisations</h2>
+      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Automatisation</h2>
       <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
-        Désactivées par défaut : vous gardez la main en manuel. Activez-les pour laisser DevLeadHunter envoyer tout
-        seul, toujours dans la fenêtre légale (lun–ven 8h–20h, sam 10h–19h). Elles ne visent que les prospects en
-        France.
+        Désactivée par défaut : vous gardez la main en manuel. Activez-la pour laisser DevLeadHunter envoyer tout seul,
+        toujours dans la fenêtre légale (lun–ven 8h–20h, sam 10h–19h). Elle ne vise que les prospects en France. Un
+        premier SMS ne part jamais tout seul : il part avec la campagne SMS que vous lancez.
       </p>
 
       <div class="mt-4 flex items-start gap-3">
@@ -74,17 +74,6 @@
             @change="saveAutomation"
           />
         </label>
-      </div>
-
-      <div class="mt-5 flex items-start gap-3 border-t border-[var(--app-line-soft)] pt-4">
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-[var(--app-ink)]">Prospection SMS des prospects sans email</p>
-          <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
-            Contacte par SMS les prospects qui ont un mobile 06/07 mais pas d'email — le SMS devient le premier contact,
-            avec leur site de démonstration.
-          </p>
-        </div>
-        <UiSwitch id="sms-cold" :model-value="coldSmsEnabled" @update:model-value="onToggleColdSms" />
       </div>
     </section>
 
@@ -195,7 +184,6 @@ const config: Ref<SmsConfig | null> = ref(null)
 const sender: Ref<string> = ref('')
 const isSaving: Ref<boolean> = ref(false)
 
-const coldSmsEnabled: Ref<boolean> = ref(false)
 const autoRelanceEnabled: Ref<boolean> = ref(false)
 const autoRelanceAfterDays: Ref<number> = ref(30)
 
@@ -259,7 +247,6 @@ async function loadConfig(): Promise<void> {
   try {
     config.value = await SmsService.getConfig()
     sender.value = config.value.sender
-    coldSmsEnabled.value = config.value.cold_sms_enabled
     autoRelanceEnabled.value = config.value.auto_relance_enabled
     autoRelanceAfterDays.value = config.value.auto_relance_after_days
     relanceTemplateKey.value = config.value.relance_template_key
@@ -281,12 +268,11 @@ async function loadRelanceTemplates(): Promise<void> {
 async function saveAutomation(): Promise<void> {
   try {
     config.value = await SmsService.updateAutomation({
-      cold_sms_enabled: coldSmsEnabled.value,
       auto_relance_enabled: autoRelanceEnabled.value,
       auto_relance_after_days: autoRelanceAfterDays.value,
       relance_template_key: relanceTemplateKey.value || undefined,
     })
-    toast.success('Automatisations enregistrées')
+    toast.success('Automatisation enregistrée')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Échec de l'enregistrement")
   }
@@ -298,15 +284,6 @@ async function saveAutomation(): Promise<void> {
  */
 async function onToggleAutoRelance(value: boolean): Promise<void> {
   autoRelanceEnabled.value = value
-  await saveAutomation()
-}
-
-/**
- * Toggle the cold-SMS and persist.
- * @param value - The new state.
- */
-async function onToggleColdSms(value: boolean): Promise<void> {
-  coldSmsEnabled.value = value
   await saveAutomation()
 }
 

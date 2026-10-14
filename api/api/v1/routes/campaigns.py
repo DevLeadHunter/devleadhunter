@@ -754,7 +754,6 @@ async def pause_campaign(
             sms_config_service.set_automation(
                 db,
                 current_user.id,
-                cold_sms_enabled=bool(config.cold_sms_enabled),
                 auto_relance_enabled=False,
                 auto_relance_after_days=config.auto_relance_after_days,
             )
@@ -806,7 +805,6 @@ async def resume_campaign(
         sms_config_service.set_automation(
             db,
             current_user.id,
-            cold_sms_enabled=bool(config.cold_sms_enabled),
             auto_relance_enabled=True,
             auto_relance_after_days=config.auto_relance_after_days,
         )

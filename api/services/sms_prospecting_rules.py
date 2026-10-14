@@ -32,7 +32,7 @@ class SmsProspectingRules:
     """Decide whether a prospect may receive a prospecting SMS, and which touch it would be.
 
     A send the user starts himself (a campaign, the composer, a manual relance) follows the country
-    profiles; the automated loops (J+30 relance, cold SMS) text the ``AUTOMATIC_SMS_COUNTRIES`` only.
+    profiles; the automated loop (J+30 relance) texts the ``AUTOMATIC_SMS_COUNTRIES`` only.
     """
 
     # TODO: add Switzerland once its first real SMS is checked (final text, segments, price, delivery report).
@@ -91,7 +91,7 @@ class SmsProspectingRules:
 
     @classmethod
     def automatic_country_refusal(cls, prospect: ProspectDB) -> str | None:
-        """Why an automated loop (J+30 relance, cold SMS) may not text the prospect, ``None`` when it may.
+        """Why an automated loop (J+30 relance) may not text the prospect, ``None`` when it may.
 
         Args:
             prospect: The prospect an automated loop would text.
@@ -126,18 +126,6 @@ class SmsProspectingRules:
         )
 
     @classmethod
-    def texted_prospect_ids(cls, user_id: int) -> Select[tuple[int | None]]:
-        """The prospects who received a prospecting SMS: none of them may get a cold first contact.
-
-        Args:
-            user_id: Owner of the prospects.
-
-        Returns:
-            A select of prospect ids, for a ``NOT IN`` filter.
-        """
-        return select(SmsMessage.prospect_id).where(cls._touches_of_user(user_id))
-
-    @classmethod
     def sequence_complete_prospect_ids(cls, user_id: int) -> Select[tuple[int | None]]:
         """The prospects no automated SMS may reach any more: none of them may get a relance.
 
@@ -148,23 +136,6 @@ class SmsProspectingRules:
             A select of prospect ids, for a ``NOT IN`` filter.
         """
         return select(SmsMessage.prospect_id).where(cls._touches_of_user(user_id), cls._touch_ends_the_sequence())
-
-    @classmethod
-    def has_received_a_prospecting_sms(cls, db: Session, user_id: int, prospect_id: int) -> bool:
-        """Whether the prospect received any prospecting SMS (first contact, relance, manual or older).
-
-        Args:
-            db: Active database session.
-            user_id: Owner of the prospect.
-            prospect_id: The prospect.
-
-        Returns:
-            ``True`` when at least one prospecting SMS may have reached him.
-        """
-        return (
-            db.query(SmsMessage.id).filter(cls._touches_of_user(user_id), SmsMessage.prospect_id == prospect_id).first()
-            is not None
-        )
 
     @classmethod
     def has_completed_the_sequence(cls, db: Session, user_id: int, prospect_id: int) -> bool:

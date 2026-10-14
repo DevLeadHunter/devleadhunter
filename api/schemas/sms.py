@@ -12,7 +12,6 @@ class SmsConfigResponse(BaseModel):
 
     sender: str = ""
     provider_ready: bool = Field(default=False, description="Whether the platform smsmode key is configured")
-    cold_sms_enabled: bool = Field(default=False, description="Auto cold-SMS prospects with a mobile but no email")
     auto_relance_enabled: bool = Field(default=False, description="Auto-relance emailed prospects who never reacted")
     auto_relance_after_days: int = Field(default=30, description="Days after the unanswered email before the relance")
     relance_template_key: str = Field(default="rappel-court", description="Library template the J+30 relance renders")
@@ -25,9 +24,8 @@ class SmsConfigUpdate(BaseModel):
 
 
 class SmsAutomationUpdate(BaseModel):
-    """Payload to toggle the SMS automations (cold-SMS + auto-relance)."""
+    """Payload to toggle the SMS automation (auto-relance)."""
 
-    cold_sms_enabled: bool = False
     auto_relance_enabled: bool = False
     auto_relance_after_days: int = Field(default=30, ge=7, le=120)
     relance_template_key: str | None = Field(

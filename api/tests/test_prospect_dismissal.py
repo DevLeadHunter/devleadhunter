@@ -111,6 +111,6 @@ def test_a_prospect_set_aside_is_never_an_sms_candidate() -> None:
     """The automated SMS skip a prospect set aside, like one marked « ne plus contacter »."""
     prospect = SimpleNamespace(phone="06 12 34 56 78", do_not_contact=False, is_dismissed=True)
 
-    candidate = sms_relance_service._build_candidate(None, user_id=1, prospect=prospect, emailed_at=None, cold=True)
+    candidate = sms_relance_service._build_candidate(None, user_id=1, prospect=prospect, emailed_at=None)
 
     assert candidate is None

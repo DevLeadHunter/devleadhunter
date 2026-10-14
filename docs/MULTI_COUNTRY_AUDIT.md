@@ -75,7 +75,7 @@ l'app Windows sert les `.geojson` en `text/html`, ce qui effaçait toutes les zo
 **Encore ouvert** : Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
 probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; achat
-d'un `.com` (ou d'un `.ca` au nom du client) par l'automatisation de domaine ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse
+d'un `.com` (ou d'un `.ca` au nom du client) par l'automatisation de domaine ; relance SMS automatique (J+30) limitée à la France tant que le premier SMS suisse
 n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 
 ## A. En cours ailleurs (ne pas refaire, juste s'y brancher)

@@ -1,11 +1,11 @@
-"""Planned automated SMS (auto-relance J+30 + cold): planner, dispatcher, forecast.
+"""Planned automated SMS (auto-relance J+30): planner, dispatcher, forecast.
 
-Off by default: a user turns each automation on in Paramètres → Relance SMS. Every
+Off by default: a user turns it on in Paramètres → Relance SMS. Every
 upcoming send is MATERIALISED as an :class:`SmsAutoQueue` row with an exact slot —
 the forecast shows real times and the operator can cancel or reschedule any pending
 row. On each pass the worker revalidates pending rows (eligibility can be lost),
 plans the newly eligible prospects, then sends what is due — always inside the legal
-window, capped per pass and per day, one first contact and one relance per prospect at most.
+window, capped per pass and per day, one relance per prospect at most.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ import asyncio
 import logging
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -57,14 +56,7 @@ class SmsAutomationService:
         """Configs of users who enabled any SMS automation (with a sender, provider ready)."""
         if not smsmode_provider.is_configured:
             return []
-        return (
-            db.query(SmsConfig)
-            .filter(
-                SmsConfig.sender != "",
-                or_(SmsConfig.auto_relance_enabled.is_(True), SmsConfig.cold_sms_enabled.is_(True)),
-            )
-            .all()
-        )
+        return db.query(SmsConfig).filter(SmsConfig.sender != "", SmsConfig.auto_relance_enabled.is_(True)).all()
 
     def _sent_today(self, db: Session, user_id: int) -> int:
         """Number of prospecting SMS (any source) the user sent since midnight UTC — the daily-cap base.
@@ -85,16 +77,15 @@ class SmsAutomationService:
 
     def _kind_enabled(self, config: SmsConfig, kind: str) -> bool:
         """Whether the automation behind *kind* is currently switched on."""
-        return bool(config.auto_relance_enabled if kind == "relance" else config.cold_sms_enabled)
+        return kind == "relance" and bool(config.auto_relance_enabled)
 
-    def _ineligibility_reason(self, db: Session, user_id: int, prospect: ProspectDB | None, kind: str) -> str | None:
+    def _ineligibility_reason(self, db: Session, user_id: int, prospect: ProspectDB | None) -> str | None:
         """Why a planned SMS may no longer go out to *prospect*, or ``None`` when still fine.
 
         Args:
             db: Active database session.
             user_id: Owner of the automation.
             prospect: The recipient (``None`` when deleted since planning).
-            kind: ``relance`` or ``cold``.
 
         Returns:
             A short French reason shown on the forecast row, or ``None``.
@@ -107,9 +98,7 @@ class SmsAutomationService:
         automatic_country_refusal = SmsProspectingRules.automatic_country_refusal(prospect)
         if automatic_country_refusal:
             return automatic_country_refusal
-        if kind == "cold" and SmsProspectingRules.has_received_a_prospecting_sms(db, user_id, prospect.id):
-            return "Déjà contacté par SMS"
-        if kind == "relance" and SmsProspectingRules.has_completed_the_sequence(db, user_id, prospect.id):
+        if SmsProspectingRules.has_completed_the_sequence(db, user_id, prospect.id):
             return "Déjà relancé par SMS (ou SMS envoyé à la main)"
         if prospect.do_not_contact:
             return "Ne plus contacter"
@@ -119,14 +108,12 @@ class SmsAutomationService:
             return "Réservé par un autre module"
         if prospect.sms_auto_excluded:
             return "SMS automatiques coupés pour ce prospect"
-        if kind == "cold" and prospect.contacted:
-            return "Déjà contacté (le 1er contact SMS ne part jamais)"
         to_e164 = first_mobile_e164(prospect)
         if to_e164 is None:
             return "Numéro non mobile"
         if sms_service.is_suppressed(db, user_id, to_e164):
             return "STOP reçu sur ce numéro"
-        if kind == "relance" and (
+        if (
             db.query(EmailLog.id)
             .filter(
                 EmailLog.user_id == user_id,
@@ -157,7 +144,7 @@ class SmsAutomationService:
                 changed = True
                 continue
             prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
-            reason = self._ineligibility_reason(db, row.user_id, prospect, row.kind)
+            reason = self._ineligibility_reason(db, row.user_id, prospect)
             if reason:
                 row.status = "skipped"
                 row.skip_reason = reason
@@ -168,8 +155,7 @@ class SmsAutomationService:
     def plan(self, db: Session) -> None:
         """Materialise a pending row, with its exact slot, for every newly eligible prospect."""
         for config in self.enabled_configs(db):
-            if config.auto_relance_enabled or config.cold_sms_enabled:
-                self._plan_user(db, config)
+            self._plan_user(db, config)
 
     def _link_orphan_relances(self, db: Session, user_id: int, campaign: Campaign) -> None:
         """Attach pending relance rows planned before the system campaign existed — no-op afterwards.
@@ -198,12 +184,12 @@ class SmsAutomationService:
 
     def _plan_user(self, db: Session, config: SmsConfig) -> None:
         """Plan the user's unplanned candidates around the slots already taken."""
-        relance_campaign: Campaign | None = None
-        if config.auto_relance_enabled:
-            relance_campaign = sms_auto_campaign_service.ensure(
-                db, config.user_id, enabled=True, template_key=config.relance_template_key
-            )
-            self._link_orphan_relances(db, config.user_id, relance_campaign)
+        if not config.auto_relance_enabled:
+            return
+        relance_campaign = sms_auto_campaign_service.ensure(
+            db, config.user_id, enabled=True, template_key=config.relance_template_key
+        )
+        self._link_orphan_relances(db, config.user_id, relance_campaign)
         # ANY existing row blocks a re-plan, whatever its status: a cancelled or skipped send
         # must never sneak back by itself — only the operator's « Replanifier » revives it.
         engaged = {
@@ -215,26 +201,16 @@ class SmsAutomationService:
         now = france_send_window.now()
         delay = timedelta(days=config.auto_relance_after_days)
         entries: list[tuple[datetime, SmsRelanceCandidate]] = []
-        if config.auto_relance_enabled:
-            for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
-                if candidate.prospect.id in engaged:
-                    continue
-                if SmsProspectingRules.automatic_country_refusal(candidate.prospect):
-                    continue
-                eligible = (
-                    france_send_window.to_local_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
-                )
-                entries.append((max(now, eligible), candidate))
-        if config.cold_sms_enabled:
-            for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PLANNED):
-                if candidate.prospect.id in engaged:
-                    continue
-                if SmsProspectingRules.automatic_country_refusal(candidate.prospect):
-                    continue
-                entries.append((now, candidate))
+        for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
+            if candidate.prospect.id in engaged:
+                continue
+            if SmsProspectingRules.automatic_country_refusal(candidate.prospect):
+                continue
+            eligible = france_send_window.to_local_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
+            entries.append((max(now, eligible), candidate))
         if not entries:
             return
-        entries.sort(key=lambda entry: (entry[0], entry[1].cold))
+        entries.sort(key=lambda entry: entry[0])
 
         slot_used: dict[datetime, int] = {}
         day_used: dict[date, int] = {}
@@ -257,21 +233,19 @@ class SmsAutomationService:
             end_paris=now + timedelta(days=_PLAN_HORIZON_DAYS),
         )
         for (_, candidate), slot_paris in zip(entries, slots, strict=False):
-            belongs_to_campaign = relance_campaign is not None and not candidate.cold
             db.add(
                 SmsAutoQueue(
                     user_id=config.user_id,
                     prospect_id=candidate.prospect.id,
                     demo_site_id=candidate.demo_site.id,
-                    campaign_id=relance_campaign.id if belongs_to_campaign and relance_campaign else None,
-                    kind="cold" if candidate.cold else "relance",
+                    campaign_id=relance_campaign.id,
+                    kind="relance",
                     status="pending",
                     scheduled_at=france_send_window.to_utc_naive(slot_paris),
                     emailed_at=candidate.emailed_at,
                 )
             )
-            if belongs_to_campaign and relance_campaign:
-                sms_auto_campaign_service.attach_prospect(db, relance_campaign, candidate.prospect.id)
+            sms_auto_campaign_service.attach_prospect(db, relance_campaign, candidate.prospect.id)
         db.commit()
 
     def _assign_slots(
@@ -346,6 +320,7 @@ class SmsAutomationService:
                 db.query(SmsAutoQueue)
                 .filter(
                     SmsAutoQueue.user_id == config.user_id,
+                    SmsAutoQueue.kind == "relance",
                     SmsAutoQueue.status == "pending",
                     SmsAutoQueue.scheduled_at <= now_utc,
                 )
@@ -357,11 +332,11 @@ class SmsAutomationService:
                 if sent_for_user >= budget:
                     break
                 prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
-                reason = self._ineligibility_reason(db, config.user_id, prospect, row.kind)
+                reason = self._ineligibility_reason(db, config.user_id, prospect)
                 candidate = None
                 if reason is None and prospect is not None:
                     candidate = sms_relance_service.candidate_for(
-                        db, config.user_id, prospect, emailed_at=row.emailed_at, cold=row.kind == "cold"
+                        db, config.user_id, prospect, emailed_at=row.emailed_at
                     )
                 if candidate is None:
                     row.status = "skipped"

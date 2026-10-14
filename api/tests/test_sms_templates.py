@@ -230,7 +230,6 @@ class TestFollowUpLibrary:
                 service.set_automation(
                     None,  # type: ignore[arg-type]
                     1,
-                    cold_sms_enabled=False,
                     auto_relance_enabled=False,
                     auto_relance_after_days=30,
                     relance_template_key=key,

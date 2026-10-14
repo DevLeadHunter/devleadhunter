@@ -98,7 +98,6 @@ def _config_response(config: SmsConfig | None) -> SmsConfigResponse:
     return SmsConfigResponse(
         sender=config.sender if config else "",
         provider_ready=bool(settings.smsmode_api_key),
-        cold_sms_enabled=bool(config.cold_sms_enabled) if config else False,
         auto_relance_enabled=bool(config.auto_relance_enabled) if config else False,
         auto_relance_after_days=config.auto_relance_after_days if config else 30,
         relance_template_key=config.relance_template_key if config else DEFAULT_FOLLOW_UP_KEY,
@@ -133,12 +132,11 @@ async def update_sms_automation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SmsConfigResponse:
-    """Toggle the current user's SMS automations (cold-SMS + auto-relance) and pick the relance template."""
+    """Toggle the current user's SMS automation (auto-relance) and pick the relance template."""
     try:
         config = sms_config_service.set_automation(
             db,
             current_user.id,
-            cold_sms_enabled=payload.cold_sms_enabled,
             auto_relance_enabled=payload.auto_relance_enabled,
             auto_relance_after_days=payload.auto_relance_after_days,
             relance_template_key=payload.relance_template_key,

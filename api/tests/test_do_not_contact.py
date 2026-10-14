@@ -69,8 +69,6 @@ class TestSmsCandidateGate:
     def test_a_do_not_contact_prospect_is_never_an_sms_candidate(self) -> None:
         prospect = SimpleNamespace(phone="06 12 34 56 78", do_not_contact=True)
 
-        candidate = sms_relance_service._build_candidate(
-            _QueueDB([]), user_id=1, prospect=prospect, emailed_at=None, cold=True
-        )
+        candidate = sms_relance_service._build_candidate(_QueueDB([]), user_id=1, prospect=prospect, emailed_at=None)
 
         assert candidate is None

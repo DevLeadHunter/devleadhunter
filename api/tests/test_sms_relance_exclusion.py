@@ -1,8 +1,6 @@
 """Per-prospect gates of the automated SMS selection.
 
-``sms_auto_excluded`` bars a prospect from EVERY automated SMS (relance J+30 and cold),
-and a cold SMS — a FIRST touch — never goes to a prospect already contacted (manual
-channels included): the operator owns that conversation.
+``sms_auto_excluded`` bars a prospect from EVERY automated SMS (relance J+30).
 """
 
 from types import SimpleNamespace
@@ -18,7 +16,6 @@ def _prospect(**overrides: object) -> SimpleNamespace:
         "do_not_contact": False,
         "is_dismissed": False,
         "sms_auto_excluded": False,
-        "contacted": False,
     }
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -36,39 +33,18 @@ def test_excluded_prospect_is_not_a_relance_candidate(monkeypatch):
     _allow_reachable(monkeypatch)
 
     candidate = sms_relance_service._build_candidate(
-        None, user_id=1, prospect=_prospect(sms_auto_excluded=True), emailed_at=None, cold=False
+        None, user_id=1, prospect=_prospect(sms_auto_excluded=True), emailed_at=None
     )
 
     assert candidate is None
 
 
-def test_excluded_prospect_is_not_a_cold_candidate_either(monkeypatch):
+def test_a_clean_prospect_stays_a_relance_candidate(monkeypatch):
     _allow_reachable(monkeypatch)
 
-    candidate = sms_relance_service._build_candidate(
-        None, user_id=1, prospect=_prospect(sms_auto_excluded=True), emailed_at=None, cold=True
-    )
-
-    assert candidate is None
-
-
-def test_a_contacted_prospect_never_gets_a_cold_first_contact(monkeypatch):
-    _allow_reachable(monkeypatch)
-
-    candidate = sms_relance_service._build_candidate(
-        None, user_id=1, prospect=_prospect(contacted=True), emailed_at=None, cold=True
-    )
-
-    assert candidate is None
-
-
-def test_a_clean_prospect_stays_a_cold_candidate(monkeypatch):
-    _allow_reachable(monkeypatch)
-
-    candidate = sms_relance_service._build_candidate(None, user_id=1, prospect=_prospect(), emailed_at=None, cold=True)
+    candidate = sms_relance_service._build_candidate(None, user_id=1, prospect=_prospect(), emailed_at=None)
 
     assert candidate is not None
-    assert candidate.cold is True
 
 
 def test_a_landline_only_prospect_is_not_a_candidate(monkeypatch):
@@ -79,7 +55,6 @@ def test_a_landline_only_prospect_is_not_a_candidate(monkeypatch):
         user_id=1,
         prospect=_prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00"]),
         emailed_at=None,
-        cold=False,
     )
 
     assert candidate is None
@@ -95,7 +70,6 @@ def test_a_mobile_behind_a_landline_primary_makes_a_candidate(monkeypatch):
         user_id=1,
         prospect=_prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00", "07 49 43 28 84"]),
         emailed_at=None,
-        cold=False,
     )
 
     assert candidate is not None

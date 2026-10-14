@@ -6,7 +6,6 @@ import { ApiClient } from './api'
 export type SmsConfig = {
   sender: string
   provider_ready: boolean
-  cold_sms_enabled: boolean
   auto_relance_enabled: boolean
   auto_relance_after_days: number
   relance_template_key: string
@@ -17,9 +16,8 @@ export type SmsConfigUpdate = {
   sender: string
 }
 
-/** Payload to toggle the SMS automations (cold-SMS + auto-relance). */
+/** Payload to toggle the SMS automation (auto-relance). */
 export type SmsAutomationUpdate = {
-  cold_sms_enabled: boolean
   auto_relance_enabled: boolean
   auto_relance_after_days: number
   relance_template_key?: string
@@ -184,7 +182,7 @@ export class SmsService {
   }
 
   /**
-   * Toggle the SMS automations (cold-SMS + auto-relance).
+   * Toggle the SMS automation (auto-relance).
    * @param payload - The automation opt-ins.
    * @returns The saved configuration.
    */
