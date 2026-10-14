@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
 from enums.sms_status import SmsStatus
+from enums.sms_template_category import SmsTemplateCategory
 from models.ai_assistant import AiAssistant
 from models.campaign import Campaign, CampaignStatus, campaign_prospects
 from models.campaign_follow_up import CampaignFollowUp
@@ -903,8 +904,9 @@ class CampaignQueueService:
         if site is not None and site.slug:
             demo_url = sms_tracked_link(demo_site_service.demo_url_for_slug(site.slug))
             video_url = sms_tracked_link(video_page_url(site.slug)) if has_ready_video(site) else ""
-        if is_follow_up and sms_template.uses(SmsVariables.VIDEO_LINK) and not video_url:
-            logger.info("[Queue] Skipping SMS follow-up for prospect %d — video relance, no video ready", prospect.id)
+        is_relance_template: bool = sms_template.category is SmsTemplateCategory.FOLLOW_UP
+        if is_relance_template and sms_template.uses(SmsVariables.VIDEO_LINK) and not video_url:
+            logger.info("[Queue] Skipping SMS for prospect %d — video relance, no video ready", prospect.id)
             self._skip(item, _NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON)
             return
 

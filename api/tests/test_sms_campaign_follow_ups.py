@@ -173,6 +173,36 @@ def test_a_video_relance_without_the_video_is_skipped_instead_of_recalling_an_em
     assert len(provider.texts) == 1
 
 
+def test_a_video_relance_sent_as_the_campaign_s_first_sms_waits_for_the_video(
+    db: Session, provider: AcceptingSmsProvider
+) -> None:
+    campaign = _campaign(db)
+    campaign.sms_template_key = _VIDEO_RELANCE_KEY
+    prospect = _prospect(db, campaign, has_video=False)
+    first_sms = _queued(db, campaign, prospect)
+
+    asyncio.run(CampaignQueueService(db)._dispatch_sms(first_sms))
+
+    assert (first_sms.status, first_sms.skip_reason) == ("skipped", "Pas de vidéo prête pour la relance")
+    assert provider.texts == []
+
+
+def test_a_video_relance_sent_as_the_campaign_s_first_sms_restarts_the_demo(
+    db: Session, provider: AcceptingSmsProvider
+) -> None:
+    campaign = _campaign(db)
+    campaign.sms_template_key = _VIDEO_RELANCE_KEY
+    prospect = _prospect(db, campaign)
+    first_sms = _queued(db, campaign, prospect)
+
+    asyncio.run(CampaignQueueService(db)._dispatch_sms(first_sms))
+
+    site = db.query(DemoSite).filter(DemoSite.prospect_id == prospect.id).one()
+    assert first_sms.status == "sent"
+    assert "/s/v/jardins-martin" in provider.texts[0]
+    assert site.demo_link_sent_at is not None
+
+
 def test_a_consigned_sms_reply_holds_the_relance_back(db: Session, provider: AcceptingSmsProvider) -> None:
     campaign = _campaign(db)
     prospect = _prospect(db, campaign)
