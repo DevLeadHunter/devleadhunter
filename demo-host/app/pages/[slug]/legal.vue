@@ -22,4 +22,6 @@
 import type { SiteLegalPageData } from '~/types/SiteLegalPage'
 
 const { site, isLoading, hasFailed, logoUrl, pagePaths }: SiteLegalPageData = await useSiteLegalPageData()
+
+useSeoMeta({ robots: 'noindex' })
 </script>

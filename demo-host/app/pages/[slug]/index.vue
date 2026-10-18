@@ -50,6 +50,7 @@ const {
 
 useSeoMeta({
   title: () => site.value?.business_name ?? 'Demo site',
+  robots: 'noindex',
 })
 
 /**
