@@ -65,9 +65,8 @@
           {{ isShowingClipAlone ? 'Revoir l’exemple' : 'Voir le clip seul' }}
         </button>
       </p>
-      <div v-if="!props.take.is_active || props.canBuildExample" class="mt-auto flex flex-wrap items-center gap-2">
+      <div v-if="!props.take.is_active" class="mt-auto flex flex-wrap items-center gap-2">
         <button
-          v-if="!props.take.is_active"
           type="button"
           class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-8 @2xl:pointer-fine:px-3 @2xl:pointer-fine:text-xs"
           :disabled="props.isActivating || props.take.is_clip_missing"
@@ -78,19 +77,6 @@
             :class="['h-3.5 w-3.5', props.isActivating && 'animate-spin']"
           />
           Utiliser cette prise
-        </button>
-        <button
-          v-if="props.canBuildExample"
-          type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-8 @2xl:pointer-fine:px-3 @2xl:pointer-fine:text-xs"
-          :disabled="props.isBuildingExample || props.isAnotherBuildRunning || props.take.is_clip_missing"
-          @click="emit('build-example')"
-        >
-          <UIcon
-            :name="props.isBuildingExample ? 'i-lucide-loader-circle' : 'i-lucide-clapperboard'"
-            :class="['h-3.5 w-3.5', props.isBuildingExample && 'animate-spin']"
-          />
-          {{ buildButtonLabel }}
         </button>
       </div>
     </div>
@@ -108,18 +94,6 @@ const props: PresenterVideoTakeCardProps = defineProps({
   take: {
     type: Object as PropType<PresenterVideoTake>,
     required: true,
-  },
-  canBuildExample: {
-    type: Boolean,
-    default: false,
-  },
-  isBuildingExample: {
-    type: Boolean,
-    default: false,
-  },
-  isAnotherBuildRunning: {
-    type: Boolean,
-    default: false,
   },
   isActivating: {
     type: Boolean,
@@ -165,11 +139,6 @@ const videoCaption: ComputedRef<string> = computed((): string => {
   const isOnAnotherDemo: boolean =
     props.selectedExampleDemoId !== null && props.take.example_subject_id !== props.selectedExampleDemoId
   return isOnAnotherDemo ? `${builtOn}, pas sur la démo choisie.` : `${builtOn}.`
-})
-
-const buildButtonLabel: ComputedRef<string> = computed((): string => {
-  if (props.isBuildingExample) return 'Montage en cours…'
-  return hasExample.value ? 'Refaire l’exemple' : 'Générer l’exemple'
 })
 
 /**

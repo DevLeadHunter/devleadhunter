@@ -114,40 +114,62 @@
     </UiCallout>
 
     <div class="space-y-3 border-t border-[var(--app-line)] pt-4">
-      <div class="flex flex-col gap-2 @2xl:flex-row @2xl:justify-end">
-        <button
-          v-if="props.canBuildPreview"
-          type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
-          :disabled="props.isBuildRunning"
-          @click="emit('preview', takeWithFormTimings())"
-        >
-          <UIcon
-            :name="props.isBuildingPreview ? 'i-lucide-loader-circle' : 'i-lucide-play'"
-            :class="['h-3.5 w-3.5', props.isBuildingPreview && 'animate-spin']"
+      <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
+        <div v-if="props.isDesktopApp" class="min-w-0 flex-1">
+          <label class="text-muted mb-1.5 block text-xs font-medium">{{ wording.exampleDemoLabel }}</label>
+          <UiSelectField
+            v-if="props.exampleDemoOptions.length > 0"
+            :model-value="props.selectedExampleDemoId"
+            :options="props.exampleDemoOptions"
+            :placeholder="wording.exampleDemoPlaceholder"
+            :disabled="props.isBuildRunning"
+            @update:model-value="emit('select-example-demo', $event)"
           />
-          {{ props.isBuildingPreview ? 'Génération en cours (~2-3 min)…' : 'Générer un aperçu' }}
-        </button>
-        <button
-          v-if="hasEditableCuts"
-          type="button"
-          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
-          :disabled="!hasUnsavedChanges || isSaving"
-          @click="handleSave"
-        >
-          <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
-          {{ isSaving ? 'Enregistrement…' : 'Enregistrer le déroulé' }}
-        </button>
+          <p v-else class="text-muted text-xs leading-relaxed">{{ wording.noExampleDemo }}</p>
+        </div>
+        <div v-else class="flex min-w-0 flex-1 items-start gap-3">
+          <UIcon name="i-lucide-monitor" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+          <p class="text-muted text-xs leading-relaxed">
+            L’exemple de ce déroulé se monte dans l’application desktop : ouvrez-la pour le générer et le regarder.
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 @2xl:flex-row">
+          <button
+            v-if="hasEditableCuts"
+            type="button"
+            :class="[
+              props.isDesktopApp ? 'app-btn-secondary' : 'app-btn-primary',
+              'h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs',
+            ]"
+            :disabled="!hasUnsavedChanges || isSaving || props.isBuildRunning"
+            @click="handleSave"
+          >
+            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
+            {{ isSaving ? 'Enregistrement…' : 'Enregistrer le déroulé' }}
+          </button>
+          <button
+            v-if="props.isDesktopApp"
+            type="button"
+            class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
+            :disabled="!props.canBuildExample || props.isBuildRunning || isSaving || props.take.is_clip_missing"
+            @click="handleBuildExample"
+          >
+            <UIcon
+              :name="props.isBuildingExample ? 'i-lucide-loader-circle' : 'i-lucide-clapperboard'"
+              :class="['h-3.5 w-3.5', props.isBuildingExample && 'animate-spin']"
+            />
+            {{ buildExampleLabel }}
+          </button>
+        </div>
       </div>
-      <template v-if="props.previewVideoUrl">
-        <p class="text-muted text-xs leading-relaxed">
-          Aperçu de ces réglages : rien n’est publié. Enregistrez le déroulé pour en faire l’exemple de la prise.
-        </p>
+      <p v-if="props.isDesktopApp" class="text-muted text-xs leading-relaxed">{{ wording.exampleDetail }}</p>
+      <template v-if="props.take.example_video_url">
+        <p class="text-muted text-xs leading-relaxed">{{ exampleCaption }}</p>
         <video
-          :key="props.previewVideoUrl"
-          :src="props.previewVideoUrl"
+          :key="props.take.example_video_url"
+          :src="props.take.example_video_url"
           controls
-          preload="auto"
+          preload="metadata"
           playsinline
           class="aspect-video w-full rounded-xl border border-[var(--app-line)] bg-black"
         />
@@ -193,7 +215,19 @@ const props: PresenterVideoTimingsCardProps = defineProps({
     type: Array as PropType<SelectFieldOption<number>[]>,
     required: true,
   },
-  canBuildPreview: {
+  isDesktopApp: {
+    type: Boolean,
+    default: false,
+  },
+  exampleDemoOptions: {
+    type: Array as PropType<SelectFieldOption[]>,
+    default: (): SelectFieldOption[] => [],
+  },
+  selectedExampleDemoId: {
+    type: String,
+    default: '',
+  },
+  canBuildExample: {
     type: Boolean,
     default: false,
   },
@@ -201,13 +235,9 @@ const props: PresenterVideoTimingsCardProps = defineProps({
     type: Boolean,
     default: false,
   },
-  isBuildingPreview: {
+  isBuildingExample: {
     type: Boolean,
     default: false,
-  },
-  previewVideoUrl: {
-    type: String as PropType<string | null>,
-    default: null,
   },
 })
 
@@ -277,6 +307,29 @@ const hasUnsavedChanges: ComputedRef<boolean> = computed((): boolean => {
   const hasSiteMoved: boolean =
     !isReceptionistTake.value && !PresenterVideoTimings.isSameCutPoint(siteScrollSeconds.value, savedSiteSeconds.value)
   return hasIntroMoved || hasOutroMoved || hasSiteMoved
+})
+
+const hasExample: ComputedRef<boolean> = computed((): boolean => Boolean(props.take.example_video_url))
+
+const buildExampleLabel: ComputedRef<string> = computed((): string => {
+  if (props.isBuildingExample) {
+    return 'Génération en cours (~2-3 min)…'
+  }
+  if (hasUnsavedChanges.value) {
+    return 'Enregistrer et générer l’exemple'
+  }
+  return hasExample.value ? 'Refaire l’exemple' : 'Générer l’exemple'
+})
+
+/** Caption of the example under the timeline: it follows the saved cut points, not the ones being edited. */
+const exampleCaption: ComputedRef<string> = computed((): string => {
+  const subjectLabel: string = props.take.example_subject_name ?? 'une démo'
+  const builtOn: string = `Exemple de la prise ${props.take.take_number}, monté sur ${subjectLabel}.`
+
+  if (hasUnsavedChanges.value) {
+    return `${builtOn} Il suit le déroulé enregistré, pas vos réglages en cours.`
+  }
+  return `${builtOn} Rien n’est publié.`
 })
 
 /** The parts of the timeline bar, widths proportional to their durations. */
@@ -417,17 +470,19 @@ async function handleSave(): Promise<void> {
   if (await saveTimings()) toast.success('Déroulé enregistré')
 }
 
-/**
- * The take as the form would save it, to preview its video before saving.
- * @returns A copy of the take with the cut points of the form.
- */
-function takeWithFormTimings(): PresenterVideoTake {
-  return {
-    ...props.take,
-    intro_seconds: introSeconds.value,
-    outro_seconds: outroSeconds.value,
-    site_seconds: isReceptionistTake.value ? null : siteScrollSeconds.value,
+/** Build the example with the cut points of the form, saving them first when they moved. */
+async function handleBuildExample(): Promise<void> {
+  let take: PresenterVideoTake = props.take
+
+  if (hasUnsavedChanges.value) {
+    const savedTake: PresenterVideoTake | null = await saveTimings()
+
+    if (!savedTake) {
+      return
+    }
+    take = savedTake
   }
+  emit('build-example', take)
 }
 
 watch(savedTimingsSignature, applySavedTimings, { immediate: true })

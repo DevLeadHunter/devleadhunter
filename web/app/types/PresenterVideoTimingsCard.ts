@@ -6,16 +6,19 @@ export type PresenterVideoTimingsCardProps = {
   take: PresenterVideoTake
   module: ProspectionScriptModule
   takeOptions: SelectFieldOption<number>[]
-  canBuildPreview: boolean
+  isDesktopApp: boolean
+  exampleDemoOptions: SelectFieldOption[]
+  selectedExampleDemoId: string
+  canBuildExample: boolean
   isBuildRunning: boolean
-  isBuildingPreview: boolean
-  previewVideoUrl: string | null
+  isBuildingExample: boolean
 }
 
 export type PresenterVideoTimingsCardEmits = {
   'select-take': [takeId: number]
+  'select-example-demo': [demoId: string]
   saved: [take: PresenterVideoTake]
-  preview: [take: PresenterVideoTake]
+  'build-example': [take: PresenterVideoTake]
 }
 
 /** One part of the video timeline bar (intro, the middle's parts, outro). */

@@ -34,20 +34,6 @@ export class PresenterVideoTimings {
   }
 
   /**
-   * Whether two versions of a take cut the video at the same places.
-   * @param firstTake - A version of the take.
-   * @param secondTake - The other version.
-   * @returns True when their intro, outro and site part match.
-   */
-  static haveSameCutPoints(firstTake: PresenterVideoTake, secondTake: PresenterVideoTake): boolean {
-    return (
-      PresenterVideoTimings.isSameCutPoint(firstTake.intro_seconds, secondTake.intro_seconds) &&
-      PresenterVideoTimings.isSameCutPoint(firstTake.outro_seconds, secondTake.outro_seconds) &&
-      PresenterVideoTimings.isSameCutPoint(firstTake.site_seconds, secondTake.site_seconds)
-    )
-  }
-
-  /**
    * Seconds between intro and outro, shared by what the video shows in the middle.
    * @param durationSeconds - Length of the whole take.
    * @param introSeconds - Full-screen webcam seconds at the start.

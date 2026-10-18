@@ -1,5 +1,4 @@
 import type { ProspectionScriptModule } from '~/composables/useProspectionScript'
-import type { PresenterVideoTake } from '~/types/PresenterVideoTake'
 
 export type PresenterVideoConfigProps = {
   module: ProspectionScriptModule
@@ -30,12 +29,4 @@ export type PresenterVideoExampleDemo = {
 
 export type PresenterVideoConfigEmits = {
   'has-video': [hasVideo: boolean]
-}
-
-/** A take rendered with cut points not saved yet: it becomes the take's example if exactly these are saved. */
-export type PresenterVideoTimingsPreview = {
-  take: PresenterVideoTake
-  demo: PresenterVideoExampleDemo
-  video: Blob
-  url: string
 }

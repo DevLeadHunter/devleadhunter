@@ -37,62 +37,16 @@
             utilisent. Les vidéos déjà générées gardent leur prise.
           </p>
 
-          <div
-            v-if="isDesktopApp"
-            class="space-y-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
-          >
-            <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
-              <div class="min-w-0 flex-1">
-                <label class="text-muted mb-1.5 block text-xs font-medium">{{ wording.exampleDemoLabel }}</label>
-                <UiSelectField
-                  v-if="exampleDemos.length > 0"
-                  v-model="selectedExampleDemoId"
-                  :options="exampleDemoOptions"
-                  :placeholder="wording.exampleDemoPlaceholder"
-                  :disabled="isBuildRunning"
-                />
-                <p v-else class="text-muted text-xs leading-relaxed">{{ wording.noExampleDemo }}</p>
-              </div>
-              <button
-                type="button"
-                class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
-                :disabled="!selectedExampleDemo || takesWithoutExampleOnDemo.length === 0 || isBuildRunning"
-                @click="buildMissingExamples"
-              >
-                <UIcon
-                  :name="isBuildRunning ? 'i-lucide-loader-circle' : 'i-lucide-clapperboard'"
-                  :class="['h-3.5 w-3.5', isBuildRunning && 'animate-spin']"
-                />
-                {{ buildAllButtonLabel }}
-              </button>
-            </div>
-            <p class="text-muted text-xs leading-relaxed">{{ wording.exampleDetail }}</p>
-          </div>
-          <div
-            v-else
-            class="flex items-start gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
-          >
-            <UIcon name="i-lucide-monitor" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
-            <p class="text-muted text-xs leading-relaxed">
-              Les vidéos d’exemple se montent dans l’application desktop : ouvrez-la pour comparer vos prises. D’ici,
-              vous pouvez les regarder et choisir celle à utiliser.
-            </p>
-          </div>
-
           <div class="grid gap-4 @2xl:grid-cols-2">
             <PresenterVideoTakeCard
               v-for="take in takes"
               :key="take.id"
               :take="take"
-              :can-build-example="canBuildExamples"
-              :is-building-example="buildingTakeId === take.id"
-              :is-another-build-running="isBuildRunning && buildingTakeId !== take.id"
               :is-activating="activatingTakeId === take.id"
               :is-deleting="deletingTakeId === take.id"
               :can-delete="!take.is_active || takes.length === 1"
               :selected-example-demo-id="selectedExampleDemo?.id ?? null"
               @activate="activateTake(take)"
-              @build-example="buildExample(take)"
               @delete="askDeleteTake(take)"
             />
             <button
@@ -137,13 +91,16 @@
         :take="timingsTake"
         :module="props.module"
         :take-options="takeOptions"
-        :can-build-preview="canBuildExamples"
+        :is-desktop-app="isDesktopApp"
+        :example-demo-options="exampleDemoOptions"
+        :selected-example-demo-id="selectedExampleDemoId"
+        :can-build-example="canBuildExamples"
         :is-build-running="isBuildRunning"
-        :is-building-preview="isBuildingTimingsPreview"
-        :preview-video-url="timingsPreviewUrl"
+        :is-building-example="buildingTakeId === timingsTake.id"
         @select-take="timingsTakeId = $event"
+        @select-example-demo="selectedExampleDemoId = $event"
         @saved="handleTimingsSaved"
-        @preview="previewTimings"
+        @build-example="buildExampleFromTimings"
       />
     </template>
 
@@ -179,7 +136,6 @@ import type {
   PresenterVideoConfigProps,
   PresenterVideoExampleDemo,
   PresenterVideoModuleWording,
-  PresenterVideoTimingsPreview,
 } from '~/types/PresenterVideoConfig'
 import type { PresenterVideoTake, PresenterVideoTakeList } from '~/types/PresenterVideoTake'
 import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
@@ -187,7 +143,7 @@ import type { PreviewVideoResult } from '~/services/storyblokSidecarService'
 import type { AssistantPreviewVideoResult } from '~/types/AssistantSidecar'
 import type { AiAssistantListResponse, AiAssistantSummary } from '~/types/AiAssistant'
 import type { SelectFieldOption } from '~/types/SelectField'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { AiAssistantService } from '~/services/aiAssistantService'
@@ -231,8 +187,6 @@ const selectedExampleDemoId: Ref<string> = ref('')
 
 /** One build at a time: the desktop builder keeps a single result per demo. */
 const buildingTakeId: Ref<number | null> = ref(null)
-const isBuildingTimingsPreview: Ref<boolean> = ref(false)
-const timingsPreview: Ref<PresenterVideoTimingsPreview | null> = ref(null)
 const activatingTakeId: Ref<number | null> = ref(null)
 const deletingTakeId: Ref<number | null> = ref(null)
 const timingsTakeId: Ref<number | null> = ref(null)
@@ -256,11 +210,6 @@ const timingsTake: ComputedRef<PresenterVideoTake | null> = computed(
     takes.value[0] ??
     null,
 )
-
-const timingsPreviewUrl: ComputedRef<string | null> = computed((): string | null => {
-  if (!timingsPreview.value || timingsPreview.value.take.id !== timingsTake.value?.id) return null
-  return timingsPreview.value.url
-})
 
 const takeOptions: ComputedRef<SelectFieldOption<number>[]> = computed((): SelectFieldOption<number>[] =>
   takes.value.map(
@@ -288,9 +237,7 @@ const canBuildExamples: ComputedRef<boolean> = computed(
   (): boolean => isDesktopApp.value && selectedExampleDemo.value !== null,
 )
 
-const isBuildRunning: ComputedRef<boolean> = computed(
-  (): boolean => buildingTakeId.value !== null || isBuildingTimingsPreview.value,
-)
+const isBuildRunning: ComputedRef<boolean> = computed((): boolean => buildingTakeId.value !== null)
 
 const takesWithoutExampleOnDemo: ComputedRef<PresenterVideoTake[]> = computed((): PresenterVideoTake[] =>
   takes.value.filter(
@@ -300,15 +247,7 @@ const takesWithoutExampleOnDemo: ComputedRef<PresenterVideoTake[]> = computed(()
   ),
 )
 
-const buildAllButtonLabel: ComputedRef<string> = computed((): string => {
-  if (isBuildRunning.value) return 'Montage en cours…'
-  const count: number = takesWithoutExampleOnDemo.value.length
-  if (count === 0) return 'Exemples à jour'
-  return count === 1 ? 'Générer l’exemple manquant' : `Générer les ${count} exemples`
-})
-
 const buildModalTitle: ComputedRef<string> = computed((): string => {
-  if (isBuildingTimingsPreview.value) return `Aperçu de la prise ${timingsTake.value?.take_number ?? ''}`
   const buildingTake: PresenterVideoTake | undefined = takes.value.find(
     (take: PresenterVideoTake): boolean => take.id === buildingTakeId.value,
   )
@@ -404,15 +343,10 @@ function renderTake(
  * Render a take on a demo while the progress modal follows the build.
  * @param demo - The site or receptionist filmed.
  * @param take - The take montaged, with the cut points to use.
- * @param finalStepLabel - The modal's last step, once the video is rendered.
  * @returns The rendered mp4, or null when it could not be made (the user is told why).
  */
-async function renderTakeWithProgress(
-  demo: PresenterVideoExampleDemo,
-  take: PresenterVideoTake,
-  finalStepLabel: string,
-): Promise<Blob | null> {
-  videoProgress.start(demo.slug, finalStepLabel)
+async function renderTakeWithProgress(demo: PresenterVideoExampleDemo, take: PresenterVideoTake): Promise<Blob | null> {
+  videoProgress.start(demo.slug, "Enregistrement de l'exemple")
   try {
     const result: PreviewVideoResult | AssistantPreviewVideoResult = await renderTake(demo.id, take)
     if (result.status === 'done' && result.video) return result.video
@@ -459,7 +393,7 @@ async function buildExample(take: PresenterVideoTake): Promise<boolean> {
 
   buildingTakeId.value = take.id
   try {
-    const video: Blob | null = await renderTakeWithProgress(demo, take, "Enregistrement de l'exemple")
+    const video: Blob | null = await renderTakeWithProgress(demo, take)
     if (!video) return false
     await keepExample(take.id, video, demo)
     videoProgress.finish()
@@ -484,48 +418,21 @@ async function buildMissingExamples(): Promise<void> {
   if (pendingTakes.length > 0) toast.success('Exemples prêts : comparez-les, puis choisissez la prise à utiliser.')
 }
 
-/** Drop the preview of unsaved cut points (avoids leaking its blob). */
-function releaseTimingsPreview(): void {
-  if (timingsPreview.value) URL.revokeObjectURL(timingsPreview.value.url)
-  timingsPreview.value = null
-}
-
 /**
- * Render a take with cut points not saved yet, to judge them before saving; nothing is published.
- * @param take - The take carrying the cut points of the timeline form.
- */
-async function previewTimings(take: PresenterVideoTake): Promise<void> {
-  const demo: PresenterVideoExampleDemo | null = selectedExampleDemo.value
-  if (!demo || isBuildRunning.value) return
-
-  isBuildingTimingsPreview.value = true
-  try {
-    const video: Blob | null = await renderTakeWithProgress(demo, take, "Récupération de l'aperçu")
-    if (!video) return
-    releaseTimingsPreview()
-    timingsPreview.value = { take, demo, video, url: URL.createObjectURL(video) }
-    videoProgress.finish()
-    videoProgress.close()
-    toast.success('Aperçu prêt — rien n’a été publié')
-  } finally {
-    isBuildingTimingsPreview.value = false
-  }
-}
-
-/**
- * Show a take with its saved cut points; the preview made with exactly these becomes its example.
+ * Show a take with its saved cut points (the API dropped its example if they moved).
  * @param savedTake - The take as the API saved it.
  */
-async function handleTimingsSaved(savedTake: PresenterVideoTake): Promise<void> {
+function handleTimingsSaved(savedTake: PresenterVideoTake): void {
   replaceTake(savedTake)
-  const preview: PresenterVideoTimingsPreview | null = timingsPreview.value
-  if (!preview || preview.take.id !== savedTake.id) return
-  if (!PresenterVideoTimings.haveSameCutPoints(preview.take, savedTake)) return
-  try {
-    await keepExample(savedTake.id, preview.video, preview.demo)
-    releaseTimingsPreview()
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : "Impossible d'enregistrer l'exemple.")
+}
+
+/**
+ * Build the example of the take shown in the timeline card, then say where to watch it.
+ * @param take - The take, with its saved cut points.
+ */
+async function buildExampleFromTimings(take: PresenterVideoTake): Promise<void> {
+  if (await buildExample(take)) {
+    toast.success(`Exemple de la prise ${take.take_number} prêt : il s’affiche sous le déroulé et sur sa carte.`)
   }
 }
 
@@ -546,7 +453,6 @@ async function handleDeleteConfirmed(): Promise<void> {
   try {
     await PresenterVideoService.deleteTake(take.id)
     if (timingsTakeId.value === take.id) timingsTakeId.value = null
-    if (timingsPreview.value?.take.id === take.id) releaseTimingsPreview()
     await loadTakes()
     toast.success(`Prise ${take.take_number} supprimée`)
   } catch (err: unknown) {
@@ -648,9 +554,5 @@ onMounted(async (): Promise<void> => {
   isLoading.value = false
   isDesktopApp.value = (await getScraperSidecarInfo()) !== null
   if (isDesktopApp.value) await loadExampleDemos()
-})
-
-onBeforeUnmount((): void => {
-  releaseTimingsPreview()
 })
 </script>
