@@ -182,6 +182,8 @@ async def get_public_demo_site_by_domain(
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
     payload["content_json"] = demo_site_service.content_json_for_public(db, site)
     payload["legal"] = site_legal_notice_service.build_for_site(db, site, payload["content_json"])
+    payload["business_category"] = demo_site_service.business_category(db, site)
+    payload["business_photo_url"] = demo_site_service.business_photo_url(payload["content_json"])
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     return DemoSitePublicResponse(**payload)
@@ -199,6 +201,8 @@ async def get_public_demo_site(
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
     payload["content_json"] = demo_site_service.content_json_for_public(db, site)
     payload["legal"] = site_legal_notice_service.build_for_site(db, site, payload["content_json"])
+    payload["business_category"] = demo_site_service.business_category(db, site)
+    payload["business_photo_url"] = demo_site_service.business_photo_url(payload["content_json"])
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     payload["video_available"] = has_ready_video(site)

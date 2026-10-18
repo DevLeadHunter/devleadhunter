@@ -1,0 +1,78 @@
+import type { SchemaOrgBusinessType, SchemaOrgTradeRule } from '~/types/SiteStructuredData'
+
+// First matching rule wins: a broad rule moved up would swallow the specific ones (« garage » before « carross »).
+export const SCHEMA_ORG_TRADE_RULES: SchemaOrgTradeRule[] = [
+  { keywords: ['carross', 'body shop', 'bodywork'], type: 'AutoBodyShop' },
+  {
+    keywords: ['concessionnaire', 'vendeur de voiture', 'vente de voiture', 'vendeur automobile', 'car dealer'],
+    type: 'AutoDealer',
+  },
+  { keywords: ['lavage auto', 'lavage de voiture', 'car wash'], type: 'AutoWash' },
+  { keywords: ['pneu', 'jante', 'tire shop', 'tyre'], type: 'TireShop' },
+  {
+    keywords: ['garage', 'mecani', 'reparation auto', 'auto repair', 'car repair', 'mechanic'],
+    type: 'AutoRepair',
+  },
+  { keywords: ['plomb', 'plumb'], type: 'Plumber' },
+  { keywords: ['electric'], type: 'Electrician' },
+  { keywords: ['chauffagi', 'climatis', 'pompe a chaleur', 'hvac'], type: 'HVACBusiness' },
+  { keywords: ['couvreu', 'toiture', 'roofing', 'roofer'], type: 'RoofingContractor' },
+  { keywords: ['peintre', 'peinture en batiment', 'house painter'], type: 'HousePainter' },
+  { keywords: ['serrur', 'locksmith'], type: 'Locksmith' },
+  { keywords: ['demenag', 'moving company'], type: 'MovingCompany' },
+  {
+    keywords: ['macon', 'entreprise generale', 'entrepreneur general', 'general contractor'],
+    type: 'GeneralContractor',
+  },
+  { keywords: ['barbier', 'barber', 'coiffeur', 'coiffure', 'hair salon', 'hairdresser'], type: 'HairSalon' },
+  { keywords: ['onglerie', 'nail salon'], type: 'NailSalon' },
+  { keywords: ['institut de beaute', 'estheti', 'beauty salon'], type: 'BeautySalon' },
+  { keywords: ['dentist', 'cabinet dentaire', 'centre dentaire', 'dental clinic'], type: 'Dentist' },
+  { keywords: ['food truck', 'foodtruck', 'food-truck', 'traiteur', 'caterer'], type: 'FoodEstablishment' },
+  { keywords: ['boulanger', 'patisser', 'bakery'], type: 'Bakery' },
+  {
+    keywords: ['restaur', 'pizz', 'creperie', 'brasserie', 'bistro', 'kebab', 'burger', 'sushi'],
+    type: 'Restaurant',
+  },
+  { keywords: ['cafe', 'coffee', 'salon de the'], type: 'CafeOrCoffeeShop' },
+  { keywords: ['fleuri', 'florist'], type: 'Florist' },
+  {
+    keywords: [
+      'paysag',
+      'espaces verts',
+      'jardin',
+      'elagu',
+      'elagage',
+      'landscap',
+      'gardener',
+      'menuis',
+      'charpent',
+      'ebenist',
+      'carrel',
+      'plaquiste',
+      'platri',
+      'terrassement',
+      'facad',
+      'isolation',
+      'vitrier',
+      'cuisiniste',
+      'piscin',
+      'carpenter',
+    ],
+    type: 'HomeAndConstructionBusiness',
+  },
+]
+
+export const SCHEMA_ORG_TYPE_BY_TEMPLATE: Record<string, SchemaOrgBusinessType> = {
+  'artisan-edito': 'LocalBusiness',
+  'plumber-signature': 'Plumber',
+  'plumber-atelier': 'Plumber',
+  'plumber-cuivre': 'Plumber',
+  'electrician-eclat': 'Electrician',
+  'electrician-lumen': 'Electrician',
+  'mechanic-pitlane': 'AutomotiveBusiness',
+  dental: 'Dentist',
+  food: 'FoodEstablishment',
+  barber: 'HairSalon',
+  'landscaper-verdure': 'HomeAndConstructionBusiness',
+}

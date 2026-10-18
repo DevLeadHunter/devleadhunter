@@ -55,7 +55,8 @@ demo-host/
 │   │   └── SiteLegalPage.vue                 # Page légale (bloc `legal` calculé par l'API)
 │   ├── composables/
 │   │   ├── useDemoTracking.ts                # PostHog surface=demo
-│   │   └── useDemoVideoTracking.ts
+│   │   ├── useDemoVideoTracking.ts
+│   │   └── useSiteStructuredData.ts          # JSON-LD schema.org (LocalBusiness) des pages d'un site
 │   ├── pages/
 │   │   ├── [slug]/index.vue                  # Démo TTL
 │   │   ├── [slug]/legal.vue                  # Page légale de la démo

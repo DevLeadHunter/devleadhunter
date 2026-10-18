@@ -299,6 +299,12 @@ class DemoSitePublicResponse(BaseModel):
     expiry_date_label: str | None = Field(
         default=None, description="Day the demo goes offline (« 2 novembre »), null until its link is first sent"
     )
+    business_category: str | None = Field(
+        default=None, description="The business's trade as its listing names it, which types its structured data"
+    )
+    business_photo_url: str | None = Field(
+        default=None, description="The site's header photo when it shows the business, never a template's picture"
+    )
     legal: SiteLegalNotice | None = None
 
     model_config = ConfigDict(from_attributes=True)

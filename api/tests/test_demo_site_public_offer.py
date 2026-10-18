@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import datetime
 from typing import Any
 
@@ -15,6 +16,7 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.user import User
 from services.demo_site_service import _PENDING_TTL_EXPIRES, demo_site_service
+from services.templates.default_images import DEFAULT_IMAGES
 
 _UNSENT_EXPIRES_AT: datetime = _PENDING_TTL_EXPIRES.replace(tzinfo=None)
 _STILL_ONLINE_SENT_AT: datetime = datetime(2098, 10, 12, 9, 0)
@@ -104,6 +106,55 @@ def test_the_public_demo_carries_the_price_and_the_withdrawal_day(db: Session) -
     assert (sent.sale_price_label, sent.expiry_date_label) == ("470 CHF", "2 novembre")
     assert (unsent.sale_price_label, unsent.expiry_date_label) == ("500 €", None)
     assert (sent.owner_name, sent.owner_company_website_url) == ("Camille Durand", "https://camille-durand.fr")
+
+
+def test_the_public_site_names_the_business_trade_only_when_its_listing_has_one(db: Session) -> None:
+    owner = _owner(db)
+    _demo(db, owner, _prospect(db, owner, "FR"))
+    _demo(db, owner, None, slug="garage-martin")
+    _demo(
+        db,
+        owner,
+        _prospect(db, owner, "FR"),
+        slug="menuiserie-lefort-2",
+        status=DemoSiteStatus.DELIVERED.value,
+        custom_domain="menuiserie-lefort.fr",
+    )
+
+    with_listing = asyncio.run(get_public_demo_site("menuiserie-lefort", db))
+    without_prospect = asyncio.run(get_public_demo_site("garage-martin", db))
+    sold = asyncio.run(get_public_demo_site_by_domain("menuiserie-lefort.fr", db))
+
+    assert (with_listing.business_category, without_prospect.business_category) == ("Menuisier", None)
+    assert sold.business_category == "Menuisier"
+
+
+_STOCK_HERO: str = DEFAULT_IMAGES["landscaper-verdure"]["heroImage"]
+
+
+@pytest.mark.parametrize(
+    ("hero_image", "business_photo_url"),
+    [
+        ("https://pub-1.r2.dev/prospects/12/photo-1.jpg", "https://pub-1.r2.dev/prospects/12/photo-1.jpg"),
+        (
+            "https://a.storyblok.com/f/42/1600x900/ab12/real-photo.jpg",
+            "https://a.storyblok.com/f/42/1600x900/ab12/real-photo.jpg",
+        ),
+        (_STOCK_HERO, None),
+        (f"https://a.storyblok.com/f/42/1600x900/ab12/{hashlib.sha1(_STOCK_HERO.encode()).hexdigest()[:20]}.jpg", None),
+        ("https://images.unsplash.com/photo-1600488999585?auto=format&w=1600", None),
+        ("", None),
+    ],
+)
+def test_the_header_photo_is_named_only_when_it_shows_the_business(
+    db: Session, hero_image: str, business_photo_url: str | None
+) -> None:
+    owner = _owner(db)
+    _demo(db, owner, None, content_json={"businessName": "Menuiserie Lefort", "heroImage": hero_image})
+
+    site = asyncio.run(get_public_demo_site("menuiserie-lefort", db))
+
+    assert site.business_photo_url == business_photo_url
 
 
 def test_a_sold_site_on_its_own_domain_carries_no_offer(db: Session) -> None:

@@ -20,6 +20,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -27,7 +28,7 @@ from core.config import settings
 from services.country_profiles import CountryProfiles
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
-from services.templates.default_images import apply_default_images
+from services.templates.default_images import apply_default_images, default_image_urls
 from services.templates.site_content import (
     SECTION_COMPONENT_NAMES,
     SITE_CONTENT_SCHEMAS,
@@ -36,6 +37,8 @@ from services.templates.site_content import (
 )
 
 logger = logging.getLogger(__name__)
+
+_STOCK_PHOTO_HOST: str = "images.unsplash.com"
 
 
 @dataclass
@@ -452,6 +455,32 @@ class StoryblokService:
         """Deterministic short digest of a source URL, used as the uploaded asset's filename stem."""
         return hashlib.sha1(source_url.encode("utf-8")).hexdigest()[:20]
 
+    @staticmethod
+    def _asset_stem(filename: str) -> str:
+        """The name of an asset's file without its folder, extension or query (the ``_asset_key`` of an upload)."""
+        return filename.split("?")[0].rstrip("/").split("/")[-1].split(".")[0]
+
+    def is_stock_image(self, url: str) -> bool:
+        """
+        Whether a site image is a stock picture rather than the business's own photo.
+
+        A template's default image fills an empty slot, then is uploaded as an asset named after its source,
+        so it is recognised at both addresses; any image served by Unsplash or by the demo host is a template's.
+
+        Args:
+            url: The image's address.
+
+        Returns:
+            True for a template's picture, False for a photo of the business or one its owner uploaded.
+        """
+        host: str = urlparse(url).netloc.lower()
+        if host in {_STOCK_PHOTO_HOST, urlparse(settings.demo_host_base_url).netloc.lower()}:
+            return True
+        stock_urls: frozenset[str] = default_image_urls()
+        if url in stock_urls:
+            return True
+        return self._asset_stem(url) in {self._asset_key(stock_url) for stock_url in stock_urls}
+
     async def _list_space_assets(self, client: httpx.AsyncClient, space_id: int) -> dict[str, dict[str, Any]]:
         """Map each already-uploaded asset's filename stem to ``{id, filename}`` so a re-publish reuses it.
 
@@ -474,7 +503,7 @@ class StoryblokService:
                 asset_id = asset.get("id")
                 if not isinstance(filename, str) or asset_id is None:
                     continue
-                stem: str = filename.split("?")[0].rstrip("/").split("/")[-1].split(".")[0]
+                stem: str = self._asset_stem(filename)
                 if stem:
                     assets_by_key.setdefault(stem, {"id": asset_id, "filename": filename})
             if len(assets) < 100:

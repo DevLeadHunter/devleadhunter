@@ -14,11 +14,7 @@ export async function useSiteLegalPageData(): Promise<SiteLegalPageData> {
   const slug: string = String(route.params.slug ?? '')
   const host: string = useRequestURL().host
 
-  const {
-    data: site,
-    pending,
-    error,
-  }: Awaited<ReturnType<typeof useAsyncData<DemoSitePublic | undefined>>> = await useAsyncData<DemoSitePublic>(
+  const siteRequest: ReturnType<typeof useAsyncData<DemoSitePublic | undefined>> = useAsyncData<DemoSitePublic>(
     slug ? `demo-site-${slug}` : `demo-site-domain-${host}`,
     async (): Promise<DemoSitePublic> => {
       if (slug) {
@@ -29,6 +25,14 @@ export async function useSiteLegalPageData(): Promise<SiteLegalPageData> {
       })
     },
   )
+  // Before the await: past it, this composable no longer runs in the page's Nuxt context.
+  useSiteStructuredData(siteRequest.data)
+
+  const {
+    data: site,
+    pending,
+    error,
+  }: Awaited<ReturnType<typeof useAsyncData<DemoSitePublic | undefined>>> = await siteRequest
 
   const isLoading: ComputedRef<boolean> = computed((): boolean => pending.value)
 

@@ -20,5 +20,7 @@ export type DemoSitePublic = {
   owner_contact_email?: string | null
   sale_price_label?: string | null
   expiry_date_label?: string | null
+  business_category?: string | null
+  business_photo_url?: string | null
   legal?: SiteLegalNotice | null
 }

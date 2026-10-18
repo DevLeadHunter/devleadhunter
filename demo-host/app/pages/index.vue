@@ -38,4 +38,6 @@ const {
 useSeoMeta({
   title: () => site.value?.business_name ?? 'Site',
 })
+
+useSiteStructuredData(site)
 </script>

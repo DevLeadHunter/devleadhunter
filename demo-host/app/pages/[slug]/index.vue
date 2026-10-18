@@ -53,6 +53,8 @@ useSeoMeta({
   robots: 'noindex',
 })
 
+useSiteStructuredData(site)
+
 /**
  * Re-derive food's gallery-seeded section photos from a reordered gallery, mirroring the API's
  * generation seeding (`_seed_photo_slots`): the about-collage sides and the featured-review photo

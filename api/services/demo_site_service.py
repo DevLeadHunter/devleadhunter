@@ -180,13 +180,49 @@ class DemoSiteService:
             country=country,
         )
 
-    def _prospect_country_for_site(self, db: Session, demo_site: DemoSite) -> str:
-        """The country of the prospect a demo site belongs to, France without a linked prospect."""
+    def _prospect_for_site(self, db: Session, demo_site: DemoSite) -> ProspectDB | None:
+        """The prospect a demo site belongs to, None without a linked prospect."""
         prospect_id: int | None = getattr(demo_site, "prospect_id", None)
         if not prospect_id:
-            return "FR"
-        prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
+            return None
+        return enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
+
+    def _prospect_country_for_site(self, db: Session, demo_site: DemoSite) -> str:
+        """The country of the prospect a demo site belongs to, France without a linked prospect."""
+        prospect: ProspectDB | None = self._prospect_for_site(db, demo_site)
         return (prospect.country if prospect is not None else None) or "FR"
+
+    def business_category(self, db: Session, demo_site: DemoSite) -> str | None:
+        """
+        The business's trade as its listing names it (« Électricien », « garage automobile »).
+
+        Args:
+            db: Active database session.
+            demo_site: The demo or sold site.
+
+        Returns:
+            The prospect's category, None without a linked prospect or a category.
+        """
+        prospect: ProspectDB | None = self._prospect_for_site(db, demo_site)
+        category: str = (prospect.category or "").strip() if prospect is not None else ""
+        return category or None
+
+    @staticmethod
+    def business_photo_url(content: dict) -> str | None:
+        """
+        The site's header photo when it shows the business: a prospect without photos gets a template's picture.
+
+        Args:
+            content: The site's public content.
+
+        Returns:
+            The header photo's address, None when it is a stock picture or missing.
+        """
+        hero_image = content.get("heroImage")
+        photo_url: str = hero_image.strip() if isinstance(hero_image, str) else ""
+        if not photo_url.startswith(("https://", "http://")) or storyblok_service.is_stock_image(photo_url):
+            return None
+        return photo_url
 
     def sale_price_label(self, db: Session, demo_site: DemoSite) -> str:
         """

@@ -141,6 +141,15 @@ DEFAULT_IMAGES: dict[str, dict[str, Any]] = {
 }
 
 
+def default_image_urls() -> frozenset[str]:
+    """Every template's stock image (hero, about, gallery): a site keeps them after switching template."""
+    urls: set[str] = set()
+    for defaults in DEFAULT_IMAGES.values():
+        urls.update(url for url in (defaults.get("heroImage"), defaults.get("aboutImage")) if url)
+        urls.update(defaults.get("gallery") or [])
+    return frozenset(urls)
+
+
 def apply_default_images(site_content: dict[str, Any], template_id: str) -> None:
     """Fill empty hero/about/gallery slots with the template's default images, in place.
 
