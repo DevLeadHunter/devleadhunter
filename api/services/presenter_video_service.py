@@ -45,13 +45,13 @@ _PROGRESS_TIME_RE = re.compile(r"time=\s*(\d+):(\d{2}):(\d{2})\.(\d+)")
 # Bornes de durée du clip présentateur : trop court = pas de place pour le
 # site, trop long = personne ne regarde (cible 30-45 s).
 MIN_PRESENTER_SECONDS = 12.0
-MAX_PRESENTER_SECONDS = 90.0
+MAX_PRESENTER_SECONDS = 120.0
 
 # Bornes d'un segment enregistré dans l'app (intro / milieu / outro). L'intro
 # et l'outro deviennent `intro_seconds`/`outro_seconds`, que le montage borne
 # déjà à un tiers du clip — inutile d'accepter plus long ici.
 MIN_SEGMENT_SECONDS = 1.0
-MAX_SEGMENT_SECONDS = 60.0
+MAX_SEGMENT_SECONDS = 120.0
 
 # La prise du milieu porte le défilement du site : elle doit couvrir au moins
 # ``video_pipeline.MIN_SCROLL_SECONDS``, sinon chaque génération échouera.

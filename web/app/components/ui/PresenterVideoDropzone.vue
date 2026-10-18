@@ -47,7 +47,7 @@
           {{ compact ? 'Glissez un nouveau clip ici' : 'Glissez votre clip webcam ici' }}
         </p>
         <p class="text-muted text-xs">ou cliquez pour parcourir vos fichiers</p>
-        <p class="text-muted mt-1 text-[11px]">MP4, WebM, MOV ou MKV — 12 à 90 s (cible : 30-45 s)</p>
+        <p class="text-muted mt-1 text-[11px]">MP4, WebM, MOV ou MKV — 12 à 120 s (cible : 30-45 s)</p>
       </template>
     </div>
 

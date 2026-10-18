@@ -367,14 +367,14 @@ const COUNTDOWN_FROM: number = 3
 const LEAD_IN_MS: number = 600
 
 /** Hard stop for a single take, mirroring the API's per-segment ceiling. */
-const MAX_TAKE_SECONDS: number = 55
+const MAX_TAKE_SECONDS: number = 115
 
 /** The middle take carries the site scroll; the montage refuses less than this. */
 const MIN_MIDDLE_SECONDS: number = 6
 
 /** Total clip bounds enforced by the API. */
 const MIN_TOTAL_SECONDS: number = 12
-const MAX_TOTAL_SECONDS: number = 90
+const MAX_TOTAL_SECONDS: number = 120
 
 const toast: UseToastReturn = useToast()
 const { user }: UseAuthReturn = useAuth()
