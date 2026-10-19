@@ -1,4 +1,5 @@
 import type { PostHog } from 'posthog-js'
+import type { DemoEventCapturedBeforeInit } from '~/types/demoTracking'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 /**
@@ -30,13 +31,35 @@ let initialized: boolean = false
 /** Shared PostHog instance, set once a live demo initialises tracking. */
 let demoPosthog: PostHog | null = null
 
+/** Events captured before the instance exists (the contact banner reports itself at mount), replayed once it does. */
+const eventsCapturedBeforeInit: DemoEventCapturedBeforeInit[] = []
+
+/** A visit that never initialises tracking (owner, preview, sold site) keeps at most this many queued events. */
+const MAXIMUM_EVENTS_KEPT_BEFORE_INIT: number = 20
+
 /**
- * Capture a demo event on the shared PostHog instance (no-op until a live demo initialised it).
+ * Capture a demo event on the shared PostHog instance, or keep it until a live demo initialises it.
  * @param event - Event name (kept in the ``demo_*`` namespace the API reads).
  * @param props - Optional event properties.
  */
 export function captureDemoEvent(event: string, props: Record<string, unknown> = {}): void {
-  demoPosthog?.capture(event, props)
+  if (!demoPosthog) {
+    if (eventsCapturedBeforeInit.length < MAXIMUM_EVENTS_KEPT_BEFORE_INIT) {
+      eventsCapturedBeforeInit.push({ event, properties: props })
+    }
+    return
+  }
+  demoPosthog.capture(event, props)
+}
+
+/**
+ * Send the events kept before the instance existed, in the order they were captured.
+ * @param posthog - The instance a live demo just initialised.
+ */
+function replayEventsCapturedBeforeInit(posthog: PostHog): void {
+  for (const captured of eventsCapturedBeforeInit.splice(0)) {
+    posthog.capture(captured.event, captured.properties)
+  }
 }
 
 /** A qualified visit needs at least this many engaged seconds… */
@@ -328,6 +351,7 @@ export function useDemoTracking(): {
     posthog.register({ surface, demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
     demoPosthog = posthog
     initialized = true
+    replayEventsCapturedBeforeInit(posthog)
     return posthog
   }
 
