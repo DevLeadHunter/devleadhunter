@@ -175,17 +175,20 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
         score += 10
     # A « pas intéressé » / désinscription with no positive reply since: whatever
     # the demo says, the prospect said no — cool the lead hard.
-    if signals["emails_negative_replies"] > 0 and signals["emails_replied"] == 0:
+    has_prospect_declined = signals["emails_negative_replies"] > 0 and signals["emails_replied"] == 0
+    if has_prospect_declined:
         score = max(score - 30, 0)
     score = min(score, 100)
 
-    strong_intent = (
-        signals["demo_leads"] > 0  # said « je suis intéressé » on the demo = hot, always
-        or signals["phone_clicks"] > 0
-        or signals["contact_clicks"] > 0
-        or signals["emails_clicked"] > 0
-        or signals["emails_replied"] > 0  # a human reply = the conversation started
-        or signals["email_reopens"] >= 3  # kept coming back to the email = hot
+    strong_intent = signals["demo_leads"] > 0 or (  # said « je suis intéressé » on the demo = hot, always
+        not has_prospect_declined
+        and (
+            signals["phone_clicks"] > 0
+            or signals["contact_clicks"] > 0
+            or signals["emails_clicked"] > 0
+            or signals["emails_replied"] > 0  # a human reply = the conversation started
+            or signals["email_reopens"] >= 3  # kept coming back to the email = hot
+        )
     )
     if strong_intent or score >= 60:
         temperature = "hot"

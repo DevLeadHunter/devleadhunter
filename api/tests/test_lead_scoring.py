@@ -171,3 +171,34 @@ def test_aggregate_signals_carry_demo_leads() -> None:
     signals = ls.build_signals_from_aggregate({"pageviews": 1, "visits": 1}, demo_leads=1)
     result = ls.score_from_signals(signals)
     assert result["temperature"] == "hot"
+
+
+_CLICKED_THEN_DECLINED_EMAIL = {"sent": 1, "opened": 0, "clicked": 1, "replied": 0, "negative_replies": 1}
+
+
+def test_a_click_followed_by_a_refusal_is_not_hot() -> None:
+    """A prospect who clicked the demo link then replied « non » leaves the hot leads."""
+    result = ls.compute([], email=_CLICKED_THEN_DECLINED_EMAIL)
+    assert result["temperature"] == "cold"
+
+
+def test_a_short_demo_visit_followed_by_a_refusal_is_warm_at_most() -> None:
+    """The real case of 2026-10-20: 55 s on the demo, three header clicks, then « pour moi c'est non »."""
+    signals = ls.build_signals_from_aggregate(
+        {"visits": 1, "pageviews": 1, "sections_viewed": 6, "cta_clicks": 3},
+        email=_CLICKED_THEN_DECLINED_EMAIL,
+    )
+    result = ls.score_from_signals(signals)
+    assert result["temperature"] == "warm"
+
+
+def test_a_refusal_then_a_demo_lead_stays_hot() -> None:
+    """« Je suis intéressé » sent from the demo wins over an earlier « non » by email."""
+    result = ls.compute([], email=_CLICKED_THEN_DECLINED_EMAIL, demo_leads=1)
+    assert result["temperature"] == "hot"
+
+
+def test_a_positive_reply_after_a_refusal_is_hot() -> None:
+    """A human reply that is not negative reopens the conversation: the lead is hot again."""
+    result = ls.compute([], email={"sent": 2, "opened": 0, "clicked": 1, "replied": 1, "negative_replies": 1})
+    assert result["temperature"] == "hot"
