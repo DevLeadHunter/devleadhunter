@@ -12,6 +12,7 @@ Docs: https://resend.com/docs/api-reference/emails/send-email
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 from typing import Any
@@ -25,6 +26,13 @@ from services.validation_service import validation_service
 logger = logging.getLogger(__name__)
 
 _RESEND_SEND_URL: str = "https://api.resend.com/emails"
+_RETRY_DELAYS_SECONDS: tuple[int, ...] = (2, 5, 10)
+_UNREACHABLE_ERRORS: tuple[type[BaseException], ...] = (aiohttp.ClientConnectionError, TimeoutError)
+_sleep = asyncio.sleep
+
+
+class ResendUnreachableError(RuntimeError):
+    """Resend could not be reached from this server, even after the retries."""
 
 
 class ResendService:
@@ -126,6 +134,32 @@ class ResendService:
         if all_tags:
             payload["tags"] = all_tags
 
+        return await self._post_with_retries(payload, api_key, to_email)
+
+    async def _post_with_retries(self, payload: dict[str, Any], api_key: str, to_email: str) -> dict[str, Any]:
+        """
+        Post the email, retrying a connection or DNS failure after each wait of ``_RETRY_DELAYS_SECONDS``.
+
+        An answer from Resend, even an error status, is never retried: only the absence of any answer is.
+
+        Raises:
+            ResendUnreachableError: When Resend stays unreachable after the last wait.
+            RuntimeError: When Resend answers with a non-2xx status.
+        """
+        for delay in _RETRY_DELAYS_SECONDS:
+            try:
+                return await self._post(payload, api_key, to_email)
+            except _UNREACHABLE_ERRORS as error:
+                logger.warning("[Resend] Unreachable for %s (%r), retrying in %d s", to_email, error, delay)
+                await _sleep(delay)
+        try:
+            return await self._post(payload, api_key, to_email)
+        except _UNREACHABLE_ERRORS as error:
+            attempts: int = len(_RETRY_DELAYS_SECONDS) + 1
+            raise ResendUnreachableError(f"Resend injoignable après {attempts} essais : {error!r}") from error
+
+    async def _post(self, payload: dict[str, Any], api_key: str, to_email: str) -> dict[str, Any]:
+        """One HTTP call to Resend; a non-2xx answer raises ``RuntimeError`` carrying Resend's message."""
         async with (
             aiohttp.ClientSession() as session,
             session.post(

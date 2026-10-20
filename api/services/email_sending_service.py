@@ -23,7 +23,7 @@ from services.gmail_oauth_service import GmailOAuthService
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
 from services.regional_lexicon import RegionalLexicon
-from services.resend_service import ResendService
+from services.resend_service import ResendService, ResendUnreachableError
 from services.sending_identity import SendingIdentity, resolve_sending_identity
 from services.unsubscribe_service import unsubscribe_service
 
@@ -414,7 +414,8 @@ class EmailSendingService:
             email_log.failed_at = datetime.utcnow()
             self.db.commit()
             logger.error(f"Failed to send via user identity ({identity.provider}): {e}")
-            return {"success": False, "email_log_id": email_log.id, "error": str(e)}
+            error_kind: str = "network" if isinstance(e, ResendUnreachableError) else "provider"
+            return {"success": False, "email_log_id": email_log.id, "error": str(e), "error_kind": error_kind}
 
     def replace_variables(self, text: str, variables: dict) -> str:
         """Replace variables in text with values, in the regional French of the country the map carries.

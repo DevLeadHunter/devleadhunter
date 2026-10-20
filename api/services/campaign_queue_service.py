@@ -61,6 +61,10 @@ _STATUS_FAILED = "failed"
 # Reason stamped on a row the operator cancels by hand (shown on the campaign page).
 _MANUAL_CANCEL_REASON = "Annulé manuellement"
 
+_NETWORK_REPLAN_DELAY_MINUTES = 10
+_MAX_NETWORK_REPLANS = 3
+_NETWORK_FAILURE_TAG = "send-network-failure"
+
 # Reason stamped on a row held back because the prospect was marked « ne plus contacter ».
 _DO_NOT_CONTACT_SKIP_REASON = "Ne plus contacter"
 DISMISSED_SKIP_REASON: str = "Écarté"
@@ -1559,15 +1563,67 @@ class CampaignQueueService:
         )
 
         item.email_log_id = result.get("email_log_id")
-        item.status = _STATUS_SENT if result.get("success") else _STATUS_FAILED
-        if result.get("success"):
-            # The lock counts from the module's last message, so its follow-ups hold the other modules off.
-            contact_lock_service.record_contact(prospect, module, _utcnow())
+        if not result.get("success"):
+            await self._settle_failed_send(item, prospect, result)
+            return
+        item.status = _STATUS_SENT
+        # The lock counts from the module's last message, so its follow-ups hold the other modules off.
+        contact_lock_service.record_contact(prospect, module, _utcnow())
         self.db.commit()
 
         # Schedule follow-ups after a successful J1 send.
-        if item.queue_type == "initial" and result.get("success"):
+        if item.queue_type == "initial":
             self._schedule_follow_ups(item)
+
+    async def _settle_failed_send(self, item: EmailQueue, prospect: ProspectDB, result: dict) -> None:
+        """
+        Settle a queue item whose email did not leave.
+
+        A refusal answered by Resend fails the item at once. A network cut (Resend unreachable from
+        the server even after the sender's own retries) is transient: the item goes back to ``pending``
+        a few minutes later inside the prospect's sending window, up to ``_MAX_NETWORK_REPLANS`` times,
+        then fails and pings the admins so it can be re-sent from the campaign page.
+
+        Args:
+            item: The queue row just dispatched.
+            prospect: Its prospect (for the clock and the notification).
+            result: The sender's answer, with ``error_kind`` set to ``network`` on an unreachable Resend.
+        """
+        if result.get("error_kind") != "network":
+            item.status = _STATUS_FAILED
+            self.db.commit()
+            return
+        item.send_attempts = (item.send_attempts or 0) + 1
+        if item.send_attempts <= _MAX_NETWORK_REPLANS:
+            from services.send_policy_service import send_policy_service
+
+            policy = send_policy_service.resolve(self.db, item.user_id)
+            item.status = _STATUS_PENDING
+            item.scheduled_at = send_policy_service.advance_into_window(
+                _utcnow() + timedelta(minutes=_NETWORK_REPLAN_DELAY_MINUTES),
+                policy,
+                timezone_name=self.prospect_timezone(prospect),
+            )
+            self.db.commit()
+            logger.warning(
+                "[Queue] Item %d: Resend unreachable, re-planned for %s (attempt %d)",
+                item.id,
+                item.scheduled_at.isoformat(),
+                item.send_attempts,
+            )
+            return
+        item.status = _STATUS_FAILED
+        self.db.commit()
+        from services.notification_service import notification_service
+
+        await notification_service.notify_error(
+            context="Envoi impossible",
+            message=(
+                f"{prospect.name} : Resend injoignable depuis le serveur à {item.send_attempts} reprises espacées. "
+                "L'envoi est en échec, à renvoyer depuis la page campagne."
+            ),
+            tag=_NETWORK_FAILURE_TAG,
+        )
 
     def _offer_links_of(self, template_id: int | None, sms_template_key: str | None) -> tuple[bool, bool, bool]:
         """

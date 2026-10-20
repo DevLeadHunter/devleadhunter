@@ -44,6 +44,7 @@ class EmailQueue(Base):
         sms_message_id:   The SMS an SMS-channel item sent.
         status:           ``pending`` → ``sending`` → ``sent`` / ``skipped`` /
                           ``failed``.
+        send_attempts:    Times the send was re-planned because Resend was unreachable.
         created_at:       Row creation timestamp.
         updated_at:       Last modification timestamp (auto-updated by DB).
     """
@@ -91,6 +92,7 @@ class EmailQueue(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     # Why a row was skipped, shown on the campaign page (empty for every other status).
     skip_reason: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    send_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
