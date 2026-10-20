@@ -327,3 +327,8 @@ où la main de la manche 2 a trouvé le patron alors que l'app non (ou seulement
 - Suisse : l'annuaire search.ch pour les entreprises non inscrites (par nom et ville, pas seulement par
   téléphone).
 - France : les co-gérants et les groupes de sociétés (une personne morale entre l'enseigne et le patron).
+  Cas réel du 20/10/2026 (vague 4) : GARAGE Auto 2000 à Blois (prospect n° 274, SIREN 344534342) a deux
+  gérants au registre, Nathalie Angier et Denis Simon. La résolution n'a gardé que Nathalie (mail « Bonjour
+  Nathalie », texte du site « c'est Nathalie Angier et son équipe ») ; c'est Denis qui lit la boîte mail et
+  qui a répondu non. Règle à coder : quand le registre donne plusieurs gérants, salutation neutre ou les deux
+  prénoms, et le texte « à propos » du site ne nomme personne.
