@@ -17,7 +17,7 @@
           :disabled="isLoading || isSyncing"
           class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           :title="'Synchronise les statuts depuis Resend (utile en local sans webhook)'"
-          @click="syncStatus(true)"
+          @click="syncStatus()"
         >
           <UIcon
             :name="isSyncing ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
@@ -534,16 +534,14 @@ watch(
 )
 
 /**
- * Poll the Resend API for the latest status of all unresolved emails.
- * Useful in local development where the webhook is not publicly reachable.
- * @param isUserRequested - True when triggered by the « Sync Resend » button. The automatic
- * sync on page load stays silent unless it actually updated a status, so landing on the page
- * never raises an alarm about an empty mailbox.
+ * Poll the Resend API for the latest status of all unresolved emails, on the « Sync Resend » button only.
+ * Useful in local development where the webhook is not publicly reachable; never run on page load,
+ * because a poll cannot tell a human open from a scanner and used to stamp false opens.
  * @returns A promise that resolves once the sync is complete.
  */
-async function syncStatus(isUserRequested: boolean): Promise<void> {
-  if (isUserRequested && isSyncing.value) return
-  if (isUserRequested) isSyncing.value = true
+async function syncStatus(): Promise<void> {
+  if (isSyncing.value) return
+  isSyncing.value = true
   try {
     const result: { updated: number; checked: number; errors?: string[] | undefined } = await ApiClient.post<{
       updated: number
@@ -553,33 +551,28 @@ async function syncStatus(isUserRequested: boolean): Promise<void> {
     if (result.updated > 0) {
       toast.success(`${result.updated} statut(s) mis à jour`)
       await loadLogs()
-    } else if (isUserRequested && result.checked === 0 && logs.value.length === 0) {
-      // Nothing sent yet: there is simply nothing to synchronize, and no problem to report.
+    } else if (result.checked === 0 && logs.value.length === 0) {
       toast.info('Aucun email envoyé pour le moment')
-    } else if (isUserRequested && result.checked === 0) {
+    } else if (result.checked === 0) {
       toast.warning(
         "Aucun email à synchroniser — vérifiez que le Message ID Resend est bien stocké (ouvrez le drawer d'un email)",
       )
-    } else if (isUserRequested) {
+    } else {
       toast.info(`${result.checked} email(s) vérifiés — aucun changement`)
     }
     if (result.errors && result.errors.length > 0) {
       console.error('[Sync Resend] Errors:', result.errors)
-      if (isUserRequested) toast.error(result.errors[0] ?? 'Erreur Resend — voir la console')
+      toast.error(result.errors[0] ?? 'Erreur Resend — voir la console')
     }
   } catch (err: unknown) {
     console.error('[Sync Resend] Failed:', err)
-    if (isUserRequested) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la synchronisation')
-    }
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la synchronisation')
   } finally {
-    if (isUserRequested) isSyncing.value = false
+    isSyncing.value = false
   }
 }
 
 onMounted(async (): Promise<void> => {
   await loadLogs()
-  // Rafraîchissement léger en arrière-plan (sans bloquer le bouton Sync).
-  void syncStatus(false)
 })
 </script>

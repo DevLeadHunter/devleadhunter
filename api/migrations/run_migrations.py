@@ -210,6 +210,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_presenter_video_in_use_since", "migrations.add_presenter_video_in_use_since"),
     ("fail_unfinished_server_videos", "migrations.fail_unfinished_server_videos"),
     ("drop_sms_config_cold_sms_enabled", "migrations.drop_sms_config_cold_sms_enabled"),
+    ("fix_sync_stamped_opens", "migrations.fix_sync_stamped_opens"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

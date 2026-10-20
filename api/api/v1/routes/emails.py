@@ -34,29 +34,16 @@ from services.campaign_queue_service import CampaignQueueService
 from services.conversation_service import conversation_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 from services.email_sending_service import EmailSendingService
+from services.resend_status_sync import ResendStatusSync
 from services.scheduled_email_service import ScheduledEmailError, scheduled_email_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/emails", tags=["emails"])
 
-# Resend GET /emails/{id} last_event values → our EmailStatus values.
-_RESEND_EVENT_TO_STATUS: dict[str, str] = {
-    "scheduled": EmailStatus.SCHEDULED.value,
-    "sent": EmailStatus.SENT.value,
-    "delivered": EmailStatus.DELIVERED.value,
-    "delivery_delayed": EmailStatus.DELIVERY_DELAYED.value,
-    "opened": EmailStatus.OPENED.value,
-    "clicked": EmailStatus.CLICKED.value,
-    "bounced": EmailStatus.BOUNCED.value,
-    "complained": EmailStatus.COMPLAINED.value,
-    "failed": EmailStatus.FAILED.value,
-    "suppressed": EmailStatus.SUPPRESSED.value,
-}
-
-# Statuses worth polling when webhooks are missing. ``opened`` / ``clicked`` are terminal
-# for this fallback — re-fetching every delivered+opened log on each page load meant
-# hundreds of sequential Resend API calls and a stuck « Sync » spinner.
+# Statuses worth polling when webhooks are missing. ``opened`` / ``clicked`` come from the webhook
+# and are terminal here — re-fetching every opened log on each sync meant hundreds of sequential
+# Resend API calls and a stuck « Sync » spinner.
 _UNRESOLVED_STATUSES = (
     EmailStatus.PENDING.value,
     EmailStatus.SENDING.value,
@@ -67,19 +54,6 @@ _UNRESOLVED_STATUSES = (
 )
 
 _SYNC_RESEND_LIMIT = 80
-
-# When syncing from Resend's last_event, cascade-fill all timestamp columns
-# implied by that state (e.g. if "opened", delivery must have happened too).
-_CASCADE_TIMESTAMPS: dict[str, list[str]] = {
-    EmailStatus.DELIVERED.value: ["delivered_at"],
-    EmailStatus.DELIVERY_DELAYED.value: [],
-    EmailStatus.OPENED.value: ["delivered_at", "opened_at"],
-    EmailStatus.CLICKED.value: ["delivered_at", "opened_at", "clicked_at"],
-    EmailStatus.BOUNCED.value: ["bounced_at"],
-    EmailStatus.COMPLAINED.value: ["complained_at"],
-    EmailStatus.FAILED.value: ["failed_at"],
-    EmailStatus.SUPPRESSED.value: ["suppressed_at"],
-}
 
 
 @router.post("/sync-resend-status")
@@ -93,7 +67,8 @@ async def sync_resend_status(
     Designed as a fallback for local development where the webhook endpoint
     is not publicly reachable.  Fetches ``GET /emails/{id}`` for every
     EmailLog row whose status is still unresolved (sent / pending /
-    delivery_delayed) and has a ``provider_message_id`` set.
+    delivery_delayed) and has a ``provider_message_id`` set. Opens are never
+    written from here (``ResendStatusSync``): only the webhook knows when they happened.
 
     Returns a summary of how many rows were updated.
     """
@@ -159,14 +134,7 @@ async def sync_resend_status(
                     data: dict[str, Any] = await resp.json(content_type=None)
 
                 last_event: str = data.get("last_event", "")
-                new_status: str | None = _RESEND_EVENT_TO_STATUS.get(last_event)
-
-                if new_status and new_status != log.status:
-                    log.status = new_status
-                    # Fill in all timestamps implied by this event (cascade).
-                    for ts_col in _CASCADE_TIMESTAMPS.get(new_status, []):
-                        if not getattr(log, ts_col):
-                            setattr(log, ts_col, now)
+                if ResendStatusSync.apply_last_event(log, last_event, now):
                     updated += 1
 
             except Exception as exc:
