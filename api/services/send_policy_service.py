@@ -279,6 +279,26 @@ class SendPolicyService:
 
         return _to_utc(self._advance_into_window(local_moment, policy), timezone_name)
 
+    def advance_into_window(
+        self, moment_utc: datetime, policy: ResolvedPolicy, *, timezone_name: str = SENDER_TIMEZONE
+    ) -> datetime:
+        """
+        The first instant at or after ``moment_utc`` that falls inside the sending window.
+
+        A moment already inside the window on an allowed weekday comes back unchanged; a night,
+        a weekend or an early morning moves to the next window start on the prospect's clock.
+
+        Args:
+            policy: The resolved policy.
+            moment_utc: The candidate instant (naive UTC).
+            timezone_name: The prospect's IANA zone; the sender's when unknown.
+
+        Returns:
+            The instant, as naive UTC, inside the sending window.
+        """
+        local_moment: datetime = _to_local(moment_utc, timezone_name)
+        return _to_utc(self._advance_into_window(local_moment, policy), timezone_name)
+
     def _advance_into_window(self, local_moment: datetime, policy: ResolvedPolicy) -> datetime:
         """Move a wall-clock moment forward to the next valid weekday + in-window instant."""
         # Wrong weekday, or already past the window → jump to next day's start.

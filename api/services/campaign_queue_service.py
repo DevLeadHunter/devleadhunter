@@ -1952,25 +1952,33 @@ class CampaignQueueService:
 
     def requeue_item(self, item: EmailQueue) -> None:
         """
-        Re-queue a skipped item so the worker sends it on its next tick (~1 min).
+        Re-queue a skipped or failed item so the worker sends it at the next allowed moment.
 
-        The row returns to ``pending`` scheduled now and its ``skip_reason`` is cleared,
-        so the standard dispatch path re-runs in full — personalisation, signature, A/B,
-        logging, and follow-up chaining. Only a ``skipped`` item can be re-queued.
+        The row returns to ``pending`` and its ``skip_reason`` is cleared, so the standard
+        dispatch path re-runs in full — personalisation, signature, A/B, logging, and
+        follow-up chaining. Inside the user's sending window the item leaves on the worker's
+        next tick (~1 min); at night or on a weekend it waits for the next window start on
+        the prospect's clock, so a send that failed at noon and is re-queued at 10 p.m. still
+        reaches the prospect at 8 a.m. Only a ``skipped`` or ``failed`` item can be re-queued.
 
         Args:
             item: The queue row to re-send — already loaded and ownership-checked by the caller.
 
         Raises:
-            ValueError: When the item is not ``skipped``.
+            ValueError: When the item is neither ``skipped`` nor ``failed``.
         """
-        if item.status != _STATUS_SKIPPED:
-            raise ValueError("Seuls les envois ignorés peuvent être renvoyés")
+        if item.status not in (_STATUS_SKIPPED, _STATUS_FAILED):
+            raise ValueError("Seuls les envois ignorés ou en échec peuvent être renvoyés")
+        from services.send_policy_service import send_policy_service
+
+        policy = send_policy_service.resolve(self.db, item.user_id)
         item.status = _STATUS_PENDING
         item.skip_reason = None
-        item.scheduled_at = _utcnow()
+        item.scheduled_at = send_policy_service.advance_into_window(
+            _utcnow(), policy, timezone_name=self.prospect_timezone(item.prospect)
+        )
         self.db.commit()
-        logger.info("[Queue] Item %d re-queued for immediate send", item.id)
+        logger.info("[Queue] Item %d re-queued for %s", item.id, item.scheduled_at.isoformat())
 
     def get_pending_count(self, campaign_id: int) -> int:
         """Return the number of pending items in the queue for a campaign."""

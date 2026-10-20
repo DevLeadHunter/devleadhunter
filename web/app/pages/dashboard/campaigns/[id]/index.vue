@@ -792,7 +792,7 @@
                   Annuler
                 </button>
                 <button
-                  v-else-if="item.status === 'skipped'"
+                  v-else-if="item.status === 'skipped' || item.status === 'failed'"
                   type="button"
                   class="app-btn-primary h-8 px-3 text-xs"
                   @click="startResendQueueItem(item)"
@@ -838,7 +838,7 @@
     <UiConfirmModal
       ref="resendQueueModal"
       title="Renvoyer l'email"
-      :message="`Ce ${isSms ? 'SMS' : 'email'} sera renvoyé dans la minute qui suit.`"
+      :message="`Ce ${isSms ? 'SMS' : 'email'} sera renvoyé dans la minute qui suit, ou à l'ouverture de la prochaine fenêtre d'envoi si vous êtes en dehors des horaires.`"
       confirm-text="Renvoyer"
       cancel-text="Retour"
       confirm-button-variant="primary"

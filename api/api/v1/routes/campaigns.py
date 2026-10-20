@@ -1025,10 +1025,11 @@ async def resend_queue_item(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
-    Re-queue a skipped item so the worker sends it on its next tick (~1 min).
+    Re-queue a skipped or failed item so the worker sends it at the next allowed moment.
 
     Used to send a follow-up that had been skipped — cancelled by hand, or by an
-    earlier auto-skip rule.
+    earlier auto-skip rule — or a first message whose send failed on a network error.
+    Inside the sending window it leaves on the next tick; otherwise at the next window start.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
 
