@@ -148,16 +148,16 @@
     </section>
 
     <section class="app-card p-5 md:p-6">
-      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Réputation Gmail</h2>
+      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Bilan Gmail</h2>
       <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
-        Vue officielle de Gmail sur votre domaine d'envoi — complémentaire aux stats Resend ci-dessus.
+        Le bilan officiel de Gmail sur votre domaine d'envoi, en complément des chiffres Resend ci-dessus.
       </p>
 
       <template v-if="!postmasterConnection?.connected">
         <UiCollapsibleCard
           class="mt-4"
           icon="i-lucide-mail-check"
-          title="Comment brancher la réputation Gmail"
+          title="Comment brancher le bilan Gmail"
           suffix="gratuit"
         >
           <div class="space-y-6 px-4 py-5">
@@ -192,8 +192,8 @@
           <div class="space-y-1.5">
             <h3 class="text-base font-semibold text-[var(--app-ink)]">Connecter Google Postmaster</h3>
             <p class="text-muted mx-auto max-w-md text-sm leading-relaxed">
-              Un clic pour autoriser la lecture de votre réputation Gmail. La connexion reste active — pas besoin de
-              revenir ici à chaque visite.
+              Un clic pour autoriser la lecture du bilan Gmail de votre domaine. La connexion reste active — pas besoin
+              de revenir ici à chaque visite.
             </p>
           </div>
           <button type="button" class="btn-primary" :disabled="isConnectingPostmaster" @click="connectPostmaster">
@@ -231,7 +231,19 @@
             <span class="font-mono text-[var(--app-accent-ink)] normal-case">{{ postmaster.domain }}</span>
           </h3>
 
-          <p v-if="postmaster.error" class="text-sm text-[var(--app-red)]">{{ postmaster.error }}</p>
+          <div v-if="postmaster.error" class="space-y-3">
+            <p class="text-sm text-[var(--app-red)]">{{ postmaster.error }}</p>
+            <button
+              v-if="postmaster.needs_reconnect"
+              type="button"
+              class="btn-primary text-xs"
+              :disabled="isConnectingPostmaster"
+              @click="connectPostmaster"
+            >
+              <UiGoogleLogo class="h-4 w-4" />
+              {{ isConnectingPostmaster ? 'Redirection…' : 'Reconnecter Google' }}
+            </button>
+          </div>
 
           <UiCallout v-else-if="postmaster.domain_not_found" variant="warning">
             Ce domaine n'apparaît pas dans votre Postmaster Tools. Ajoutez-le sur
@@ -243,30 +255,58 @@
           </UiCallout>
 
           <div v-else class="space-y-5">
-            <div class="flex flex-wrap items-center gap-6">
+            <div v-if="postmaster.compliance" class="space-y-3">
               <div>
-                <p class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Réputation actuelle</p>
+                <p class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Verdict de Gmail</p>
                 <p
                   class="mt-1 text-xl font-bold"
-                  :style="{ color: reputationColor(postmaster.latest?.domain_reputation ?? null) }"
+                  :style="{
+                    color:
+                      POSTMASTER_STATUS_COLORS[postmaster.compliance.deliverability_status ?? ''] ??
+                      'var(--app-ink-soft)',
+                  }"
                 >
-                  {{ reputationLabel(postmaster.latest?.domain_reputation ?? null) }}
+                  {{
+                    POSTMASTER_STATUS_LABELS[postmaster.compliance.deliverability_status ?? ''] ??
+                    'Pas encore de verdict'
+                  }}
+                </p>
+                <p v-if="postmaster.compliance.deliverability_reason" class="mt-1 text-xs text-[var(--app-ink-soft)]">
+                  {{
+                    POSTMASTER_DELIVERABILITY_REASON_LABELS[postmaster.compliance.deliverability_reason] ??
+                    postmaster.compliance.deliverability_reason
+                  }}
                 </p>
               </div>
+              <ul class="grid gap-2 sm:grid-cols-2">
+                <li
+                  v-for="row in postmaster.compliance.requirements"
+                  :key="row.requirement"
+                  class="flex items-center gap-2 text-sm text-[var(--app-ink)]"
+                >
+                  <UIcon
+                    :name="row.status === 'COMPLIANT' ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
+                    class="h-4 w-4 shrink-0"
+                    :style="{ color: POSTMASTER_STATUS_COLORS[row.status ?? ''] ?? 'var(--app-ink-soft)' }"
+                  />
+                  {{ POSTMASTER_REQUIREMENT_LABELS[row.requirement] ?? row.requirement }}
+                  <span class="text-xs text-[var(--app-ink-soft)]">
+                    {{ POSTMASTER_STATUS_LABELS[row.status ?? ''] ?? 'Pas encore de verdict' }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div class="flex flex-wrap items-center gap-6">
               <div>
                 <p class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Taux de spam vu par Gmail</p>
                 <p class="mt-1 text-xl font-bold text-[var(--app-ink)] tabular-nums">
-                  {{ formatSpamRatio(postmaster.latest?.user_reported_spam_ratio ?? null) }}
+                  {{ formatSpamRatio(postmaster.latest?.spam_ratio ?? null) }}
                 </p>
               </div>
               <div v-for="auth in postmasterAuthRatios(postmaster)" :key="auth.label">
                 <p class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">{{ auth.label }}</p>
                 <p class="mt-1 text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ auth.value }}</p>
               </div>
-            </div>
-            <div>
-              <p class="mb-2 text-xs font-medium text-[var(--app-ink-soft)]">Historique de réputation</p>
-              <EmailHealthReputationTimeline :days="reputationDays(postmaster)" />
             </div>
             <p v-if="(postmaster.days ?? []).length === 0" class="text-xs text-[var(--app-ink-soft)]">
               Google n'a pas encore publié de données — il faut un volume d'envoi régulier vers Gmail (souvent quelques
@@ -586,6 +626,12 @@ import type {
 import { EmailHealthService } from '~/services/emailHealthService'
 import type { EmailHealthChartSeries, EmailHealthChartThreshold } from '~/types/EmailHealthTrendChart'
 import type { UseToastReturn } from '~/types/Composables'
+import {
+  POSTMASTER_DELIVERABILITY_REASON_LABELS,
+  POSTMASTER_REQUIREMENT_LABELS,
+  POSTMASTER_STATUS_COLORS,
+  POSTMASTER_STATUS_LABELS,
+} from '~/constants/postmasterCompliance'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({
@@ -877,9 +923,9 @@ function postmasterAuthRatios(postmaster: PostmasterDomain): { label: string; va
   const latest: PostmasterDay | null | undefined = postmaster.latest
   if (!latest) return []
   const entries: { label: string; ratio: number | null }[] = [
-    { label: 'SPF ok', ratio: latest.spf_success_ratio },
-    { label: 'DKIM ok', ratio: latest.dkim_success_ratio },
-    { label: 'DMARC ok', ratio: latest.dmarc_success_ratio },
+    { label: 'SPF ok', ratio: latest.spf_ratio },
+    { label: 'DKIM ok', ratio: latest.dkim_ratio },
+    { label: 'DMARC ok', ratio: latest.dmarc_ratio },
   ]
   return entries
     .filter((entry: { label: string; ratio: number | null }): boolean => entry.ratio !== null)
@@ -887,58 +933,6 @@ function postmasterAuthRatios(postmaster: PostmasterDomain): { label: string; va
       label: entry.label,
       value: `${formatRate((entry.ratio ?? 0) * 100)} %`,
     }))
-}
-
-/**
- * Reputation timeline days for the squares component.
- * @param postmaster - Postmaster payload.
- * @returns Date + reputation pairs.
- */
-function reputationDays(postmaster: PostmasterDomain): { date: string; reputation: string | null }[] {
-  return (postmaster.days ?? []).map((day: PostmasterDay): { date: string; reputation: string | null } => ({
-    date: day.date,
-    reputation: day.domain_reputation,
-  }))
-}
-
-/**
- * Color of a Postmaster reputation value.
- * @param reputation - HIGH | MEDIUM | LOW | BAD | null.
- * @returns A CSS color.
- */
-function reputationColor(reputation: string | null): string {
-  switch ((reputation ?? '').toUpperCase()) {
-    case 'HIGH':
-      return 'var(--app-green)'
-    case 'MEDIUM':
-      return 'var(--app-accent-ink)'
-    case 'LOW':
-      return '#c47a3d'
-    case 'BAD':
-      return 'var(--app-red)'
-    default:
-      return 'var(--app-ink-soft)'
-  }
-}
-
-/**
- * French label of a Postmaster reputation value.
- * @param reputation - HIGH | MEDIUM | LOW | BAD | null.
- * @returns The display label.
- */
-function reputationLabel(reputation: string | null): string {
-  switch ((reputation ?? '').toUpperCase()) {
-    case 'HIGH':
-      return 'Excellente'
-    case 'MEDIUM':
-      return 'Moyenne'
-    case 'LOW':
-      return 'Faible'
-    case 'BAD':
-      return 'Mauvaise'
-    default:
-      return 'Pas encore de donnée'
-  }
 }
 
 /**

@@ -122,24 +122,41 @@ export type EmailDnsDomain = {
   blocklists: EmailDnsCheck
 }
 
-/** One daily Gmail Postmaster stat. */
+/** One day of Gmail Postmaster rates, each a share between 0 and 1. */
 export type PostmasterDay = {
   date: string
-  domain_reputation: string | null
-  user_reported_spam_ratio: number | null
-  spf_success_ratio: number | null
-  dkim_success_ratio: number | null
-  dmarc_success_ratio: number | null
-  inbound_encryption_ratio: number | null
+  spam_ratio: number | null
+  spf_ratio: number | null
+  dkim_ratio: number | null
+  dmarc_ratio: number | null
+  tls_ratio: number | null
+  delivery_error_ratio: number | null
+}
+
+/** One Gmail sender requirement and whether the domain meets it. */
+export type PostmasterRequirement = {
+  requirement: string
+  status: string | null
+}
+
+/** Gmail's compliance status for a sending domain. */
+export type PostmasterCompliance = {
+  domain: string | null
+  deliverability_status: string | null
+  deliverability_reason: string | null
+  requirements: PostmasterRequirement[]
 }
 
 /** Gmail Postmaster payload for one domain. */
 export type PostmasterDomain = {
   domain: string
+  queried_domain?: string | null
   error?: string | null
   needs_connection?: boolean
+  needs_reconnect?: boolean
   domain_not_found?: boolean
   no_data?: boolean
+  compliance?: PostmasterCompliance | null
   latest?: PostmasterDay | null
   days?: PostmasterDay[]
 }

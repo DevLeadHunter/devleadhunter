@@ -151,13 +151,13 @@ def email_health_dns(
     return {"domains": [email_dns_service.check_domain(domain) for domain in domains]}
 
 
-@router.get("/postmaster", summary="Gmail Postmaster reputation for the sending domains")
+@router.get("/postmaster", summary="Gmail Postmaster compliance status and daily rates for the sending domains")
 def email_health_postmaster(
     period_days: int = Query(30, description="History depth (max ~120 days at Google)"),
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Gmail-side domain reputation + user-reported spam rate (per-user OAuth), run off the event loop (blocking Google client)."""
+    """Gmail's compliance status and daily rates (per-user OAuth), run off the event loop (blocking Google client)."""
     domains = _user_domains(db, current_user)
     depth = min(period_days, 120)
     return {

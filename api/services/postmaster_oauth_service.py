@@ -11,9 +11,8 @@ from typing import Any, ClassVar
 from core.config import settings
 from services.google_oauth_client import google_oauth_client
 
-# v1 REST API (`gmailpostmastertools.googleapis.com/v1`) only accepts this scope.
-# `postmaster.traffic.readonly` is for the newer v2 client — using it yields 403 on v1.
-POSTMASTER_SCOPE: str = "https://www.googleapis.com/auth/postmaster.readonly"
+# Read-only access to the traffic statistics and the compliance status of the v2 API (v1 retired in October 2026).
+POSTMASTER_SCOPE: str = "https://www.googleapis.com/auth/postmaster.traffic.readonly"
 USERINFO_EMAIL_SCOPE: str = "https://www.googleapis.com/auth/userinfo.email"
 
 
