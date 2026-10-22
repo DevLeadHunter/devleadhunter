@@ -79,6 +79,7 @@ _NO_ASSISTANT_VIDEO_SKIP_REASON = "Pas de vidéo de réceptionniste prête"
 _NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON = "Pas de vidéo prête pour la relance"
 _NO_SITE_VIDEO_SKIP_REASON = "Pas de vidéo prête"
 _REPLIED_SKIP_REASON = "Le prospect a répondu"
+_UNDELIVERABLE_SKIP_REASON = "Adresse en échec (rebond)"
 
 # Template variables that only render with the prospect's active AI assistant (link, video, thumbnail).
 _ASSISTANT_LINK_VARIABLES: tuple[str, ...] = (
@@ -258,6 +259,9 @@ class CampaignQueueService:
                 continue
             if prospect.do_not_contact or prospect.is_dismissed:
                 logger.debug("[Queue] Skipping do-not-contact or set-aside prospect %d", prospect.id)
+                continue
+            if prospect.email_undeliverable:
+                logger.debug("[Queue] Skipping prospect %d whose every address bounced", prospect.id)
                 continue
             if contact_lock_service.is_locked_for_module(prospect, module, now):
                 logger.info("[Queue] Skipping prospect %d — reserved by another module", prospect.id)
@@ -517,7 +521,7 @@ class CampaignQueueService:
 
         if not prospect.email or unsubscribe_service.is_unsubscribed(self.db, prospect.email):
             return False
-        if prospect.do_not_contact or prospect.is_dismissed:
+        if prospect.do_not_contact or prospect.is_dismissed or prospect.email_undeliverable:
             return False
 
         # A/B variant is assigned by position, identically to the bulk enqueue.
@@ -1401,6 +1405,11 @@ class CampaignQueueService:
             self.db.commit()
             return
 
+        if prospect.email_undeliverable:
+            logger.info("[Queue] Skipping prospect %d whose every address bounced", prospect.id)
+            self._skip(item, _UNDELIVERABLE_SKIP_REASON)
+            return
+
         # Guard: another module took the prospect after this campaign's reservation expired in a long queue.
         module: str = self._email_campaign_module(campaign)
         if contact_lock_service.is_locked_for_module(prospect, module, _utcnow()):
@@ -1967,6 +1976,35 @@ class CampaignQueueService:
         if items:
             self.db.commit()
             logger.info("[Queue] Held back %d pending item(s) for do-not-contact prospect %d", len(items), prospect_id)
+        return len(items)
+
+    def skip_pending_emails_for_prospect(self, prospect_id: int) -> int:
+        """Hold back the pending email sends of a prospect whose every address bounced; its SMS sends stay.
+
+        Args:
+            prospect_id: The prospect just flagged ``email_undeliverable``.
+
+        Returns:
+            The number of queue items held back.
+        """
+        email_campaign_ids = select(Campaign.id).where(Campaign.channel == "email")
+        items = (
+            self.db.query(EmailQueue)
+            .filter(
+                EmailQueue.prospect_id == prospect_id,
+                EmailQueue.status == _STATUS_PENDING,
+                EmailQueue.campaign_id.in_(email_campaign_ids),
+            )
+            .all()
+        )
+        for item in items:
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = _UNDELIVERABLE_SKIP_REASON
+        if items:
+            self.db.commit()
+            logger.info(
+                "[Queue] Held back %d pending email(s) of prospect %d whose address bounced", len(items), prospect_id
+            )
         return len(items)
 
     def cancel_prospect_pending(self, campaign_id: int, prospect_id: int, reason: str) -> int:

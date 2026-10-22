@@ -48,6 +48,7 @@ def _stamped_prospect(module: str | None, days_ago: int) -> SimpleNamespace:
         country="FR",
         do_not_contact=False,
         is_dismissed=False,
+        email_undeliverable=False,
         contacted_by_module=module,
         contacted_by_module_at=_NOW - timedelta(days=days_ago) if module else None,
     )

@@ -112,7 +112,7 @@ class BounceFallbackService:
 
     @staticmethod
     def _mark_undeliverable(db: Session, prospect: ProspectDB, reason: str | None) -> None:
-        """Flag the prospect's email as a dead end (idempotent). Never touches ``contacted``."""
+        """Flag the prospect's email as a dead end and hold back its pending emails (idempotent). Never touches ``contacted``."""
         if prospect.email_undeliverable:
             return
         prospect.email_undeliverable = True
@@ -121,6 +121,9 @@ class BounceFallbackService:
         db.add(prospect)
         db.commit()
         logger.info("Prospect %s flagged email_undeliverable after every address bounced", prospect.id)
+        from services.campaign_queue_service import CampaignQueueService
+
+        CampaignQueueService(db).skip_pending_emails_for_prospect(prospect.id)
 
     @staticmethod
     def clear_undeliverable(db: Session, prospect: ProspectDB) -> None:

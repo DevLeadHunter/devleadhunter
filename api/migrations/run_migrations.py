@@ -213,6 +213,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("fix_sync_stamped_opens", "migrations.fix_sync_stamped_opens"),
     ("fix_sync_stamped_opens_every_campaign", "migrations.fix_sync_stamped_opens_every_campaign"),
     ("add_email_queue_send_attempts", "migrations.add_email_queue_send_attempts"),
+    ("hold_back_undeliverable_pending_emails", "migrations.hold_back_undeliverable_pending_emails"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

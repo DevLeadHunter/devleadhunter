@@ -71,6 +71,7 @@ def _prospect(pid: int, email: str = "a@b.fr", dnc: bool = False):
         email=email,
         do_not_contact=dnc,
         is_dismissed=False,
+        email_undeliverable=False,
         name=f"Prospect {pid}",
         contacted_by_module=None,
         contacted_by_module_at=None,
