@@ -62,7 +62,7 @@
           >
             <path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1" />
           </svg>
-          <span class="dlh-card__label">Votre démo · {{ businessName }}</span>
+          <span class="dlh-card__label">Votre site · {{ businessName }}</span>
         </div>
         <button type="button" class="dlh-card__close" aria-label="Réduire" @click="collapse">
           <svg
@@ -267,11 +267,15 @@ const offerText: ComputedRef<string> = computed((): string => {
   const salePrice: string = (props.site.sale_price_label ?? '').trim()
 
   if (salePrice) {
-    sentences.push(`${salePrice}, une seule fois, pas d'abonnement, satisfait ou remboursé pendant 30 jours.`)
+    sentences.push(`Pour ${salePrice}, une seule fois, il devient le vôtre, sur votre propre adresse.`)
+    sentences.push("Pas d'abonnement, satisfait ou remboursé pendant 30 jours.")
   }
 
   const expiryDate: string = (props.site.expiry_date_label ?? '').trim()
-  if (expiryDate) sentences.push(`Je le garde en ligne jusqu'au ${expiryDate}.`)
+
+  if (expiryDate) {
+    sentences.push(`Cet aperçu reste en ligne jusqu'au ${expiryDate}.`)
+  }
 
   sentences.push('Un mot me suffit, même un non.')
   return sentences.join(' ')

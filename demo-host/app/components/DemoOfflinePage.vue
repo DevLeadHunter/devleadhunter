@@ -6,9 +6,9 @@
       aria-labelledby="demo-offline-title"
     >
       <p class="font-mono text-xs tracking-widest wrap-anywhere text-stone-500 uppercase">
-        Votre démo · {{ businessName }}
+        Votre site · {{ businessName }}
       </p>
-      <h1 id="demo-offline-title" class="text-2xl font-semibold tracking-tight">Ce site n'est plus en ligne</h1>
+      <h1 id="demo-offline-title" class="text-2xl font-semibold tracking-tight">Cet aperçu n'est plus en ligne</h1>
       <p class="text-base leading-relaxed text-stone-700">{{ withdrawalSentence }}</p>
       <p class="text-base leading-relaxed text-stone-700">{{ revivalOfferSentence }}</p>
       <button
@@ -17,7 +17,7 @@
         :disabled="revivalState === 'reviving'"
         @click="reviveDemo"
       >
-        {{ revivalState === 'reviving' ? 'Remise en ligne…' : 'Remettre le site en ligne' }}
+        {{ revivalState === 'reviving' ? 'Remise en ligne…' : "Remettre l'aperçu en ligne" }}
       </button>
       <p v-if="revivalState === 'failed'" class="text-sm text-red-700" role="alert">{{ revivalFailureSentence }}</p>
       <p class="text-sm text-stone-500">{{ priceAndRefusalSentence }}</p>
@@ -93,24 +93,24 @@ const withdrawalSentence: ComputedRef<string> = computed((): string => {
   const withdrawnOn: string | null | undefined = props.withdrawnDemo?.withdrawn_on_label
 
   if (!withdrawnOn) {
-    return `J'ai créé ce site pour ${businessName.value} et je l'ai retiré à la date prévue.`
+    return `J'ai créé un site pour ${businessName.value}. Son aperçu a été retiré à la date prévue.`
   }
-  return `J'ai créé ce site pour ${businessName.value} et je l'ai retiré le ${keepOnOneLine(withdrawnOn)}, comme prévu.`
+  return `J'ai créé un site pour ${businessName.value}. Son aperçu est resté en ligne jusqu'au ${keepOnOneLine(withdrawnOn)}, comme prévu.`
 })
 
 const revivalOfferSentence: ComputedRef<string> = computed((): string => {
   const revivedUntil: string = keepOnOneLine(props.withdrawnDemo?.revived_until_label ?? '')
-  return `Vous voulez le revoir ? Je le remets en ligne tout de suite, jusqu'au ${revivedUntil}, sans engagement.`
+  return `Vous voulez le revoir ? Je remets l'aperçu en ligne tout de suite, jusqu'au ${revivedUntil}, sans engagement.`
 })
 
 const priceAndRefusalSentence: ComputedRef<string> = computed((): string => {
   const salePrice: string | null | undefined = props.withdrawnDemo?.sale_price_label
-  const refusal: string = 'Sinon, rien à faire : il reste hors ligne.'
+  const refusal: string = "Sinon, rien à faire : l'aperçu reste hors ligne."
 
   if (!salePrice) {
     return refusal
   }
-  return `S'il vous plaît, il est à vous pour ${keepOnOneLine(salePrice)}. ${refusal}`
+  return `Pour ${keepOnOneLine(salePrice)}, une seule fois, il devient le vôtre, sur votre propre adresse. ${refusal}`
 })
 
 const ownerName: ComputedRef<string> = computed((): string => (props.withdrawnDemo?.owner_name ?? '').trim())
