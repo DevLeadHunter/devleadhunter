@@ -1,4 +1,3 @@
-/** French label of each Gmail sender requirement Postmaster checks. */
 export const POSTMASTER_REQUIREMENT_LABELS: Record<string, string> = {
   SPF: 'SPF',
   DKIM: 'DKIM',
@@ -13,19 +12,16 @@ export const POSTMASTER_REQUIREMENT_LABELS: Record<string, string> = {
   HONOR_UNSUBSCRIBE: 'Désinscriptions respectées',
 }
 
-/** French label of a compliance status. */
 export const POSTMASTER_STATUS_LABELS: Record<string, string> = {
   COMPLIANT: 'Conforme',
   NEEDS_WORK: 'À corriger',
 }
 
-/** Colour of a compliance status. */
-export const POSTMASTER_STATUS_COLORS: Record<string, string> = {
-  COMPLIANT: 'var(--app-green)',
-  NEEDS_WORK: 'var(--app-red)',
+export const POSTMASTER_STATUS_TEXT_CLASSES: Record<string, string> = {
+  COMPLIANT: 'text-[var(--app-green)]',
+  NEEDS_WORK: 'text-[var(--app-red)]',
 }
 
-/** What Gmail's deliverability verdict reason means, in plain words. */
 export const POSTMASTER_DELIVERABILITY_REASON_LABELS: Record<string, string> = {
   MESSAGE_VOLUME_LOW: 'Pas encore assez de mails envoyés vers Gmail pour en juger.',
   SMTP_ERRORS_HIGH: 'Beaucoup de mails refusés à la livraison.',

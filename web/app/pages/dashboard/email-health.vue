@@ -260,11 +260,10 @@
                 <p class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Verdict de Gmail</p>
                 <p
                   class="mt-1 text-xl font-bold"
-                  :style="{
-                    color:
-                      POSTMASTER_STATUS_COLORS[postmaster.compliance.deliverability_status ?? ''] ??
-                      'var(--app-ink-soft)',
-                  }"
+                  :class="
+                    POSTMASTER_STATUS_TEXT_CLASSES[postmaster.compliance.deliverability_status ?? ''] ??
+                    'text-[var(--app-ink-soft)]'
+                  "
                 >
                   {{
                     POSTMASTER_STATUS_LABELS[postmaster.compliance.deliverability_status ?? ''] ??
@@ -278,7 +277,7 @@
                   }}
                 </p>
               </div>
-              <ul class="grid gap-2 sm:grid-cols-2">
+              <ul class="grid gap-2 @xl:grid-cols-2">
                 <li
                   v-for="row in postmaster.compliance.requirements"
                   :key="row.requirement"
@@ -287,7 +286,7 @@
                   <UIcon
                     :name="row.status === 'COMPLIANT' ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
                     class="h-4 w-4 shrink-0"
-                    :style="{ color: POSTMASTER_STATUS_COLORS[row.status ?? ''] ?? 'var(--app-ink-soft)' }"
+                    :class="POSTMASTER_STATUS_TEXT_CLASSES[row.status ?? ''] ?? 'text-[var(--app-ink-soft)]'"
                   />
                   {{ POSTMASTER_REQUIREMENT_LABELS[row.requirement] ?? row.requirement }}
                   <span class="text-xs text-[var(--app-ink-soft)]">
@@ -629,8 +628,8 @@ import type { UseToastReturn } from '~/types/Composables'
 import {
   POSTMASTER_DELIVERABILITY_REASON_LABELS,
   POSTMASTER_REQUIREMENT_LABELS,
-  POSTMASTER_STATUS_COLORS,
   POSTMASTER_STATUS_LABELS,
+  POSTMASTER_STATUS_TEXT_CLASSES,
 } from '~/constants/postmasterCompliance'
 import { useToast } from '~/composables/useToast'
 

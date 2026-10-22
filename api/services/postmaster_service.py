@@ -290,11 +290,11 @@ class PostmasterService:
             row = rows.setdefault(iso_date, {"date": iso_date, **{name: None for name, _, _ in _DAILY_METRICS}})
             metric_name: str | None = entry.get("metric")
             if metric_name in row and metric_name != "date":
-                row[metric_name] = cls._as_ratio(cls._number(entry.get("value")))
+                row[metric_name] = cls._as_ratio(cls._statistic_number(entry.get("value")))
         return [rows[iso_date] for iso_date in sorted(rows)]
 
     @staticmethod
-    def _number(value: dict[str, Any] | None) -> float | None:
+    def _statistic_number(value: dict[str, Any] | None) -> float | None:
         """The numeric part of Google's ``StatisticValue``.
 
         Args:

@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 from core.config import settings
 from services.google_oauth_client import google_oauth_client
 
-# Read-only access to the traffic statistics and the compliance status of the v2 API (v1 retired in October 2026).
+# Read-only access to the traffic statistics and the compliance status of the v2 API.
 POSTMASTER_SCOPE: str = "https://www.googleapis.com/auth/postmaster.traffic.readonly"
 USERINFO_EMAIL_SCOPE: str = "https://www.googleapis.com/auth/userinfo.email"
 

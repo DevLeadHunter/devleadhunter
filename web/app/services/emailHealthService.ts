@@ -133,13 +133,11 @@ export type PostmasterDay = {
   delivery_error_ratio: number | null
 }
 
-/** One Gmail sender requirement and whether the domain meets it. */
 export type PostmasterRequirement = {
   requirement: string
   status: string | null
 }
 
-/** Gmail's compliance status for a sending domain. */
 export type PostmasterCompliance = {
   domain: string | null
   deliverability_status: string | null
