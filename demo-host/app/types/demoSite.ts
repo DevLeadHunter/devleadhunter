@@ -24,3 +24,18 @@ export type DemoSitePublic = {
   business_photo_url?: string | null
   legal?: SiteLegalNotice | null
 }
+
+/** Public payload of a demo taken offline at its deadline, for the page its old link shows. */
+export type DemoSiteWithdrawn = {
+  slug: string
+  business_name: string
+  withdrawn_on_label: string | null
+  revived_until_label: string
+  sale_price_label: string | null
+  owner_name: string | null
+  owner_company_name: string | null
+  owner_company_website_url: string | null
+  owner_profile_photo_url: string | null
+  owner_contact_phone: string | null
+  owner_contact_email: string | null
+}

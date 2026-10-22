@@ -4,13 +4,14 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
+from core.rate_limiter import limiter
 from enums.demo_site_status import DemoSiteStatus
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
@@ -31,6 +32,7 @@ from schemas.demo_site import (
     DemoSiteTheme,
     DemoSiteUpdateRequest,
     DemoSiteVideoStateResponse,
+    DemoSiteWithdrawnResponse,
 )
 from schemas.prospection_video import ProspectionVideoDesktopFailureRequest
 from services.auth_service import get_current_active_user
@@ -137,6 +139,23 @@ def _demo_site_response(
     return DemoSiteResponse(**payload)
 
 
+def _owner_contact_fields(site: DemoSite) -> dict[str, str | None]:
+    """The owner's signature and direct contacts the public demo pages show (none for an ownerless site)."""
+    if site.user is None:
+        return {}
+    fields: dict[str, str | None] = {
+        "owner_name": site.user.name,
+        "owner_company_name": site.user.company_name,
+        "owner_company_website_url": site.user.company_website_url,
+        "owner_contact_phone": site.user.contact_phone,
+        "owner_contact_email": site.user.contact_email,
+    }
+    # Guarded on the R2 public base so a dev setup without R2 never 500s here.
+    if site.user.profile_photo_path and (settings.r2_public_base_url or "").strip():
+        fields["owner_profile_photo_url"] = r2_storage.public_url(site.user.profile_photo_path)
+    return fields
+
+
 def _refuse_while_desktop_builds(site: DemoSite) -> None:
     """Refuse to withdraw or delete a video the owner's desktop app is building: it would publish it anyway."""
     if demo_video_service.is_desktop_build_started(site):
@@ -212,16 +231,42 @@ async def get_public_demo_site(
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
     payload["sale_price_label"] = demo_site_service.sale_price_label(db, site)
     payload["expiry_date_label"] = demo_site_service.expiry_date_label(site)
-    if site.user is not None:
-        payload["owner_name"] = site.user.name
-        payload["owner_company_name"] = site.user.company_name
-        payload["owner_company_website_url"] = site.user.company_website_url
-        payload["owner_contact_phone"] = site.user.contact_phone
-        payload["owner_contact_email"] = site.user.contact_email
-        # Guarded on the R2 public base so a dev setup without R2 never 500s here.
-        if site.user.profile_photo_path and (settings.r2_public_base_url or "").strip():
-            payload["owner_profile_photo_url"] = r2_storage.public_url(site.user.profile_photo_path)
+    payload.update(_owner_contact_fields(site))
     return DemoSitePublicResponse(**payload)
+
+
+@router.get("/public/{slug}/withdrawn", response_model=DemoSiteWithdrawnResponse)
+async def get_withdrawn_demo_site(
+    slug: str,
+    db: Session = Depends(get_db),
+) -> DemoSiteWithdrawnResponse:
+    """Public endpoint behind the page an expired demo's link shows: who made it, until when it ran and would run."""
+    site = demo_site_service.get_withdrawn_by_slug(db, slug)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No withdrawn demo behind this link")
+    return DemoSiteWithdrawnResponse(
+        slug=site.slug,
+        business_name=site.business_name,
+        withdrawn_on_label=demo_site_service.expiry_date_label(site),
+        revived_until_label=demo_site_service.revived_expiry_date_label(),
+        sale_price_label=demo_site_service.sale_price_label(db, site),
+        **_owner_contact_fields(site),
+    )
+
+
+@router.post("/public/{slug}/revive", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def revive_withdrawn_demo_site(
+    request: Request,
+    slug: str,
+    db: Session = Depends(get_db),
+) -> None:
+    """Put an expired demo back online for a full new window, from the page its old link shows."""
+    site = demo_site_service.get_withdrawn_by_slug(db, slug)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No withdrawn demo behind this link")
+    site = await demo_site_service.revive_demo_site(db, site)
+    demo_site_service.restart_demo_ttl(db, site, datetime.now(UTC))
 
 
 @router.get("/public/{slug}/video.mp4")

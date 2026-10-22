@@ -87,7 +87,7 @@
           <div class="dlh-owner__identity">
             <div class="dlh-owner__name">{{ ownerNameLabel }}</div>
             <div class="dlh-owner__role">
-              {{ OWNER_ROLE_LABEL }}
+              {{ DEMO_OWNER_ROLE_LABEL }}
               <template v-if="ownerWebsiteDomain">
                 ·
                 <a
@@ -183,6 +183,7 @@ import type { ComputedRef, PropType, Ref } from 'vue'
 import type { DemoCtaBannerProps, DemoCtaBannerState } from '~/types/DemoCtaBanner'
 import type { DemoSitePublic } from '~/types/demoSite'
 import { captureDemoEvent } from '~/composables/useDemoTracking'
+import { DEMO_OWNER_ROLE_LABEL } from '~/constants/DemoOwnerLabels'
 import { ContactLinkUtils } from '~/utils/ContactLinkUtils'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
@@ -215,8 +216,6 @@ const props: DemoCtaBannerProps = defineProps({
 })
 
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-
-const OWNER_ROLE_LABEL: string = 'Développeur web'
 
 const state: Ref<DemoCtaBannerState> = ref('collapsed')
 const message: Ref<string> = ref('')
@@ -259,7 +258,7 @@ const ownerWebsiteDomain: ComputedRef<string> = computed((): string =>
 )
 
 const pillSubtitleLabel: ComputedRef<string> = computed((): string =>
-  ownerNameLabel.value ? `${ownerNameLabel.value}, ${OWNER_ROLE_LABEL.toLowerCase()}` : 'Laissez-moi un mot',
+  ownerNameLabel.value ? `${ownerNameLabel.value}, ${DEMO_OWNER_ROLE_LABEL.toLowerCase()}` : 'Laissez-moi un mot',
 )
 
 const offerText: ComputedRef<string> = computed((): string => {

@@ -1310,6 +1310,40 @@ class DemoSiteService:
 
         return site
 
+    def get_withdrawn_by_slug(self, db: Session, slug: str) -> DemoSite | None:
+        """
+        Fetch a dormant demo its prospect may bring back online from its old link.
+
+        Only a demo taken offline at its deadline (EXPIRED) qualifies, never one whose prospect
+        asked not to be contacted or was set aside: their link stays a dead end naming nobody.
+
+        Args:
+            db: Active database session.
+            slug: The demo's public slug.
+
+        Returns:
+            The dormant demo, or None when the link has nothing to bring back.
+        """
+        site: DemoSite | None = (
+            db.query(DemoSite).filter(DemoSite.slug == slug, DemoSite.status == DemoSiteStatus.EXPIRED.value).first()
+        )
+        if site is None or site.prospect_id is None:
+            return site
+        prospect: ProspectDB | None = db.query(ProspectDB).filter(ProspectDB.id == site.prospect_id).first()
+        if prospect is not None and (prospect.do_not_contact or prospect.is_dismissed):
+            return None
+        return site
+
+    @staticmethod
+    def revived_expiry_date_label() -> str:
+        """
+        The day a demo revived now would go offline again, as its prospect reads it (« 13 novembre »).
+
+        Returns:
+            The French day and month, a full demo window from now.
+        """
+        return FrenchDateFormatter.day_month(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
+
     @staticmethod
     def _pending_ttl_expires_at() -> datetime:
         """Expiry placeholder until the demo link is first emailed to the prospect."""

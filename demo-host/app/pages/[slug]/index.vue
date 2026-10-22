@@ -1,10 +1,6 @@
 <template>
-  <div v-if="pending" class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
-    Loading demo site…
-  </div>
-  <div v-else-if="error || !site" class="flex min-h-screen items-center justify-center bg-slate-950 text-red-300">
-    Demo site not found or expired.
-  </div>
+  <div v-if="pending" class="flex min-h-screen items-center justify-center bg-white text-slate-500">Chargement…</div>
+  <DemoOfflinePage v-else-if="error || !site" :slug="slug" :withdrawn-demo="withdrawnDemo ?? null" />
   <main v-else class="min-h-screen bg-white text-slate-900">
     <DemoSiteView :site="previewedSite ?? site" />
     <SiteLegalFooter
@@ -20,7 +16,7 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoPreviewOverrides, DemoPreviewServiceCard } from '~/composables/useDemoPreviewOverrides'
-import type { DemoSitePublic } from '~/types/demoSite'
+import type { DemoSitePublic, DemoSiteWithdrawn } from '~/types/demoSite'
 import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
 import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
@@ -48,8 +44,27 @@ const {
   { watch: [slug] },
 )
 
+const { data: withdrawnDemo }: Awaited<ReturnType<typeof useAsyncData<DemoSiteWithdrawn | null | undefined>>> =
+  await useAsyncData<DemoSiteWithdrawn | null>(
+    () => `demo-site-withdrawn-${slug.value}`,
+    async (): Promise<DemoSiteWithdrawn | null> => {
+      if (site.value) {
+        return null
+      }
+
+      try {
+        return await $fetch<DemoSiteWithdrawn>(
+          `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/withdrawn`,
+        )
+      } catch {
+        return null
+      }
+    },
+    { watch: [site] },
+  )
+
 useSeoMeta({
-  title: () => site.value?.business_name ?? 'Demo site',
+  title: () => site.value?.business_name ?? withdrawnDemo.value?.business_name ?? 'Lien inactif',
   robots: 'noindex',
 })
 

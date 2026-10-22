@@ -310,6 +310,24 @@ class DemoSitePublicResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DemoSiteWithdrawnResponse(BaseModel):
+    """Public payload of a demo taken offline at its deadline, for the page its old link shows."""
+
+    slug: str
+    business_name: str
+    withdrawn_on_label: str | None = Field(default=None, description="Day the demo went offline (« 2 novembre »)")
+    revived_until_label: str = Field(description="Day the demo would go offline again if revived now")
+    sale_price_label: str | None = Field(
+        default=None, description="Owner's website sale price in the prospect's currency (« 500 € », « ≈ 470 CHF »)"
+    )
+    owner_name: str | None = None
+    owner_company_name: str | None = None
+    owner_company_website_url: str | None = None
+    owner_profile_photo_url: str | None = None
+    owner_contact_phone: str | None = None
+    owner_contact_email: str | None = None
+
+
 class DemoSiteListResponse(BaseModel):
     """Paginated list of demo sites for the current user."""
 

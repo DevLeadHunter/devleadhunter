@@ -25,6 +25,8 @@ import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
  *                            visit becomes "qualified" (a warm-lead signal to query on)
  *   - demo_time_on_page   { seconds, max_scroll }  — engaged (visible) time on exit
  *   - demo_returned       { engaged_seconds }      — came back to the tab/app after leaving
+ *   - demo_withdrawn_*    — the page an expired demo's link shows (view, revive click / success /
+ *                            failure, contact click), started by ``initForWithdrawnDemo``
  */
 let initialized: boolean = false
 
@@ -83,6 +85,7 @@ const POSTHOG_UI_HOST: string = 'https://eu.posthog.com'
 export function useDemoTracking(): {
   init: (slug: string, status: string, variant: string | null, channel: string, surface?: string) => Promise<void>
   initForOwnEvents: (slug: string, surface: string) => Promise<void>
+  initForWithdrawnDemo: (slug: string, variant: string | null, channel: string) => Promise<void>
 } {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
@@ -300,12 +303,23 @@ export function useDemoTracking(): {
   }
 
   /**
+   * Initialise PostHog on the page an expired demo's link shows, without page view nor replay.
+   * @param slug - Demo slug (used as a super property for server-side querying).
+   * @param variant - Optional A/B variant from the email link.
+   * @param channel - Marketing channel that brought the visit.
+   */
+  async function initForWithdrawnDemo(slug: string, variant: string | null, channel: string): Promise<void> {
+    await start(slug, 'active', variant, channel, 'demo', false)
+  }
+
+  /**
    * Start the shared PostHog instance for a live demo, unless the visit is the owner's or an embedded preview.
    * @param slug - Demo slug, the visitor's identity.
    * @param status - Demo status; tracking runs only when 'active'.
    * @param variant - Optional A/B variant from the email link.
    * @param channel - Marketing channel that brought the visit.
    * @param surface - PostHog surface separating modules in one project.
+   * @param shouldCapturePageViews - Whether page views, page leaves and the replay are recorded.
    * @returns The started instance, or null when nothing is tracked.
    */
   async function start(
@@ -314,6 +328,7 @@ export function useDemoTracking(): {
     variant: string | null,
     channel: string,
     surface: string,
+    shouldCapturePageViews: boolean = true,
   ): Promise<PostHog | null> {
     if (!import.meta.client || initialized) return null
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
@@ -329,9 +344,9 @@ export function useDemoTracking(): {
     posthog.init(key, {
       api_host: POSTHOG_PROXY_PATH,
       ui_host: POSTHOG_UI_HOST,
-      capture_pageview: true,
+      capture_pageview: shouldCapturePageViews,
       // $pageleave apporte le temps sur page calculé par PostHog, en recoupement du nôtre.
-      capture_pageleave: true,
+      capture_pageleave: shouldCapturePageViews,
       autocapture: false,
       // Frustration signal (rageclicks) without turning on full autocapture.
       rageclick: true,
@@ -340,7 +355,7 @@ export function useDemoTracking(): {
       bootstrap: { distinctID: slug, isIdentifiedID: true },
       // Replay sans bandeau cookie : tous les champs de saisie sont masqués, et les bulles du chat aussi
       // (ce que le visiteur écrit y est réaffiché).
-      disable_session_recording: false,
+      disable_session_recording: !shouldCapturePageViews,
       session_recording: {
         maskAllInputs: true,
         maskTextSelector: '.ai-message',
@@ -355,5 +370,5 @@ export function useDemoTracking(): {
     return posthog
   }
 
-  return { init, initForOwnEvents }
+  return { init, initForOwnEvents, initForWithdrawnDemo }
 }
