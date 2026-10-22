@@ -116,7 +116,7 @@
           @input="onFieldInput"
         ></textarea>
         <button type="button" class="dlh-card__submit dlh-celebrate" :disabled="isSending" @click="submit">
-          {{ isSending ? 'Envoi…' : 'Me répondre' }}
+          {{ isSending ? 'Envoi…' : "Oui, ça m'intéresse" }}
           <svg
             v-if="!isSending"
             width="15"
@@ -265,7 +265,10 @@ const offerText: ComputedRef<string> = computed((): string => {
   const sentences: string[] = []
 
   const salePrice: string = (props.site.sale_price_label ?? '').trim()
-  if (salePrice) sentences.push(`${salePrice}, une seule fois, pas d'abonnement.`)
+
+  if (salePrice) {
+    sentences.push(`${salePrice}, une seule fois, pas d'abonnement, satisfait ou remboursé pendant 30 jours.`)
+  }
 
   const expiryDate: string = (props.site.expiry_date_label ?? '').trim()
   if (expiryDate) sentences.push(`Je le garde en ligne jusqu'au ${expiryDate}.`)
