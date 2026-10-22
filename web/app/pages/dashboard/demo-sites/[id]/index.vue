@@ -513,6 +513,18 @@
             </NuxtLink>
           </div>
 
+          <div v-if="site.status === 'expired'" class="card p-5">
+            <h2 class="text-sm font-semibold text-[var(--app-ink)]">Démo retirée</h2>
+            <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
+              Son délai est passé : le lien envoyé n'affiche plus rien. Pour un prospect qui revient, remettez-la en
+              ligne avec un nouveau délai complet.
+            </p>
+            <button type="button" class="btn-primary mt-3 h-10 text-xs" :disabled="reviving" @click="handleRevive">
+              <UIcon name="i-lucide-rotate-ccw" class="h-3.5 w-3.5" />
+              {{ reviving ? 'Remise en ligne…' : 'Remettre en ligne' }}
+            </button>
+          </div>
+
           <div class="card p-5">
             <h2 class="text-sm font-semibold text-[var(--app-ink)]">Personnalisation automatique</h2>
             <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
@@ -807,6 +819,7 @@ const deleting: Ref<boolean> = ref(false)
 const inviting: Ref<boolean> = ref(false)
 const refreshingCms: Ref<boolean> = ref(false)
 const exporting: Ref<boolean> = ref(false)
+const reviving: Ref<boolean> = ref(false)
 const personalizing: Ref<boolean> = ref(false)
 const personalizeError: Ref<string | null> = ref(null)
 const personalizeSiteModalRef: Ref<{ open: () => void } | null> = ref(null)
@@ -844,6 +857,7 @@ const statusLabel: ComputedRef<string> = computed((): string => {
   if (isSiteReachable.value) return 'En ligne'
   if (site.value.status === 'failed') return 'Échec'
   if (site.value.status === 'unavailable') return 'Hors ligne'
+  if (site.value.status === 'expired') return 'Retirée'
   return site.value.status
 })
 
@@ -1301,6 +1315,22 @@ async function handleExport(): Promise<void> {
     toast.error(error instanceof Error ? error.message : "Échec de l'export du code")
   } finally {
     exporting.value = false
+  }
+}
+
+/**
+ * Put the expired demo back online for a full new window.
+ */
+async function handleRevive(): Promise<void> {
+  if (!site.value) return
+  reviving.value = true
+  try {
+    site.value = await DemoSiteService.reviveDemoSite(demoSiteId)
+    toast.success('Démo remise en ligne')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Échec de la remise en ligne')
+  } finally {
+    reviving.value = false
   }
 }
 

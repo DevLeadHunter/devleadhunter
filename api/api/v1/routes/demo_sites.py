@@ -1,7 +1,7 @@
 """Demo site routes for the website builder tunnel."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
@@ -493,6 +493,23 @@ async def update_demo_site(
         site = await demo_site_service.update_demo_site(db, site, **update_data)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _serialize_demo_site(db, site, include_brand_color=True)
+
+
+@router.post("/{demo_site_id}/revive", response_model=DemoSiteResponse)
+async def revive_demo_site(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Put an expired demo back online for a new full window, for a prospect who comes back after its deadline."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    if site.status != DemoSiteStatus.EXPIRED.value:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cette démo n'est pas retirée.")
+    site = await demo_site_service.revive_demo_site(db, site)
+    demo_site_service.restart_demo_ttl(db, site, datetime.now(UTC))
     return _serialize_demo_site(db, site, include_brand_color=True)
 
 

@@ -400,6 +400,15 @@ export class DemoSiteService {
   }
 
   /**
+   * Put an expired demo back online for a full new window, for a prospect who comes back after its deadline.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The demo site, online again.
+   */
+  static async reviveDemoSite(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/revive`, {})
+  }
+
+  /**
    * Delete a demo site owned by the current user.
    */
   static async deleteDemoSite(demoSiteId: number): Promise<void> {
