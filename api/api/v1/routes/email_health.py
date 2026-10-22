@@ -142,22 +142,22 @@ async def email_health_incidents(
 
 
 @router.get("/dns", summary="SPF / DKIM / DMARC / MX / blocklists per sending domain")
-async def email_health_dns(
+def email_health_dns(
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """DNS authentication checks for every domain the user sends from."""
+    """DNS authentication checks for every domain the user sends from, run off the event loop (blocking resolvers)."""
     domains = _user_domains(db, current_user)
     return {"domains": [email_dns_service.check_domain(domain) for domain in domains]}
 
 
 @router.get("/postmaster", summary="Gmail Postmaster reputation for the sending domains")
-async def email_health_postmaster(
+def email_health_postmaster(
     period_days: int = Query(30, description="History depth (max ~120 days at Google)"),
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Gmail-side domain reputation + user-reported spam rate (per-user OAuth)."""
+    """Gmail-side domain reputation + user-reported spam rate (per-user OAuth), run off the event loop (blocking Google client)."""
     domains = _user_domains(db, current_user)
     depth = min(period_days, 120)
     return {

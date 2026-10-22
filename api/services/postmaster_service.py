@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL_SECONDS: float = 21_600.0  # Postmaster data is daily — 6 h cache limits quota use.
 _DOMAINS_CACHE_TTL_SECONDS: float = 86_400.0  # Domain list changes rarely.
 _RETRY_DELAYS_SECONDS: tuple[float, ...] = (2.0, 5.0, 10.0)
+_RETIRED_API_MARKER: str = "no longer supported"
 
 
 class PostmasterService:
@@ -239,7 +240,12 @@ class PostmasterService:
                 return request.execute()
             except HttpError as exc:
                 last_error = exc
-                if exc.resp is not None and exc.resp.status == 429 and attempt < len(_RETRY_DELAYS_SECONDS):
+                if (
+                    exc.resp is not None
+                    and exc.resp.status == 429
+                    and attempt < len(_RETRY_DELAYS_SECONDS)
+                    and not PostmasterService._is_retired_api(exc)
+                ):
                     logger.warning(
                         "Postmaster API rate-limited (429), retry %s/%s", attempt + 1, len(_RETRY_DELAYS_SECONDS)
                     )
@@ -332,6 +338,11 @@ class PostmasterService:
         """
         text = str(exc)
         lowered = text.lower()
+        if PostmasterService._is_retired_api(exc):
+            return (
+                "Google a retiré la version de l'API Postmaster que l'application utilise : "
+                "la page doit passer à la nouvelle API de Google pour afficher la réputation du domaine."
+            )
         if "invalid_grant" in lowered or ("token" in lowered and "revoked" in lowered):
             return "Session Google expirée — reconnectez Postmaster avec le bouton ci-dessous."
         if "403" in text or "permission" in lowered:
@@ -344,9 +355,21 @@ class PostmasterService:
                 "Domaine introuvable dans Postmaster Tools — ajoutez-le et vérifiez-le sur postmaster.google.com "
                 "avec le même compte Google que celui connecté ici."
             )
-        if "429" in text or "rate" in lowered or "quota" in lowered:
+        if "429" in text or "resource_exhausted" in lowered or "quota" in lowered or "rate limit" in lowered:
             return "Quota Google Postmaster dépassé — réessayez dans quelques minutes."
         return "Erreur Postmaster temporaire — réessayez dans quelques minutes."
+
+    @staticmethod
+    def _is_retired_api(exc: Exception) -> bool:
+        """Whether Google answered that this version of the Postmaster API is retired (a 429 that never clears).
+
+        Args:
+            exc: Raised exception.
+
+        Returns:
+            True when retrying cannot help.
+        """
+        return _RETIRED_API_MARKER in str(exc).lower()
 
 
 postmaster_service = PostmasterService()
