@@ -205,7 +205,7 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 ```
 Bonjour M. Martin,
 
-Je fais des sites web, et j'ai construit celui de Garage Martin. Plutôt que de l'expliquer, je vous le montre en 30 secondes :
+Je fais des sites web, et j'ai construit celui de Garage Martin. Plutôt que de l'expliquer, je vous le montre en vidéo :
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/v/garage-martin]
 
@@ -273,7 +273,7 @@ Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au 24 octo
 ```
 Bonjour M. Martin,
 
-Je vous ai écrit il y a quelques jours au sujet du site de Garage Martin. Cette fois, je vous le montre en 30 secondes :
+Je vous ai écrit il y a quelques jours au sujet du site de Garage Martin. Cette fois, je vous le montre en vidéo :
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/v/garage-martin]
 
@@ -315,12 +315,12 @@ Un mot me suffit, même un non.
 #### Rappel court - vidéo
 
 - Catégorie : Relance (recommandé, épinglé)
-- Sujet : `votre site, en 30 secondes`
+- Sujet : `votre site, en vidéo`
 
 ```
 Bonjour M. Martin,
 
-Le site de Garage Martin, en 30 secondes :
+Le site de Garage Martin, en vidéo :
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/v/garage-martin]
 

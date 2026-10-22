@@ -172,7 +172,7 @@ def test_the_admin_own_models_are_never_touched(engine: Engine, db: Session, see
     )
 
 
-def test_library_rows_leave_signed_and_new_ones_dressed(
+def test_library_rows_leave_signed_new_ones_plain_and_rewritten_ones_keep_their_layout(
     engine: Engine, db: Session, seeded_admin: dict[str, int]
 ) -> None:
     signature = EmailSignature(
@@ -180,16 +180,16 @@ def test_library_rows_leave_signed_and_new_ones_dressed(
     )
     db.add(signature)
     used_angle = db.get(EmailTemplate, seeded_admin["used_angle"])
-    used_angle.layout = EmailTemplateLayout.PLAIN.value
+    used_angle.layout = EmailTemplateLayout.CARD_TABLE.value
     db.commit()
 
     _run_twice(engine)
 
     db.expire_all()
     inserted = db.execute(select(EmailTemplate).where(EmailTemplate.name == "Franc - premier contact")).scalar_one()
-    assert (inserted.signature_id, inserted.layout) == (signature.id, EmailTemplateLayout.CARD_TABLE.value)
+    assert (inserted.signature_id, inserted.layout) == (signature.id, EmailTemplateLayout.PLAIN.value)
     rewritten = db.get(EmailTemplate, seeded_admin["used_angle"])
-    assert (rewritten.signature_id, rewritten.layout) == (signature.id, EmailTemplateLayout.PLAIN.value)
+    assert (rewritten.signature_id, rewritten.layout) == (signature.id, EmailTemplateLayout.CARD_TABLE.value)
     assert db.get(EmailTemplate, seeded_admin["personal_frank"]).signature_id is None
 
 

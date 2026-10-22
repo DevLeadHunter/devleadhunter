@@ -130,7 +130,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Je fais des sites web, et j'ai construit celui de {entreprise}. Plutôt que de l'expliquer, je "
-            "vous le montre en 30 secondes :</p>"
+            "vous le montre en vidéo :</p>"
             "{vignette_video}" + _WEBSITE_PRICE_LINE + _WEBSITE_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
@@ -182,7 +182,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Je vous ai écrit il y a quelques jours au sujet du site de {entreprise}. Cette fois, je vous le "
-            "montre en 30 secondes :</p>"
+            "montre en vidéo :</p>"
             "{vignette_video}"
             "<p>Si vous le voulez, c'est {prix}, une seule fois, sans abonnement. Sinon, rien à faire.</p>"
             + _WEBSITE_TIME_TO_THINK_LINE
@@ -218,10 +218,10 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "name": "Rappel court - vidéo",
         "category": _FOLLOW,
         "sort_order": 75,
-        "subject": "votre site, en 30 secondes",
+        "subject": "votre site, en vidéo",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Le site de {entreprise}, en 30 secondes :</p>"
+            "<p>Le site de {entreprise}, en vidéo :</p>"
             "{vignette_video}"
             "<p>C'est {prix}, une seule fois, sans abonnement. Je le retire le {date_expiration}.</p>"
             + _SHORT_ASK_WITH_EXIT

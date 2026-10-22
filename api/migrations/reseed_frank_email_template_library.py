@@ -153,7 +153,7 @@ class FrankEmailTemplateLibraryReseed:
                     ),
                     {
                         **params,
-                        "layout": EmailTemplateLayout.CARD_TABLE.value,
+                        "layout": EmailTemplateLayout.PLAIN.value,
                         # Naive UTC like the models: the MySQL clock is not UTC in prod.
                         "created_at": datetime.now(UTC).replace(tzinfo=None),
                     },
