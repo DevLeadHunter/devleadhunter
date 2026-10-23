@@ -222,6 +222,12 @@ export class StoryblokSiteContentBridge {
       servicesHeading: this.readString(blok.servicesHeading),
       servicesLead: this.readString(blok.servicesLead),
       stepsHeading: this.readString(blok.stepsHeading),
+      taxCreditHeading: this.readString(blok.taxCreditHeading),
+      taxCreditLead: this.readString(blok.taxCreditLead),
+      taxCreditPoints: this.readBlokList(blok.taxCreditPoints)
+        .map((item: Blok): string | undefined => this.readString(item.text))
+        .filter((text: string | undefined): text is string => Boolean(text)),
+      taxCreditNote: this.readString(blok.taxCreditNote),
       galleryHeading: this.readString(blok.galleryHeading),
       reviewsHeading: this.readString(blok.reviewsHeading),
       faqHeading: this.readString(blok.faqHeading),

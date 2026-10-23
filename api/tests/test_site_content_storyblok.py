@@ -214,3 +214,36 @@ def test_empty_content_flattens_to_empty() -> None:
     assert flat["logo"] == ""
     assert flat["heroImage"] == ""
     assert flat["gallery"] == []
+
+
+def test_tax_credit_round_trip() -> None:
+    """The « crédit d'impôt » section projects into a ``section_taxCredit`` blok and flattens back."""
+    body = sc.to_storyblok_site_content(
+        {
+            "taxCreditHeading": "Votre entretien de jardin à moitié prix",
+            "taxCreditLead": "La moitié de la facture vous revient.",
+            "taxCreditPoints": ["50 % remboursés", " ", "Attestation fournie"],
+            "taxCreditNote": "Plafond de 5 000 € par an.",
+        },
+        ["taxCredit"],
+    )
+    section = _section(body, "taxCredit")
+
+    assert section["taxCreditHeading"] == "Votre entretien de jardin à moitié prix"
+    assert [point["text"] for point in section["taxCreditPoints"]] == ["50 % remboursés", "Attestation fournie"]
+    assert section["taxCreditPoints"][0]["component"] == "site_content_hero_point"
+
+    flat = sc.from_storyblok_site_content({"component": "page", "body": body})
+    assert flat["taxCreditHeading"] == "Votre entretien de jardin à moitié prix"
+    assert flat["taxCreditLead"] == "La moitié de la facture vous revient."
+    assert flat["taxCreditPoints"] == ["50 % remboursés", "Attestation fournie"]
+    assert flat["taxCreditNote"] == "Plafond de 5 000 € par an."
+
+
+def test_tax_credit_section_is_opt_in() -> None:
+    """Only a template listing ``taxCredit`` in its used sections pushes the blok; the landscaper does."""
+    from services.templates import landscaper_verdure
+
+    assert "taxCredit" in landscaper_verdure.USED_SECTIONS
+    body = sc.to_storyblok_site_content({"taxCreditHeading": "Crédit d'impôt"}, ["hero", "services"])
+    assert all(blok["component"] != "section_taxCredit" for blok in body)

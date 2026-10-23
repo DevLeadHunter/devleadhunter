@@ -69,12 +69,14 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 # "portfolio" (not "gallery"): the photo grid is the editable ``portfolio`` blok (image + title +
 # category), so the client curates the two « réalisations » cards instead of a raw scraped gallery.
 # "trust" = the stats band (real Google rating + count), "method" = the « notre méthode » steps,
-# "reviews" = the Google reviews section — all editable in the client's Storyblok.
+# "reviews" = the Google reviews section — all editable in the client's Storyblok. "taxCredit" = the
+# « crédit d'impôt » section under the services, filled only for a « services à la personne » provider.
 USED_SECTIONS: list[str] = [
     "hero",
     "trust",
     "about",
     "services",
+    "taxCredit",
     "method",
     "reviews",
     "faq",

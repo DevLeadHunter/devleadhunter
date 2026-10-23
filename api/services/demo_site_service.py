@@ -66,6 +66,7 @@ from services.templates.site_content import (
     apply_section_overrides,
     clean_portfolio_items,
     clean_service_cards,
+    clean_tax_credit,
     from_storyblok_site_content,
     usable_site_photos,
 )
@@ -78,6 +79,20 @@ _CONTENT_IMAGE_REHOST_CONCURRENCY = 4
 
 # Provenance values accepted for saved section cards (``section_overrides["services_source"]``).
 _SERVICE_CARD_SOURCES: frozenset[str] = frozenset({"manual", "ai", "ai_auto"})
+
+
+def _tax_credit_override_from_payload(payload: dict) -> dict:
+    """Map the API's snake_case tax credit payload onto the stored override keys (camelCase, like the content)."""
+    return {
+        "heading": payload.get("heading"),
+        "lead": payload.get("lead"),
+        "points": payload.get("points"),
+        "note": payload.get("note"),
+        "faqQuestion": payload.get("faq_question"),
+        "faqAnswer": payload.get("faq_answer"),
+    }
+
+
 # Budget for composing the cards with the AI at creation (photo labelling + writing) before the
 # generated cards are kept instead — a bulk generation must stay bounded.
 _AUTO_SERVICE_CARDS_TIMEOUT_SECONDS = 120.0
@@ -565,6 +580,7 @@ class DemoSiteService:
         hero_badge: str | None = None,
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
+        tax_credit: dict | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -573,7 +589,8 @@ class DemoSiteService:
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
         ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
-        the realizations with photos of the pool (``[]`` goes back to the template's).
+        the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
+        « crédit d'impôt » section (an empty heading removes it).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -591,7 +608,13 @@ class DemoSiteService:
                 overrides["services"] = cards
                 overrides["services_source"] = services_source if services_source in _SERVICE_CARD_SOURCES else "manual"
             demo_site.section_overrides = overrides or None
-        if section_images is not None or hero_badge is not None or about_text is not None or portfolio is not None:
+        if (
+            section_images is not None
+            or hero_badge is not None
+            or about_text is not None
+            or portfolio is not None
+            or tax_credit is not None
+        ):
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
@@ -624,6 +647,12 @@ class DemoSiteService:
                     overrides["portfolio"] = items
                 else:
                     overrides.pop("portfolio", None)
+            if tax_credit is not None:
+                section = clean_tax_credit(_tax_credit_override_from_payload(tax_credit))
+                if section:
+                    overrides["taxCredit"] = section
+                else:
+                    overrides.pop("taxCredit", None)
             demo_site.section_overrides = overrides or None
         if image_order is not None:
             pool: list[str] = usable_site_photos(self._enrichment_dict_for_site(db, demo_site))

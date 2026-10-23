@@ -50,6 +50,16 @@ MAX_PORTFOLIO_CATEGORY_CHARS = 40
 # The facts under a site's title (``DemoSite.section_overrides["heroPoints"]``): shape limits.
 MAX_HERO_POINTS = 3
 MAX_HERO_POINT_CHARS = 40
+# The tax credit section (``DemoSite.section_overrides["taxCredit"]``): shape limits.
+MAX_TAX_CREDIT_HEADING_CHARS = 120
+MAX_TAX_CREDIT_LEAD_CHARS = 600
+MAX_TAX_CREDIT_POINTS = 6
+MAX_TAX_CREDIT_POINT_CHARS = 160
+MAX_TAX_CREDIT_NOTE_CHARS = 300
+MAX_TAX_CREDIT_FAQ_QUESTION_CHARS = 160
+MAX_TAX_CREDIT_FAQ_ANSWER_CHARS = 600
+# A FAQ entry that already covers the tax credit (any wording) keeps the override from adding a twin.
+_TAX_CREDIT_FAQ_MARKER = "crédit d'impôt"
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
@@ -501,6 +511,69 @@ def clean_hero_points(points: Any) -> list[str]:
     return cleaned[:MAX_HERO_POINTS]
 
 
+def _single_line(value: Any, max_chars: int) -> str:
+    """Collapse a free text into one trimmed line capped at ``max_chars`` (empty for a non-text)."""
+    return " ".join(str(value or "").split()).strip()[:max_chars]
+
+
+def clean_tax_credit(raw: Any) -> dict[str, Any]:
+    """
+    Validate the tax credit section written for a business (``section_overrides["taxCredit"]``).
+
+    The section exists only for a business registered as a « services à la personne » provider: a
+    heading is required, the rest is optional. ``faqQuestion`` + ``faqAnswer`` (both needed) add the
+    matching entry to the site's FAQ.
+
+    Args:
+        raw: Raw section (API payload or stored override).
+
+    Returns:
+        The clean section, or an empty dict when there is no heading.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    heading = _single_line(raw.get("heading"), MAX_TAX_CREDIT_HEADING_CHARS)
+    if not heading:
+        return {}
+    points_raw = raw.get("points")
+    points: list[str] = []
+    for point in points_raw if isinstance(points_raw, list) else []:
+        text = _single_line(point, MAX_TAX_CREDIT_POINT_CHARS)
+        if text:
+            points.append(text)
+    cleaned: dict[str, Any] = {
+        "heading": heading,
+        "lead": _single_line(raw.get("lead"), MAX_TAX_CREDIT_LEAD_CHARS),
+        "points": points[:MAX_TAX_CREDIT_POINTS],
+        "note": _single_line(raw.get("note"), MAX_TAX_CREDIT_NOTE_CHARS),
+    }
+    faq_question = _single_line(raw.get("faqQuestion"), MAX_TAX_CREDIT_FAQ_QUESTION_CHARS)
+    faq_answer = _single_line(raw.get("faqAnswer"), MAX_TAX_CREDIT_FAQ_ANSWER_CHARS)
+    if faq_question and faq_answer:
+        cleaned["faqQuestion"] = faq_question
+        cleaned["faqAnswer"] = faq_answer
+    return cleaned
+
+
+def apply_tax_credit(site_content: dict[str, Any], tax_credit: dict[str, Any]) -> None:
+    """Write a clean tax credit section into the flat content, plus its FAQ entry when none covers it."""
+    site_content["taxCreditHeading"] = tax_credit["heading"]
+    site_content["taxCreditLead"] = tax_credit.get("lead", "")
+    site_content["taxCreditPoints"] = list(tax_credit.get("points") or [])
+    site_content["taxCreditNote"] = tax_credit.get("note", "")
+    question = tax_credit.get("faqQuestion", "")
+    answer = tax_credit.get("faqAnswer", "")
+    if not question or not answer:
+        return
+    existing = site_content.get("faq")
+    faq: list[dict[str, Any]] = (
+        [item for item in existing if isinstance(item, dict)] if isinstance(existing, list) else []
+    )
+    if any(_TAX_CREDIT_FAQ_MARKER in str(item.get("question", "")).lower() for item in faq):
+        return
+    site_content["faq"] = [*faq, {"question": question, "answer": answer}]
+
+
 def clean_portfolio_items(
     items: Any,
     *,
@@ -593,7 +666,8 @@ def apply_section_overrides(
     (title, description, photo); cards saved without a photo get the best unused real photo.
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
     realizations with its own photos and what they show, ``images`` the template's other photos
-    (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it.
+    (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
+    ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la personne » provider.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
     """
@@ -624,6 +698,9 @@ def apply_section_overrides(
     portfolio = clean_portfolio_items(overrides.get("portfolio"))
     if portfolio:
         site_content["portfolio"] = portfolio
+    tax_credit = clean_tax_credit(overrides.get("taxCredit"))
+    if tax_credit:
+        apply_tax_credit(site_content, tax_credit)
     return site_content
 
 
@@ -933,6 +1010,28 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "restrict_components": True,
         "component_whitelist": ["site_content_step"],
     },
+    "taxCreditHeading": {
+        "type": "text",
+        "display_name": "Titre de la section",
+        "description": "Vide = la section crédit d'impôt n'apparaît pas sur le site",
+    },
+    "taxCreditLead": {
+        "type": "textarea",
+        "display_name": "Explication",
+        "description": "Ce que le crédit d'impôt change pour vos clients",
+    },
+    "taxCreditPoints": {
+        "type": "bloks",
+        "display_name": "Points clés",
+        "description": "Les avantages en une ligne chacun (50 % remboursés, plafond, attestation…)",
+        "restrict_components": True,
+        "component_whitelist": ["site_content_hero_point"],
+    },
+    "taxCreditNote": {
+        "type": "textarea",
+        "display_name": "Mention en petit",
+        "description": "Conditions et plafond annuel, affichés sous la section",
+    },
     "galleryHeading": {"type": "text", "display_name": "Titre de la section"},
     "gallery": {
         "type": "multiasset",
@@ -1044,6 +1143,9 @@ SECTION_DEFINITIONS: list[tuple[str, str, list[str]]] = [
     # ``method`` is opt-in: no template renders it by default, so only a template whose USED_SECTIONS
     # lists "method" (landscaper) surfaces it — every other template drops it (no dead section).
     ("method", "Notre méthode", ["stepsHeading", "steps"]),
+    # ``taxCredit`` is opt-in too: the « crédit d'impôt » section of a « services à la personne »
+    # provider (50 % of the bill paid back in France), rendered by the landscaper template only.
+    ("taxCredit", "Crédit d'impôt", ["taxCreditHeading", "taxCreditLead", "taxCreditPoints", "taxCreditNote"]),
     ("gallery", "Photos", ["galleryHeading", "gallery"]),
     ("reviews", "Avis clients", ["reviewsHeading", "reviews"]),
     ("faq", "Questions fréquentes", ["faqHeading", "faq"]),
@@ -1336,6 +1438,14 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "servicesLead": site_content.get("servicesLead", ""),
         "stepsHeading": site_content.get("stepsHeading", ""),
         "steps": _items_to_bloks(site_content.get("steps"), "site_content_step", ("title", "description")),
+        "taxCreditHeading": site_content.get("taxCreditHeading", ""),
+        "taxCreditLead": site_content.get("taxCreditLead", ""),
+        "taxCreditPoints": [
+            {"_uid": _uid(), "component": "site_content_hero_point", "text": str(point)}
+            for point in site_content.get("taxCreditPoints") or []
+            if isinstance(point, str) and point.strip()
+        ],
+        "taxCreditNote": site_content.get("taxCreditNote", ""),
         "galleryHeading": site_content.get("galleryHeading", ""),
         "reviewsHeading": site_content.get("reviewsHeading", ""),
         "faqHeading": site_content.get("faqHeading", ""),
@@ -1583,6 +1693,14 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
             for item in _blok_list(blok.get("steps"))
             if _clean_str(item.get("title")) or _clean_str(item.get("description"))
         ],
+        "taxCreditHeading": _clean_str(blok.get("taxCreditHeading")),
+        "taxCreditLead": _clean_str(blok.get("taxCreditLead")),
+        "taxCreditPoints": [
+            _clean_str(item.get("text"))
+            for item in _blok_list(blok.get("taxCreditPoints"))
+            if _clean_str(item.get("text"))
+        ],
+        "taxCreditNote": _clean_str(blok.get("taxCreditNote")),
         "galleryHeading": _clean_str(blok.get("galleryHeading")),
         "reviewsHeading": _clean_str(blok.get("reviewsHeading")),
         "faqHeading": _clean_str(blok.get("faqHeading")),

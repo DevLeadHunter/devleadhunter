@@ -17,7 +17,7 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-dental#v1.3.0',
     'github:DevLeadHunter/devleadhunter-template-food#v1.2.0',
     'github:DevLeadHunter/devleadhunter-template-barber#v1.3.0',
-    'github:DevLeadHunter/devleadhunter-template-landscaper-verdure#v1.7.1',
+    'github:DevLeadHunter/devleadhunter-template-landscaper-verdure#v1.8.1',
   ],
 
   compatibilityDate: '2024-07-11',

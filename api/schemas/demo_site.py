@@ -76,6 +76,18 @@ class DemoSitePortfolioItem(BaseModel):
     category: str = Field(default="", max_length=40)
 
 
+class DemoSiteTaxCredit(BaseModel):
+    """The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it."""
+
+    heading: str = Field(default="", max_length=120)
+    lead: str = Field(default="", max_length=600)
+    points: list[str] = Field(default_factory=list, max_length=6)
+    note: str = Field(default="", max_length=300)
+    # Both needed for the matching FAQ entry to be added (skipped when the FAQ already covers the credit).
+    faq_question: str = Field(default="", max_length=160)
+    faq_answer: str = Field(default="", max_length=600)
+
+
 class DemoSiteUpdateRequest(BaseModel):
     """Partial update payload for an existing demo site."""
 
@@ -105,6 +117,9 @@ class DemoSiteUpdateRequest(BaseModel):
     # Realizations with the business's own photos (stored in ``section_overrides["portfolio"]``, kept
     # across regenerations); ``[]`` goes back to the template's.
     portfolio: list[DemoSitePortfolioItem] | None = Field(default=None, max_length=6)
+    # « Crédit d'impôt » section (stored in ``section_overrides["taxCredit"]``, kept across regenerations);
+    # an empty heading removes it.
+    tax_credit: DemoSiteTaxCredit | None = None
 
 
 class DemoSiteServiceCardsConfig(BaseModel):
