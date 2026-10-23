@@ -55,6 +55,7 @@ export type DemoSiteTemplate = {
   /** Palette key driving the action colour (== color_roles.action). */
   brand_color_key?: keyof DemoSiteTheme
   service_cards?: DemoSiteServiceCardsConfig | null
+  renders_tax_credit_section?: boolean
   is_hidden?: boolean
 }
 
@@ -145,6 +146,16 @@ export type DemoSitePreviewResult = {
   content_json: Record<string, unknown>
 }
 
+/** The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it and its FAQ entry. */
+export type DemoSiteTaxCredit = {
+  heading: string
+  lead: string
+  points: string[]
+  note: string
+  faq_question: string
+  faq_answer: string
+}
+
 export type DemoSiteUpdatePayload = {
   business_name?: string
   template_id?: string
@@ -160,6 +171,7 @@ export type DemoSiteUpdatePayload = {
   /** Curated section cards; `[]` drops the curation (back to the generated cards). */
   services?: DemoSiteServiceCard[]
   services_source?: 'manual' | 'ai'
+  tax_credit?: DemoSiteTaxCredit
 }
 
 /** The site's photo pool and its current placement: order[0]→hero, order[1]→about, order[2:]→gallery. */
@@ -202,6 +214,7 @@ export type DemoSite = {
   use_brand_color?: boolean
   /** Colour extracted from the prospect logo (detail/update responses), for the Logo pill. */
   brand_color?: string | null
+  tax_credit?: DemoSiteTaxCredit | null
   video_status?: ProspectionVideoStatus | null
   video_error?: string | null
   video_generated_at?: string | null

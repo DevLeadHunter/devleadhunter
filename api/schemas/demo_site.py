@@ -224,6 +224,9 @@ class DemoSiteTemplateResponse(BaseModel):
     brand_color_key: str = "primary"
     # Editable-cards section (food « Nos spécialités »); None/disabled hides the cards editor.
     service_cards: DemoSiteServiceCardsConfig | None = None
+    # Whether the template's layer renders the « crédit d'impôt » section (its ``USED_SECTIONS`` lists it);
+    # the dashboard shows the section's editor only then.
+    renders_tax_credit_section: bool = False
     is_hidden: bool = False
 
 
@@ -263,6 +266,9 @@ class DemoSiteResponse(BaseModel):
     use_brand_color: bool = True
     # The colour extracted from the prospect logo (for the "Logo" pill); None when no usable one exists.
     brand_color: str | None = None
+    # Injected by the route: the « crédit d'impôt » section written for this site
+    # (``section_overrides["taxCredit"]``, with the PATCH payload's keys); None when the site has none.
+    tax_credit: DemoSiteTaxCredit | None = None
     # Prospection video (webcam + capture du site du prospect).
     video_status: str | None = None
     video_error: str | None = None

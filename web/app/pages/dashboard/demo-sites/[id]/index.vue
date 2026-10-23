@@ -55,7 +55,7 @@
             type="button"
             class="btn-primary inline-flex h-10 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="saving || !canSavePendingChanges"
-            :title="!canSavePendingChanges ? serviceCardsValidationMessage : undefined"
+            :title="!canSavePendingChanges ? pendingChangesValidationMessage : undefined"
             @click="savePendingChanges"
           >
             <UIcon name="i-lucide-upload" class="h-4 w-4" />
@@ -278,6 +278,12 @@
                   @update:cards="onServiceCardsChange"
                   @suggest="suggestServiceCards"
                   @reset="resetServiceCardsModalRef?.open()"
+                />
+
+                <DemoSitesTaxCreditEditor
+                  v-else-if="activeTool === 'creditImpot'"
+                  :draft="taxCreditDraft"
+                  @update:draft="onTaxCreditChange"
                 />
 
                 <div v-else-if="activeTool === 'video'">
@@ -668,6 +674,7 @@ import type { DemoSiteAtelierToolKey } from '~/types/DemoSiteDetailPage'
 import type { AtelierTool } from '~/types/AtelierToolSheet'
 import { filterSelectableTemplates, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 import type { ServiceCardDraft } from '~/types/ServiceCardsEditor'
+import type { TaxCreditDraft } from '~/types/TaxCreditEditor'
 import type { TemplatePreviewDevice, TemplateThemeColorKey } from '~/types/TemplatePicker'
 import type { ProspectionVideoStatusTone } from '~/types/ProspectionVideo'
 import type { ComponentPublicInstance, ComputedRef, Ref } from 'vue'
@@ -694,6 +701,7 @@ import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGen
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 import { useDesktopVideoRequestFollowUp } from '~/composables/useDesktopVideoRequestFollowUp'
 import { ServiceCards } from '~/utils/serviceCards'
+import { TaxCreditSection } from '~/utils/taxCreditSection'
 import { useAtelierToolSheet } from '~/composables/useAtelierToolSheet'
 import { ATELIER_PREVIEW_DEVICES } from '~/constants/atelierPreviewDevices'
 import { useCoarsePointer } from '~/composables/useCoarsePointer'
@@ -718,7 +726,7 @@ const { startFollowUp: startVideoFollowUp, stopFollowUp: stopVideoFollowUp }: Us
 const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 const isCoarsePointer: Ref<boolean> = useCoarsePointer()
 
-/** The tools of the atelier, in the order of the bottom bar; « Prestations » only when the template has cards. */
+/** The tools of the atelier, in the order of the bottom bar; « Prestations » and « Crédit d'impôt » only when the template supports them. */
 const atelierTools: AtelierTool<DemoSiteAtelierToolKey>[] = [
   {
     key: 'template',
@@ -749,6 +757,13 @@ const atelierTools: AtelierTool<DemoSiteAtelierToolKey>[] = [
     icon: 'i-lucide-list-checks',
     title: 'Prestations',
     hint: 'Les cartes de services montrées sur le site.',
+  },
+  {
+    key: 'creditImpot',
+    label: 'Crédit d’impôt',
+    icon: 'i-lucide-badge-percent',
+    title: 'Crédit d’impôt',
+    hint: 'La section « services à la personne » : 50 % de la facture remboursés. Publiez pour la voir sur le site.',
   },
   {
     key: 'video',
@@ -812,6 +827,8 @@ const suggestingServiceCards: Ref<boolean> = ref(false)
 const serviceCardsSuggestionError: Ref<string | null> = ref(null)
 const serviceCardsAnalysis: Ref<DemoSiteServiceCardsAnalysis | null> = ref(null)
 const resetServiceCardsModalRef: Ref<{ open: () => void } | null> = ref(null)
+/** Candidate « crédit d'impôt » section, edited in its sheet and saved with the other changes. */
+const taxCreditDraft: Ref<TaxCreditDraft> = ref(TaxCreditSection.toDraft(null))
 const saving: Ref<boolean> = ref(false)
 /** Bumped after a save to force the live preview iframe to reload the published content. */
 const previewReloadNonce: Ref<number> = ref(0)
@@ -922,6 +939,35 @@ const serviceCardsValidationMessage: ComputedRef<string> = computed((): string =
   return ''
 })
 
+/** Whether the « crédit d'impôt » editor applies: the picked template renders the section. */
+const isTaxCreditEditorVisible: ComputedRef<boolean> = computed((): boolean =>
+  Boolean(selectedTemplate.value?.renders_tax_credit_section),
+)
+
+/** Whether the edited « crédit d'impôt » section differs from the published one. */
+const taxCreditChanged: ComputedRef<boolean> = computed((): boolean => {
+  if (!site.value || !isTaxCreditEditorVisible.value) {
+    return false
+  }
+
+  return (
+    TaxCreditSection.signature(taxCreditDraft.value) !==
+    TaxCreditSection.signature(TaxCreditSection.toDraft(site.value.tax_credit ?? null))
+  )
+})
+
+/** Why the pending « crédit d'impôt » section cannot be saved yet (empty when it can). */
+const taxCreditValidationMessage: ComputedRef<string> = computed((): string =>
+  taxCreditChanged.value && taxCreditDraft.value.isSectionShown && taxCreditDraft.value.heading.trim() === ''
+    ? 'Donnez un titre à la section Crédit d’impôt, ou masquez-la.'
+    : '',
+)
+
+/** Why the pending edits cannot be published yet (empty when they can). */
+const pendingChangesValidationMessage: ComputedRef<string> = computed(
+  (): string => serviceCardsValidationMessage.value || taxCreditValidationMessage.value,
+)
+
 /** Any pending edit: « Annuler » and « Publier » take the place of the link buttons in the top bar. */
 const hasPendingChanges: ComputedRef<boolean> = computed(
   (): boolean =>
@@ -929,12 +975,13 @@ const hasPendingChanges: ComputedRef<boolean> = computed(
     themeChanged.value ||
     brandSourceChanged.value ||
     imagesChanged.value ||
-    serviceCardsChanged.value,
+    serviceCardsChanged.value ||
+    taxCreditChanged.value,
 )
 
-/** Pending edits that are complete enough to publish (the cards editor can block a save). */
+/** Pending edits that are complete enough to publish (the cards and tax credit editors can block a save). */
 const canSavePendingChanges: ComputedRef<boolean> = computed(
-  (): boolean => hasPendingChanges.value && serviceCardsValidationMessage.value === '',
+  (): boolean => hasPendingChanges.value && pendingChangesValidationMessage.value === '',
 )
 
 /** Candidate placement pushed live into the preview, only when it differs from the published one. */
@@ -1017,13 +1064,20 @@ const cmsJoinedAtLabel: ComputedRef<string | null> = computed((): string | null 
   site.value?.storyblok_joined_at ? formatNumericDate(site.value.storyblok_joined_at) : null,
 )
 
-/** The tools shown in the bar: « Prestations » only when the template has service cards. */
+/** The tools shown in the bar: « Prestations » and « Crédit d'impôt » only when the template supports them. */
 const visibleTools: ComputedRef<AtelierTool<DemoSiteAtelierToolKey>[]> = computed(
   (): AtelierTool<DemoSiteAtelierToolKey>[] =>
-    atelierTools.filter(
-      (tool: AtelierTool<DemoSiteAtelierToolKey>): boolean =>
-        tool.key !== 'prestations' || isServiceCardsEditorVisible.value,
-    ),
+    atelierTools.filter((tool: AtelierTool<DemoSiteAtelierToolKey>): boolean => {
+      if (tool.key === 'prestations') {
+        return isServiceCardsEditorVisible.value
+      }
+
+      if (tool.key === 'creditImpot') {
+        return isTaxCreditEditorVisible.value
+      }
+
+      return true
+    }),
 )
 
 /** Which tools hold an unpublished change, for the dot on their button. */
@@ -1033,6 +1087,7 @@ const toolPendingChanges: ComputedRef<Record<DemoSiteAtelierToolKey, boolean>> =
     couleurs: themeChanged.value || brandSourceChanged.value,
     photos: imagesChanged.value,
     prestations: serviceCardsChanged.value,
+    creditImpot: taxCreditChanged.value,
     video: false,
     plus: false,
   }),
@@ -1098,6 +1153,14 @@ function onServiceCardsChange(next: ServiceCardDraft[]): void {
 }
 
 /**
+ * Apply an edited « crédit d'impôt » section.
+ * @param next - The edited section.
+ */
+function onTaxCreditChange(next: TaxCreditDraft): void {
+  taxCreditDraft.value = next
+}
+
+/**
  * Put the draft back on the published cards.
  */
 function resetServiceCardsDraft(): void {
@@ -1106,7 +1169,7 @@ function resetServiceCardsDraft(): void {
 }
 
 /**
- * Drop every pending edit: back to the published template, colours, photo placement and cards.
+ * Drop every pending edit: back to the published template, colours, photo placement, cards and tax credit section.
  */
 function resetPendingChanges(): void {
   if (!site.value) return
@@ -1115,11 +1178,11 @@ function resetPendingChanges(): void {
   selectedUseBrandColor.value = site.value.use_brand_color ?? true
   imagesOrder.value = [...(siteImages.value?.order ?? [])]
   resetServiceCardsDraft()
+  taxCreditDraft.value = TaxCreditSection.toDraft(site.value.tax_credit ?? null)
 }
 
 /**
- * Publish every pending edit (template, colours, photo placement, section cards) in ONE call, so the
- * API regenerates the published site once, then reload the preview on the fresh content.
+ * Publish every pending edit in ONE call (one regeneration of the published site), then reload the preview on the fresh content.
  * @returns A promise resolved once the site has been regenerated.
  */
 async function savePendingChanges(): Promise<void> {
@@ -1138,6 +1201,9 @@ async function savePendingChanges(): Promise<void> {
     if (serviceCardsChanged.value) {
       payload.services = ServiceCards.toPayload(serviceCardsDraft.value)
       payload.services_source = serviceCardsDraftFromAi.value ? 'ai' : 'manual'
+    }
+    if (taxCreditChanged.value) {
+      payload.tax_credit = TaxCreditSection.toPayload(taxCreditDraft.value)
     }
     site.value = await DemoSiteService.updateDemoSite(demoSiteId, payload)
     await Promise.all([loadImages(), loadServiceCards()])
@@ -1552,6 +1618,12 @@ watch(selectedTemplateId, (templateId: string, previous: string): void => {
 
 watch(isServiceCardsEditorVisible, (isVisible: boolean): void => {
   if (!isVisible && activeTool.value === 'prestations') closeActiveTool()
+})
+
+watch(isTaxCreditEditorVisible, (isVisible: boolean): void => {
+  if (!isVisible && activeTool.value === 'creditImpot') {
+    closeActiveTool()
+  }
 })
 
 onMounted(async () => {

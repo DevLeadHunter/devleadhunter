@@ -683,6 +683,30 @@ class DemoSiteService:
 
         return await self.regenerate_demo_site(db, demo_site)
 
+    @staticmethod
+    def get_tax_credit(demo_site: DemoSite) -> dict | None:
+        """
+        The « crédit d'impôt » section written for a site, as the dashboard reads it.
+
+        Args:
+            demo_site: The site.
+
+        Returns:
+            The clean section with the PATCH payload's keys (snake_case), or None when the site has none.
+        """
+        overrides = demo_site.section_overrides if isinstance(demo_site.section_overrides, dict) else {}
+        section = clean_tax_credit(overrides.get("taxCredit"))
+        if not section:
+            return None
+        return {
+            "heading": section["heading"],
+            "lead": section.get("lead", ""),
+            "points": list(section.get("points") or []),
+            "note": section.get("note", ""),
+            "faq_question": section.get("faqQuestion", ""),
+            "faq_answer": section.get("faqAnswer", ""),
+        }
+
     # ------------------------------------------------------------------ #
     # Editable section cards (food « Nos spécialités »)
     # ------------------------------------------------------------------ #

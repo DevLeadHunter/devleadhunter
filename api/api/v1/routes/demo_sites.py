@@ -130,6 +130,7 @@ def _demo_site_response(
         logo = content.get("logo")
         if isinstance(logo, str) and logo.strip():
             payload["brand_color"] = brand_color_service.extract_brand_color(logo)
+    payload["tax_credit"] = demo_site_service.get_tax_credit(site)
     if has_ready_video(site):
         payload["video_page_url"] = video_page_url(site.slug)
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)

@@ -60,8 +60,24 @@ TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMP
 # Hidden from the picker but still registered: the sites already generated with them keep rendering.
 HIDDEN_TEMPLATE_IDS: frozenset[str] = frozenset({plumber_atelier.TEMPLATE_ID, plumber_cuivre.TEMPLATE_ID})
 
+# The « crédit d'impôt » section (see ``site_content.SECTION_DEFINITIONS``): opt-in, so only a template whose
+# ``USED_SECTIONS`` lists it renders it.
+_TAX_CREDIT_SECTION: str = "taxCredit"
+
+
+def _renders_tax_credit_section(module: Any) -> bool:
+    """Whether a template's layer renders the « crédit d'impôt » section (its ``USED_SECTIONS`` lists it)."""
+    used_sections = getattr(module, "USED_SECTIONS", None)
+    return isinstance(used_sections, list) and _TAX_CREDIT_SECTION in used_sections
+
+
 AVAILABLE_TEMPLATES: list[dict[str, object]] = [
-    {**module.TEMPLATE_META, "is_hidden": module.TEMPLATE_ID in HIDDEN_TEMPLATE_IDS} for module in TEMPLATE_MODULES
+    {
+        **module.TEMPLATE_META,
+        "is_hidden": module.TEMPLATE_ID in HIDDEN_TEMPLATE_IDS,
+        "renders_tax_credit_section": _renders_tax_credit_section(module),
+    }
+    for module in TEMPLATE_MODULES
 ]
 
 # The default, multi-trade template (« Édito ») — used when no template is chosen.
