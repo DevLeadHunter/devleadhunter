@@ -393,24 +393,29 @@ class ValidationService:
     @staticmethod
     def ascii_email(email: str) -> str:
         """
-        The address with its domain written the way mail servers read it.
+        The address written the way mail servers read it.
 
         An accented domain (« info@rochat-contrôles.ch ») becomes its ASCII form
-        (« info@xn--rochat-contrles-nsb.ch »); any other address comes back as it is.
+        (« info@xn--rochat-contrles-nsb.ch »). An accent in the local part is a directory
+        spelling the business name (« garagemonçanense@bluewin.ch »): it is dropped, since a mailbox
+        name is plain ASCII (« garagemoncanense@bluewin.ch »). Any other address comes back as it is.
 
         Args:
             email: An email address.
 
         Returns:
-            The address with an ASCII domain.
+            The ASCII address.
         """
         local_part, separator, domain = email.rpartition("@")
-        if not separator or domain.isascii():
+        if not separator or email.isascii():
             return email
+        plain_local_part: str = unicodedata.normalize("NFKD", local_part).encode("ascii", "ignore").decode("ascii")
+        if domain.isascii():
+            return f"{plain_local_part}@{domain}"
         try:
-            return f"{local_part}@{domain.encode('idna').decode('ascii')}"
+            return f"{plain_local_part}@{domain.encode('idna').decode('ascii')}"
         except UnicodeError:
-            return email
+            return f"{plain_local_part}@{domain}"
 
     @staticmethod
     def normalize_phone(phone: str | None) -> str | None:

@@ -61,3 +61,9 @@ def test_is_valid_website_keeps_a_foreign_artisan_own_site() -> None:
     assert validation_service.is_valid_website("https://www.sanitaire-rochat.ch") is True
     assert validation_service.is_valid_website("https://www.mylocal.ch") is True
     assert validation_service.is_valid_website("https://plomberie-tremblay.qc.ca") is True
+
+
+def test_ascii_email_drops_an_accent_a_directory_wrote_in_the_mailbox_name() -> None:
+    assert validation_service.ascii_email("garagemonçanense@bluewin.ch") == "garagemoncanense@bluewin.ch"
+    assert validation_service.ascii_email("info@rochat-contrôles.ch") == "info@xn--rochat-contrles-nsb.ch"
+    assert validation_service.ascii_email("tendance.nature@bluewin.ch") == "tendance.nature@bluewin.ch"

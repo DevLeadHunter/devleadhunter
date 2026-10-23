@@ -297,6 +297,26 @@ def test_an_email_in_a_directory_entry_of_the_business_is_proven_by_a_third_part
     assert (facts.email, facts.email_proof_level) == ("tendance.nature@bluewin.ch", EmailProofLevel.DIRECTORY.value)
 
 
+def test_an_email_a_directory_writes_with_an_accent_is_read_whole_and_without_the_accent() -> None:
+    facts = _facts(name="Garage du Monçanense", trade_key="garage", city="Valeyres-sous-Rances", phone="024 441 59 30")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.local.ch/fr/d/valeyres-sous-rances/1358/garage/du-moncanense",
+                    "du Monçanense, Garage à Valeyres-sous-Rances",
+                    "Rue du Vieux Moulin 2, 1358 Valeyres-sous-Rances. E-mail garagemonçanense@bluewin.ch",
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert facts.email == "garagemoncanense@bluewin.ch"
+
+
 def test_a_competitor_s_email_in_a_result_about_someone_else_is_not_taken() -> None:
     facts = _facts(name="Toupet Entretien Paysager", country="CA", city="Trois-Rivières", phone=None)
     results = [
