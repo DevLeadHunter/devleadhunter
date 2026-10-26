@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <PendingRepliesPanel
+    <UiPendingRepliesPanel
       :items="pendingReplies.items"
       @open="openPendingReply"
       @mark-handled="markPendingReplyHandled"
