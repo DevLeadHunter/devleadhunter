@@ -68,6 +68,7 @@ from services.templates.site_content import (
     clean_hero_points,
     clean_portfolio_items,
     clean_service_cards,
+    clean_strength_items,
     clean_tax_credit,
     clean_trust_items,
     from_storyblok_site_content,
@@ -295,17 +296,19 @@ class DemoSiteService:
             return None
 
     _MAPS_COORDS_RE = re.compile(r"@(-?\d+\.\d+),(-?\d+\.\d+)")
+    _MAPS_PIN_RE = re.compile(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)")
 
     @classmethod
     def _coords_from_maps_url(cls, url: object) -> tuple[float, float] | None:
-        """Extract ``(lat, lng)`` from a Google Maps URL's ``@lat,lng`` segment, or None.
+        """Extract ``(lat, lng)`` from a Google Maps URL, or None.
 
-        A scraped place URL embeds its coordinates (``…/@47.39,0.68,17z/…``); these centre the
-        "nous trouver" map on the business instead of the template's default city.
+        A scraped place URL embeds its coordinates; these centre the "nous trouver" map on the business
+        instead of the template's default city. The place's pin (``!3d47.39!4d0.68``) comes first: the
+        ``@47.39,0.68,17z`` segment is only where the map view was centred, often a few hundred metres away.
         """
         if not isinstance(url, str):
             return None
-        match = cls._MAPS_COORDS_RE.search(url)
+        match = cls._MAPS_PIN_RE.search(url) or cls._MAPS_COORDS_RE.search(url)
         if not match:
             return None
         return float(match.group(1)), float(match.group(2))
@@ -584,6 +587,7 @@ class DemoSiteService:
         hero_points: list[str] | None = None,
         trust_items: list[dict] | None = None,
         faq: list[dict] | None = None,
+        strengths: list[dict] | None = None,
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
         tax_credit: dict | None = None,
@@ -594,8 +598,8 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
-        ``hero_points``, ``trust_items`` and ``faq`` replace the facts under the title, the trust markers and
-        the questions (``[]`` goes back to the generated ones).
+        ``hero_points``, ``trust_items``, ``faq`` and ``strengths`` replace the facts under the title, the trust
+        markers, the questions and the « Pourquoi nous choisir » strengths (``[]`` goes back to the generated ones).
         ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
         the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
         « crédit d'impôt » section (an empty heading removes it).
@@ -622,6 +626,7 @@ class DemoSiteService:
             or hero_points is not None
             or trust_items is not None
             or faq is not None
+            or strengths is not None
             or about_text is not None
             or portfolio is not None
             or tax_credit is not None
@@ -651,6 +656,8 @@ class DemoSiteService:
                 self._store_written_section(overrides, "trustItems", clean_trust_items(trust_items))
             if faq is not None:
                 self._store_written_section(overrides, "faq", clean_faq_items(faq))
+            if strengths is not None:
+                self._store_written_section(overrides, "strengths", clean_strength_items(strengths))
             if about_text is not None:
                 about = about_text.strip()
                 if about:

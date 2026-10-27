@@ -120,6 +120,47 @@ def test_steps_round_trip() -> None:
     assert flat["steps"] == [{"title": "Visite", "description": "On vient voir."}]
 
 
+def test_strengths_round_trip() -> None:
+    """The « Pourquoi nous choisir » strengths project into a ``section_strengths`` blok and flatten back."""
+    body = sc.to_storyblok_site_content(
+        {
+            "strengthsHeading": "Pourquoi nous choisir",
+            "strengths": [{"title": "À l'écoute", "description": "Nous cherchons la meilleure solution."}],
+        },
+        ["strengths"],
+    )
+    strengths = _section(body, "strengths")
+
+    assert strengths["strengths"][0]["component"] == "site_content_strength"
+
+    flat = sc.from_storyblok_site_content({"component": "page", "body": body})
+    assert flat["strengthsHeading"] == "Pourquoi nous choisir"
+    assert flat["strengths"] == [{"title": "À l'écoute", "description": "Nous cherchons la meilleure solution."}]
+
+
+def test_strengths_section_is_opt_in() -> None:
+    """Only a template listing ``strengths`` in its used sections pushes the blok; the garage Pitlane does."""
+    from services.templates import mechanic_pitlane
+
+    assert "strengths" in mechanic_pitlane.USED_SECTIONS
+    body = sc.to_storyblok_site_content({"strengths": [{"title": "Réactifs"}]}, ["hero", "services"])
+    assert all(blok["component"] != "section_strengths" for blok in body)
+
+
+def test_the_garage_editor_offers_its_strengths_filled_with_the_template_copy() -> None:
+    """Pitlane pre-fills « Pourquoi nous choisir » with its own copy, so the client edits what the site shows."""
+    from services.templates import mechanic_pitlane, registry
+
+    by_name = {component["name"]: component for component in registry.content_schemas("mechanic-pitlane", "CH")}
+    site = mechanic_pitlane.build_site_content(
+        business_name="Garage du Centre", phone=None, email=None, city="Sion", area="Sion", subtitle="", palette={}
+    )
+
+    assert "strengths" in by_name["section_strengths"]["schema"]
+    assert site["strengthsHeading"] == "Pourquoi nous choisir"
+    assert site["strengths"][0]["title"] == "Tarifs compétitifs"
+
+
 def test_services_lead_round_trips() -> None:
     """The services section intro paragraph flows back out of a published story."""
     flat = sc.from_storyblok_site_content(

@@ -63,7 +63,17 @@ BODY_COMPONENTS: list[str] = []
 COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 
 # Sections this template renders — drives the client's Storyblok editor so it shows no dead sections.
-USED_SECTIONS: list[str] = ["hero", "trust", "about", "services", "gallery", "reviews", "faq", "contact"]
+USED_SECTIONS: list[str] = [
+    "hero",
+    "trust",
+    "about",
+    "services",
+    "strengths",
+    "gallery",
+    "reviews",
+    "faq",
+    "contact",
+]
 
 # One-off photos this template renders that aren't hero/about/gallery — exposed as dedicated, labelled
 # Storyblok fields (grouped in the section they appear in), editable by the client via ``SiteContent.images``.
@@ -198,7 +208,35 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "faqHeading": "Questions fréquentes",
     "aboutHeading": "L'atelier",
     "contactHeading": "Prendre rendez-vous",
+    "strengthsHeading": "Pourquoi nous choisir",
 }
+
+# « Pourquoi nous choisir » pre-filled into the CMS — EXACT mirror of the layer defaults
+# (devleadhunter-template-mechanic-pitlane app/types/pitlane.ts ``defaults.whyItems``).
+_DEFAULT_STRENGTHS: list[dict[str, str]] = [
+    {
+        "title": "Tarifs compétitifs",
+        "description": (
+            "Devis transparent avant réparation. Pas de surprise sur la facture : le devis validé, c’est le prix final."
+        ),
+    },
+    {
+        "title": "Service rapide & efficace",
+        "description": (
+            "Créneaux atelier organisés pour limiter l’immobilisation. On vous prévient dès que la voiture est prête."
+        ),
+    },
+    {
+        "title": "Techniciens expérimentés",
+        "description": "Diagnostic multi-marques, pièces de qualité et interventions dans les règles de l’art.",
+    },
+    {
+        "title": "Pièces & équipements de qualité",
+        "description": (
+            "On privilégie des pièces adaptées à votre véhicule, avec garantie, plutôt que le moins cher à tout prix."
+        ),
+    },
+]
 
 
 def build_site_content(
@@ -232,6 +270,7 @@ def build_site_content(
     enr = enrichment or {}
     site["services"] = fixed_trade_services(MECHANIC_SERVICES)
     site["faq"] = MECHANIC_FAQ
+    site["strengths"] = [dict(strength) for strength in _DEFAULT_STRENGTHS]
     site.update(_EDITORIAL_DEFAULTS)
     apply_real_trust_stats(site, enrichment)
     # Each service card, the second "about" photo and the FAQ photo are dedicated, editable CMS fields now,

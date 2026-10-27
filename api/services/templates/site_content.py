@@ -58,6 +58,10 @@ MAX_TRUST_ITEM_LABEL_CHARS = 80
 MAX_FAQ_ITEMS = 10
 MAX_FAQ_QUESTION_CHARS = 160
 MAX_FAQ_ANSWER_CHARS = 600
+# The strengths of the « Pourquoi nous choisir » section (``DemoSite.section_overrides["strengths"]``): shape limits.
+MAX_STRENGTHS = 6
+MAX_STRENGTH_TITLE_CHARS = 60
+MAX_STRENGTH_DESCRIPTION_CHARS = 240
 # The tax credit section (``DemoSite.section_overrides["taxCredit"]``): shape limits.
 MAX_TAX_CREDIT_HEADING_CHARS = 120
 MAX_TAX_CREDIT_LEAD_CHARS = 600
@@ -570,6 +574,30 @@ def clean_faq_items(items: Any) -> list[dict[str, str]]:
     return cleaned[:MAX_FAQ_ITEMS]
 
 
+def clean_strength_items(items: Any) -> list[dict[str, str]]:
+    """
+    Validate the strengths written for a site into titled entries of the « Pourquoi nous choisir » section.
+
+    Args:
+        items: Raw entries (API payload or stored override).
+
+    Returns:
+        The entries holding a title, trimmed and capped, in order.
+    """
+    if not isinstance(items, list):
+        return []
+    cleaned: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        title = _single_line(item.get("title"), MAX_STRENGTH_TITLE_CHARS)
+        if title:
+            cleaned.append(
+                {"title": title, "description": _single_line(item.get("description"), MAX_STRENGTH_DESCRIPTION_CHARS)}
+            )
+    return cleaned[:MAX_STRENGTHS]
+
+
 def clean_tax_credit(raw: Any) -> dict[str, Any]:
     """
     Validate the tax credit section written for a business (``section_overrides["taxCredit"]``).
@@ -721,8 +749,9 @@ def apply_section_overrides(
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
     realizations with its own photos and what they show, ``images`` the template's other photos
     (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
-    ``trustItems`` the trust markers, ``faq`` the questions and answers,
-    ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la personne » provider.
+    ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the « Pourquoi nous
+    choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la
+    personne » provider.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
     """
@@ -759,6 +788,9 @@ def apply_section_overrides(
     faq = clean_faq_items(overrides.get("faq"))
     if faq:
         site_content["faq"] = faq
+    strengths = clean_strength_items(overrides.get("strengths"))
+    if strengths:
+        site_content["strengths"] = strengths
     tax_credit = clean_tax_credit(overrides.get("taxCredit"))
     if tax_credit:
         apply_tax_credit(site_content, tax_credit)
@@ -1071,6 +1103,14 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "restrict_components": True,
         "component_whitelist": ["site_content_step"],
     },
+    "strengthsHeading": {"type": "text", "display_name": "Titre de la section"},
+    "strengths": {
+        "type": "bloks",
+        "display_name": "Atouts",
+        "description": "Ce qui vous distingue, en quelques mots chacun (à l'écoute, rapide…)",
+        "restrict_components": True,
+        "component_whitelist": ["site_content_strength"],
+    },
     "taxCreditHeading": {
         "type": "text",
         "display_name": "Titre de la section",
@@ -1201,6 +1241,8 @@ SECTION_DEFINITIONS: list[tuple[str, str, list[str]]] = [
     ("trust", "Repères de confiance", ["trustItems"]),
     ("about", "À propos", ["aboutHeading", "about", "aboutImage"]),
     ("services", "Services", ["servicesHeading", "services"]),
+    # ``strengths`` is opt-in: the « Pourquoi nous choisir » section, edited only where a template renders it.
+    ("strengths", "Pourquoi nous choisir", ["strengthsHeading", "strengths"]),
     # ``method`` is opt-in: no template renders it by default, so only a template whose USED_SECTIONS
     # lists "method" (landscaper) surfaces it — every other template drops it (no dead section).
     ("method", "Notre méthode", ["stepsHeading", "steps"]),
@@ -1353,6 +1395,14 @@ _ITEM_BLOK_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "site_content_strength",
+        "display_name": "Atout",
+        "schema": {
+            "title": {"type": "text", "pos": 0, "display_name": "Atout"},
+            "description": {"type": "textarea", "pos": 1, "display_name": "Description"},
+        },
+    },
+    {
         "name": "site_content_hours",
         "display_name": "Horaire",
         "schema": {
@@ -1499,6 +1549,8 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "servicesLead": site_content.get("servicesLead", ""),
         "stepsHeading": site_content.get("stepsHeading", ""),
         "steps": _items_to_bloks(site_content.get("steps"), "site_content_step", ("title", "description")),
+        "strengthsHeading": site_content.get("strengthsHeading", ""),
+        "strengths": _items_to_bloks(site_content.get("strengths"), "site_content_strength", ("title", "description")),
         "taxCreditHeading": site_content.get("taxCreditHeading", ""),
         "taxCreditLead": site_content.get("taxCreditLead", ""),
         "taxCreditPoints": [
@@ -1753,6 +1805,12 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
             {"title": _clean_str(item.get("title")), "description": _clean_str(item.get("description"))}
             for item in _blok_list(blok.get("steps"))
             if _clean_str(item.get("title")) or _clean_str(item.get("description"))
+        ],
+        "strengthsHeading": _clean_str(blok.get("strengthsHeading")),
+        "strengths": [
+            {"title": _clean_str(item.get("title")), "description": _clean_str(item.get("description"))}
+            for item in _blok_list(blok.get("strengths"))
+            if _clean_str(item.get("title"))
         ],
         "taxCreditHeading": _clean_str(blok.get("taxCreditHeading")),
         "taxCreditLead": _clean_str(blok.get("taxCreditLead")),

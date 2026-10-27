@@ -1,6 +1,6 @@
 """
-The FAQ, the trust markers and the facts under the title written for a business are site overrides:
-they survive regenerations, and an empty list goes back to the generated ones.
+The FAQ, the trust markers, the facts under the title and the « Pourquoi nous choisir » strengths written
+for a business are site overrides: they survive regenerations, and an empty list goes back to the generated ones.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from services.templates.site_content import (
     MAX_TRUST_ITEMS,
     apply_section_overrides,
     clean_faq_items,
+    clean_strength_items,
     clean_trust_items,
 )
 
@@ -31,6 +32,10 @@ _USER_ID = 1
 _FAQ = [
     {"question": "Faites-vous la carrosserie ?", "answer": "Non, nous travaillons avec des partenaires."},
     {"question": "Avez-vous une voiture de courtoisie ?", "answer": "Oui, pendant les travaux."},
+]
+_STRENGTHS = [
+    {"title": "À l'écoute", "description": "Nous cherchons la meilleure solution pour votre véhicule."},
+    {"title": "Réactifs", "description": ""},
 ]
 
 
@@ -44,6 +49,21 @@ def test_a_question_without_its_answer_is_dropped() -> None:
     )
 
     assert cleaned == [{"question": "Faites-vous la carrosserie ?", "answer": "Non."}]
+
+
+def test_a_strength_needs_a_title() -> None:
+    cleaned = clean_strength_items(
+        [
+            {"title": "  À   l'écoute ", "description": " Nous cherchons la meilleure solution. "},
+            {"title": " ", "description": "Sans titre."},
+            {"title": "Réactifs"},
+        ]
+    )
+
+    assert cleaned == [
+        {"title": "À l'écoute", "description": "Nous cherchons la meilleure solution."},
+        {"title": "Réactifs", "description": ""},
+    ]
 
 
 def test_trust_markers_need_a_value_or_a_label_and_stay_capped() -> None:
@@ -61,6 +81,7 @@ def test_the_written_sections_replace_the_generated_ones() -> None:
         "heroPoints": ["Devis avant réparation"],
         "trustItems": [{"value": "Devis gratuit", "label": "Sans engagement"}],
         "faq": [{"question": "Le devis est-il gratuit ?", "answer": "Oui."}],
+        "strengths": [{"title": "Tarifs compétitifs", "description": "Devis transparent avant réparation."}],
     }
 
     result = apply_section_overrides(
@@ -69,12 +90,14 @@ def test_the_written_sections_replace_the_generated_ones() -> None:
             "heroPoints": ["Préparation aux expertises"],
             "trustItems": [{"value": "Sàrl", "label": "Inscrite au registre du commerce"}],
             "faq": _FAQ,
+            "strengths": _STRENGTHS,
         },
     )
 
     assert result["heroPoints"] == ["Préparation aux expertises"]
     assert result["trustItems"] == [{"value": "Sàrl", "label": "Inscrite au registre du commerce"}]
     assert result["faq"] == _FAQ
+    assert result["strengths"] == _STRENGTHS
 
 
 def test_the_tax_credit_question_joins_a_written_faq() -> None:
@@ -142,6 +165,7 @@ def test_the_written_sections_are_saved_and_an_empty_list_removes_them(
             "hero_points": ["Préparation aux expertises", " "],
             "trust_items": [{"value": "Sàrl", "label": "Inscrite au registre du commerce"}],
             "faq": _FAQ,
+            "strengths": _STRENGTHS,
         },
     )
 
@@ -152,9 +176,12 @@ def test_the_written_sections_are_saved_and_an_empty_list_removes_them(
         "heroPoints": ["Préparation aux expertises"],
         "trustItems": [{"value": "Sàrl", "label": "Inscrite au registre du commerce"}],
         "faq": _FAQ,
+        "strengths": _STRENGTHS,
     }
 
-    removed = client.patch(f"{demo_sites_router.prefix}/{site.id}", json={"faq": [], "hero_points": []})
+    removed = client.patch(
+        f"{demo_sites_router.prefix}/{site.id}", json={"faq": [], "hero_points": [], "strengths": []}
+    )
 
     assert removed.status_code == 200
     db.refresh(site)

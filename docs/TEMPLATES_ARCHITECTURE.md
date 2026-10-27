@@ -274,7 +274,7 @@ Deux contextes distincts :
 4. Fournir un mock dans `content.ts` pour le `.playground`.
 5. Tag `v1.0.0`.
 6. Côté demo-host : ajouter 1 ligne dans `extends` + l'entrée dans le dispatch `defineAsyncComponent`.
-7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, **`build_site_content`** — appelle `map_prospect_and_enrichment` de `site_content.py` et ajoute ses `services`/`faq` métier) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`. **Déclarer `USED_SECTIONS`** = la liste ordonnée des sections que le layer rend (suffixes de `SECTION_DEFINITIONS` : hero/trust/about/services/gallery/reviews/faq/beforeAfter/contact) → l'éditeur client ne montre que ces sections (défaut = toutes). Droper une section **non rendue** est sûr ; ne jamais droper une section rendue.
+7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, **`build_site_content`** — appelle `map_prospect_and_enrichment` de `site_content.py` et ajoute ses `services`/`faq` métier) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`. **Déclarer `USED_SECTIONS`** = la liste ordonnée des sections que le layer rend (suffixes de `SECTION_DEFINITIONS` : hero/trust/about/services/gallery/reviews/faq/beforeAfter/team/portfolio/contact, plus les sections à activer explicitement : strengths, method, taxCredit) → l'éditeur client ne montre que ces sections (défaut = toutes). Droper une section **non rendue** est sûr ; ne jamais droper une section rendue.
 8. **Click-to-edit** : dans le composant racine, `import { editableAttrs } from '@devleadhunter/website-content'` et poser `v-bind="editableAttrs(content._editable?.<section>)"` sur chaque `<XSection>` (fallthrough Vue sur sa racine). Bumper la dépendance `@devleadhunter/website-content` ≥ v1.5.0.
 9. **Licence professionnelle** : rendre `professionalLicenseLine(content)` (contrat ≥ v1.11.0) en pied de page, et dans la section confiance si la template en a une ; rien d'affiché quand le numéro est vide. Obligatoire sur le site d'un entrepreneur en construction au Québec (licence RBQ). ⚠️ Toute fonction du contrat utilisée dans le template (`editableAttrs`, `professionalLicenseLine`) s'importe explicitement depuis `@devleadhunter/website-content` : rien ne l'auto-importe, et un oubli plante le rendu (dental v1.2.3).
 10. **Vérifier la checklist Storyblok ci-dessous** — c'est elle qui garantit que le client livré peut vraiment éditer son site.
@@ -299,7 +299,10 @@ c'est **exactement ce que la template consomme depuis `SiteContent`**. Donc :
    `content.trustItems?.length ? … : defaults.trustItems`). Les headings ultra-spécifiques
    d'une template (craft, process, urgence…) restent des défauts non éditables — **ne pas
    prétendre le contraire dans les commentaires**. Un besoin éditable vraiment transverse →
-   nouvelle clé du contrat (point 6).
+   nouvelle clé du contrat (point 6). La section « Pourquoi nous choisir » l'est depuis le contrat
+   v1.14.0 (`strengthsHeading` + `strengths`, section `strengths` à lister dans `USED_SECTIONS`) :
+   une template qui a des atouts les lit avec repli sur ses défauts, et son module Python les
+   pré-remplit avec sa copie (Pitlane v1.5.0 le fait).
 4. **Pré-remplir la copie éditoriale côté API** : le module Python de la template définit
    `_EDITORIAL_DEFAULTS` (copie EXACTE des défauts du layer : badge, points, CTA, trust items,
    headings) appliqué dans `build_site_content` — ainsi le client voit **ses vrais textes**

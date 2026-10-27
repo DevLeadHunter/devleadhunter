@@ -90,6 +90,13 @@ class DemoSiteFaqItem(BaseModel):
     answer: str = Field(..., min_length=1, max_length=600)
 
 
+class DemoSiteStrength(BaseModel):
+    """One strength of the « Pourquoi nous choisir » section: a few words and what they mean for the client."""
+
+    title: str = Field(..., min_length=1, max_length=60)
+    description: str = Field(default="", max_length=240)
+
+
 class DemoSiteTaxCredit(BaseModel):
     """The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it."""
 
@@ -129,6 +136,7 @@ class DemoSiteUpdateRequest(BaseModel):
     hero_points: list[str] | None = Field(default=None, max_length=3)
     trust_items: list[DemoSiteTrustItem] | None = Field(default=None, max_length=4)
     faq: list[DemoSiteFaqItem] | None = Field(default=None, max_length=10)
+    strengths: list[DemoSiteStrength] | None = Field(default=None, max_length=6)
     # « À propos » text written for this business (stored in ``section_overrides["about"]``, kept
     # across regenerations); ``""`` goes back to the generated one.
     about_text: str | None = Field(default=None, max_length=700)
