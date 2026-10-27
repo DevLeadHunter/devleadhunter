@@ -222,6 +222,7 @@ export class StoryblokSiteContentBridge {
       servicesHeading: this.readString(blok.servicesHeading),
       servicesLead: this.readString(blok.servicesLead),
       stepsHeading: this.readString(blok.stepsHeading),
+      strengthsHeading: this.readString(blok.strengthsHeading),
       taxCreditHeading: this.readString(blok.taxCreditHeading),
       taxCreditLead: this.readString(blok.taxCreditLead),
       taxCreditPoints: this.readBlokList(blok.taxCreditPoints)
@@ -277,6 +278,12 @@ export class StoryblokSiteContentBridge {
           description: this.readString(item.description),
         }))
         .filter((step: Blok): boolean => Boolean(step.title) || Boolean(step.description)),
+      strengths: this.readBlokList(blok.strengths)
+        .map((item: Blok): { title?: string; description?: string } => ({
+          title: this.readString(item.title),
+          description: this.readString(item.description),
+        }))
+        .filter((strength: Blok): boolean => Boolean(strength.title)),
       openingHours: this.readBlokList(blok.openingHours)
         .map((item: Blok): { day?: string; hours?: string } => ({
           day: this.readString(item.day),
