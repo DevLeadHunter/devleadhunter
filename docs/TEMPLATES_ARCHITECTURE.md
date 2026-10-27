@@ -310,15 +310,18 @@ c'est **exactement ce que la template consomme depuis `SiteContent`**. Donc :
    `api/services/templates/site_content.py` (`SITE_CONTENT_SCHEMAS`), avec **display_name et
    description en FRANÇAIS** (c'est l'UI du client — toute nouvelle clé doit avoir son libellé
    FR + un `pos`). **Ne pas ajouter de `COMPONENT_SCHEMAS` riches par template** : ils ne sont
-   plus enregistrés (ils polluaient les spaces clients). ⚠️ Les schémas ne s'appliquent qu'aux
-   **nouveaux** spaces (l'API ne met pas à jour les composants existants).
+   plus enregistrés (ils polluaient les spaces clients). Chaque envoi vers un space existant
+   met aussi ses composants à jour (`_ensure_template_components`).
 6. Étendre `SiteContent` (nouvelle clé transverse) = **4 endroits, additivement et optionnel** :
    le type TS (`@devleadhunter/website-content` + tag), le blok (`SITE_CONTENT_SCHEMAS` +
    `to_storyblok_site_content` + `from_storyblok_site_content` dans `site_content.py`), le
    bridge TS demo-host (`storyblokSiteContentToSiteContent.ts`), et le builder. Les deux
    bridges (TS et Python) doivent rester des **miroirs** — y compris les pièges Storyblok
    (champ single-blok renvoyé en LISTE après édition cliente, number en string).
-7. **Tester le cycle complet** : générer un site → ouvrir le Visual Editor (les champs du blok
+7. **Une photo propre à la template (`EXTRA_SECTION_IMAGES`) ne prend jamais le nom d'un champ du
+   contenu** (`faq`, `about`…) : l'envoi vers Storyblok écrirait la photo par-dessus ce champ (vécu
+   le 27/10/2026 : la FAQ des sites garage). `tests/test_extra_section_images.py` le vérifie.
+8. **Tester le cycle complet** : générer un site → ouvrir le Visual Editor (les champs du blok
    `site_content` s'éditent et se voient en live) → **Publish** → vérifier que le webhook
    `/webhooks/storyblok` a bien mis à jour `demo_site.content_json` et que le site public
    affiche l'édition.

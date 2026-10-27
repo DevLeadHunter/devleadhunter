@@ -69,7 +69,7 @@ USED_SECTIONS: list[str] = ["hero", "trust", "about", "services", "gallery", "re
 # Storyblok fields (grouped in the section they appear in), editable by the client via ``SiteContent.images``.
 EXTRA_SECTION_IMAGES: dict[str, list[dict[str, str]]] = {
     "about": [{"field": "aboutSecondary", "label": "Deuxième photo à propos"}],
-    "faq": [{"field": "faq", "label": "Photo de la section FAQ"}],
+    "faq": [{"field": "faqImage", "label": "Photo de la section FAQ"}],
 }
 
 # Default photo pool for the per-service card images + the two one-off slots — EXACT mirror of the layer
@@ -82,7 +82,7 @@ _DEFAULT_SERVICE_IMAGES: list[str] = [
     "https://images.unsplash.com/photo-1711386689622-1cda23e10217?auto=format&fit=crop&w=1200&q=80",
     "https://images.unsplash.com/photo-1735361039382-d78a0a0cc185?auto=format&fit=crop&w=1200&q=80",
 ]
-# The two one-off slots fall back, in the layer, to gallery photos: aboutSecondary → gallery[1], faq → gallery[0].
+# The two one-off slots fall back, in the layer, to gallery photos: aboutSecondary → gallery[1], faqImage → gallery[0].
 _DEFAULT_ABOUT_SECONDARY: str = _DEFAULT_SERVICE_IMAGES[1]
 _DEFAULT_FAQ_IMAGE: str = _DEFAULT_SERVICE_IMAGES[0]
 
@@ -245,11 +245,11 @@ def build_site_content(
         if isinstance(photos_raw, list)
         else []
     )
-    # Layer fallbacks: faq → gallery[0], aboutSecondary → gallery[1] (photos[2] and [3] after hero/about).
+    # Layer fallbacks: faqImage → gallery[0], aboutSecondary → gallery[1] (photos[2] and [3] after hero/about).
     if len(photos) >= 4:
-        site["images"] = {"aboutSecondary": photos[3], "faq": photos[2]}
+        site["images"] = {"aboutSecondary": photos[3], "faqImage": photos[2]}
     elif len(photos) == 3:
-        site["images"] = {"aboutSecondary": photos[2], "faq": photos[2]}
+        site["images"] = {"aboutSecondary": photos[2], "faqImage": photos[2]}
     else:
-        site["images"] = {"aboutSecondary": _DEFAULT_ABOUT_SECONDARY, "faq": _DEFAULT_FAQ_IMAGE}
+        site["images"] = {"aboutSecondary": _DEFAULT_ABOUT_SECONDARY, "faqImage": _DEFAULT_FAQ_IMAGE}
     return site

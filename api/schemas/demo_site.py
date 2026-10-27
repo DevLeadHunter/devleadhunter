@@ -76,6 +76,20 @@ class DemoSitePortfolioItem(BaseModel):
     category: str = Field(default="", max_length=40)
 
 
+class DemoSiteTrustItem(BaseModel):
+    """One trust marker under the site's title: a short value and its label."""
+
+    value: str = Field(default="", max_length=40)
+    label: str = Field(default="", max_length=80)
+
+
+class DemoSiteFaqItem(BaseModel):
+    """One question of the site's FAQ, with its answer."""
+
+    question: str = Field(..., min_length=1, max_length=160)
+    answer: str = Field(..., min_length=1, max_length=600)
+
+
 class DemoSiteTaxCredit(BaseModel):
     """The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it."""
 
@@ -111,6 +125,10 @@ class DemoSiteUpdateRequest(BaseModel):
     # The template's other photos, slot → URL (stored in ``section_overrides["images"]``).
     section_images: dict[str, str] | None = None
     hero_badge: str | None = Field(default=None, max_length=80)
+    # Written for this business, kept across regenerations; ``[]`` goes back to the generated ones.
+    hero_points: list[str] | None = Field(default=None, max_length=3)
+    trust_items: list[DemoSiteTrustItem] | None = Field(default=None, max_length=4)
+    faq: list[DemoSiteFaqItem] | None = Field(default=None, max_length=10)
     # « À propos » text written for this business (stored in ``section_overrides["about"]``, kept
     # across regenerations); ``""`` goes back to the generated one.
     about_text: str | None = Field(default=None, max_length=700)

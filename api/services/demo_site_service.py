@@ -64,9 +64,12 @@ from services.storyblok_service import (
 from services.templates import registry as template_registry
 from services.templates.site_content import (
     apply_section_overrides,
+    clean_faq_items,
+    clean_hero_points,
     clean_portfolio_items,
     clean_service_cards,
     clean_tax_credit,
+    clean_trust_items,
     from_storyblok_site_content,
     usable_site_photos,
 )
@@ -578,6 +581,9 @@ class DemoSiteService:
         services_source: str | None = None,
         section_images: dict[str, str] | None = None,
         hero_badge: str | None = None,
+        hero_points: list[str] | None = None,
+        trust_items: list[dict] | None = None,
+        faq: list[dict] | None = None,
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
         tax_credit: dict | None = None,
@@ -588,6 +594,8 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
+        ``hero_points``, ``trust_items`` and ``faq`` replace the facts under the title, the trust markers and
+        the questions (``[]`` goes back to the generated ones).
         ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
         the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
         « crédit d'impôt » section (an empty heading removes it).
@@ -611,6 +619,9 @@ class DemoSiteService:
         if (
             section_images is not None
             or hero_badge is not None
+            or hero_points is not None
+            or trust_items is not None
+            or faq is not None
             or about_text is not None
             or portfolio is not None
             or tax_credit is not None
@@ -634,6 +645,12 @@ class DemoSiteService:
                     overrides["heroBadge"] = badge
                 else:
                     overrides.pop("heroBadge", None)
+            if hero_points is not None:
+                self._store_written_section(overrides, "heroPoints", clean_hero_points(hero_points))
+            if trust_items is not None:
+                self._store_written_section(overrides, "trustItems", clean_trust_items(trust_items))
+            if faq is not None:
+                self._store_written_section(overrides, "faq", clean_faq_items(faq))
             if about_text is not None:
                 about = about_text.strip()
                 if about:
@@ -682,6 +699,21 @@ class DemoSiteService:
             demo_site.content_json = existing_content
 
         return await self.regenerate_demo_site(db, demo_site)
+
+    @staticmethod
+    def _store_written_section(overrides: dict, section_key: str, written_items: list) -> None:
+        """
+        Keep a section written for the business in the site overrides, or drop it when it came back empty.
+
+        Args:
+            overrides: The site's section overrides, updated in place.
+            section_key: The ``SiteContent`` key of the section (``faq``, ``trustItems``…).
+            written_items: The cleaned items; empty to go back to the generated section.
+        """
+        if written_items:
+            overrides[section_key] = written_items
+        else:
+            overrides.pop(section_key, None)
 
     @staticmethod
     def get_tax_credit(demo_site: DemoSite) -> dict | None:

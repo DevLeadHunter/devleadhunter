@@ -50,6 +50,14 @@ MAX_PORTFOLIO_CATEGORY_CHARS = 40
 # The facts under a site's title (``DemoSite.section_overrides["heroPoints"]``): shape limits.
 MAX_HERO_POINTS = 3
 MAX_HERO_POINT_CHARS = 40
+# The trust markers under the title (``DemoSite.section_overrides["trustItems"]``): shape limits.
+MAX_TRUST_ITEMS = 4
+MAX_TRUST_ITEM_VALUE_CHARS = 40
+MAX_TRUST_ITEM_LABEL_CHARS = 80
+# The questions of the FAQ (``DemoSite.section_overrides["faq"]``): shape limits.
+MAX_FAQ_ITEMS = 10
+MAX_FAQ_QUESTION_CHARS = 160
+MAX_FAQ_ANSWER_CHARS = 600
 # The tax credit section (``DemoSite.section_overrides["taxCredit"]``): shape limits.
 MAX_TAX_CREDIT_HEADING_CHARS = 120
 MAX_TAX_CREDIT_LEAD_CHARS = 600
@@ -516,6 +524,52 @@ def _single_line(value: Any, max_chars: int) -> str:
     return " ".join(str(value or "").split()).strip()[:max_chars]
 
 
+def clean_trust_items(items: Any) -> list[dict[str, str]]:
+    """
+    Validate the trust markers written for a site into at most four value and label pairs.
+
+    Args:
+        items: Raw markers (API payload or stored override).
+
+    Returns:
+        The markers holding a value or a label, trimmed and capped, in order.
+    """
+    if not isinstance(items, list):
+        return []
+    cleaned: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        value = _single_line(item.get("value"), MAX_TRUST_ITEM_VALUE_CHARS)
+        label = _single_line(item.get("label"), MAX_TRUST_ITEM_LABEL_CHARS)
+        if value or label:
+            cleaned.append({"value": value, "label": label})
+    return cleaned[:MAX_TRUST_ITEMS]
+
+
+def clean_faq_items(items: Any) -> list[dict[str, str]]:
+    """
+    Validate the questions written for a site into complete question and answer pairs.
+
+    Args:
+        items: Raw entries (API payload or stored override).
+
+    Returns:
+        The entries holding both a question and an answer, trimmed and capped, in order.
+    """
+    if not isinstance(items, list):
+        return []
+    cleaned: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        question = _single_line(item.get("question"), MAX_FAQ_QUESTION_CHARS)
+        answer = _single_line(item.get("answer"), MAX_FAQ_ANSWER_CHARS)
+        if question and answer:
+            cleaned.append({"question": question, "answer": answer})
+    return cleaned[:MAX_FAQ_ITEMS]
+
+
 def clean_tax_credit(raw: Any) -> dict[str, Any]:
     """
     Validate the tax credit section written for a business (``section_overrides["taxCredit"]``).
@@ -667,6 +721,7 @@ def apply_section_overrides(
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
     realizations with its own photos and what they show, ``images`` the template's other photos
     (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
+    ``trustItems`` the trust markers, ``faq`` the questions and answers,
     ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la personne » provider.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
@@ -692,12 +747,18 @@ def apply_section_overrides(
     points = clean_hero_points(overrides.get("heroPoints"))
     if points:
         site_content["heroPoints"] = points
+    trust_items = clean_trust_items(overrides.get("trustItems"))
+    if trust_items:
+        site_content["trustItems"] = trust_items
     about = overrides.get("about")
     if isinstance(about, str) and about.strip():
         site_content["about"] = about.strip()
     portfolio = clean_portfolio_items(overrides.get("portfolio"))
     if portfolio:
         site_content["portfolio"] = portfolio
+    faq = clean_faq_items(overrides.get("faq"))
+    if faq:
+        site_content["faq"] = faq
     tax_credit = clean_tax_credit(overrides.get("taxCredit"))
     if tax_credit:
         apply_tax_credit(site_content, tax_credit)
@@ -1779,9 +1840,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
     }
     # Per-template one-off image slots (barber's banner, food's collage, the mechanic FAQ photo…): any
     # section field holding an asset object that isn't one of the named single-asset keys is surfaced
-    # under the generic map. Mirrors demo-host's ``StoryblokSiteContentBridge.collectImages`` — a one-off
-    # image reusing a reserved field name (mechanic's ``faq``) is an asset dict here, so it lands in images
-    # (the standard-key readers above already took the list/text fields, which are never asset dicts).
+    # under the generic map. Mirrors demo-host's ``StoryblokSiteContentBridge.collectImages``.
     images: dict[str, str] = {}
     for key, value in blok.items():
         if key in _NAMED_ASSET_KEYS or not isinstance(value, dict):
