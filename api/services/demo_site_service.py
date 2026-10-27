@@ -1877,8 +1877,10 @@ class DemoSiteService:
         The published ``content_json`` stays byte-identical — same texts, same image order, same hero —
         and only each fragile image URL is swapped for a permanent R2 copy of the SAME bytes. So a demo
         revived for a J+30 relance shows exactly what the prospect first saw, without depending on a
-        Storyblok space that expiry has since deleted, or a Google link that has rotted. Best-effort: a
-        download/upload failure keeps the original URL, and this never commits (the caller does).
+        Storyblok space that expiry has since deleted, or a Google link that has rotted. The sections written
+        for the business (``section_overrides``, laid over the content when the site is served) move with it,
+        since they hold the photos a client uploaded from the CMS. Best-effort: a download/upload failure
+        keeps the original URL, and this never commits (the caller does).
 
         Args:
             demo_site: The demo whose stored content images are moved to R2.
@@ -1888,6 +1890,7 @@ class DemoSiteService:
         """
         prospect_id: int | None = getattr(demo_site, "prospect_id", None)
         content = demo_site.content_json
+        overrides = getattr(demo_site, "section_overrides", None)
         if not prospect_id or not isinstance(content, dict) or not content or not r2_storage.is_configured():
             return 0
 
@@ -1907,6 +1910,7 @@ class DemoSiteService:
                     _collect(value)
 
         _collect(content)
+        _collect(overrides)
         if not fragile:
             return 0
 
@@ -1931,6 +1935,8 @@ class DemoSiteService:
             return node
 
         demo_site.content_json = _rewrite(content)
+        if isinstance(overrides, dict):
+            demo_site.section_overrides = _rewrite(overrides)
         logger.info("Rehosted %d content image(s) to R2 for slug=%s", len(mapping), demo_site.slug)
         return len(mapping)
 

@@ -75,6 +75,30 @@ async def test_persist_rewrites_only_fragile_images_and_keeps_the_rest(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_persist_moves_the_photos_of_the_written_sections_too(monkeypatch) -> None:
+    """A photo the client uploaded into a written section is served from the overrides, so it moves to R2 as well."""
+    monkeypatch.setattr(dss_mod.r2_storage, "is_configured", lambda: True)
+
+    async def fake_rehost(prospect_id: int, url: str) -> str:
+        return f"https://pub-x.r2.dev/images/prospects/{prospect_id}/{len(url)}.jpg"
+
+    monkeypatch.setattr(dss_mod.prospect_photo_storage, "rehost_remote_image", fake_rehost)
+    uploaded = "https://a.storyblok.com/f/296169916056514/x/atelier.jpg"
+    card = {"title": "Mécanique générale", "image": uploaded}
+    site = SimpleNamespace(
+        prospect_id=179,
+        slug="tp-motorsport",
+        content_json={"businessName": "TP Motorsport Sàrl", "services": [card]},
+        section_overrides={"services": [card], "services_source": "manual"},
+    )
+
+    assert await demo_site_service.persist_content_images_to_r2(site) == 1
+    assert site.section_overrides["services"][0]["image"].startswith("https://pub-x.r2.dev/")
+    assert site.section_overrides["services"][0]["image"] == site.content_json["services"][0]["image"]
+    assert site.section_overrides["services_source"] == "manual"
+
+
+@pytest.mark.asyncio
 async def test_persist_is_best_effort_when_a_rehost_fails(monkeypatch) -> None:
     """A rehost that returns the original URL (dead link, storage hiccup) leaves the content unchanged."""
     monkeypatch.setattr(dss_mod.r2_storage, "is_configured", lambda: True)

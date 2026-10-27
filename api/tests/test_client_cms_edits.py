@@ -17,7 +17,7 @@ from services.demo_site_service import demo_site_service
 from services.storyblok_service import storyblok_service
 from services.templates import registry
 from services.templates import site_content as sc
-from services.templates.site_content import overrides_from_published_story
+from services.templates.site_content import overrides_from_published_story, storyblok_asset_key
 
 _SERVICES = [
     {
@@ -51,6 +51,11 @@ def _garage_story(**changes: Any) -> dict[str, Any]:
     return {"component": "page", "body": registry.to_storyblok_site_content("mechanic-pitlane", site)}
 
 
+def _cms_copy(url: str) -> str:
+    """The address a push gives a photo's copy in the space library."""
+    return f"https://a.storyblok.com/f/296169916056514/cdf44b5d09/{storyblok_asset_key(url)}.jpg"
+
+
 def _refresh(story: dict[str, Any], overrides: Any = None) -> dict[str, Any] | None:
     published = sc.from_storyblok_site_content(story)
     assert published is not None
@@ -59,6 +64,15 @@ def _refresh(story: dict[str, Any], overrides: Any = None) -> dict[str, Any] | N
 
 def test_a_publish_of_the_stored_sections_keeps_them_as_they_are() -> None:
     assert _refresh(_garage_story()) == _OVERRIDES
+
+
+def test_the_cms_copies_of_the_stored_photos_keep_their_stored_address() -> None:
+    story = _garage_story(
+        services=[{**_SERVICES[0], "image": _cms_copy(_SERVICES[0]["image"])}],
+        images={slot: _cms_copy(url) for slot, url in _IMAGES.items()},
+    )
+
+    assert _refresh(story) == _OVERRIDES
 
 
 def test_the_client_edit_of_a_written_section_replaces_it() -> None:

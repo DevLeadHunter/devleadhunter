@@ -20,6 +20,7 @@ remaining boilerplate (section headings, etc.).
 
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
 from datetime import datetime
@@ -842,6 +843,45 @@ def _published_override_value(key: str, published: dict[str, Any], stored: Any) 
     return stored
 
 
+def _with_stored_photo_urls(published_value: Any, stored_value: Any) -> Any:
+    """
+    Point each CMS copy of a stored photo back at its stored address, so only a photo the client uploaded is an edit.
+
+    A push uploads every photo into the space library under the ``storyblok_asset_key`` of its address, so the
+    published story names the stored photos by their copies, which die with the space when the demo expires.
+
+    Args:
+        published_value: A section read back from the published story.
+        stored_value: The same section as stored.
+
+    Returns:
+        The published section, with the stored address of each photo it kept.
+    """
+    stored_urls_by_asset_key: dict[str, str] = {}
+
+    def _collect(node: Any) -> None:
+        if isinstance(node, str) and node.startswith("http"):
+            stored_urls_by_asset_key[storyblok_asset_key(node)] = node
+        elif isinstance(node, dict):
+            for value in node.values():
+                _collect(value)
+        elif isinstance(node, list):
+            for value in node:
+                _collect(value)
+
+    def _restore(node: Any) -> Any:
+        if isinstance(node, str) and node.startswith("http"):
+            return stored_urls_by_asset_key.get(storyblok_asset_stem(node), node)
+        if isinstance(node, dict):
+            return {key: _restore(value) for key, value in node.items()}
+        if isinstance(node, list):
+            return [_restore(value) for value in node]
+        return node
+
+    _collect(stored_value)
+    return _restore(published_value) if stored_urls_by_asset_key else published_value
+
+
 def overrides_from_published_story(
     overrides: Any, story_content: dict[str, Any], published: dict[str, Any]
 ) -> dict[str, Any] | None:
@@ -849,8 +889,9 @@ def overrides_from_published_story(
     Take a client's published CMS edits into the sections written for the business, so they win over the stored ones.
 
     Every edit made from the dashboard is pushed to the CMS, so a published story already holds the stored
-    sections: whatever differs is the client's own edit. Only the sections the story carries are read back (a
-    template that never shows one leaves it untouched); a section the client emptied is dropped.
+    sections (their photos as CMS copies, read back at their stored address): whatever differs is the client's
+    own edit. Only the sections the story carries are read back (a template that never shows one leaves it
+    untouched); a section the client emptied is dropped.
 
     Args:
         overrides: The site's stored sections (``DemoSite.section_overrides``).
@@ -869,7 +910,7 @@ def overrides_from_published_story(
     for key, section in _OVERRIDE_SECTIONS.items():
         if key not in refreshed or section not in published_sections:
             continue
-        value = _published_override_value(key, published, refreshed[key])
+        value = _with_stored_photo_urls(_published_override_value(key, published, refreshed[key]), refreshed[key])
         if value:
             refreshed[key] = value
         else:
@@ -877,7 +918,9 @@ def overrides_from_published_story(
     stored_images = refreshed.get("images")
     published_images = published.get("images")
     if isinstance(stored_images, dict) and isinstance(published_images, dict):
-        refreshed["images"] = {slot: published_images.get(slot) or url for slot, url in stored_images.items()}
+        refreshed["images"] = {
+            slot: _with_stored_photo_urls(published_images.get(slot), url) or url for slot, url in stored_images.items()
+        }
     return refreshed or None
 
 
@@ -1782,6 +1825,16 @@ def _asset_url(value: Any) -> str:
     if isinstance(value, dict):
         return _clean_str(value.get("filename"))
     return _clean_str(value)
+
+
+def storyblok_asset_key(source_url: str) -> str:
+    """Deterministic short digest of a photo's address, the file name a push gives its copy in the CMS library."""
+    return hashlib.sha1(source_url.encode("utf-8")).hexdigest()[:20]
+
+
+def storyblok_asset_stem(filename: str) -> str:
+    """The name of an asset's file without its folder, extension or query (the ``storyblok_asset_key`` of an upload)."""
+    return filename.split("?")[0].rstrip("/").split("/")[-1].split(".")[0]
 
 
 def _blok_list(value: Any) -> list[dict[str, Any]]:

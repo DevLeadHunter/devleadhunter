@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
-import hashlib
 import logging
 import random
 import re
@@ -34,6 +33,8 @@ from services.templates.site_content import (
     SITE_CONTENT_SCHEMAS,
     apply_country_conventions,
     apply_section_overrides,
+    storyblok_asset_key,
+    storyblok_asset_stem,
 )
 
 logger = logging.getLogger(__name__)
@@ -434,7 +435,7 @@ class StoryblokService:
         semaphore = asyncio.Semaphore(4)
 
         async def _resolve_one(url: str) -> tuple[str, dict[str, Any] | None]:
-            key: str = self._asset_key(url)
+            key: str = storyblok_asset_key(url)
             already: dict[str, Any] | None = existing.get(key)
             if already is not None:
                 # Same photo already in the library → reuse it, never re-upload (no duplicate asset).
@@ -449,16 +450,6 @@ class StoryblokService:
             if replacement is not None:
                 node["id"] = replacement["id"]
                 node["filename"] = replacement["filename"]
-
-    @staticmethod
-    def _asset_key(source_url: str) -> str:
-        """Deterministic short digest of a source URL, used as the uploaded asset's filename stem."""
-        return hashlib.sha1(source_url.encode("utf-8")).hexdigest()[:20]
-
-    @staticmethod
-    def _asset_stem(filename: str) -> str:
-        """The name of an asset's file without its folder, extension or query (the ``_asset_key`` of an upload)."""
-        return filename.split("?")[0].rstrip("/").split("/")[-1].split(".")[0]
 
     def is_stock_image(self, url: str) -> bool:
         """
@@ -479,7 +470,7 @@ class StoryblokService:
         stock_urls: frozenset[str] = default_image_urls()
         if url in stock_urls:
             return True
-        return self._asset_stem(url) in {self._asset_key(stock_url) for stock_url in stock_urls}
+        return storyblok_asset_stem(url) in {storyblok_asset_key(stock_url) for stock_url in stock_urls}
 
     async def _list_space_assets(self, client: httpx.AsyncClient, space_id: int) -> dict[str, dict[str, Any]]:
         """Map each already-uploaded asset's filename stem to ``{id, filename}`` so a re-publish reuses it.
@@ -503,7 +494,7 @@ class StoryblokService:
                 asset_id = asset.get("id")
                 if not isinstance(filename, str) or asset_id is None:
                     continue
-                stem: str = self._asset_stem(filename)
+                stem: str = storyblok_asset_stem(filename)
                 if stem:
                     assets_by_key.setdefault(stem, {"id": asset_id, "filename": filename})
             if len(assets) < 100:
