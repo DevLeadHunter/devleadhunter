@@ -797,6 +797,90 @@ def apply_section_overrides(
     return site_content
 
 
+# The sections written for a business that its client can edit in the CMS: override key → the section carrying it.
+_OVERRIDE_SECTIONS: dict[str, str] = {
+    "heroBadge": "hero",
+    "heroPoints": "hero",
+    "trustItems": "trust",
+    "about": "about",
+    "services": "services",
+    "strengths": "strengths",
+    "faq": "faq",
+    "portfolio": "portfolio",
+    "taxCredit": "taxCredit",
+}
+
+
+def _published_override_value(key: str, published: dict[str, Any], stored: Any) -> Any:
+    """Read one section written for the business back from the flattened published story, cleaned like an edit."""
+    if key in ("heroBadge", "about"):
+        return _clean_str(published.get(key))
+    if key == "heroPoints":
+        return clean_hero_points(published.get("heroPoints"))
+    if key == "trustItems":
+        return clean_trust_items(published.get("trustItems"))
+    if key == "services":
+        return clean_service_cards(published.get("services"))
+    if key == "strengths":
+        return clean_strength_items(published.get("strengths"))
+    if key == "faq":
+        return clean_faq_items(published.get("faq"))
+    if key == "portfolio":
+        return clean_portfolio_items(published.get("portfolio"))
+    if key == "taxCredit":
+        stored_tax_credit: dict[str, Any] = stored if isinstance(stored, dict) else {}
+        return clean_tax_credit(
+            {
+                "heading": published.get("taxCreditHeading"),
+                "lead": published.get("taxCreditLead"),
+                "points": published.get("taxCreditPoints"),
+                "note": published.get("taxCreditNote"),
+                "faqQuestion": stored_tax_credit.get("faqQuestion"),
+                "faqAnswer": stored_tax_credit.get("faqAnswer"),
+            }
+        )
+    return stored
+
+
+def overrides_from_published_story(
+    overrides: Any, story_content: dict[str, Any], published: dict[str, Any]
+) -> dict[str, Any] | None:
+    """
+    Take a client's published CMS edits into the sections written for the business, so they win over the stored ones.
+
+    Every edit made from the dashboard is pushed to the CMS, so a published story already holds the stored
+    sections: whatever differs is the client's own edit. Only the sections the story carries are read back (a
+    template that never shows one leaves it untouched); a section the client emptied is dropped.
+
+    Args:
+        overrides: The site's stored sections (``DemoSite.section_overrides``).
+        story_content: The published story content, as fetched from Storyblok.
+        published: The same story flattened by ``from_storyblok_site_content``.
+
+    Returns:
+        The refreshed sections, or None when none is left.
+    """
+    if not isinstance(overrides, dict) or not overrides:
+        return None
+    published_sections: set[str] = {
+        str(blok.get("component", "")).removeprefix("section_") for blok in _blok_list(story_content.get("body"))
+    }
+    refreshed: dict[str, Any] = dict(overrides)
+    for key, section in _OVERRIDE_SECTIONS.items():
+        if key not in refreshed or section not in published_sections:
+            continue
+        value = _published_override_value(key, published, refreshed[key])
+        if value:
+            refreshed[key] = value
+        else:
+            refreshed.pop(key)
+    stored_images = refreshed.get("images")
+    published_images = published.get("images")
+    if isinstance(stored_images, dict) and isinstance(published_images, dict):
+        refreshed["images"] = {slot: published_images.get(slot) or url for slot, url in stored_images.items()}
+    return refreshed or None
+
+
 def fixed_trade_services(defaults: list[dict[str, str]]) -> list[dict[str, str]]:
     """Use a template's curated service grid as-is (fake prices stripped), ignoring scraped services.
 

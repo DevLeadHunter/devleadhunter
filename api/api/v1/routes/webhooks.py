@@ -41,7 +41,11 @@ from services.encryption_service import encryption_service
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
 from services.storyblok_service import storyblok_service
-from services.templates.site_content import apply_section_overrides, from_storyblok_site_content
+from services.templates.site_content import (
+    apply_section_overrides,
+    from_storyblok_site_content,
+    overrides_from_published_story,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -657,6 +661,7 @@ async def storyblok_webhook(
             flat_content[key] = previous[key]
 
     enrichment = demo_site_service._enrichment_dict_for_site(db, site)
+    site.section_overrides = overrides_from_published_story(site.section_overrides, story_content, flat_content)
     flat_content = apply_section_overrides(flat_content, site.section_overrides, enrichment)
 
     site.content_json = flat_content

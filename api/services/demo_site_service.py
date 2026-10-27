@@ -72,6 +72,7 @@ from services.templates.site_content import (
     clean_tax_credit,
     clean_trust_items,
     from_storyblok_site_content,
+    overrides_from_published_story,
     usable_site_photos,
 )
 from services.trade_normalizer import TradeNormalizer
@@ -1584,6 +1585,7 @@ class DemoSiteService:
                 flat_content[key] = previous[key]
 
         enrichment = self._enrichment_dict_for_site(db, site)
+        site.section_overrides = overrides_from_published_story(site.section_overrides, story_content, flat_content)
         site.content_json = apply_section_overrides(flat_content, site.section_overrides, enrichment)
         db.commit()
         db.refresh(site)

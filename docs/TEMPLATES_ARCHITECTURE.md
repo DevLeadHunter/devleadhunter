@@ -162,7 +162,10 @@ cliente, Storyblok appelle `POST /api/v1/webhooks/storyblok`, l'API re-fetch la 
 TS `storyblokSiteContentToSiteContent.ts`). Le webhook est enregistré par space au provisioning
 (`_register_publish_webhook` — skippé si `API_BASE_URL` est localhost ; secret optionnel
 `STORYBLOK_WEBHOOK_SECRET`). Sans ce webhook, les éditions publiées par le client ne seraient
-**jamais visibles** sur son site.
+**jamais visibles** sur son site. Les sections écrites pour l'entreprise depuis le dashboard
+(`section_overrides` : prestations, FAQ, à propos, atouts, repères, photos uniques…) sont réappliquées
+par-dessus la story : le webhook y reprend d'abord ce que le client a publié
+(`overrides_from_published_story`, depuis le 27/10/2026), sinon sa modification ne s'afficherait pas.
 
 ```ts
 // @devleadhunter/website-content — shape actuel (tag v1.2.0)
