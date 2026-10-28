@@ -1361,6 +1361,8 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
 # reserved name (e.g. the mechanic template's FAQ photo, named ``faq``) must still reach ``images``.
 _NAMED_ASSET_KEYS: frozenset[str] = frozenset({"heroImage", "aboutImage", "logo"})
 
+_CMS_LIBRARY_URL_PREFIX: str = "https://a.storyblok.com/"
+
 # Ordered page sections: (component suffix, editor label, the flat ``SiteContent`` keys it owns).
 # This is the SINGLE source of truth — schema, ``to_storyblok`` split and the merge share it.
 SECTION_DEFINITIONS: list[tuple[str, str, list[str]]] = [
@@ -1835,6 +1837,26 @@ def storyblok_asset_key(source_url: str) -> str:
 def storyblok_asset_stem(filename: str) -> str:
     """The name of an asset's file without its folder, extension or query (the ``storyblok_asset_key`` of an upload)."""
     return filename.split("?")[0].rstrip("/").split("/")[-1].split(".")[0]
+
+
+def comparable_section(blok: dict[str, Any]) -> dict[str, Any]:
+    """
+    A section blok reduced to what its client edits, to compare two versions of a site.
+
+    Its random ``_uid``s go, and each address becomes the name of its file in the CMS library, so a stored photo
+    and its CMS copy compare equal while a photo the client uploaded differs.
+    """
+
+    def _reduce(node: Any) -> Any:
+        if isinstance(node, dict):
+            return {key: _reduce(value) for key, value in node.items() if key != "_uid"}
+        if isinstance(node, list):
+            return [_reduce(value) for value in node]
+        if isinstance(node, str) and node.startswith("http"):
+            return storyblok_asset_stem(node) if node.startswith(_CMS_LIBRARY_URL_PREFIX) else storyblok_asset_key(node)
+        return node
+
+    return _reduce(blok)
 
 
 def _blok_list(value: Any) -> list[dict[str, Any]]:

@@ -169,6 +169,10 @@ par-dessus la story : le webhook y reprend d'abord ce que le client a publié
 Une photo que nous avons envoyée garde son adresse R2 : sa copie dans la médiathèque porte
 `storyblok_asset_key` de cette adresse. Seule une photo envoyée par le client remplace la nôtre, et
 `persist_content_images_to_r2` la recopie sur R2 avec le reste avant que l'expiration supprime l'espace.
+Une fois la réponse envoyée, le webhook prévient le propriétaire quand la publication vient d'un autre compte
+Storyblok que celui du jeton de gestion (le client invité), en nommant les sections modifiées : auteur lu dans
+les activités de l'espace (`story.publish`), une notification au plus toutes les 10 minutes par site
+(`cms_client_publication_service`, depuis le 28/10/2026).
 
 ```ts
 // @devleadhunter/website-content — shape actuel (tag v1.2.0)

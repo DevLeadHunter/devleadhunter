@@ -38,6 +38,7 @@ from services.templates import (
     plumber_cuivre,
     plumber_signature,
 )
+from services.templates.site_content import SECTION_DEFINITIONS, comparable_section
 from services.templates.visitor_data import TemplateVisitorData
 
 # Order here defines the order shown in the template picker (default first).
@@ -253,6 +254,29 @@ def to_storyblok_site_content(template_id: str, site_content: dict[str, Any]) ->
     extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(module, "EXTRA_SECTION_IMAGES", None)
     section_field_overrides: dict[str, list[str]] | None = getattr(module, "SECTION_FIELDS", None)
     return module.to_storyblok_site_content(site_content, used_sections, extra_section_images, section_field_overrides)
+
+
+def changed_section_labels(template_id: str, previous: dict[str, Any], published: dict[str, Any]) -> list[str]:
+    """
+    The editor labels of the template's sections whose content differs between two versions of a site, in page order.
+
+    Args:
+        template_id: The site's template.
+        previous: The site content before the publication.
+        published: The site content after it.
+
+    Returns:
+        Labels such as « Services » or « Questions fréquentes »; empty when nothing the client edits changed.
+    """
+    label_by_component: dict[str, str] = {f"section_{suffix}": label for suffix, label, _ in SECTION_DEFINITIONS}
+    previous_sections: dict[str, dict[str, Any]] = {
+        blok["component"]: comparable_section(blok) for blok in to_storyblok_site_content(template_id, previous)
+    }
+    return [
+        label_by_component[blok["component"]]
+        for blok in to_storyblok_site_content(template_id, published)
+        if comparable_section(blok) != previous_sections.get(blok["component"])
+    ]
 
 
 def section_image_slots(template_id: str) -> dict[str, str]:

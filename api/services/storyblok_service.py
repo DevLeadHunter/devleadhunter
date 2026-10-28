@@ -101,6 +101,7 @@ class StoryblokService:
         self._rate_lock: asyncio.Lock = asyncio.Lock()
         self._min_request_interval: float = 0.18
         self._next_request_at: float = 0.0
+        self._token_owner_id: int | None = None
 
     @property
     def is_configured(self) -> bool:
@@ -710,6 +711,63 @@ class StoryblokService:
             [sorted(c.keys()) for c in collaborators if isinstance(c, dict)][:5],
         )
         return "not_invited"
+
+    async def get_token_owner_id(self) -> int | None:
+        """
+        The Storyblok account the Management token belongs to, read once then kept.
+
+        Returns:
+            The account id, or None when Storyblok is unconfigured or does not answer.
+        """
+        if self._token_owner_id is not None or not self.is_configured:
+            return self._token_owner_id
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(client, "GET", f"{self._base_url}/users/me")
+            response.raise_for_status()
+            owner_id: Any = response.json().get("user", {}).get("id")
+        except (httpx.HTTPError, ValueError, AttributeError) as exc:
+            logger.warning("Storyblok token owner lookup failed: %s", exc)
+            return None
+        if isinstance(owner_id, int):
+            self._token_owner_id = owner_id
+        return self._token_owner_id
+
+    async def get_recent_story_publisher_id(self, space_id: int, published_after: datetime) -> int | None:
+        """
+        The Storyblok account behind the latest story publication of a space, when it is recent enough.
+
+        Reads the space's activity feed, newest first, where each publication is a ``story.publish`` entry. The feed
+        may not list a publication yet when its webhook arrives, so an older one is never taken for it.
+
+        Args:
+            space_id: The space.
+            published_after: The time before which a publication is too old to be the one just made.
+
+        Returns:
+            The publisher's account id, or None when no recent publication is listed or Storyblok does not answer.
+        """
+        if not self.is_configured or not space_id:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(
+                    client, "GET", f"{self._base_url}/spaces/{space_id}/activities/", params={"per_page": 25}
+                )
+            response.raise_for_status()
+            entries: list[Any] = response.json().get("activities", [])
+            for entry in entries:
+                activity: Any = entry.get("activity") if isinstance(entry, dict) else None
+                if not isinstance(activity, dict) or activity.get("key") != "story.publish":
+                    continue
+                published_at: datetime = datetime.fromisoformat(str(activity.get("created_at")))
+                owner_id: Any = activity.get("owner_id")
+                if published_at < published_after or not isinstance(owner_id, int):
+                    return None
+                return owner_id
+        except (httpx.HTTPError, ValueError, AttributeError, TypeError) as exc:
+            logger.warning("Storyblok activity feed unreadable for space %s: %s", space_id, exc)
+        return None
 
     async def provision_space(
         self,

@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 # Deep links opened when a notification is tapped.
 _PROSPECTS_URL = "/dashboard/my-prospects"
+_DEMO_SITES_URL = "/dashboard/demo-sites"
 _ORDERS_URL = "/dashboard/orders"
 _SMS_URL = "/dashboard/sms"
 _ASSISTANTS_URL = "/dashboard/ai-assistants"
@@ -314,6 +315,50 @@ class NotificationService:
             body=f"{_MODULE_TAG_SITE} · {body}",
             url=self._prospect_url(prospect_id),
             tag=f"cms-joined-{demo_site_id}",
+        )
+
+    async def notify_cms_published(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        demo_site_id: int,
+        changed_section_labels: list[str],
+    ) -> None:
+        """
+        Raise a notification when a client publishes changes to their site from their editing space.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the site, the notification recipient.
+            prospect_id: Prospect the site was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved (the site's business name).
+            demo_site_id: The site, opened on tap; its pushes replace each other on the phone.
+            changed_section_labels: The editor labels of the sections the publication changed, in page order.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        body = "A modifié son site dans son espace"
+        if changed_section_labels:
+            body = f"{body} : {', '.join(changed_section_labels)}"
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="cms_client_published",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · {body}",
+            user_id=user_id,
+            entity_type="demo_site",
+            entity_id=demo_site_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="demo_site",
+            level="success",
+            title=f"✏️ {prospect_name}",
+            body=f"{_MODULE_TAG_SITE} · {body}",
+            url=f"{_DEMO_SITES_URL}/{demo_site_id}",
+            tag=f"cms-published-{demo_site_id}",
         )
 
     async def notify_assistant_video_event(
