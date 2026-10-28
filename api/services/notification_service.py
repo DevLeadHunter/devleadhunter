@@ -94,8 +94,11 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_cta_banner_abandoned": ("🕓", "info", "A ouvert le formulaire mais est reparti sans envoyer"),
     "demo_engaged": ("🔥", "success", "Visite qualifiée — prospect engagé"),
     "demo_cta_click": ("👉", "success", "A cliqué « {label} »"),
+    # The owner's own contact (banner chip, withdrawn page) apart from the site's links, which are the prospect's.
     "demo_phone_click": ("📞", "success", "A cliqué ton numéro"),
     "demo_contact_click": ("✉️", "success", "A cliqué ton mail de contact"),
+    "demo_site_phone_click": ("📞", "success", "A cliqué le numéro de son site"),
+    "demo_site_contact_click": ("✉️", "success", "A cliqué l'email de son site"),
     "demo_outbound_click": ("🔗", "info", "A cliqué un lien externe : {host}"),
     "demo_time_on_page": ("👀", "info", "Visite : {seconds}s · {max_scroll}% lu"),
     "demo_returned": ("↩️", "success", "Est revenu sur sa démo"),

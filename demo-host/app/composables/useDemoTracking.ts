@@ -156,12 +156,13 @@ export function useDemoTracking(): {
         const section: string = sectionOf(target)
         const href: string = anchor?.getAttribute('href') ?? ''
 
+        // The site's own number and email are the prospect's: their beacons must not say the owner's contact.
         if (href.startsWith('tel:')) {
           posthog.capture('demo_phone_click', { href, section })
-          DemoBeaconUtils.send(apiBase, slug, 'demo_phone_click')
+          DemoBeaconUtils.send(apiBase, slug, 'demo_site_phone_click')
         } else if (href.startsWith('mailto:')) {
           posthog.capture('demo_contact_click', { href, section })
-          DemoBeaconUtils.send(apiBase, slug, 'demo_contact_click')
+          DemoBeaconUtils.send(apiBase, slug, 'demo_site_contact_click')
         } else if (/^https?:\/\//i.test(href) && !href.includes(window.location.host)) {
           let host: string
           try {
