@@ -39,6 +39,7 @@ from services.demo_site_verification_service import (
 from services.demo_slug_guard import DemoSlugGuard
 from services.enrichment_service import enrichment_service
 from services.french_date_formatter import FrenchDateFormatter
+from services.notification_service import notification_service
 from services.photo_labeling_service import photo_family_for_category, photo_labeling_service
 from services.photo_labels import PHOTO_FAMILY_CRAFT, craft_labels_for_urls, is_card_worthy, labels_for_urls
 from services.pricing_service import PricingService
@@ -1134,7 +1135,7 @@ class DemoSiteService:
 
         Cheap short-circuit: an uninvited site is ``not_invited`` without any API call. Otherwise the
         live status is fetched best-effort — a transient ``unknown`` never overwrites a known state,
-        and the first observed ``joined`` stamps ``storyblok_joined_at``.
+        and the first observed ``joined`` stamps ``storyblok_joined_at`` and notifies the owner.
         """
         if not demo_site.storyblok_invite_sent:
             if demo_site.storyblok_collaborator_status != StoryblokCollaboratorStatus.NOT_INVITED.value:
@@ -1160,6 +1161,8 @@ class DemoSiteService:
         if not email or not email.strip():
             return demo_site
 
+        # Nothing to save: this commit frees the database connection while Storyblok answers.
+        db.commit()
         status: str = await storyblok_service.get_collaborator_status(space_id, email.strip())
         # A transient read failure must not erase a state we already trust.
         if status == StoryblokCollaboratorStatus.UNKNOWN.value:
@@ -1170,15 +1173,33 @@ class DemoSiteService:
             status = StoryblokCollaboratorStatus.PENDING.value
 
         demo_site.storyblok_collaborator_status = status
+        has_client_just_joined: bool = False
         if status == StoryblokCollaboratorStatus.JOINED.value:
             if demo_site.storyblok_joined_at is None:
                 demo_site.storyblok_joined_at = datetime.now(UTC)
+                has_client_just_joined = True
         else:
             # Keep the stamp consistent if a client is ever read back as not-yet-joined.
             demo_site.storyblok_joined_at = None
         db.commit()
         db.refresh(demo_site)
+        if has_client_just_joined:
+            await self._notify_client_joined_cms(db, demo_site)
         return demo_site
+
+    @staticmethod
+    async def _notify_client_joined_cms(db: Session, demo_site: DemoSite) -> None:
+        """Tell the owner their client joined the editing space; a failed notification never fails the refresh."""
+        try:
+            await notification_service.notify_cms_joined(
+                db,
+                user_id=demo_site.user_id,
+                prospect_id=demo_site.prospect_id,
+                fallback_name=demo_site.business_name,
+                demo_site_id=demo_site.id,
+            )
+        except Exception:
+            logger.warning("CMS joined notification failed for demo site %s", demo_site.id, exc_info=True)
 
     async def create_demo_site(
         self,

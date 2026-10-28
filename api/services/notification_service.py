@@ -36,6 +36,7 @@ from services import push_service
 from services.activity_log_service import (
     CATEGORY_ASSISTANT,
     CATEGORY_DEMO,
+    CATEGORY_DEMO_SITE,
     CATEGORY_EMAIL,
     CATEGORY_SALE,
     CATEGORY_SMS,
@@ -273,6 +274,46 @@ class NotificationService:
             title=f"{emoji} {prospect_name}",
             body=f"{_MODULE_TAG_SITE} · {body}",
             url=self._prospect_url(prospect_id),
+        )
+
+    async def notify_cms_joined(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        demo_site_id: int,
+    ) -> None:
+        """
+        Raise a notification when a client accepts the invitation to their site's editing space.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the site, the notification recipient.
+            prospect_id: Prospect the site was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved (the site's business name).
+            demo_site_id: The site the client joined, tags the push.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        body = "A rejoint son espace d'édition"
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="cms_joined",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · {body}",
+            user_id=user_id,
+            entity_type="prospect" if prospect_id else None,
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="demo",
+            level="success",
+            title=f"🔑 {prospect_name}",
+            body=f"{_MODULE_TAG_SITE} · {body}",
+            url=self._prospect_url(prospect_id),
+            tag=f"cms-joined-{demo_site_id}",
         )
 
     async def notify_assistant_video_event(
