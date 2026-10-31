@@ -328,6 +328,55 @@ async def test_posthog_is_asked_once_the_database_connection_is_handed_back(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("sessions", "is_available"), [(None, False), ([], True)])
+async def test_visit_tracking_is_unavailable_when_posthog_could_not_be_read(
+    db: Session,
+    campaign: Campaign,
+    monkeypatch: pytest.MonkeyPatch,
+    sessions: list[DemoSession] | None,
+    is_available: bool,
+) -> None:
+    prospect = _prospect(db, "Garage Nomade", "garage-nomade")
+    campaign.prospects = [prospect]
+    _send(db, campaign, prospect, at=LAUNCH)
+    db.commit()
+    monkeypatch.setattr(results_module.posthog_service, "_project_id", "42")
+    monkeypatch.setattr(results_module.posthog_service, "_api_key", "phx_test")
+
+    async def get_demo_sessions(slugs: list[str], since: datetime) -> list[DemoSession] | None:
+        return sessions
+
+    monkeypatch.setattr(results_module.posthog_service, "get_demo_sessions", get_demo_sessions)
+
+    results = await CampaignResultsService().build(db, USER_ID, campaign.id)
+
+    assert results is not None
+    assert results.is_visit_tracking_available is is_available
+    assert results.totals.visited == 0
+
+
+@pytest.mark.asyncio
+async def test_benchmarks_survive_an_unreadable_posthog(
+    db: Session, campaign: Campaign, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prospect = _prospect(db, "Garage Nomade", "garage-nomade")
+    campaign.prospects = [prospect]
+    _send(db, campaign, prospect, at=LAUNCH)
+    db.commit()
+
+    async def get_demo_sessions(slugs: list[str], since: datetime) -> list[DemoSession] | None:
+        return None
+
+    monkeypatch.setattr(results_module.posthog_service, "get_demo_sessions", get_demo_sessions)
+
+    benchmarks = await CampaignResultsService().build_benchmarks(db, USER_ID)
+
+    assert [(benchmark.campaign_id, benchmark.contacted, benchmark.visited) for benchmark in benchmarks.campaigns] == [
+        (campaign.id, 1, 0)
+    ]
+
+
+@pytest.mark.asyncio
 async def test_concurrent_requests_share_one_computation(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     service = CampaignResultsService()
     readings: list[int] = []

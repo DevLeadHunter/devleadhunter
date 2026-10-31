@@ -10,6 +10,7 @@ import type {
   CampaignResultsReply,
   CampaignResultsResponse,
 } from '~/types/CampaignResults'
+import type { CampaignStoryblokSpacesResponse } from '~/types/CampaignStoryblokSpaces'
 import type { CampaignVideoRequestsResponse, CampaignVideosResponse } from '~/types/CampaignVideos'
 
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused' | 'cancelled'
@@ -487,5 +488,14 @@ export class CampaignService {
     return ApiClient.post<CampaignVideoRequestsResponse>(`/api/v1/campaigns/${campaignId}/videos/requests`, {
       redo: shouldRedoAllVideos,
     })
+  }
+
+  /**
+   * Split the Storyblok spaces of the campaign's demo sites between those a release can take and those that stay.
+   * @param campaignId - Campaign ID.
+   * @returns The releasable and the kept sites with their reason, and how many spaces the account holds.
+   */
+  static async getStoryblokSpaces(campaignId: number): Promise<CampaignStoryblokSpacesResponse> {
+    return ApiClient.get<CampaignStoryblokSpacesResponse>(`/api/v1/campaigns/${campaignId}/storyblok-spaces`)
   }
 }

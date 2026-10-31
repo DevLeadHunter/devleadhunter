@@ -40,6 +40,7 @@ from services.templates.site_content import (
 logger = logging.getLogger(__name__)
 
 _STOCK_PHOTO_HOST: str = "images.unsplash.com"
+_SPACE_COUNT_TTL_SECONDS: float = 300.0
 
 
 @dataclass
@@ -102,6 +103,7 @@ class StoryblokService:
         self._min_request_interval: float = 0.18
         self._next_request_at: float = 0.0
         self._token_owner_id: int | None = None
+        self._space_count_cache: tuple[float, int] | None = None
 
     @property
     def is_configured(self) -> bool:
@@ -1025,6 +1027,29 @@ class StoryblokService:
 
         await self.delete_space(resolved_space_id)
         return resolved_space_id
+
+    async def count_spaces(self) -> int | None:
+        """
+        How many spaces the account holds (its plan caps them), read at most every five minutes.
+
+        Returns:
+            The count, or None when Storyblok is not configured or does not answer.
+        """
+        if not self.is_configured:
+            return None
+        cached: tuple[float, int] | None = self._space_count_cache
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(client, "GET", f"{self._base_url}/spaces/")
+            response.raise_for_status()
+            count: int = len(response.json().get("spaces", []))
+        except Exception:
+            logger.warning("Storyblok space count could not be read", exc_info=True)
+            return None
+        self._space_count_cache = (time.monotonic() + _SPACE_COUNT_TTL_SECONDS, count)
+        return count
 
     async def delete_space(self, space_id: int) -> None:
         """Delete a Storyblok space by id."""

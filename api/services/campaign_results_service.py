@@ -114,6 +114,7 @@ class _DatabaseReading:
 
     campaigns: list[_CampaignReading]
     prospect_ids_by_slug: dict[str, set[int]]
+    is_visit_reading_failed: bool = False
 
 
 class CampaignResultsService:
@@ -154,7 +155,9 @@ class CampaignResultsService:
                 return None
             reading, demo_sites = loaded
             await self._attach_visits(reading)
-            response = self._assemble(reading.campaigns[0], demo_sites)
+            response = self._assemble(
+                reading.campaigns[0], demo_sites, is_visit_reading_failed=reading.is_visit_reading_failed
+            )
             self._results_cache[cache_key] = (time.monotonic() + self._RESULTS_TTL_SECONDS, response)
             return response
 
@@ -709,6 +712,9 @@ class CampaignResultsService:
             return
         prospect_ids_by_slug = reading.prospect_ids_by_slug
         sessions = await posthog_service.get_demo_sessions(list(prospect_ids_by_slug), min(started))
+        if sessions is None:
+            reading.is_visit_reading_failed = True
+            return
         for facts in all_facts:
             first_sent_at = facts.first_sent_at
             if first_sent_at is None:
@@ -728,8 +734,10 @@ class CampaignResultsService:
                     )
                 )
 
-    def _assemble(self, campaign: _CampaignReading, demo_sites: CampaignResultsDemoSites) -> CampaignResultsResponse:
-        """Shape one campaign's facts into the results payload."""
+    def _assemble(
+        self, campaign: _CampaignReading, demo_sites: CampaignResultsDemoSites, *, is_visit_reading_failed: bool
+    ) -> CampaignResultsResponse:
+        """Shape one campaign's facts into the results payload, flagging the visits as unavailable when PostHog could not be read."""
         all_facts = list(campaign.facts_by_prospect.values())
         planned = sorted(
             ((send.at, facts.name) for facts in all_facts for send in facts.sends if send.status == "planned"),
@@ -739,7 +747,7 @@ class CampaignResultsService:
             campaign_id=campaign.campaign_id,
             channel=campaign.channel,
             generated_at=datetime.now(UTC).replace(tzinfo=None),
-            is_visit_tracking_available=posthog_service.is_configured,
+            is_visit_tracking_available=posthog_service.is_configured and not is_visit_reading_failed,
             totals=self._totals(all_facts, channel=campaign.channel),
             next_send=CampaignResultsNextSend(at=planned[0][0], prospect_name=planned[0][1]) if planned else None,
             last_planned_send_at=planned[-1][0] if planned else None,
