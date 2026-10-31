@@ -16,6 +16,8 @@ _SNIPPET_MAX_CHARS: int = 240
 _MAINLAND_LANDLINE_LEADS: tuple[str, ...] = ("+331", "+332", "+333", "+334", "+335")
 # The chain evidence of a brand's agent or dealer reads « marque Peugeot ».
 BRAND_OUTLET_EVIDENCE_PREFIX: str = "marque "
+# Where the Google listing's own website is read: its « Site Web » button, its panel.
+_LISTING_WEBSITE_SOURCES: tuple[str, ...] = ("Bouton « Site Web » de la fiche Google", "Fiche Google")
 
 
 @dataclass
@@ -125,6 +127,13 @@ class CandidateFacts:
             if line.get("fact") == "chain" and value.startswith(BRAND_OUTLET_EVIDENCE_PREFIX):
                 return value.removeprefix(BRAND_OUTLET_EVIDENCE_PREFIX)
         return None
+
+    @property
+    def is_facebook_page_the_listed_website(self) -> bool:
+        """Whether the business's Facebook page is the website its Google listing gives, not a page a search found."""
+        return any(
+            line.get("fact") == "facebook" and line.get("source") in _LISTING_WEBSITE_SOURCES for line in self.evidence
+        )
 
     @property
     def privacy_proxied_domains(self) -> list[str]:

@@ -171,7 +171,8 @@ def _entry(**overrides: object) -> SwissDirectoryEntry:
 
 
 def _verify(facts: CandidateFacts, directory: _ScriptedDirectory) -> None:
-    verifier = CandidateVerifier(_OnePageClient({"organic": []}), _SilentJudge(), directory)  # type: ignore[arg-type]
+    page = {"organic": [{"link": "https://www.exemple-sans-rapport.ch/", "title": "Une autre entreprise"}]}
+    verifier = CandidateVerifier(_OnePageClient(page), _SilentJudge(), directory)  # type: ignore[arg-type]
     asyncio.run(verifier.verify(facts, _GARAGE))
 
 

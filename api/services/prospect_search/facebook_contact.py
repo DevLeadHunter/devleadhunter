@@ -26,6 +26,7 @@ from services.prospect_search.candidate_identity import KnownBusinessIndex
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import EmailDomainCheck
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.swiss_directory import SwissDirectoryUnavailableError, swiss_directory
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.validation_service import validation_service
@@ -96,7 +97,10 @@ class FacebookContactRecorder:
                 facts.phone = read.phone
                 facts.add_evidence("phone", read.phone, source="Page Facebook", url=page_url)
                 has_learnt_phone = True
-            if read.website and facts.website is None and CandidateVerifier.is_own_website(read.website):
+            if read.website and NetworkOutlets.is_network_page(read.website):
+                facts.is_chain = True
+                facts.add_evidence("chain", read.website, source="Page Facebook", url=page_url)
+            elif read.website and facts.website is None and CandidateVerifier.is_own_website(read.website):
                 facts.website = read.website
                 status = await website_liveness_service.check_website_status(read.website)
                 facts.website_status = status.value if status is not None else None

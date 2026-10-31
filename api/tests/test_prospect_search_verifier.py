@@ -17,6 +17,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Searc
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.search_judge import JudgedEmail, JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.website_liveness_service import website_liveness_service
@@ -90,6 +91,12 @@ def _verify(
 
 def _result(link: str, title: str, description: str = "") -> dict[str, str]:
     return {"link": link, "title": title, "description": description}
+
+
+# A page that answers without saying anything about the business.
+_PAGE_ABOUT_ANOTHER_BUSINESS: dict[str, Any] = {
+    "organic": [_result("https://www.exemple-sans-rapport.fr/", "Une autre entreprise")]
+}
 
 
 def test_the_panel_gives_the_hidden_website_the_listing_did_not_show() -> None:
@@ -418,14 +425,14 @@ def test_a_same_name_panel_without_an_address_does_not_make_another_business() -
 def test_a_family_name_or_a_longer_word_is_not_taken_for_a_chain(business_name: str) -> None:
     facts = _facts(name=business_name, country="FR", city="Dijon")
 
-    _verify(facts, {"organic": []})
+    _verify(facts, _PAGE_ABOUT_ANOTHER_BUSINESS)
 
     assert facts.is_chain is False
     assert facts.is_verified is True
 
 
 def test_a_chain_written_with_a_hyphen_is_still_recognised() -> None:
-    assert CandidateVerifier.is_chain_name("Feu-Vert Dijon") is True
+    assert NetworkOutlets.names_network("Feu-Vert Dijon") is True
 
 
 def _serve_front_page(monkeypatch: pytest.MonkeyPatch, page_url: str, page_text: str) -> None:
@@ -661,7 +668,7 @@ def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
 def test_a_listing_named_after_its_website_has_that_website() -> None:
     facts = _facts(name="Brunet Dijon-Paysagiste.fr", city="Dijon", country="FR", phone="06 12 34 56 78")
 
-    _verify(facts, {"organic": []})
+    _verify(facts, _PAGE_ABOUT_ANOTHER_BUSINESS)
 
     assert facts.website == "https://dijon-paysagiste.fr/"
 
@@ -996,3 +1003,64 @@ def test_an_email_spelling_the_business_name_is_a_proof_even_on_a_page_that_does
     )
 
     assert (facts.email, facts.email_proof_level) == ("gld-automobiles@orange.fr", EmailProofLevel.DIRECTORY.value)
+
+
+def test_a_page_of_a_network_s_site_declared_as_website_makes_an_outlet() -> None:
+    facts = _facts(name="GLD Automobiles", city="Dax", country="FR", phone="05 00 00 00 36")
+
+    CandidateVerifier.consider_website(
+        facts,
+        "https://www.motrio.fr/shop/GLD AUTOMOBILES/1234",
+        source="Bouton « Site Web » de la fiche Google",
+        proof_url="https://www.motrio.fr/shop/GLD AUTOMOBILES/1234",
+    )
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website is None
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+
+
+@pytest.mark.parametrize(("description", "is_outlet"), [("2794 Rue Nationale, 86220 Ingrandes", True), ("", False)])
+def test_a_network_s_page_naming_the_business_in_its_town_makes_an_outlet(description: str, is_outlet: bool) -> None:
+    facts = _facts(name="Garage Martinez Philippe BC", city="Ingrandes", country="FR", phone="05 00 00 00 37")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.autoprimo.com/storelocator/garage-martinez-philippe-bc",
+                    "Garage Martinez Philippe BC - Autoprimo",
+                    description,
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert facts.is_chain is is_outlet
+
+
+def test_an_email_on_a_network_s_domain_makes_an_outlet() -> None:
+    facts = _facts(
+        name="My Cars 03",
+        city="Montluçon",
+        country="FR",
+        phone="04 00 00 00 39",
+        email="mycars03@points.fr",
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        is_verified=True,
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+
+
+def test_a_search_page_showing_nothing_leaves_the_candidate_unverified() -> None:
+    facts = _facts(name="DAC Automobiles", city="Narrosse", country="FR", phone="05 00 00 00 38")
+
+    _verify(facts, {"organic": []}, trade=_GARAGE)
+
+    assert facts.is_verified is False

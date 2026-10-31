@@ -22,6 +22,7 @@ from enums.website_status import WebsiteStatus
 from models.prospect_search import ProspectSearch
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.name_in_address import NameInAddress
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.trade_catalog import TradeProfile
 
 # A rating read on fewer reviews says too little to discard a business.
@@ -97,7 +98,9 @@ class CandidateDecision:
                     "à vérifier."
                 ),
             )
-        has_untraced_website = facts.has_website_button is True and facts.website is None and facts.facebook_url is None
+        has_untraced_website = (
+            facts.has_website_button is True and facts.website is None and not facts.is_facebook_page_the_listed_website
+        )
         if criteria.only_without_website and has_untraced_website:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM,
@@ -189,7 +192,7 @@ class CandidateDecision:
             return cls._rejected(
                 CandidateRejectReason.HOMONYM, "Google montre une autre entreprise du même nom, dans une autre ville."
             )
-        if facts.is_chain:
+        if facts.is_chain or NetworkOutlets.facebook_page_names_network(facts.facebook_url):
             return cls._rejected(CandidateRejectReason.CHAIN, cls._chain_detail(facts))
         if not facts.matches_trade or not trade.accepts_category(facts.google_category):
             category = facts.google_category or "autre activité"
@@ -217,9 +220,11 @@ class CandidateDecision:
 
     @staticmethod
     def _chain_detail(facts: CandidateFacts) -> str:
-        """The network a discarded outlet belongs to: a brand it is the agent or dealer of, or a chain."""
+        """The network a discarded outlet belongs to: a brand it is the agent or dealer of, its Facebook page's, a chain."""
         if facts.outlet_brand is not None:
             return f"Agent ou concessionnaire {facts.outlet_brand} : le patron ne décide pas seul."
+        if not facts.is_chain:
+            return "Sa page Facebook porte le nom d'un réseau : le patron ne décide pas seul."
         return "Enseigne de réseau ou franchise : le patron ne décide pas seul."
 
     @staticmethod

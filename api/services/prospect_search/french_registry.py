@@ -4,6 +4,7 @@ French company register — whether a French business a search found is still op
 A garage struck off last spring keeps its Google listing for months. The registry (recherche-entreprises) is read only
 for a candidate about to be proposed: the companies of its name in its département, at its address. The one open
 company of its name at its place gives it its SIREN: two listings of a search with the same SIREN are one business.
+Its seat gives a street address without postal code the postal code and town it lacks.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ class FrenchRegistry:
 
     async def read_closing(self, facts: CandidateFacts) -> None:
         """
-        Take the registry's recent closing of the business's company as the closing of the business, and its SIREN.
+        Take the registry's recent closing of the business's company as its closing, with its SIREN and postal code.
 
         Only a company of the business's name (its legal name or a trade name it declared) at the business's place
         (its postal code, else its town) counts. An open one there clears the business; so does an open company of
@@ -57,7 +58,39 @@ class FrenchRegistry:
             if any(self.is_at_place(company, facts, postal_code=postal_code) for company in named.values()):
                 break
         self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
+        self.complete_address(facts, list(named.values()))
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
+
+    @classmethod
+    def complete_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Give a street address without postal code the postal code and town of the business's company seated there.
+
+        The company must be open, of the business's name, in its town and at the same number and street (« 12 Rue
+        Exemple » becomes « 12 Rue Exemple, 03100 Montluçon »).
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy
+
+        street = RegistreGouvStrategy.street_of(facts.address)
+        if street is None or cls.postal_code_of(facts.address) is not None:
+            return
+        for company in named:
+            siege = company.get("siege") or {}
+            seat_postal_code = str(siege.get("code_postal") or "")
+            is_seated_at_street = (
+                company.get("etat_administratif") == _ACTIVE_STATE
+                and cls.is_at_place(company, facts, postal_code=None)
+                and RegistreGouvStrategy.street_of(str(siege.get("adresse") or "")) == street
+            )
+            if is_seated_at_street and _POSTAL_CODE_RE.fullmatch(seat_postal_code):
+                facts.address = f"{facts.address}, {seat_postal_code} {facts.town}"
+                facts.city = facts.city or facts.town
+                facts.add_evidence("address", facts.address, source=_REGISTER_SOURCE)
+                return
 
     @classmethod
     def take_registry_number(

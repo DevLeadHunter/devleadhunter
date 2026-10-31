@@ -109,7 +109,7 @@ class _MartiniqueSearchClient:
     ) -> dict[str, Any] | None:
         self.request_count += 1
         self.web_queries.append(query)
-        return {"organic": []}
+        return {"organic": [{"link": "https://www.exemple-sans-rapport.fr/", "title": "Une autre entreprise"}]}
 
 
 _CLIENTS: list[_MartiniqueSearchClient] = []

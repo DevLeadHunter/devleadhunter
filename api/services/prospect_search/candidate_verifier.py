@@ -30,6 +30,7 @@ from services.prospect_search.candidate_facts import BRAND_OUTLET_EVIDENCE_PREFI
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.name_in_address import NameInAddress
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.swiss_directory import (
     SwissDirectory,
@@ -90,42 +91,6 @@ _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
 _EMAIL_DOMAIN_SUBJECT: str = "Le domaine de son email"
 _PRIVACY_PROXIED_DOMAIN_SUBJECT: str = "Le domaine masqué par un service d'anonymat"
-
-# Outlets of these networks are run by a group or under its label: the person reading the email does not decide.
-_CHAIN_NAME_MARKERS: tuple[str, ...] = (
-    "norauto",
-    "midas",
-    "speedy",
-    "feu vert",
-    "euromaster",
-    "carglass",
-    "roady",
-    "jardiland",
-    "gamm vert",
-    "ad expert",
-    "ad carrosserie",
-    "ad garage",
-    "garage ad",
-    "bosch car service",
-    "motrio",
-    "eurorepar",
-    "euro repar",
-    "top garage",
-    "top carrosserie",
-    "point s",
-    "carter cash",
-    "vulco",
-    "profil plus",
-    "first stop",
-    "bestdrive",
-    "autobacs",
-    "precisium",
-    "groupauto",
-    "rapid pare brise",
-    "france pare brise",
-    "mondial pare brise",
-)
-_NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 
 _COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 # Directories, marketplaces and network sites missing from the shared blocklist. A garage's page on
@@ -250,7 +215,7 @@ class CandidateVerifier:
             return
 
         page = await self._client.google_parsed(f'"{facts.name}" {facts.town}'.strip(), country=facts.country)
-        if page is None:
+        if page is None or self._shows_nothing(page):
             return
         facts.is_verified = True
         domain_in_name = _DOMAIN_IN_NAME_RE.search(facts.name)
@@ -451,17 +416,11 @@ class CandidateVerifier:
         return None
 
     @staticmethod
-    def is_chain_name(name: str) -> bool:
-        """Whether a business name carries, as whole words, the name of a network run by a group."""
-        name_words = f" {_NAME_WORD_SEPARATORS_RE.sub(' ', fold(name)).strip()} "
-        return any(f" {marker} " in name_words for marker in _CHAIN_NAME_MARKERS)
-
-    @classmethod
-    def mark_network_outlet(
-        cls, facts: CandidateFacts, trade: TradeProfile, *, listing_name: str | None = None
-    ) -> bool:
+    def mark_network_outlet(facts: CandidateFacts, trade: TradeProfile, *, listing_name: str | None = None) -> bool:
         """
-        Mark the business as a network's outlet when its name carries a network, or its listing a brand's dealer.
+        Mark the business as a network's outlet when its name, its Facebook page or its listing shows a network.
+
+        A brand's dealer is a network's outlet too.
 
         Args:
             facts: The candidate, completed in place.
@@ -473,9 +432,13 @@ class CandidateVerifier:
             Whether the business is a network's outlet.
         """
         name = listing_name or facts.name
-        if cls.is_chain_name(name):
+        if NetworkOutlets.names_network(name):
             facts.is_chain = True
             facts.add_evidence("chain", name, source="Nom de l'enseigne")
+            return True
+        if NetworkOutlets.facebook_page_names_network(facts.facebook_url):
+            facts.is_chain = True
+            facts.add_evidence("chain", facts.facebook_url or "", source="Nom de sa page Facebook")
             return True
         brand = trade.brand_outlet_of(name, facts.google_category)
         if brand is None:
@@ -652,6 +615,14 @@ class CandidateVerifier:
                     facts.facebook_url = facebook_page
                     facts.add_evidence("facebook", facebook_page, source="Recherche Google", url=line.link)
                 continue
+            is_in_town = bool(facts.town) and fold(facts.town) in fold(line.text)
+            if (
+                NetworkOutlets.is_network_page(line.link)
+                and is_in_town
+                and self.names_business(line.title, facts, trade)
+            ):
+                facts.is_chain = True
+                facts.add_evidence("chain", line.host, source="Page de son réseau", url=line.link, snippet=line.text)
             if self.is_known_third_party(line.link, line.host):
                 continue
             if not self.names_business(line.text, facts, trade):
@@ -687,12 +658,23 @@ class CandidateVerifier:
 
     @staticmethod
     def is_known_third_party(link: str, host: str) -> bool:
-        """Whether a result sits on a social network, a directory, a registry or a booking platform."""
+        """Whether a result sits on a social network, a directory, a registry, a booking platform or a network's site."""
         if validation_service.is_social_url(link) or validation_service.is_platform_url(link):
             return True
         if email_candidate_scorer.is_directory_host(host) or any(word in host for word in _COMPARISON_SITE_HOST_WORDS):
             return True
+        if NetworkOutlets.is_network_page(link):
+            return True
         return any(host == known or host.endswith(f".{known}") for known in _EXTRA_THIRD_PARTY_HOSTS)
+
+    @classmethod
+    def _shows_nothing(cls, page: dict[str, Any]) -> bool:
+        """
+        Whether a search page shows neither a result nor a panel: what Bright Data returns when Google failed.
+
+        Such a page proves nothing about the business, a website least of all: the search is treated as unanswered.
+        """
+        return not cls.result_lines(page) and not page.get("knowledge")
 
     @classmethod
     def is_own_website(cls, website: str) -> bool:
@@ -702,12 +684,20 @@ class CandidateVerifier:
 
     @classmethod
     def consider_website(cls, facts: CandidateFacts, website: str, *, source: str, proof_url: str) -> None:
-        """Keep *website* as the business's own unless it is a social page, a platform or a directory."""
+        """
+        Keep *website* as the business's own unless it is a social page, a platform or a directory.
+
+        A page of a network's site (« www.motrio.fr/shop/… ») makes the business one of the network's outlets.
+        """
         if validation_service.is_social_url(website):
             facebook_page = FacebookPageUrl.canonical(website)
             if facebook_page and facts.facebook_url is None:
                 facts.facebook_url = facebook_page
                 facts.add_evidence("facebook", facebook_page, source=source, url=proof_url)
+            return
+        if NetworkOutlets.is_network_page(website):
+            facts.is_chain = True
+            facts.add_evidence("chain", website, source=source, url=proof_url)
             return
         if not cls.is_own_website(website):
             return
@@ -800,6 +790,10 @@ class CandidateVerifier:
             notes_unnamed_site: Whether a live page that does not name the business is noted for a check.
         """
         if facts.website_status == WebsiteStatus.LIVE.value:
+            return
+        if NetworkOutlets.is_network_page(domain):
+            facts.is_chain = True
+            facts.add_evidence("chain", domain, source=subject)
             return
         if domain in GENERIC_EMAIL_PROVIDERS or cls.is_known_third_party(f"https://{domain}", domain):
             return

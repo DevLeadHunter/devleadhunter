@@ -539,6 +539,27 @@ def test_a_website_button_leading_to_a_directory_page_shows_no_website(
     assert _candidates(db, search_id)["Filvert Sarl"].has_website_button is False
 
 
+def test_a_website_button_leading_to_a_network_s_page_discards_the_listing_without_any_search(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    async def network_page(link: str | None) -> str | None:
+        return "http://www.boschcarservice.fr/garage/exemple"
+
+    monkeypatch.setattr(google_website_button, "destination", network_page)
+    search_id = _create_search(db, count=2)
+    runner = ProspectSearchRunner(search_id)
+
+    asyncio.run(runner.run())
+    db.expire_all()
+    listing = _candidates(db, search_id)["Filvert Sarl"]
+
+    assert (listing.status, listing.reject_reason) == (
+        CandidateStatus.REJECTED.value,
+        CandidateRejectReason.CHAIN.value,
+    )
+    assert '"Filvert Sarl" Sion' not in runner._client.queries  # type: ignore[attr-defined]
+
+
 def test_a_facebook_read_completes_the_waiting_candidate(canned_world: None, db: Session) -> None:
     search_id = _create_search(db, count=2, validation_mode=_AUTOMATIC)
     asyncio.run(ProspectSearchRunner(search_id).run())
