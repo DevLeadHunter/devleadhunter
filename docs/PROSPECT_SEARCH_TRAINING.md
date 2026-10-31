@@ -439,3 +439,59 @@ Précision de l'app = bons prospects parmi les fiches qu'elle a gardées (les «
   nouveau venu à la même adresse est une autre affaire.
 - Contrôle sur les 135 prospects français : un seul autre fermé (n° 151, écarté), et une fausse alerte
   corrigée pendant le contrôle (le même patron, une société du même nom dans la commune voisine).
+
+## Manche 12 — France, garages, vague 5 (31 octobre, soir)
+
+Recherche de l'app n° 17 (garages et paysagistes, 17 par métier, email et portable exigés, note ≥ 4,0, mode
+« Je valide »), arrêtée à 666 requêtes après 7 villes de garages (Châtellerault, Montluçon, Dax, Cholet,
+Mulhouse, Aurillac, Perpignan) : elle n'avait pas encore commencé les paysagistes.
+
+### Ce qui a changé en route
+
+- **Email et portable exigés ensemble = presque rien en France** : 5 garages avaient les deux, 29 un email
+  sans portable, 14 un portable sans email. Décision pour la vague 5 : email obligatoire, portable en plus
+  quand il existe. Les recherches suivantes (n° 18 paysagistes et électriciens, n° 19 Martinique, n° 20
+  Suisse) partent avec le canal « email ».
+- La recherche à la main n'a pas pu se faire comme d'habitude : la clé Bright Data du poste avait expiré,
+  puis le Web Unlocker de Bright Data a répondu « Request setup error » (Google en 502) une partie de la
+  soirée, y compris pour le serveur. La vérité terrain s'est faite avec le registre des entreprises
+  (recherche-entreprises.api.gouv.fr), le domaine de chaque email et les preuves enregistrées par l'app.
+
+### Vérité terrain (41 candidats avec email : 5 gardés, 29 mis de côté, 7 à confirmer)
+
+- **17 validés** et devenus prospects : Aquitaine Négoce Auto, Garage Sani'Drive, Pneumagic, Carprog86
+  (les 4 avec portable), GARAGE CS AUTO, Enault Sport, MJV Automobiles (email de la gérante, nom au
+  registre), Garage des Marais, Garage Norville, Montluçon Automobiles, Dax Carrosserie, DAC Automobiles,
+  FM Garage, Garage Sélection Auto Cholet, Garage Bel Air, Auto Expert (Illzach), Tourlan et Fils.
+- **Réserve** (bons, gardés de côté) : Garage du Paradis, Garage Aurillac Électro Diesel, Garage
+  Serv'Auto, GLD Automobiles, Léon Motors, Garage Martinez Philippe BC, SARL Verge.
+- **13 refusés**, dont des erreurs de l'app :
+
+| Candidat | Place donnée par l'app | Vérité | Écart |
+|---|---|---|---|
+| SARL Lucens Automobiles (Montluçon) | **gardé** | `lucensautomobiles.fr` répond « Accueil - Lucens Automobiles » : il a un site | aucun contrôle du domaine dans ses preuves : un candidat qui a email et portable est gardé sans que le domaine de son email soit lu |
+| Welington Automobiles | à confirmer | l'email est sur `welington.fr`, son propre nom | un domaine qui porte le nom distinctif de l'entreprise et sert une page = un site, même si le titre ne la nomme pas |
+| AG Automobiles | à confirmer | l'email est sur `ag-garage.fr` (page Bosch Car Service) | idem (initiales + métier dans le domaine) |
+| Abj Auto | à confirmer | `abjautorepair.net@domainsbyproxy.com` est l'adresse d'un service qui cache le titulaire d'un domaine | une adresse de protection de domaine (Domains By Proxy et semblables) n'est jamais l'email de l'entreprise ; elle révèle son domaine (`abjautorepair.net`) : il a un site |
+| Carrosserie CS Auto | mis de côté | même email et même société que GARAGE CS AUTO (deux fiches Google) | deux candidats avec le même email ou le même SIREN = une seule entreprise |
+| Peugeot - Dax Auto, Peugeot - Garage Thierry Hoff, Renault / Dacia - Garage Tastet, Garage Lebreton (Aixam) | à confirmer ou mis de côté | agents et concessionnaires de marque | une marque automobile en tête du nom, ou la catégorie « Concessionnaire <marque> », = réseau : le patron ne décide pas seul de son site |
+| AD Carrosserie et Garage Expert Atelier Panon | mis de côté | deux réseaux (AD, Garage Expert) | ajouter les réseaux de garages indépendants à la liste des enseignes (AD, Garage Expert, Bosch Car Service, Motrio, Eurorepar, Top Garage, Point S…) |
+| Garage Dyma | mis de côté | email `brd.auto.performance@gmail.com`, au nom d'une autre affaire | un email dont la partie locale nomme une autre entreprise n'est pas une preuve |
+| Garage Millésime Auto | à confirmer | email `garageautohouse@gmail.com`, idem | idem |
+| GLD Automobiles | à confirmer (preuve « c ») | `gld-automobiles@orange.fr` : la partie locale est le nom de l'entreprise | un email dont la partie locale reprend le nom normalisé de l'entreprise vaut au moins une preuve « b » |
+
+- Pièges du contrôle : le registre trouvé par le nom se trompe parfois d'entreprise (« Montluçon Vitrage
+  Automobile », une boulangerie fermée en Ariège pour SARL Verge, une ancienne société pour Garage du
+  Paradis) ; une absence au registre ne prouve rien.
+
+### Note de la manche
+
+- Gardés par l'app : 5, dont 1 faux (Lucens, il a un site) : 4 bons sur 5.
+- Sur les 41 avec email, 24 bons (17 validés + 7 en réserve) et 13 refusés : 7 placés à tort par l'app
+  (Lucens gardé, et mis de côté : 3 agents de marque, 1 réseau, 1 doublon, 1 email d'autrui), 4 « à
+  confirmer » qu'elle aurait pu trancher seule (Welington, AG, Abj, Peugeot Dax) et 2 doutes justifiés
+  (Millésime, Motorsport). Un bon email a aussi été classé « sans preuve » (GLD).
+- Corrections à faire dans le moteur (session de code dédiée) : contrôle du domaine pour tout email appris,
+  y compris quand le candidat a déjà email et portable ; domaine au nom de l'entreprise = site ; adresses de
+  protection de domaine ; doublons par email et SIREN ; marques automobiles et réseaux de garages ; email
+  au nom d'une autre affaire ; email au nom de l'entreprise = preuve « b ».
