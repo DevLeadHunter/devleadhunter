@@ -22,6 +22,7 @@ from urllib.parse import unquote_plus
 from bs4 import BeautifulSoup, Tag
 
 from scrappers.google_scraper import GoogleScraper
+from services.french_overseas import FrenchOverseas
 from services.sms.phone_normalizer import to_e164
 
 _RATING_LINE_RE: re.Pattern[str] = re.compile(r"^(\d[.,]\d)\s*\(([\d\s\u202f\u00a0.,]+)\)")
@@ -32,7 +33,12 @@ _TEMPORARILY_CLOSED_MARKERS: tuple[str, ...] = ("fermé temporairement", "tempor
 _OPENING_PREFIXES: tuple[str, ...] = ("ouvert", "fermé", "ouvre", "ferme", "open", "closed", "opens", "closes")
 _SENIORITY_MARKERS: tuple[str, ...] = ("en activité", "in business")
 _WEBSITE_BUTTON_LABELS: frozenset[str] = frozenset({"site web", "website", "site internet"})
-_PROVINCE_SUFFIX_RE: re.Pattern[str] = re.compile(r",\s*(QC|Québec|Quebec)$", re.IGNORECASE)
+_REGION_NAMES: tuple[str, ...] = ("QC", "Québec", "Quebec", *FrenchOverseas.address_names())
+_REGION_SUFFIX_RE: re.Pattern[str] = re.compile(
+    rf",\s*({'|'.join(re.escape(name) for name in _REGION_NAMES)})$", re.IGNORECASE
+)
+_REGION_NAME_KEYS: frozenset[str] = frozenset(name.lower() for name in _REGION_NAMES)
+_PLUS_CODE_PREFIX_RE: re.Pattern[str] = re.compile(r"^[2-9CFGHJMPQRVWX]{4}[+ ][2-9CFGHJMPQRVWX]{2,3}\s+")
 _STREET_SEGMENT_RE: re.Pattern[str] = re.compile(
     r"^(\d|(rue|av|avenue|bd|boulevard|chemin|ch|route|rte|place|pl|impasse|all[ée]e|quai|cours|square|passage"
     r"|zone|za|zi|zac|lieu-dit|rang|mont[ée]e)[\s.])",
@@ -158,7 +164,7 @@ class GoogleLocalResultsParser:
                         # In the searched town itself Google shows the street, not the town.
                         listing.address = segment
                     else:
-                        listing.locality = _PROVINCE_SUFFIX_RE.sub("", segment).strip()
+                        listing.locality = cls._town_of(segment)
 
         card = cls._card_of(details)
         cls._read_links(listing, card, country)
@@ -195,12 +201,23 @@ class GoogleLocalResultsParser:
             return False
         return not lowered.startswith(_OPENING_PREFIXES)
 
-    @staticmethod
-    def _locality_of(address_line: str) -> str | None:
+    @classmethod
+    def _locality_of(cls, address_line: str) -> str | None:
         """Town part of the parsed JSON's address line (« Plus de 7 ans en activité ⋅ Sion »)."""
         segments = [segment.strip() for segment in re.split(r"[⋅·]", address_line) if segment.strip()]
         towns = [segment for segment in segments if not any(marker in segment.lower() for marker in _SENIORITY_MARKERS)]
-        return _PROVINCE_SUFFIX_RE.sub("", towns[-1]).strip() if towns else None
+        return cls._town_of(towns[-1]) if towns else None
+
+    @staticmethod
+    def _town_of(segment: str) -> str | None:
+        """
+        The town a listing line names, without the province or overseas department written after it.
+
+        Returns:
+            « Le Lamentin » for « Le Lamentin, Martinique »; ``None`` for a line naming the department alone.
+        """
+        town = _REGION_SUFFIX_RE.sub("", segment).strip()
+        return None if not town or town.lower() in _REGION_NAME_KEYS else town
 
     @staticmethod
     def _card_of(details: Tag) -> Tag:
@@ -230,6 +247,7 @@ class GoogleLocalResultsParser:
             if feature_id:
                 listing.cid = str(int(feature_id.group(1), 16))
             destination = unquote_plus(href.split("/maps/dir//", 1)[-1].split("/data=", 1)[0])
+            destination = _PLUS_CODE_PREFIX_RE.sub("", destination)
             address = destination[len(listing.name) :].lstrip(", ") if destination.startswith(listing.name) else ""
             if address:
                 listing.address = address

@@ -2,12 +2,13 @@
 Prospect search runner — walks a search from its objective to verified prospects.
 
 For each trade: go town by town; in each town read the public registries that carry
-an email, then Google's local results page by page, then the Facebook pages a search
-engine knows. Every business seen becomes a candidate, is recognised if it is already
-known, verified with one web search, completed with a contact, and placed: kept, set
-aside, to confirm, waiting for a browser, or discarded with a reason. In an automatic
-search a kept or set-aside candidate becomes a prospect at once; in a manual one it
-waits for the user to accept or refuse it.
+an email (unless the search skips them), then Google's local results page by page, then
+the Facebook pages a search engine knows. A search of a French overseas department walks
+its communes and names it in every query. Every business seen becomes a candidate, is
+recognised if it is already known, verified with one web search, completed with a contact,
+and placed: kept, set aside, to confirm, waiting for a browser, or discarded with a reason.
+In an automatic search a kept or set-aside candidate becomes a prospect at once; in a
+manual one it waits for the user to accept or refuse it.
 
 The run stops when every trade has its count, when the towns or the request budget
 run out, or when the user cancels. It never holds a database session across a
@@ -45,6 +46,7 @@ from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_local_results import GoogleLocalResultsParser, LocalListing
 from scrappers.google_website_button import google_website_button
 from services.decision_maker.normalize import fold
+from services.french_overseas import FrenchOverseas
 from services.organization_service import organization_service
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
@@ -94,10 +96,12 @@ class _RunState:
     user_id: int
     organization_id: int | None
     country: str
+    region: str | None
     trades: list[str]
     cities: list[str]
     count_per_trade: int
     criteria: SearchCriteria
+    use_registries: bool
     creates_prospects: bool
     request_budget: int
     max_towns_per_trade: int
@@ -210,10 +214,12 @@ class ProspectSearchRunner:
                 user_id=search.user_id,
                 organization_id=organization_id,
                 country=search.country,
+                region=search.region,
                 trades=list(search.trades),
                 cities=list(search.cities or []),
                 count_per_trade=search.count_per_trade,
                 criteria=SearchCriteria.of_search(search),
+                use_registries=search.use_registries,
                 creates_prospects=search.validation_mode == ProspectSearchValidationMode.AUTOMATIC.value,
                 request_budget=(_BASE_REQUEST_BUDGET + _REQUEST_BUDGET_PER_PROSPECT * total_wanted) * granted_runs,
                 max_towns_per_trade=_MAX_TOWNS_PER_TRADE * granted_runs,
@@ -265,6 +271,7 @@ class ProspectSearchRunner:
                 asked_cities=state.cities,
                 already_scanned=state.scanned_before.get(profile.key, set()),
                 seed=self._search_id,
+                region=state.region,
             )
         )
         retried_towns: set[str] = set()
@@ -313,7 +320,7 @@ class ProspectSearchRunner:
                 state, profile, self._store_registry_companies(state, profile, town, companies)
             )
 
-        region = search_label(state.country)
+        region = self._search_label(state)
         for term_position, term in enumerate(profile.terms_for(state.country)):
             page_count = _PAGES_FOR_MAIN_TERM if term_position == 0 else 1
             for page in range(page_count):
@@ -361,8 +368,16 @@ class ProspectSearchRunner:
             return None
         return GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
 
+    @staticmethod
+    def _search_label(state: _RunState) -> str:
+        """The words a query appends to pin the search's place: its overseas department, else its country's."""
+        department = FrenchOverseas.by_code(state.region)
+        return department.label if department is not None else search_label(state.country)
+
     async def _registry_companies(self, state: _RunState, profile: TradeProfile, town: str) -> list[RegistryCompany]:
         """Companies of the trade that a public registry lists with an email, for the search's country."""
+        if not state.use_registries:
+            return []
         if state.country == "FR":
             return await rge_registry.companies_near(trade=profile, city=town, limit=_REGISTRY_COMPANIES_PER_TOWN)
         if state.country == "CA":
@@ -380,6 +395,7 @@ class ProspectSearchRunner:
                     name=company.name,
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=company.origin.value,
                     city=company.city,
                     searched_city=town,
@@ -430,6 +446,7 @@ class ProspectSearchRunner:
                     name=BusinessName.clean(listing.name),
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=CandidateOrigin.GOOGLE_LOCAL.value,
                     city=listing.locality,
                     searched_city=town,
@@ -450,7 +467,8 @@ class ProspectSearchRunner:
                     )
                     facts.has_website_button = facts.website is not None
                 early_verdict: CandidateVerdict | None = None
-                if facts.is_closed or facts.is_abroad or not profile.accepts_category(listing.category):
+                is_elsewhere = facts.is_abroad or facts.is_outside_region
+                if facts.is_closed or is_elsewhere or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)
                 is_left_unverified = bool(facts.has_website_button) and leaves_website_listings_unverified
@@ -462,7 +480,7 @@ class ProspectSearchRunner:
     async def _store_facebook_pages(self, state: _RunState, profile: TradeProfile, town: str) -> list[int]:
         """Save the business pages of the town that a search engine finds on Facebook."""
         term = profile.terms_for(state.country)[0]
-        region = search_label(state.country)
+        region = self._search_label(state)
         query = " ".join(part for part in (f'site:facebook.com "{term}" "{town}"', region) if part)
         page = await self._client.google_parsed(query, country=state.country)
         if page is None:
@@ -474,6 +492,7 @@ class ProspectSearchRunner:
                     name=business_page.name,
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=CandidateOrigin.FACEBOOK_SEARCH.value,
                     searched_city=town,
                     facebook_url=business_page.page_url,
@@ -554,6 +573,7 @@ class ProspectSearchRunner:
                 if row is None or row.status != CandidateStatus.DISCOVERED.value:
                     return
                 facts = CandidateStore.facts_of(row)
+            facts.region = state.region
 
             try:
                 await self._verifier.verify(facts, profile)

@@ -41,6 +41,7 @@ from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import company_tokens, fold
+from services.french_overseas import FrenchOverseas
 from services.service_list_reader import ServiceListReader
 from services.sms.phone_normalizer import format_phone_in_national_form
 
@@ -678,8 +679,15 @@ def _is_plausible_city(city: str) -> bool:
     return bool(1 < len(city) <= 58 and re.search(r"[A-Za-zÀ-ÿ]", city) and fold(city) not in _NON_CITY_WORDS)
 
 
+_FR_NATIONAL_PHONE_PATTERN: str = r"(?:\+33[\s.\-]?[1-9]|0[1-9])(?:[\s.\-]?\d{2}){4}"
+_FR_OVERSEAS_DIAL_CODES: str = "|".join(
+    sorted({department.dial_code.removeprefix("+") for department in FrenchOverseas.DEPARTMENTS})
+)
+_FR_OVERSEAS_PHONE_PATTERN: str = rf"\+(?:{_FR_OVERSEAS_DIAL_CODES})[\s.\-]?\d{{3}}(?:[\s.\-]?\d{{2}}){{3}}"
 # French phone in the « Coordonnées » block — 06 29 34 58 99, 0629345899, +33 6 29 34 58 99…
-_FR_PHONE_RE: re.Pattern[str] = re.compile(r"(?<!\d)(?:\+33[\s.\-]?[1-9]|0[1-9])(?:[\s.\-]?\d{2}){4}(?!\d)")
+_FR_PHONE_RE: re.Pattern[str] = re.compile(
+    rf"(?<!\d)(?:{_FR_NATIONAL_PHONE_PATTERN}|{_FR_OVERSEAS_PHONE_PATTERN})(?!\d)"
+)
 # North American phone — (514) 555-0199, 514 555-0199, +1 514 555 0199, 1-514-555-0199.
 _NANP_PHONE_RE: re.Pattern[str] = re.compile(
     r"(?<!\d)(?:\+?1[\s.\-]?)?\(?[2-9]\d{2}\)?[\s.\-]?[2-9]\d{2}[\s.\-]?\d{4}(?!\d)"
@@ -707,8 +715,8 @@ _PHONE_RE_BY_COUNTRY: dict[str, re.Pattern[str]] = {
 def _parse_phone(*texts: str, country: str = "FR") -> str | None:
     """Best-effort phone number from a Facebook page's text, in the prospect's country.
 
-    Only a number of that country is read, national or with its dial code: ``06 29 34 58 99`` or
-    ``+33 6 29 34 58 99`` in France, ``079 123 45 67`` or ``+41 79 123 45 67`` in Switzerland,
+    Only a number of that country is read, national or with its dial code: ``06 29 34 58 99``,
+    ``+33 6 29 34 58 99`` or an overseas ``+596 696 12 34 56`` in France, ``079 123 45 67`` or ``+41 79 123 45 67`` in Switzerland,
     ``0470 12 34 56`` or ``+32 2 511 11 11`` in Belgium, ``621 123 456`` or ``+352 26 12 34 56`` in
     Luxembourg, ``(514) 555-0199`` in Québec. A Swiss ``079`` is never cut into French pairs.
 

@@ -20,11 +20,20 @@ class ProspectSearchCreate(BaseModel):
 
     trades: list[TypedTrade] = Field(..., min_length=1, max_length=6, description="Trades to search, as typed")
     country: str = Field("FR", min_length=2, max_length=2, description="ISO alpha-2 country of the search")
+    region: str | None = Field(
+        None,
+        min_length=2,
+        max_length=2,
+        description="French overseas department searched instead of mainland France (« MQ »), France only",
+    )
     cities: list[TypedCity] = Field(default_factory=list, max_length=20, description="Towns to search (empty = chosen)")
     count_per_trade: int = Field(5, ge=1, le=50, description="Prospects wanted for each trade")
     channel: ProspectSearchChannel = Field(ProspectSearchChannel.EMAIL, description="Contact the prospects must allow")
     only_without_website: bool = Field(True, description="Discard a business with a working website")
     minimum_rating: float | None = Field(None, ge=0, le=5, description="Google rating floor")
+    use_registries: bool = Field(
+        True, description="Read the public registries with emails (RGE in France, RBQ in Québec) before Google"
+    )
     validation_mode: ProspectSearchValidationMode = Field(
         ProspectSearchValidationMode.MANUAL,
         description="Whether the user accepts each candidate, or the search creates the prospects itself",
@@ -62,11 +71,13 @@ class ProspectSearchSummary(BaseModel):
     id: int
     trades: list[str]
     country: str
+    region: str | None = None
     cities: list[str]
     count_per_trade: int
     channel: str
     only_without_website: bool
     minimum_rating: float | None
+    use_registries: bool = True
     validation_mode: str
     status: str
     request_count: int

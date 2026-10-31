@@ -4,6 +4,7 @@ import type {
   ProspectSearchLeadCriterion,
   ProspectSearchPageLocation,
   ProspectSearchPrefill,
+  ProspectSearchRegion,
   ProspectSearchStatus,
   ProspectSearchSummary,
   ProspectSearchTradeCounts,
@@ -15,6 +16,7 @@ import {
   PROSPECT_SEARCH_LEAD_QUALITY_PRESENTATION,
   PROSPECT_SEARCH_MINIMUM_REVIEWS_FOR_RATING,
   PROSPECT_SEARCH_PAGE_PATH,
+  PROSPECT_SEARCH_REGION_LABELS,
   PROSPECT_SEARCH_REQUEST_COST_DOLLARS,
   PROSPECT_SEARCH_VALIDATION_OBJECTIVE_LABELS,
 } from '~/constants/prospectSearch'
@@ -110,19 +112,29 @@ export class ProspectSearches {
   }
 
   /**
-   * Where the search looks: its country, then its towns when the user picked some.
+   * Where the search looks: its country or overseas department, then its towns when the user picked some.
    * @param search - The search to read.
-   * @returns E.g. « France · Rennes, Nantes » or « Suisse · villes choisies par l'app ».
+   * @returns E.g. « France · Rennes, Nantes », « Martinique · villes choisies par l'app ».
    */
-  static placeLabel(search: Pick<ProspectSearchSummary, 'country' | 'cities'>): string {
-    const country: string = ProspectCountries.option(search.country).label
-    return `${country} · ${search.cities.length > 0 ? search.cities.join(', ') : "villes choisies par l'app"}`
+  static placeLabel(search: Pick<ProspectSearchSummary, 'country' | 'region' | 'cities'>): string {
+    const place: string = ProspectSearches.zoneLabel(search.country, search.region)
+    return `${place} · ${search.cities.length > 0 ? search.cities.join(', ') : "villes choisies par l'app"}`
+  }
+
+  /**
+   * The name of the zone a search walks: its overseas department when it has one, else its country.
+   * @param country - ISO code of the search country.
+   * @param region - ISO code of the overseas department, `null` for the whole country.
+   * @returns E.g. « France », « Martinique », « Suisse ».
+   */
+  static zoneLabel(country: string, region: ProspectSearchRegion | null): string {
+    return region !== null ? PROSPECT_SEARCH_REGION_LABELS[region] : ProspectCountries.option(country).label
   }
 
   /**
    * The objective of a search on one line: how many, reachable how, where, under which criteria.
    * @param search - The search to read.
-   * @returns E.g. « 5 par métier · joignables par email · France · Rennes · sans site web · vous validez chaque lead ».
+   * @returns E.g. « 5 par métier · joignables par email · Martinique · villes choisies par l'app · sans site web · vous validez chaque lead ».
    */
   static objectiveLabel(search: ProspectSearchSummary): string {
     const parts: string[] = [
@@ -134,6 +146,7 @@ export class ProspectSearches {
     if (search.minimum_rating !== null) {
       parts.push(`note Google d'au moins ${ProspectSearches.ratingLabel(search.minimum_rating)}`)
     }
+    if (!search.use_registries) parts.push('sans les registres publics')
     parts.push(PROSPECT_SEARCH_VALIDATION_OBJECTIVE_LABELS[search.validation_mode])
     return parts.join(' · ')
   }

@@ -169,6 +169,12 @@ class CandidateDecision:
                 if facts.address
                 else f"Numéro d'un autre pays que la recherche : {facts.phone}",
             )
+        searched_department = facts.searched_department
+        if searched_department is not None and facts.is_outside_region:
+            return cls._rejected(
+                CandidateRejectReason.OUT_OF_COUNTRY,
+                f"Hors de la zone de la recherche ({searched_department.label}) : {facts.address or facts.phone}",
+            )
         if facts.refuses_advertising:
             return cls._rejected(
                 CandidateRejectReason.NO_ADVERTISING,

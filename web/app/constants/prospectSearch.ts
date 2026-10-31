@@ -6,13 +6,16 @@ import type {
   ProspectSearchEmailProofLevel,
   ProspectSearchEmptyLeadsNotice,
   ProspectSearchEmptyLeadsSituation,
+  ProspectSearchRegion,
   ProspectSearchRejectReason,
   ProspectSearchStatus,
   ProspectSearchStopReason,
   ProspectSearchValidationMode,
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
-import type { ProspectSearchStepDefinition } from '~/types/ProspectSearchCreatePage'
+import type { ProspectCountry } from '~/types'
+import type { ProspectSearchFranceZone, ProspectSearchStepDefinition } from '~/types/ProspectSearchCreatePage'
+import type { SelectFieldOption } from '~/types/SelectField'
 import type { StatusPresentation } from '~/types/StatusPresentation'
 
 export const PROSPECT_SEARCH_PAGE_PATH: string = '/dashboard/search-prospects'
@@ -81,6 +84,17 @@ export const PROSPECT_SEARCH_CHANNEL_OPTIONS: ProspectSearchChannelOption[] = [
     description: 'Les deux pour chaque prospect gardé. Le canal se choisit ensuite, à la campagne.',
     icon: 'i-lucide-messages-square',
   },
+]
+
+export const PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES: ProspectCountry[] = ['FR', 'CA']
+
+export const PROSPECT_SEARCH_REGION_LABELS: Record<ProspectSearchRegion, string> = {
+  MQ: 'Martinique',
+}
+
+export const PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS: SelectFieldOption<ProspectSearchFranceZone>[] = [
+  { value: 'mainland', label: 'Métropole' },
+  { value: 'MQ', label: PROSPECT_SEARCH_REGION_LABELS.MQ },
 ]
 
 export const PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE: ProspectSearchValidationMode = 'manual'
@@ -156,7 +170,7 @@ export const PROSPECT_SEARCH_REJECT_REASON_LABELS: Record<ProspectSearchRejectRe
   chain: 'Chaîne ou franchise',
   closed: 'Fermé',
   no_advertising: 'Refuse la publicité (annuaire suisse)',
-  out_of_country: 'Dans un autre pays',
+  out_of_country: 'Hors de la zone',
   homonym: 'Homonyme',
   low_rating: 'Note Google trop basse',
   already_known: 'Déjà dans vos prospects',

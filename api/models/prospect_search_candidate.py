@@ -38,7 +38,7 @@ class ProspectSearchCandidate(Base):
         city: City of the business
         country: ISO alpha-2 country
         phone: Phone number, national form
-        phone_is_mobile: Whether the number can receive an SMS
+        phone_is_mobile: Whether the number is a mobile (an overseas one included, though never texted)
         email: Best email found
         email_proof_level: How well the email is proven
         website: Website found for the business, working or not

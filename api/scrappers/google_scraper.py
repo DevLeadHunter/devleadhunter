@@ -20,6 +20,7 @@ from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
 from services.country_profiles import CountryProfiles
+from services.french_overseas import FrenchOverseas
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
 
@@ -249,6 +250,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         Europe writes the city after the postal code (« 75002 Paris », « 1204 Genève »); Maps writes a
         Québec address as « 123 Rue X, Montréal, QC H2X 1Y4, Canada », so when the code ends a segment
         the city is the segment before it. The country and the province are never taken for the city.
+        An address of a French overseas department whose communes are known gives the commune it names,
+        even glued to its street (« Route De Jeanne D'Arc LE LAMENTIN, 97232, Martinique »).
 
         Args:
             address: The address as Maps displays it.
@@ -261,6 +264,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         if not address:
             return "Inconnue"
         profile = CountryProfiles.get(country)
+        department = FrenchOverseas.of_address(address) if profile.code == "FR" else None
+        commune = department.commune_in(address) if department is not None else None
+        if commune is not None:
+            return commune
         postal_matches = list(profile.postal_code_regex.finditer(address))
         if postal_matches:
             postal_match = postal_matches[-1]

@@ -23,8 +23,8 @@ from models.campaign import Campaign
 from models.email_log import EmailLog
 from models.email_queue import EmailQueue
 from models.prospect_db import ProspectDB
-from services.country_profiles import CountryProfiles
 from services.prospect_emails import sync_prospect_emails
+from services.prospect_timezone import prospect_timezone
 from services.send_policy_service import send_policy_service
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class BounceFallbackService:
                 queue_type="initial",
                 ab_variant=email_log.ab_variant,
                 follow_up_index=0,
-                scheduled_at=self._next_slot(db, email_log.user_id, CountryProfiles.get(prospect.country).timezone),
+                scheduled_at=self._next_slot(db, email_log.user_id, prospect_timezone(prospect)),
                 status="pending",
             )
         )

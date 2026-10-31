@@ -1,14 +1,17 @@
 import type {
   ProspectSearchChannelOption,
   ProspectSearchCreatePayload,
+  ProspectSearchRegion,
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
-import type { ProspectSearchFormState } from '~/types/ProspectSearchCreatePage'
+import type { ProspectSearchFormState, ProspectSearchFranceZone } from '~/types/ProspectSearchCreatePage'
+import type { SelectFieldOption } from '~/types/SelectField'
 import {
   PROSPECT_SEARCH_BASE_REQUEST_COUNT,
   PROSPECT_SEARCH_CHANNEL_OPTIONS,
   PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE,
   PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE,
+  PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS,
   PROSPECT_SEARCH_MAXIMUM_CITIES,
   PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE,
   PROSPECT_SEARCH_MAXIMUM_TRADES,
@@ -32,10 +35,12 @@ export class ProspectSearchForm {
     return {
       trades: [],
       country: ProspectCountries.france.code,
+      franceZone: 'mainland',
       cities: [],
       countPerTrade: PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE,
       channel: 'email',
       onlyWithoutWebsite: !isForAssistantModule,
+      useRegistries: true,
       validationMode: PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE,
     }
   }
@@ -64,6 +69,10 @@ export class ProspectSearchForm {
       return {
         trades: ProspectSearchForm.readSavedLabels(saved.trades, PROSPECT_SEARCH_MAXIMUM_TRADES),
         country: typeof saved.country === 'string' ? ProspectCountries.option(saved.country).code : fallback.country,
+        franceZone:
+          PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS.find(
+            (option: SelectFieldOption<ProspectSearchFranceZone>): boolean => option.value === saved.franceZone,
+          )?.value ?? fallback.franceZone,
         cities: ProspectSearchForm.readSavedLabels(saved.cities, PROSPECT_SEARCH_MAXIMUM_CITIES),
         countPerTrade:
           typeof savedCount === 'number' ? ProspectSearchForm.clampCountPerTrade(savedCount) : fallback.countPerTrade,
@@ -73,6 +82,7 @@ export class ProspectSearchForm {
           )?.value ?? fallback.channel,
         onlyWithoutWebsite:
           typeof saved.onlyWithoutWebsite === 'boolean' ? saved.onlyWithoutWebsite : fallback.onlyWithoutWebsite,
+        useRegistries: typeof saved.useRegistries === 'boolean' ? saved.useRegistries : fallback.useRegistries,
         validationMode:
           PROSPECT_SEARCH_VALIDATION_OPTIONS.find(
             (option: ProspectSearchValidationOption): boolean => option.value === saved.validationMode,
@@ -116,13 +126,25 @@ export class ProspectSearchForm {
     return {
       trades: form.trades,
       country: form.country,
+      region: ProspectSearchForm.regionOf(form),
       cities: form.cities,
       count_per_trade: ProspectSearchForm.clampCountPerTrade(form.countPerTrade),
       channel: form.channel,
       only_without_website: form.onlyWithoutWebsite,
       minimum_rating: null,
+      use_registries: form.useRegistries,
       validation_mode: form.validationMode,
     }
+  }
+
+  /**
+   * The overseas department the search walks: the zone chosen in France, none in another country nor in the mainland.
+   * @param form - The objective as written in the tunnel.
+   * @returns The department's code, or `null` for the whole country.
+   */
+  static regionOf(form: ProspectSearchFormState): ProspectSearchRegion | null {
+    if (form.country !== ProspectCountries.france.code || form.franceZone === 'mainland') return null
+    return form.franceZone
   }
 
   /**

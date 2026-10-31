@@ -127,6 +127,18 @@
                 <span>{{ countryOption.label }}</span>
               </button>
             </div>
+            <template v-if="form.country === ProspectCountries.france.code">
+              <UiSegmentedControl
+                v-model="form.franceZone"
+                :options="PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS"
+                label="Zone en France"
+                class="mt-3"
+              />
+              <p v-if="form.franceZone !== 'mainland'" class="mt-2 text-xs text-[var(--app-ink-soft)]">
+                La recherche parcourt les communes de l'île, des plus grandes aux plus petites. Les mails partent à
+                l'heure de Martinique, jamais de SMS.
+              </p>
+            </template>
           </div>
 
           <div class="border-t border-[var(--app-line-soft)] pt-5">
@@ -196,6 +208,18 @@
                   ? 'La réceptionniste vit sur sa propre page : avec ou sans site, un pro qui reçoit des demandes est une cible.'
                   : 'Un site en panne ou un mini-site annuaire compte comme « sans site ».'
               }}
+            </p>
+          </div>
+
+          <div v-if="hasPublicRegistries" class="border-t border-[var(--app-line-soft)] pt-5">
+            <p class="app-label mb-2">Sources</p>
+            <UiCheckbox
+              id="search-use-registries"
+              v-model="form.useRegistries"
+              label="Lire aussi les registres publics (RGE, RBQ)"
+            />
+            <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+              Décoché, la recherche ne part que de Google Maps et de Facebook.
             </p>
           </div>
         </div>
@@ -355,7 +379,9 @@ import {
   MY_PROSPECTS_PAGE_PATH,
   PROSPECT_SEARCH_CHANNEL_LABELS,
   PROSPECT_SEARCH_CHANNEL_OPTIONS,
+  PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES,
   PROSPECT_SEARCH_DURATION_LABEL,
+  PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS,
   PROSPECT_SEARCH_MAXIMUM_CITIES,
   PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH,
   PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE,
@@ -454,6 +480,10 @@ const hasMaximumTrades: ComputedRef<boolean> = computed(
   (): boolean => form.value.trades.length >= PROSPECT_SEARCH_MAXIMUM_TRADES,
 )
 
+const hasPublicRegistries: ComputedRef<boolean> = computed((): boolean =>
+  PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES.includes(form.value.country),
+)
+
 const hasMaximumCities: ComputedRef<boolean> = computed(
   (): boolean => form.value.cities.length >= PROSPECT_SEARCH_MAXIMUM_CITIES,
 )
@@ -499,11 +529,19 @@ const recapRows: ComputedRef<ProspectSearchRecapRow[]> = computed((): ProspectSe
     },
     {
       label: 'Zone',
-      value: ProspectCountries.option(form.value.country).label,
+      value: ProspectSearches.zoneLabel(form.value.country, ProspectSearchForm.regionOf(form.value)),
       detail: hasChosenCities ? form.value.cities.join(', ') : "L'app choisit les villes et en change jusqu'au compte.",
     },
     { label: 'Contact', value: PROSPECT_SEARCH_CHANNEL_LABELS[form.value.channel] },
     { label: 'Site web', value: form.value.onlyWithoutWebsite ? 'Uniquement sans site web' : 'Avec ou sans site web' },
+    ...(hasPublicRegistries.value
+      ? [
+          {
+            label: 'Sources',
+            value: form.value.useRegistries ? 'Registres publics, Google Maps et Facebook' : 'Google Maps et Facebook',
+          },
+        ]
+      : []),
     { label: 'Validation', value: validation?.label ?? '', detail: validation?.description },
   ]
 })
@@ -714,7 +752,10 @@ function applyQueryPrefill(): void {
     (option: ProspectCountryOption): boolean => option.code === countryCode?.toUpperCase(),
   )
   if (category) form.value.trades = [findChipSpelling(category.slice(0, PROSPECT_SEARCH_MAXIMUM_TRADE_LENGTH))]
-  if (city) form.value.cities = [city.slice(0, PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH)]
+  if (city) {
+    form.value.cities = [city.slice(0, PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH)]
+    form.value.franceZone = 'mainland'
+  }
   if (country) form.value.country = country.code
 }
 

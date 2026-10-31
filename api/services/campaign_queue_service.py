@@ -40,10 +40,10 @@ from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activi
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
-from services.country_profiles import CountryProfiles
 from services.email_sending_service import EmailSendingService
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.pricing_service import PricingService
+from services.prospect_timezone import prospect_timezone
 from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, SmsTemplate, find_sms_template
 from services.sms_variables import SmsVariables
 from services.tracking_links import email_tracked_link, sms_tracked_link
@@ -585,19 +585,18 @@ class CampaignQueueService:
     @staticmethod
     def prospect_timezone(prospect: ProspectDB | None) -> str:
         """
-        The IANA zone a prospect reads the clock in, from its country.
+        The IANA zone a prospect reads the clock in: his overseas department's, else his country's.
 
         The send window of a policy is evaluated in this zone, and the queue exposes it
-        so the dashboard can show the prospect's local hour. An unknown or closed
-        country reads as France, like everywhere else in the product.
+        so the dashboard can show the prospect's local hour.
 
         Args:
             prospect: The prospect, or ``None`` on a row whose prospect is gone.
 
         Returns:
-            An IANA zone name such as ``America/Toronto``.
+            An IANA zone name such as ``America/Toronto`` or ``America/Martinique``.
         """
-        return CountryProfiles.get(prospect.country if prospect is not None else None).timezone
+        return prospect_timezone(prospect)
 
     def _schedule_slots(
         self,

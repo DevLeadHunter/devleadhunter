@@ -14,6 +14,11 @@ export class ProspectTimezone {
     'Europe/Brussels': 'Bruxelles',
     'Europe/Luxembourg': 'Luxembourg',
     'America/Toronto': 'Montréal',
+    'America/Martinique': 'Fort-de-France',
+    'America/Guadeloupe': 'Pointe-à-Pitre',
+    'America/Cayenne': 'Cayenne',
+    'Indian/Reunion': 'Saint-Denis de La Réunion',
+    'Indian/Mayotte': 'Mamoudzou',
   }
 
   /**

@@ -131,6 +131,16 @@ pays est écartée, la page d'accueil d'un domaine au certificat cassé est relu
 réseau AD est un email de réseau, et le registre fédéral suisse (Zefix) est lu pour toute fiche suisse
 proposée : une société « en liquidation » ou radiée depuis moins de trois ans est écartée comme fermée.
 
+Depuis le 31 octobre : une recherche en France peut viser un département d'outre-mer (`region`,
+seule la Martinique est ouverte : `MQ`). Elle parcourt ses 34 communes, des plus grandes aux plus
+petites, ajoute « Martinique » à chaque requête et écarte une fiche placée ailleurs (code postal ou
+numéro fixe de métropole, ou d'un autre département). Ses prospects restent français
+(`country = FR`) ; leur heure d'envoi suit le code postal (972xx), le département écrit en fin
+d'adresse ou leur numéro (+596), et ils ne reçoivent jamais de SMS de prospection. Une recherche peut
+aussi se passer des registres publics (`use_registries = false` : case « Lire aussi les registres
+publics » de l'écran, `--no-registries` en ligne de commande) : elle ne part alors que de Google
+Maps et de Facebook.
+
 **Ce qui reste (lots de la section 10)**
 
 - Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en

@@ -9,9 +9,11 @@ from dataclasses import dataclass, field
 from enums.prospect_search import EmailProofLevel
 from enums.website_status import WebsiteStatus
 from services.country_profiles import CountryProfiles
-from services.sms.phone_normalizer import PhoneNumberPlans, to_e164
+from services.french_overseas import FrenchOverseas, OverseasDepartment
+from services.sms.phone_normalizer import PhoneNumberPlans, is_number_of_country, to_e164
 
 _SNIPPET_MAX_CHARS: int = 240
+_MAINLAND_LANDLINE_LEADS: tuple[str, ...] = ("+331", "+332", "+333", "+334", "+335")
 
 
 @dataclass
@@ -22,6 +24,7 @@ class CandidateFacts:
     trade_key: str
     country: str
     origin: str
+    region: str | None = None
     city: str | None = None
     searched_city: str | None = None
     address: str | None = None
@@ -64,7 +67,8 @@ class CandidateFacts:
         Whether the business is in another country than the search's.
 
         Its address ends with another country or, when it gives no address, its phone carries
-        another country's dial code (a French firm surfacing in a Swiss border town).
+        another country's dial code (a French firm surfacing in a Swiss border town). A French
+        overseas number (``+596 …``) is French.
         """
         if CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None:
             return True
@@ -74,8 +78,34 @@ class CandidateFacts:
             not self.address
             and international is not None
             and home is not None
-            and not international.startswith(home.dial_code)
+            and not is_number_of_country(international, country=home.code)
         )
+
+    @property
+    def searched_department(self) -> OverseasDepartment | None:
+        """The overseas department the search walks, ``None`` for a search of a whole country."""
+        return FrenchOverseas.by_code(self.region)
+
+    @property
+    def is_outside_region(self) -> bool:
+        """
+        Whether a candidate of an overseas department's search is placed elsewhere.
+
+        Its address places it (a mainland postal code, another department's code or name) or, when the
+        address tells nothing, its number does (another department's, a mainland landline). A mobile
+        alone places nobody: a business in Martinique may keep a mainland 06.
+        """
+        department = self.searched_department
+        if department is None:
+            return False
+        address_department = FrenchOverseas.of_address(self.address)
+        if address_department is not None or FrenchOverseas.postal_code_in(self.address) is not None:
+            return address_department != department
+        international = to_e164(self.phone, country=self.country) or ""
+        number_department = FrenchOverseas.of_e164(international)
+        if number_department is not None:
+            return number_department != department
+        return international.startswith(_MAINLAND_LANDLINE_LEADS)
 
     @property
     def has_email_on_another_site(self) -> bool:
@@ -92,8 +122,8 @@ class CandidateFacts:
 
     @property
     def has_mobile_phone(self) -> bool:
-        """Whether the phone number can receive an SMS in the candidate's country."""
-        return PhoneNumberPlans.mobile_of_country(self.phone, country=self.country) is not None
+        """Whether the phone number is a mobile of the candidate's country, a Martinique « 0696 … » included."""
+        return PhoneNumberPlans.is_mobile_line(self.phone, country=self.country)
 
     def add_evidence(
         self, fact: str, value: str, *, source: str, url: str | None = None, snippet: str | None = None

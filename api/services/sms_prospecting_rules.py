@@ -1,7 +1,8 @@
 """Who may receive a prospecting SMS: the country rule, then one first contact and one relance.
 
 A prospect is texted only when his country's declared profile opens SMS prospecting (France and
-Switzerland). Then the first prospecting message he receives, an email or an SMS, is his first contact;
+Switzerland), and never in a French overseas department (a Martinique prospect is French, but not texted).
+Then the first prospecting message he receives, an email or an SMS, is his first contact;
 the next SMS is his relance, and no automated SMS may follow it. The touch of an SMS is read from the
 prospect's history, never from the caller: a second SMS campaign sent three days after the first one is
 the relance, whatever its template. Each new row writes its touch in ``sms_messages.kind``. A row written
@@ -23,6 +24,7 @@ from enums.sms_status import SmsStatus
 from models.email_log import EmailLog
 from models.sms_message import SmsMessage
 from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
+from services.french_overseas import FrenchOverseas
 
 if TYPE_CHECKING:
     from models.prospect_db import ProspectDB
@@ -73,13 +75,14 @@ class SmsProspectingRules:
         """Why the prospect's country keeps him out of SMS prospecting, ``None`` when it is open.
 
         Read from the country's declared profile, never from the default one: ``CountryProfiles.get``
-        falls back to France for a closed country, which would open the SMS to Canada by accident.
+        falls back to France for a closed country, which would open the SMS to Canada by accident. A
+        French prospect living overseas is refused whatever his number, a mainland 06 included.
 
         Args:
             prospect: The recipient prospect.
 
         Returns:
-            The French refusal, or ``None`` when SMS prospecting is open in his country.
+            The French refusal, or ``None`` when SMS prospecting is open where he lives.
         """
         country = cls.country_of(prospect)
         profile = CountryProfiles.declared(country)
@@ -87,7 +90,22 @@ class SmsProspectingRules:
             return f"Pays « {country} » inconnu : pas de SMS de prospection"
         if not profile.sms_prospecting_open:
             return f"Pas de SMS de prospection vers ce pays ({profile.label})"
-        return None
+        return cls.overseas_refusal(prospect)
+
+    @staticmethod
+    def overseas_refusal(prospect: ProspectDB) -> str | None:
+        """Why a French prospect living in an overseas department is never texted, ``None`` for anyone else.
+
+        Args:
+            prospect: The recipient prospect.
+
+        Returns:
+            The French refusal naming his department, or ``None``.
+        """
+        department = FrenchOverseas.of_prospect(prospect)
+        if department is None:
+            return None
+        return f"Pas de SMS de prospection en outre-mer ({department.label})"
 
     @classmethod
     def automatic_country_refusal(cls, prospect: ProspectDB) -> str | None:
@@ -99,6 +117,9 @@ class SmsProspectingRules:
         Returns:
             The French reason shown on the planned row, or ``None``.
         """
+        overseas_refusal = cls.overseas_refusal(prospect)
+        if overseas_refusal is not None:
+            return overseas_refusal
         country = cls.country_of(prospect)
         if country in cls.AUTOMATIC_SMS_COUNTRIES:
             return None

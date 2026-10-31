@@ -3,7 +3,9 @@ Search zones — the towns a search walks through when the user names none.
 
 Each country has a list of towns big enough to return local results and small enough
 for independent tradespeople to be found. A search starts at a different town each
-time and leaves for later the towns it already scanned for the same trade.
+time and leaves for later the towns it already scanned for the same trade. A search of a
+French overseas department walks its communes, biggest first: the island is small, its
+small communes return few businesses.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from __future__ import annotations
 import random
 
 from services.decision_maker.normalize import fold
+from services.french_overseas import FrenchOverseas
 
 # Brittany is left out on purpose: the towns closest to the user are kept for later.
 _TOWNS_BY_COUNTRY: dict[str, tuple[str, ...]] = {
@@ -296,6 +299,7 @@ class SearchZones:
         asked_cities: list[str],
         already_scanned: set[str],
         seed: int,
+        region: str | None = None,
     ) -> list[str]:
         """
         Order the towns of a search.
@@ -305,6 +309,7 @@ class SearchZones:
             asked_cities: Towns typed by the user; when given, only those are searched, in that order.
             already_scanned: Towns earlier searches scanned for the same trade (folded names).
             seed: Makes the order differ from one search to the next, and stay the same on resume.
+            region: French overseas department searched (« MQ »): its communes replace the country's towns.
 
         Returns:
             The towns to search, fresh ones first.
@@ -312,8 +317,12 @@ class SearchZones:
         cleaned = [city.strip() for city in asked_cities if city and city.strip()]
         if cleaned:
             return cleaned
-        towns = list(cls.towns_of(country))
-        random.Random(seed).shuffle(towns)
+        department = FrenchOverseas.by_code(region)
+        if department is not None and department.is_searchable:
+            towns = list(department.communes)
+        else:
+            towns = list(cls.towns_of(country))
+            random.Random(seed).shuffle(towns)
         fresh = [town for town in towns if fold(town) not in already_scanned]
         scanned = [town for town in towns if fold(town) in already_scanned]
         return fresh + scanned
