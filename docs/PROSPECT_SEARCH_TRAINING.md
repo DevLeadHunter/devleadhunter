@@ -578,7 +578,9 @@ Règles non écrites, par risque de faux positifs :
   n'est reconnu que s'il est écrit dans le nom.
 - Un nom qui commence par « AD » ne suffit pas : « AD » suivi de garage, carrosserie ou expert est un
   réseau, « AD » seul peut être les initiales du patron.
-- Un site Wix gratuit en ligne (Garage Aurillac Électro Diesel, `….wixsite.com/…`) reste un mini-site : la
-  décision du 3 août range `wixsite.com` avec les mini-sites d'annuaire, et ces prospects sont gardés. À
-  trancher avant de le changer : la règle vaut pour toute l'app (filtre « sans site », badges, modèles
-  d'email « site mort »).
+
+Décision du 1er novembre : un site Wix gratuit en ligne (Garage Aurillac Électro Diesel, `….wixsite.com/…`)
+reste un mini-site, comme le range la règle du 3 août avec les mini-sites d'annuaire : le prospect est gardé.
+Le site démo lui est proposé comme un vrai site à la place d'une page gratuite ; un message ne lui écrit jamais
+qu'il n'a pas de site. Garage Aurillac Électro Diesel, refusé à la main dans la réserve, redevient un bon
+prospect.
