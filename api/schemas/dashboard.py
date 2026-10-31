@@ -73,7 +73,7 @@ class CoverageCity(BaseModel):
 
     city: str
     count: int
-    # ISO alpha-2 country of the city, so homonyms (Fribourg FR vs CH) geocode apart.
+    # Zone of the city (ISO alpha-2 country, or « MQ »), so homonyms (Fribourg FR vs CH) geocode apart.
     country: str = "FR"
     geocoding: CityGeocodingStatus = CityGeocodingStatus.PENDING
     location: CityLocation | None = None
@@ -108,7 +108,7 @@ class PlaceCitiesResponse(BaseModel):
 
 
 class CoverageCountry(BaseModel):
-    """Prospect count for one country (coverage map choropleth)."""
+    """Prospect count for one zone, a country or « MQ » (coverage map choropleth)."""
 
     country: str
     count: int
@@ -121,7 +121,7 @@ class CoverageProspectPoint(BaseModel):
     name: str
     address: str | None = None
     city: str
-    # ISO alpha-2 country, routing the point to the right geocoder (FR street vs foreign city centre).
+    # Zone (ISO alpha-2 country, or « MQ »), routing the point to the right geocoder (FR street vs foreign city centre).
     country: str = "FR"
 
 
@@ -161,7 +161,7 @@ class CoverageResponse(BaseModel):
     # Un point par prospect, pour l'affichage rue par rue au zoom.
     points: list[CoverageProspectPoint] = Field(default_factory=list)
     total_prospects: int
-    # Prospect count per country (ISO alpha-2), for the country-level choropleth.
+    # Prospect count per zone (ISO alpha-2 country, or « MQ »), for the country-level choropleth.
     countries: list[CoverageCountry] = Field(default_factory=list)
     # Populated only when the user belongs to an organization (scope selector).
     members: list[CoverageMember] = Field(default_factory=list)

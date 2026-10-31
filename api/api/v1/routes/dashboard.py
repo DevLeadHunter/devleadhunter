@@ -181,9 +181,15 @@ async def dashboard_hot_leads(
     return HotLeadsResponse(items=items)
 
 
-def _coverage_country():
-    """The prospect's ISO alpha-2 country, upper-cased, legacy null/empty rows read as FR."""
-    return func.upper(func.coalesce(func.nullif(func.trim(ProspectDB.country), ""), "FR"))
+def _coverage_zone():
+    """
+    Where the map places a prospect: its French overseas department (« MQ »), else its ISO alpha-2 country.
+
+    Upper-cased, legacy null/empty countries read as FR: a Martinique prospect is French, but it has its own
+    zone on the map, as Québec has.
+    """
+    country = func.upper(func.coalesce(func.nullif(func.trim(ProspectDB.country), ""), "FR"))
+    return func.coalesce(ProspectDB.region, country)
 
 
 def _apply_coverage_scope(stmt, scope: str, member_id, uid: int, org_id):
@@ -246,11 +252,11 @@ async def dashboard_coverage(
         resolved_scope = "me"
 
     city_col = func.trim(ProspectDB.city)
-    # Cities are grouped by (city, country) so a foreign homonym (Fribourg CH) stays separate from the French one.
-    country_norm = _coverage_country()
+    # Cities are grouped by (city, zone) so a foreign homonym (Fribourg CH) stays separate from the French one.
+    zone = _coverage_zone()
     stmt = select(
         func.min(city_col).label("city"),
-        country_norm.label("country"),
+        zone.label("country"),
         func.count().label("count"),
     ).where(city_col.isnot(None), city_col != "")
     stmt = scope_filter(stmt)
@@ -259,7 +265,7 @@ async def dashboard_coverage(
     if wanted:
         stmt = stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
 
-    stmt = stmt.group_by(func.lower(city_col), country_norm).order_by(func.count().desc())
+    stmt = stmt.group_by(func.lower(city_col), zone).order_by(func.count().desc())
     rows = db.execute(stmt).all()
     cities = city_geocoding_service.with_cached_placements(
         db, [CoverageCity(city=str(row.city), count=int(row.count), country=str(row.country)) for row in rows]
@@ -268,7 +274,7 @@ async def dashboard_coverage(
 
     # Les mêmes prospects, un par un : le front les géocode à l'adresse pour le zoom rue.
     point_stmt = select(
-        ProspectDB.id, ProspectDB.name, ProspectDB.address, city_col.label("city"), country_norm.label("country")
+        ProspectDB.id, ProspectDB.name, ProspectDB.address, city_col.label("city"), zone.label("country")
     ).where(city_col.isnot(None), city_col != "")
     point_stmt = scope_filter(point_stmt)
     if wanted:
@@ -290,10 +296,10 @@ async def dashboard_coverage(
     available_categories = sorted((str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower)
 
     # Prospect count per country, for the country-level choropleth (BE/CH/LU shown as coloured blocks).
-    country_stmt = scope_filter(select(country_norm.label("country"), func.count().label("count")))
+    country_stmt = scope_filter(select(zone.label("country"), func.count().label("count")))
     if wanted:
         country_stmt = country_stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
-    country_stmt = country_stmt.group_by(country_norm).order_by(func.count().desc())
+    country_stmt = country_stmt.group_by(zone).order_by(func.count().desc())
     countries = [
         CoverageCountry(country=str(row.country), count=int(row.count)) for row in db.execute(country_stmt).all()
     ]
@@ -340,7 +346,7 @@ async def place_coverage_cities(
 @router.get("/coverage/prospects", response_model=CoverageProspectsResponse)
 async def coverage_zone_prospects(
     cities: list[str] = Query(..., description="City names of the zone (repeatable)"),
-    country: str | None = Query(None, description="ISO alpha-2 country of the zone. Absent = every country."),
+    country: str | None = Query(None, description="Zone of the cities: ISO country, or « MQ ». Absent = every zone."),
     scope: str = Query("me", description="me | org | member"),
     member_id: int | None = Query(None, description="User id when scope=member"),
     categories: list[str] | None = Query(None, description="Optional trade filter (repeatable)"),
@@ -367,7 +373,7 @@ async def coverage_zone_prospects(
     stmt = select(ProspectDB).where(func.lower(func.trim(ProspectDB.city)).in_(wanted_cities))
     wanted_country = (country or "").strip().upper()
     if wanted_country:
-        stmt = stmt.where(_coverage_country() == wanted_country)
+        stmt = stmt.where(_coverage_zone() == wanted_country)
     stmt = _apply_coverage_scope(stmt, scope, member_id, uid, org_id)
     wanted_categories = [c.strip().lower() for c in (categories or []) if c and c.strip()]
     if wanted_categories:

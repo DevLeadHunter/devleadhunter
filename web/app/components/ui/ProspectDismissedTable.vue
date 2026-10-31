@@ -23,12 +23,7 @@
             {{ prospect.name }}
           </button>
           <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
-            <UiCountryFlag
-              v-if="prospect.country && prospect.country !== 'FR'"
-              :code="prospect.country"
-              :title="ProspectCountries.option(prospect.country).label"
-              size="compact"
-            />
+            <UiCountryFlag :code="ProspectZones.of(prospect)" size="compact" />
             <span>{{ [prospect.category, prospect.city].filter(Boolean).join(' · ') }}</span>
           </p>
         </BaseTableTd>
@@ -72,7 +67,7 @@ import type { EmitFn, PropType } from 'vue'
 import type { Prospect } from '~/types'
 import type { UiProspectDismissedTableEmits, UiProspectDismissedTableProps } from '~/types/UiProspectDismissedTable'
 import { formatRelativeTime } from '~/utils/date'
-import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectZones } from '~/utils/prospectZones'
 
 const props: UiProspectDismissedTableProps = defineProps({
   prospects: {

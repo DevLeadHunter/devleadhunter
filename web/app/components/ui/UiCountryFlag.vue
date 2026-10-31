@@ -37,6 +37,11 @@
       <rect x="10" width="10" height="20" fill="#fff" />
       <rect x="20" width="10" height="20" fill="#ED2939" />
     </svg>
+    <svg v-else-if="countryCode === 'MQ'" viewBox="0 0 30 20" class="h-full w-full" aria-hidden="true">
+      <rect width="30" height="10" fill="#00A651" />
+      <rect y="10" width="30" height="10" fill="#000" />
+      <path d="M0 0L13 10L0 20Z" fill="#E4002B" />
+    </svg>
   </span>
 </template>
 
@@ -44,9 +49,9 @@
 import type { UiCountryFlagProps, UiCountryFlagSize } from '~/types/UiCountryFlag'
 import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
-import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectZones } from '~/utils/prospectZones'
 
-/** Inline SVG flag of a prospect's country, hidden for France by default so French rows stay unchanged. */
+/** Inline SVG flag of a prospect's zone, hidden for France by default so French rows stay unchanged. */
 const props: UiCountryFlagProps = defineProps({
   code: {
     type: String as PropType<string | null>,
@@ -66,11 +71,11 @@ const props: UiCountryFlagProps = defineProps({
   },
 })
 
-const countryCode: ComputedRef<string> = computed((): string => ProspectCountries.option(props.code).code)
+const countryCode: ComputedRef<string> = computed((): string => ProspectZones.option(props.code).code)
 
 const show: ComputedRef<boolean> = computed((): boolean => !(props.hideFrance && countryCode.value === 'FR'))
 
-const label: ComputedRef<string> = computed((): string => ProspectCountries.option(props.code).label)
+const label: ComputedRef<string> = computed((): string => ProspectZones.option(props.code).label)
 
 const sizeClass: ComputedRef<string> = computed((): string =>
   props.size === 'default' ? 'h-[13px] w-[18px]' : 'h-[11px] w-[15px]',

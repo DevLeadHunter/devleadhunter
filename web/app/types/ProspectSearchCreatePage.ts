@@ -1,5 +1,5 @@
-import type { ProspectCountry } from '~/types'
-import type { ProspectSearchChannel, ProspectSearchRegion, ProspectSearchValidationMode } from '~/types/ProspectSearch'
+import type { ProspectCountry, ProspectRegion } from '~/types'
+import type { ProspectSearchChannel, ProspectSearchValidationMode } from '~/types/ProspectSearch'
 import type { SelectFieldOption } from '~/types/SelectField'
 
 export type ProspectSearchStepKey = 'target' | 'zone' | 'criteria' | 'launch'
@@ -10,12 +10,10 @@ export type ProspectSearchStepDefinition = {
   hint: string
 }
 
-export type ProspectSearchFranceZone = 'mainland' | ProspectSearchRegion
-
 export type ProspectSearchFormState = {
   trades: string[]
   country: ProspectCountry
-  franceZone: ProspectSearchFranceZone
+  region: ProspectRegion | null
   cities: string[]
   countPerTrade: number
   channel: ProspectSearchChannel

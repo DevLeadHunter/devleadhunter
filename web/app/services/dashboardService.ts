@@ -192,7 +192,7 @@ export class DashboardService {
    * @param scope - 'me' | 'org' | 'member'.
    * @param memberId - Member user id when scope is 'member'.
    * @param categories - Optional trade filter (empty = all trades).
-   * @param country - ISO alpha-2 country of the zone, so a homonym abroad stays out (Laval FR vs Laval QC).
+   * @param country - ISO alpha-2 country of the zone (« MQ » for Martinique), so a homonym stays out (Laval FR vs QC).
    * @returns Light prospect rows + real total.
    */
   static async getCoverageProspects(

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import UTF8MB4_TABLE_OPTIONS, Base
 from enums.prospect_search import CandidateStatus
+from services.french_overseas import FrenchOverseas
 
 _STATUSES_OPEN_TO_A_DECISION: tuple[str, ...] = (
     CandidateStatus.KEPT.value,
@@ -116,3 +117,9 @@ class ProspectSearchCandidate(Base):
     def _is_pending_filter(cls) -> ColumnElement[bool]:
         """The same rule as a query filter."""
         return and_(cls.prospect_id.is_(None), cls.status.in_(_STATUSES_OPEN_TO_A_DECISION))
+
+    @property
+    def region(self) -> str | None:
+        """The French overseas department the business's address or number places it in (« MQ »), None elsewhere."""
+        department = FrenchOverseas.of_prospect(self)
+        return department.code if department is not None else None

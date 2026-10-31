@@ -2,7 +2,9 @@
 City centres for the coverage map, looked up once and shared by every device and every user.
 
 France asks the official list of communes (geo.api.gouv.fr), which also gives the commune's département and region;
-the other countries ask Photon (OpenStreetMap), filtered to the city's country so a homonym abroad is never placed.
+a French overseas department (« MQ ») asks the same list, among its own communes only, so Saint-Pierre of
+Martinique never lands in mainland France; the other countries ask Photon (OpenStreetMap), filtered to the
+city's country so a homonym abroad is never placed.
 A city no geocoder knows is kept as unknown and asked again after a month; a failed call is never kept, so the
 next map asks again. The session's connection goes back to the pool before any geocoder is asked: Photon often
 takes several seconds per city.
@@ -28,6 +30,7 @@ from enums.city_geocoding import CityGeocodingStatus
 from models.geocoded_city import GeocodedCity
 from schemas.dashboard import CityLocation, CityToPlace, CoverageCity, PlacedCity
 from services.country_profiles import CountryProfiles
+from services.french_overseas import FrenchOverseas
 
 logger = logging.getLogger(__name__)
 
@@ -169,23 +172,37 @@ class CityGeocodingService:
         return await self._look_up(client, city, country)
 
     async def _look_up(self, client: httpx.AsyncClient, city: str, country: str) -> CityPlacement:
-        """Route a city to its country's geocoder."""
+        """Route a city to its zone's geocoder: France, one of its overseas departments, or another country."""
         if country == "FR":
             return await self._french_commune(client, city)
+        overseas_department = FrenchOverseas.by_code(country)
+        if overseas_department is not None:
+            return await self._french_commune(client, city, department_code=overseas_department.postal_prefix)
         return await self._foreign_city(client, city, country)
 
-    async def _french_commune(self, client: httpx.AsyncClient, city: str) -> CityPlacement:
+    async def _french_commune(
+        self, client: httpx.AsyncClient, city: str, *, department_code: str | None = None
+    ) -> CityPlacement:
         """
         Place a French city through the official list of communes, the exact name before the most populated match.
 
         « Betton » used to land on Betton-Bettonet (306 inhabitants, Savoie) when the first match was trusted.
+
+        Args:
+            client: The shared HTTP client.
+            city: The city name.
+            department_code: The only département to search (« 972 »), every one when absent.
         """
         key = self.city_key(city)
-        answer = await self._get_json(
-            client,
-            self._FRENCH_COMMUNES_URL,
-            {"nom": key, "fields": "code,nom,centre,codeDepartement,codeRegion", "boost": "population", "limit": 5},
-        )
+        query: dict[str, str | int] = {
+            "nom": key,
+            "fields": "code,nom,centre,codeDepartement,codeRegion",
+            "boost": "population",
+            "limit": 5,
+        }
+        if department_code is not None:
+            query["codeDepartement"] = department_code
+        answer = await self._get_json(client, self._FRENCH_COMMUNES_URL, query)
         if not isinstance(answer, list):
             return _PENDING
         communes = [commune for commune in answer if isinstance(commune, dict)]

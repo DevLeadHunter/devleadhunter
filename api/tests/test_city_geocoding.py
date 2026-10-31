@@ -26,11 +26,13 @@ class ScriptedGeocoders:
     def __init__(self, answers: dict[str, Any]) -> None:
         self.answers = answers
         self.asked: list[str] = []
+        self.queries: list[dict[str, str | int]] = []
 
     async def get_json(self, client: object, url: str, params: dict[str, str | int]) -> Any:
         """The scripted answer for the city of this call, None when the script has none."""
         asked = str(params.get("nom") or params.get("q"))
         self.asked.append(asked)
+        self.queries.append(params)
         return self.answers.get(asked)
 
 
@@ -76,6 +78,18 @@ def test_a_french_town_lands_on_its_exact_commune_with_its_region(db: Session, g
     assert placed.location is not None
     assert (placed.location.latitude, placed.location.longitude) == (48.18, -1.64)
     assert (placed.location.insee_code, placed.location.region_code) == ("35024", "53")
+
+
+def test_a_martinique_town_is_looked_up_among_the_communes_of_martinique_only(
+    db: Session, geocoders: ScriptedGeocoders
+) -> None:
+    geocoders.answers["saint-pierre"] = [_commune("Saint-Pierre", "97225", -61.18, 14.74, "02")]
+
+    [in_martinique, in_mainland] = _place(db, ("Saint-Pierre", "MQ"), ("Saint-Pierre", "FR"))
+
+    assert {query.get("codeDepartement") for query in geocoders.queries} == {"972", None}
+    assert (in_martinique.country, in_mainland.country) == ("MQ", "FR")
+    assert in_martinique.location is not None and in_martinique.location.insee_code == "97225"
 
 
 def test_a_swiss_town_keeps_to_switzerland_and_prefers_the_town_to_its_canton(

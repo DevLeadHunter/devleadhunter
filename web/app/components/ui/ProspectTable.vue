@@ -129,12 +129,7 @@
 
         <BaseTableTd label="Ville" class="text-sm text-[var(--app-ink-soft)]">
           <span class="inline-flex items-center gap-1.5">
-            <UiCountryFlag
-              v-if="prospect.country && prospect.country !== 'FR'"
-              :code="prospect.country"
-              :title="ProspectCountries.option(prospect.country).label"
-              size="compact"
-            />
+            <UiCountryFlag :code="ProspectZones.of(prospect)" size="compact" />
             <span>{{ prospect.city || '—' }}</span>
           </span>
         </BaseTableTd>
@@ -290,8 +285,8 @@ import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProsp
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useUserStore } from '~/stores/user'
-import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
+import { ProspectZones } from '~/utils/prospectZones'
 
 /** Paginated prospect rows with per-row and select-all checkboxes. */
 const props: UiProspectTableProps = defineProps({

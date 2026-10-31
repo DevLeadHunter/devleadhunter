@@ -136,10 +136,12 @@ seule la Martinique est ouverte : `MQ`). Elle parcourt ses 34 communes, des plus
 petites, ajoute « Martinique » à chaque requête et écarte une fiche placée ailleurs (code postal ou
 numéro fixe de métropole, ou d'un autre département). Ses prospects restent français
 (`country = FR`) ; leur heure d'envoi suit le code postal (972xx), le département écrit en fin
-d'adresse ou leur numéro (+596), et ils ne reçoivent jamais de SMS de prospection. Une recherche peut
-aussi se passer des registres publics (`use_registries = false` : case « Lire aussi les registres
-publics » de l'écran, `--no-registries` en ligne de commande) : elle ne part alors que de Google
-Maps et de Facebook.
+d'adresse ou leur numéro (+596), et ils ne reçoivent jamais de SMS de prospection. Comme le Québec,
+la Martinique est une zone à part : une puce avec son drapeau dans l'écran de recherche, un drapeau
+sur ses prospects (`region = MQ`, posé à chaque écriture du prospect) et une zone de la carte de
+prospection découpée en ses 34 communes. Une recherche peut aussi se passer des registres publics
+(`use_registries = false` : case « Lire aussi les registres publics » de l'écran, `--no-registries`
+en ligne de commande) : elle ne part alors que de Google Maps et de Facebook.
 
 **Ce qui reste (lots de la section 10)**
 

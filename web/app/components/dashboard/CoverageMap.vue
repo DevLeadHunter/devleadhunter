@@ -147,19 +147,19 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { AddressGeo, CityGeo, ReverseGeocodedCommune } from '~/composables/useFranceGeo'
 import { addressKey, lookupCity, reverseGeocodeCommune } from '~/composables/useFranceGeo'
 import { useAppTheme } from '~/composables/useAppTheme'
-import type { Prospect, ProspectCountry } from '~/types'
+import type { Prospect, ProspectZone } from '~/types'
 import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { AppTheme } from '~/types/AppTheme'
 import type { ProspectSearchPrefill } from '~/types/ProspectSearch'
 import type { ForeignRegionCollection, ForeignRegionProperties } from '~/utils/foreignRegions'
-import { countryBounds, countryRegionCount, fetchForeignRegions, foreignRegionAt } from '~/utils/foreignRegions'
+import { countryBounds, countryRegionCount, fetchForeignRegions, foreignRegionOfCity } from '~/utils/foreignRegions'
 import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
-import type { ProspectCountryOption } from '~/utils/prospectCountries'
-import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectSearches } from '~/utils/prospectSearches'
+import type { ProspectZoneOption } from '~/utils/prospectZones'
+import { ProspectZones } from '~/utils/prospectZones'
 import type { RegionContourFeature } from '~/utils/regionContours'
 import { RegionContours } from '~/utils/regionContours'
 
@@ -171,7 +171,8 @@ const REGIONS_GEOJSON_URL: string = '/regions-fr.geojson'
 
 /** Credits of the region contours, shown in the map attribution as their licences ask. */
 const FRANCE_REGIONS_ATTRIBUTION: string = 'Régions © IGN'
-const FOREIGN_REGIONS_ATTRIBUTION: string = 'Natural Earth · Régions du Québec © Gouvernement du Québec (CC BY 4.0)'
+const FOREIGN_REGIONS_ATTRIBUTION: string =
+  'Natural Earth · Régions du Québec © Gouvernement du Québec (CC BY 4.0) · Communes de Martinique © IGN'
 
 /** OpenFreeMap basemap styles (free, no API key, no usage limit) per app theme. */
 const MAP_STYLES: Record<AppTheme, string> = {
@@ -191,9 +192,9 @@ const QUEBEC_BOUNDS: CoverageMapBounds = [
   [-64.0, 50.4],
 ]
 
-/** Panning limit — every supported country, from Québec to Switzerland, with a comfortable margin. */
+/** Panning limit — every supported zone, from Québec and Martinique to Switzerland, with a comfortable margin. */
 const MAP_MAX_BOUNDS: CoverageMapBounds = [
-  [-100.0, 30.0],
+  [-100.0, 10.0],
   [32.0, 66.0],
 ]
 
@@ -218,7 +219,7 @@ const EUROPE_BOUNDS: CoverageMapBounds = [
 ]
 
 /** Fixed framings for the countries their region contours would frame badly; the others use their contours' box. */
-const COUNTRY_FRAMES: Partial<Record<ProspectCountry, CoverageMapBounds>> = { FR: FRANCE_BOUNDS, CA: QUEBEC_BOUNDS }
+const COUNTRY_FRAMES: Partial<Record<ProspectZone, CoverageMapBounds>> = { FR: FRANCE_BOUNDS, CA: QUEBEC_BOUNDS }
 
 /** Countries that fit in one view with France (the initial framing widens to them when they hold prospects). */
 const FRANCE_NEIGHBOURS: ReadonlySet<string> = new Set(['CH', 'BE', 'LU'])
@@ -230,6 +231,7 @@ const REGION_LABELS: Record<string, string> = {
   BE: 'Provinces',
   LU: 'Districts',
   CA: 'Régions',
+  MQ: 'Communes',
 }
 
 /** Zoom at which the city aggregate hands over to the per-prospect points. */
@@ -260,10 +262,11 @@ const mapContainer: Ref<HTMLElement | null> = ref(null)
 /** MapLibre instance — deliberately non-reactive (huge mutable object). */
 let mapInstance: MaplibreMap | null = null
 
-/** Prospect total per region code (from geocoded cities). */
+/** Prospect total per region of mainland France (from geocoded cities). */
 const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
   const totals: Record<string, number> = {}
   for (const city of store.coverage?.cities ?? []) {
+    if (city.country.toUpperCase() !== 'FR') continue
     const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (geo && geo.region) totals[geo.region] = (totals[geo.region] ?? 0) + city.count
   }
@@ -275,8 +278,8 @@ const franceRegions: ShallowRef<FeatureCollection | null> = shallowRef(null)
 /** Region contours outside France (cantons, provinces, districts, Québec regions), loaded once for the choropleth. */
 const foreignRegions: ShallowRef<ForeignRegionCollection | null> = shallowRef(null)
 
-/** Country whose regions + stats the top cards currently show (driven by the selector). */
-const selectedCountry: Ref<ProspectCountry> = ref('FR')
+/** Country (or Martinique) whose regions + stats the top cards currently show (driven by the selector). */
+const selectedCountry: Ref<ProspectZone> = ref('FR')
 
 /** Once the user picks a country, data reloads (scope, trades) no longer move the selection. */
 const hasPickedCountry: Ref<boolean> = ref(false)
@@ -289,9 +292,9 @@ const countryOptions: ComputedRef<CoverageCountryOption[]> = computed((): Covera
       entry.count,
     ]),
   )
-  return ProspectCountries.catalog
+  return ProspectZones.catalog
     .map(
-      (option: ProspectCountryOption): CoverageCountryOption => ({
+      (option: ProspectZoneOption): CoverageCountryOption => ({
         ...option,
         prospectCount: counts.get(option.code) ?? 0,
       }),
@@ -315,7 +318,7 @@ const foreignRegionIndex: ComputedRef<ForeignRegionIndex> = computed((): Foreign
     if (city.country.toUpperCase() === 'FR') continue
     const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (!geo) continue
-    const region: ForeignRegionProperties | null = foreignRegionAt(regions, geo.lng, geo.lat)
+    const region: ForeignRegionProperties | null = foreignRegionOfCity(regions, city.country.toUpperCase(), geo)
     if (!region) continue
     index.totals[region.code] = (index.totals[region.code] ?? 0) + city.count
     index.cities[region.code] = [...(index.cities[region.code] ?? []), city.city]
@@ -605,10 +608,10 @@ function refreshRegionContours(): void {
 
 /**
  * Framing of a country: its fixed box when it has one, else the box of its region contours.
- * @param code - The country to frame.
+ * @param code - The country (or Martinique) to frame.
  * @returns The box, or null while the country's contours are not loaded.
  */
-function countryFrame(code: ProspectCountry): CoverageMapBounds | null {
+function countryFrame(code: ProspectZone): CoverageMapBounds | null {
   const fixed: CoverageMapBounds | undefined = COUNTRY_FRAMES[code]
   if (fixed) return fixed
   return foreignRegions.value ? countryBounds(foreignRegions.value, code) : null
@@ -696,11 +699,11 @@ async function openProspectFromMap(prospectId: number): Promise<void> {
 /**
  * Title of a city zone: the city, plus its country outside France (Laval in Mayenne and Laval in Québec exist).
  * @param city - City name.
- * @param country - ISO alpha-2 country of the city.
+ * @param country - ISO alpha-2 country of the city, or « MQ » for Martinique.
  * @returns The drawer title.
  */
 function cityZoneLabel(city: string, country: string): string {
-  const suffix: string = ProspectCountries.suffix(country)
+  const suffix: string = ProspectZones.suffix(country)
   return suffix ? `${city} · ${suffix}` : city
 }
 
@@ -733,7 +736,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
   if (feature.layer.id === CITIES_LAYER_ID) {
     const city: string = String(feature.properties?.city ?? '')
     if (!city) return
-    const cityCountry: ProspectCountry = ProspectCountries.option(String(feature.properties?.country ?? 'FR')).code
+    const cityCountry: ProspectZone = ProspectZones.option(String(feature.properties?.country ?? 'FR')).code
     drawerStack.push({
       kind: 'coverage-prospects',
       zone: {
@@ -750,7 +753,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
   // ── Foreign region (canton/province/district/Québec region): its prospects, else a search in that country ──
   if (feature.layer.id === FOREIGN_REGIONS_FILL_LAYER_ID) {
     const regionCode: string = String(feature.properties?.code ?? '')
-    const foreignCountry: ProspectCountry = ProspectCountries.option(String(feature.properties?.country ?? '')).code
+    const foreignCountry: ProspectZone = ProspectZones.option(String(feature.properties?.country ?? '')).code
     const regionCities: string[] = foreignRegionIndex.value.cities[regionCode] ?? []
     if (regionCities.length > 0) {
       drawerStack.push({
@@ -765,7 +768,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
       })
       return
     }
-    openNewSearch({ country: foreignCountry, ...categoryPrefill() })
+    openNewSearch({ zone: foreignCountry, ...categoryPrefill() })
     return
   }
 
@@ -794,12 +797,12 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     (c: FranceMajorCity): boolean => c.region === code,
   )?.name
   const city: string | undefined = commune?.name ?? fallback
-  openNewSearch({ ...(city ? { city } : {}), country: 'FR', ...categoryPrefill() })
+  openNewSearch({ ...(city ? { city } : {}), zone: 'FR', ...categoryPrefill() })
 }
 
 /**
  * Open the new-search page with what the map already knows about the clicked zone.
- * @param prefill - Trade, town and country to hand over.
+ * @param prefill - Trade, town and zone to hand over.
  */
 function openNewSearch(prefill: ProspectSearchPrefill): void {
   navigateTo(ProspectSearches.newSearchLocation(prefill))
@@ -812,9 +815,9 @@ function openSearchPage(): void {
 
 /**
  * Frame the map on a country (France and Québec use a fixed box, the others their region contours' box).
- * @param code - The country to zoom onto.
+ * @param code - The country (or Martinique) to zoom onto.
  */
-function frameCountry(code: ProspectCountry): void {
+function frameCountry(code: ProspectZone): void {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
   const bounds: CoverageMapBounds | null = countryFrame(code)
@@ -823,9 +826,9 @@ function frameCountry(code: ProspectCountry): void {
 
 /**
  * Select a country: switch the stat cards to it and zoom the map onto it.
- * @param code - The country picked in the selector.
+ * @param code - The country (or Martinique) picked in the selector.
  */
-function selectCountry(code: ProspectCountry): void {
+function selectCountry(code: ProspectZone): void {
   hasPickedCountry.value = true
   selectedCountry.value = code
   frameCountry(code)

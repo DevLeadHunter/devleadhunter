@@ -1,9 +1,6 @@
-import type { ProspectCountry, ProspectWebsiteStatus } from '~/types'
+import type { ProspectCountry, ProspectRegion, ProspectWebsiteStatus, ProspectZone } from '~/types'
 
 export type ProspectSearchChannel = 'email' | 'sms' | 'email_and_sms'
-
-/** French overseas department a search walks instead of mainland France (ISO code). */
-export type ProspectSearchRegion = 'MQ'
 
 export type ProspectSearchValidationMode = 'manual' | 'automatic'
 
@@ -55,7 +52,7 @@ export type ProspectSearchTradeOption = {
 export type ProspectSearchCreatePayload = {
   trades: string[]
   country: ProspectCountry
-  region: ProspectSearchRegion | null
+  region: ProspectRegion | null
   cities: string[]
   count_per_trade: number
   channel: ProspectSearchChannel
@@ -83,7 +80,7 @@ export type ProspectSearchSummary = {
   id: number
   trades: string[]
   country: string
-  region: ProspectSearchRegion | null
+  region: ProspectRegion | null
   cities: string[]
   count_per_trade: number
   channel: ProspectSearchChannel
@@ -119,6 +116,7 @@ export type ProspectSearchCandidate = {
   address: string | null
   city: string | null
   country: string
+  region: ProspectRegion | null
   phone: string | null
   phone_is_mobile: boolean
   email: string | null
@@ -216,7 +214,7 @@ export type ProspectSearchValidationOption = {
 export type ProspectSearchPrefill = {
   category?: string
   city?: string
-  country?: ProspectCountry
+  zone?: ProspectZone
 }
 
 export type ProspectSearchPageLocation = {

@@ -313,15 +313,12 @@
                 </div>
                 <div>
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Adresse</p>
-                  <div v-if="prospect.address || prospect.city || countrySuffix" class="mt-1 space-y-1">
+                  <div v-if="prospect.address || prospect.city || zoneSuffix" class="mt-1 space-y-1">
                     <p v-if="prospect.address" class="text-sm text-[var(--app-ink)]">{{ prospect.address }}</p>
                     <p v-if="prospect.city" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city }}</p>
-                    <p
-                      v-if="countrySuffix || (prospect.country && prospect.country !== 'FR')"
-                      class="flex items-center gap-2 pt-0.5 text-sm text-[var(--app-ink-soft)]"
-                    >
-                      <UiCountryFlag :code="prospect.country" :hide-france="false" size="default" />
-                      <span>{{ countrySuffix || ProspectCountries.option(prospect.country).label }}</span>
+                    <p v-if="zoneSuffix" class="flex items-center gap-2 pt-0.5 text-sm text-[var(--app-ink-soft)]">
+                      <UiCountryFlag :code="ProspectZones.of(prospect)" :hide-france="false" size="default" />
+                      <span>{{ zoneSuffix }}</span>
                     </p>
                   </div>
                   <p v-else class="text-sm text-[var(--app-faint)]">—</p>
@@ -702,6 +699,7 @@
 import { formatLongMonthDate, parseApiDate } from '~/utils/date'
 import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
+import { ProspectZones } from '~/utils/prospectZones'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
   LighthouseGauge,
@@ -1041,8 +1039,8 @@ const editForm: Ref<ProspectEditForm> = ref({
   category: '',
 })
 
-/** Country line shown under the city — empty for France so French cards keep their layout. */
-const countrySuffix: ComputedRef<string> = computed((): string => ProspectCountries.suffix(props.prospect?.country))
+/** Zone line under the city (Martinique, a country abroad) — empty for France so French cards keep their layout. */
+const zoneSuffix: ComputedRef<string> = computed((): string => ProspectZones.suffix(ProspectZones.of(props.prospect)))
 
 /** The prospect's assistant demo URL, marked internal so previewing it never pollutes its analytics. */
 const assistantDemoUrl: ComputedRef<string> = computed((): string => {

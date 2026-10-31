@@ -110,35 +110,30 @@
             <h2 id="search-country-title" class="text-base font-semibold text-[var(--app-ink)]">Pays</h2>
             <div class="mt-3 flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="search-country-title">
               <button
-                v-for="countryOption in ProspectCountries.catalog"
-                :key="countryOption.code"
+                v-for="zoneOption in ProspectZones.catalog"
+                :key="zoneOption.code"
                 type="button"
                 role="radio"
-                :aria-checked="countryOption.code === form.country"
+                :aria-checked="zoneOption.code === selectedZone.code"
                 class="flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3.5 pointer-coarse:text-sm"
                 :class="
-                  countryOption.code === form.country
+                  zoneOption.code === selectedZone.code
                     ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
                     : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
                 "
-                @click="form.country = countryOption.code"
+                @click="selectZone(zoneOption)"
               >
-                <UiCountryFlag :code="countryOption.code" :hide-france="false" size="default" />
-                <span>{{ countryOption.label }}</span>
+                <UiCountryFlag :code="zoneOption.code" :hide-france="false" size="default" />
+                <span>{{ zoneOption.label }}</span>
               </button>
             </div>
-            <template v-if="form.country === ProspectCountries.france.code">
-              <UiSegmentedControl
-                v-model="form.franceZone"
-                :options="PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS"
-                label="Zone en France"
-                class="mt-3"
-              />
-              <p v-if="form.franceZone !== 'mainland'" class="mt-2 text-xs text-[var(--app-ink-soft)]">
-                La recherche parcourt les communes de l'île, des plus grandes aux plus petites. Les mails partent à
-                l'heure de Martinique, jamais de SMS.
-              </p>
-            </template>
+            <p
+              v-if="selectedZone.code === ProspectZones.martinique.code"
+              class="mt-2 text-xs text-[var(--app-ink-soft)]"
+            >
+              La recherche parcourt les communes de l'île, des plus grandes aux plus petites. Les mails partent à
+              l'heure de Martinique, jamais de SMS.
+            </p>
           </div>
 
           <div class="border-t border-[var(--app-line-soft)] pt-5">
@@ -161,6 +156,7 @@
                   v-model="cityInput"
                   :input-id="CITY_INPUT_ID"
                   placeholder="Ajouter une ville"
+                  :department-code="selectedZone.departmentCode"
                   show-icon
                   :disabled="hasMaximumCities"
                   @select="addSuggestedCity"
@@ -353,7 +349,6 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref, WritableComputedRef } from 'vue'
 import type { LocationQueryValue } from 'vue-router'
-import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import type { CitySuggestion } from '~/types/CityAutocompleteInput'
 import type { UseDashboardScrollReturn, UseToastReturn } from '~/types/Composables'
 import type {
@@ -381,7 +376,6 @@ import {
   PROSPECT_SEARCH_CHANNEL_OPTIONS,
   PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES,
   PROSPECT_SEARCH_DURATION_LABEL,
-  PROSPECT_SEARCH_FRANCE_ZONE_OPTIONS,
   PROSPECT_SEARCH_MAXIMUM_CITIES,
   PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH,
   PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE,
@@ -398,6 +392,8 @@ import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectSearchForm } from '~/utils/prospectSearchForm'
 import { ProspectSearches } from '~/utils/prospectSearches'
+import type { ProspectZoneOption } from '~/utils/prospectZones'
+import { ProspectZones } from '~/utils/prospectZones'
 
 definePageMeta({
   layout: 'dashboard',
@@ -484,6 +480,10 @@ const hasPublicRegistries: ComputedRef<boolean> = computed((): boolean =>
   PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES.includes(form.value.country),
 )
 
+const selectedZone: ComputedRef<ProspectZoneOption> = computed(
+  (): ProspectZoneOption => ProspectZones.option(ProspectZones.of(form.value)),
+)
+
 const hasMaximumCities: ComputedRef<boolean> = computed(
   (): boolean => form.value.cities.length >= PROSPECT_SEARCH_MAXIMUM_CITIES,
 )
@@ -529,7 +529,7 @@ const recapRows: ComputedRef<ProspectSearchRecapRow[]> = computed((): ProspectSe
     },
     {
       label: 'Zone',
-      value: ProspectSearches.zoneLabel(form.value.country, ProspectSearchForm.regionOf(form.value)),
+      value: selectedZone.value.label,
       detail: hasChosenCities ? form.value.cities.join(', ') : "L'app choisit les villes et en change jusqu'au compte.",
     },
     { label: 'Contact', value: PROSPECT_SEARCH_CHANNEL_LABELS[form.value.channel] },
@@ -642,6 +642,15 @@ function clampCountPerTrade(): void {
 }
 
 /**
+ * Search a zone: its country, and its overseas department when it is one.
+ * @param zone - The zone picked among the chips.
+ */
+function selectZone(zone: ProspectZoneOption): void {
+  form.value.country = zone.country
+  form.value.region = zone.region
+}
+
+/**
  * Add a town to the objective, unless it is already there or the search is full.
  * @param city - Town as typed or suggested.
  */
@@ -743,20 +752,20 @@ function readQueryValue(value: LocationQueryValue | LocationQueryValue[] | undef
   return firstValue.trim() === '' ? null : firstValue.trim()
 }
 
-/** Apply the trade, town and country another screen handed over through the URL, over the remembered form. */
+/** Apply the trade, town and zone another screen handed over through the URL, over the remembered form. */
 function applyQueryPrefill(): void {
   const category: string | null = readQueryValue(route.query.category)
   const city: string | null = readQueryValue(route.query.city)
-  const countryCode: string | null = readQueryValue(route.query.country)
-  const country: ProspectCountryOption | undefined = ProspectCountries.catalog.find(
-    (option: ProspectCountryOption): boolean => option.code === countryCode?.toUpperCase(),
+  const zoneCode: string | null = readQueryValue(route.query.zone)
+  const zone: ProspectZoneOption | undefined = ProspectZones.catalog.find(
+    (option: ProspectZoneOption): boolean => option.code === zoneCode?.toUpperCase(),
   )
   if (category) form.value.trades = [findChipSpelling(category.slice(0, PROSPECT_SEARCH_MAXIMUM_TRADE_LENGTH))]
   if (city) {
     form.value.cities = [city.slice(0, PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH)]
-    form.value.franceZone = 'mainland'
+    form.value.region = null
   }
-  if (country) form.value.country = country.code
+  if (zone) selectZone(zone)
 }
 
 /** Give every chosen trade the spelling of its chip, once the chips are known. */

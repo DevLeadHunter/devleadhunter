@@ -113,6 +113,7 @@ class ProspectSearchCandidateResponse(BaseModel):
     address: str | None
     city: str | None
     country: str
+    region: str | None = None
     phone: str | None
     phone_is_mobile: bool
     email: str | None
