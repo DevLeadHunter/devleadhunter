@@ -831,12 +831,18 @@ class StoryblokService:
         invite_client: bool = False,
         rehost_all_assets: bool = False,
         country: str = "FR",
+        sync_seed_publication: bool = True,
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story from an existing ``content_json``.
 
         Used for initial provisioning and for outreach swaps that must preserve published edits.
         ``country`` is the prospect's: it decides whether the editor gets the licence fields.
+
+        ``sync_seed_publication`` False registers the publish webhook only once the story is seeded, so that
+        publication is not synced back into ``content_json``: a round trip through Storyblok's blocks rewrites
+        what the site shows (the photos' hosts, the legacy garage FAQ photo), and a site given a space back
+        must not move.
         """
         if not self.is_configured:
             mock_password: str = self._generate_password()
@@ -869,11 +875,13 @@ class StoryblokService:
             editor_url: str = f"https://app.storyblok.com/#/me/spaces/{space_id}/dashboard"
 
             try:
-                await asyncio.gather(
+                setup_calls = [
                     self._configure_preview_url(client, space_id, preview_url),
                     self._ensure_template_components(client, space_id, template_id, country),
-                    self._register_publish_webhook(client, space_id),
-                )
+                ]
+                if sync_seed_publication:
+                    setup_calls.append(self._register_publish_webhook(client, space_id))
+                await asyncio.gather(*setup_calls)
                 await self._publish_home_story(
                     client,
                     space_id,
@@ -881,6 +889,8 @@ class StoryblokService:
                     template_id=template_id,
                     rehost_all_assets=rehost_all_assets,
                 )
+                if not sync_seed_publication:
+                    await self._register_publish_webhook(client, space_id)
 
                 space_detail = await client.get(
                     f"{self._base_url}/spaces/{space_id}",

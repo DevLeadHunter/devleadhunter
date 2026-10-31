@@ -480,6 +480,40 @@
               >
                 {{ inviting ? 'Envoi…' : 'Inviter le client' }}
               </button>
+              <button
+                type="button"
+                class="btn-secondary h-10 text-xs disabled:opacity-50"
+                :disabled="!site.can_release_storyblok_space || releasingSpace"
+                @click="releaseSpaceModalRef?.open()"
+              >
+                <UIcon name="i-lucide-archive" class="h-3.5 w-3.5" />
+                {{ releasingSpace ? 'Libération…' : "Libérer l'espace" }}
+              </button>
+            </div>
+            <p v-if="site.storyblok_release_blocker" class="mt-2 text-xs text-[var(--app-ink-soft)]">
+              {{ site.storyblok_release_blocker }}
+            </p>
+            <p v-else-if="site.can_release_storyblok_space" class="mt-2 text-xs text-[var(--app-ink-soft)]">
+              L'espace ne sert plus : la démo est partie et sa vidéo est faite. Le libérer fait de la place, la démo ne
+              bouge pas et l'espace se recrée à l'identique en un clic.
+            </p>
+          </div>
+
+          <div v-else-if="!site.storyblok_space_id && site.status === 'active'" class="card p-5">
+            <h2 class="text-sm font-semibold text-[var(--app-ink)]">Espace d'administration du client</h2>
+            <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
+              Ce site n'a pas d'espace Storyblok : la démo s'affiche normalement depuis ses données. Un espace sert à
+              filmer la vidéo, inviter le client et vendre. Il est créé avec exactement le contenu actuel du site.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="btn-primary h-10 text-xs disabled:opacity-50"
+                :disabled="creatingSpace"
+                @click="handleCreateSpace"
+              >
+                {{ creatingSpace ? 'Création…' : "Créer l'espace" }}
+              </button>
             </div>
           </div>
 
@@ -621,6 +655,14 @@
         confirm-text="Supprimer"
         cancel-text="Annuler"
         @confirm="handleDelete"
+      />
+      <UiConfirmModal
+        ref="releaseSpaceModalRef"
+        title="Libérer l'espace Storyblok"
+        :message="`Supprimer l'espace Storyblok de « ${site.business_name} » pour faire de la place ? La démo reste en ligne exactement comme avant : ses photos sont d'abord copiées chez nous. Vous pourrez recréer l'espace plus tard avec « Créer l'espace ».`"
+        confirm-text="Libérer"
+        cancel-text="Annuler"
+        @confirm="handleReleaseSpace"
       />
       <UiConfirmModal
         ref="deleteVideoModalRef"
@@ -835,6 +877,9 @@ const previewReloadNonce: Ref<number> = ref(0)
 const deleting: Ref<boolean> = ref(false)
 const inviting: Ref<boolean> = ref(false)
 const refreshingCms: Ref<boolean> = ref(false)
+const releasingSpace: Ref<boolean> = ref(false)
+const creatingSpace: Ref<boolean> = ref(false)
+const releaseSpaceModalRef: Ref<{ open: () => void } | null> = ref(null)
 const exporting: Ref<boolean> = ref(false)
 const reviving: Ref<boolean> = ref(false)
 const personalizing: Ref<boolean> = ref(false)
@@ -1110,7 +1155,13 @@ const selectableTemplates: ComputedRef<DemoSiteTemplate[]> = computed((): DemoSi
 const siteFactsLine: ComputedRef<string> = computed((): string => {
   if (!site.value) return ''
   const facts: string[] = []
-  facts.push(DemoSiteService.isTtlPending(site.value) ? 'Pas encore envoyé' : `Expire dans ${daysLeft.value} j`)
+  facts.push(
+    DemoSiteService.isKeptAliveByClient(site.value)
+      ? "Pas d'échéance"
+      : DemoSiteService.isTtlPending(site.value)
+        ? 'Pas encore envoyé'
+        : `Expire dans ${daysLeft.value} j`,
+  )
   facts.push(
     site.value.video_status === 'ready'
       ? 'Vidéo prête'
@@ -1131,6 +1182,9 @@ const siteFactsLine: ComputedRef<string> = computed((): string => {
 /** When the demo goes offline, in words. */
 const expiryLabel: ComputedRef<string> = computed((): string => {
   if (!site.value) return ''
+  if (DemoSiteService.isKeptAliveByClient(site.value)) {
+    return "Le client modifie son site dans son espace : la démo n'est pas retirée."
+  }
   if (DemoSiteService.isTtlPending(site.value)) return 'Le compte à rebours démarre au premier email envoyé.'
   return `Elle est retirée dans ${daysLeft.value} jour${daysLeft.value > 1 ? 's' : ''}, le ${formatNumericDate(site.value.expires_at)}.`
 })
@@ -1334,6 +1388,44 @@ async function handleRefreshCmsStatus(): Promise<void> {
     toast.error(error instanceof Error ? error.message : 'Échec de la vérification du statut CMS')
   } finally {
     refreshingCms.value = false
+  }
+}
+
+/**
+ * Delete the Storyblok space to make room, the demo staying online exactly as it was.
+ */
+async function handleReleaseSpace(): Promise<void> {
+  if (!site.value) {
+    return
+  }
+
+  releasingSpace.value = true
+  try {
+    applyVideoActionResult(await DemoSiteService.releaseDemoSiteStoryblokSpace(demoSiteId))
+    toast.success('Espace Storyblok libéré, la démo reste en ligne')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Échec de la libération de l'espace")
+  } finally {
+    releasingSpace.value = false
+  }
+}
+
+/**
+ * Create the Storyblok space again from the site's saved content, so the demo does not move.
+ */
+async function handleCreateSpace(): Promise<void> {
+  if (!site.value) {
+    return
+  }
+
+  creatingSpace.value = true
+  try {
+    applyVideoActionResult(await DemoSiteService.createDemoSiteStoryblokSpace(demoSiteId))
+    toast.success('Espace Storyblok créé')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Échec de la création de l'espace")
+  } finally {
+    creatingSpace.value = false
   }
 }
 

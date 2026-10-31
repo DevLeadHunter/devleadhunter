@@ -53,7 +53,8 @@
       <div class="flex items-center justify-between text-xs text-[var(--app-ink-soft)]">
         <span class="flex items-center gap-1.5">
           <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
-          <template v-if="DemoSiteService.isTtlPending(site)">En attente d'envoi</template>
+          <template v-if="DemoSiteService.isKeptAliveByClient(site)">Client dans son espace</template>
+          <template v-else-if="DemoSiteService.isTtlPending(site)">En attente d'envoi</template>
           <template v-else>Expire {{ formatNumericDate(site.expires_at) }}</template>
         </span>
         <span v-if="site.city" class="flex items-center gap-1.5">
