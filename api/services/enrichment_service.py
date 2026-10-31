@@ -44,6 +44,7 @@ from services.scraper_diagnostics_service import (
 from services.service_list_reader import ServiceListReader
 from services.trade_normalizer import TradeNormalizer
 from services.validation_service import validation_service
+from services.website_liveness_service import website_liveness_service
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +304,7 @@ class EnrichmentService:
                         data.description, business_name=prospect.name, city=prospect.city
                     )
                 self._apply_data(record, data)
+                self._set_aside_network_outlet(db, prospect, record.place_title)
                 # A Facebook page on the Maps listing (as the "website" link or a social link) is not a
                 # real website — capture it as the prospect's facebook_url so a later complementary
                 # Facebook enrichment can recover a second contact email (e.g. contact@…).
@@ -311,6 +313,7 @@ class EnrichmentService:
                     prospect.facebook_url = facebook_url
                     db.add(prospect)
                     logger.info("Enrichment found a Facebook page for prospect_id=%s: %s", prospect.id, facebook_url)
+                self._link_facebook_page(record, prospect)
                 # Fold any discovered email (typically from the Facebook page) into the multi-email list,
                 # and backfill the list from the existing single email on first pass.
                 emails = getattr(data, "emails", None) or []
@@ -322,6 +325,10 @@ class EnrichmentService:
                     logger.info("Enrichment set the website of prospect_id=%s to %s", prospect.id, website)
                     prospect.website = website
                     prospect.website_status = None
+                    db.add(prospect)
+                if prospect.website and prospect.website_status is None:
+                    status = await website_liveness_service.check_website_status(prospect.website)
+                    prospect.website_status = status.value if status is not None else None
                     db.add(prospect)
                 # Phone from the page (Facebook « Coordonnées ») — Facebook-discovered prospects
                 # start with no contact data at all, so the enrichment fills the gap.
@@ -445,6 +452,43 @@ class EnrichmentService:
         return candidate or None
 
     @staticmethod
+    def _link_facebook_page(record: ProspectEnrichment, prospect: ProspectDB) -> None:
+        """Give the generated site the business's known Facebook page among its social links, when none is there."""
+        page = (prospect.facebook_url or "").strip()
+        if page and not (record.social_links or {}).get("facebook"):
+            record.social_links = {**(record.social_links or {}), "facebook": page}
+
+    @staticmethod
+    def _set_aside_network_outlet(db: Session, prospect: ProspectDB, place_title: str | None) -> None:
+        """
+        Set aside a business whose Google listing names a network or the brand it sells (« Garage Exemple - Motrio »).
+
+        The same networks and brands as the prospect search's: the owner of such an outlet does not decide alone
+        on a website.
+
+        Args:
+            db: Active database session.
+            prospect: The business being enriched.
+            place_title: The title of its Google listing, as the enrichment read it.
+        """
+        from services.prospect_search.network_outlets import NetworkOutlets
+        from services.prospect_search.trade_catalog import TradeCatalog
+        from services.prospect_service import prospect_service
+
+        title = (place_title or "").strip()
+        if not title or prospect.is_dismissed:
+            return
+        brand = TradeCatalog.resolve(prospect.category or "").brand_outlet_of(title, None)
+        if brand is None and not NetworkOutlets.names_network(title):
+            return
+        prospect_service.dismiss(
+            db,
+            prospect.id,
+            reason=f"Sa fiche Google « {title} » est celle d'un réseau ou d'une marque : le patron ne décide pas seul.",
+            dismissed_by_user_id=None,
+        )
+
+    @staticmethod
     def _own_website(stored: str | None, *, listed: str | None) -> str | None:
         """
         The website a prospect keeps once its listing is read: its own site only.
@@ -534,6 +578,17 @@ class EnrichmentService:
                             ),
                         )
 
+            # Another person the registry writes at the business's place contradicts the chosen one: a human decides.
+            registry_person = self._registry_person_against(candidate, resolution.candidates)
+            if candidate is not None and registry_person is not None:
+                status_to_apply = NameResolution.PROPOSED
+                record.identity_check_status = IdentityCheckStatus.CONFLICT.value
+                record.identity_check_detail = (
+                    f"{self._full_name(candidate)} est proposé, mais le registre inscrit "
+                    f"{self._full_name(registry_person)} ({registry_person.provenance or registry_person.source}) : "
+                    "à vérifier avant de l'utiliser"
+                )[:400]
+
             if status_to_apply == NameResolution.AUTO and candidate is not None:
                 self._store_trusted_contact(record, candidate)
             elif status_to_apply == NameResolution.PROPOSED and candidate is not None:
@@ -567,6 +622,41 @@ class EnrichmentService:
                 html_snapshot=None,
                 user_id=prospect.user_id,
             )
+
+    @staticmethod
+    def _registry_person_against(
+        candidate: NameCandidate | None, candidates: list[NameCandidate]
+    ) -> NameCandidate | None:
+        """
+        A person the registry writes at the business's place who is not the chosen one.
+
+        « Patrick Exemple », read from a company bearing that name, is no answer when the company named like the
+        business writes « Marc Exemple ». Only a registry company matched at the business's place, or tied to it
+        by its number, counts: a namesake company of another département names nobody of the business. A name
+        read from the company the search tied to the business by its number leaves no room to another one.
+
+        Args:
+            candidate: The name the cascade chose.
+            candidates: Every name the cascade read.
+
+        Returns:
+            The registry's person who contradicts the chosen one, or None.
+        """
+        if candidate is None or candidate.anchored:
+            return None
+        return next(
+            (
+                other
+                for other in candidates
+                if other.primary and (other.geo_confirmed or other.anchored) and not other.agrees_with(candidate)
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _full_name(candidate: NameCandidate) -> str:
+        """A candidate's name as a reader writes it (« Jules Exemple »)."""
+        return " ".join(part for part in (candidate.first, candidate.last) if part)
 
     @staticmethod
     def _has_settled_contact(record: ProspectEnrichment) -> bool:
