@@ -2,7 +2,7 @@
 
 The campaign page lists which spaces a release takes (a prospect who stayed silent or refused, once the demo has gone
 out and its video is made) and which stay, each with its reason: a prospect who looked at the demo, answered, was
-invited, or whose visits cannot be read keeps their space.
+invited, or whose visits cannot be read keeps their space, and so does one who did so in another campaign they are in.
 """
 
 from __future__ import annotations
@@ -41,6 +41,14 @@ _OTHER_USER_ID = 8
 _NOW = datetime.now(UTC)
 
 
+class _OtherCampaignResults:
+    """What the results of another campaign answer: the state of the prospects it shares, and whether it could be read."""
+
+    def __init__(self, states: dict[str, str], is_visit_tracking_available: bool) -> None:
+        self.states = states
+        self.is_visit_tracking_available = is_visit_tracking_available
+
+
 class _Results:
     """What the campaign's results answer: the state of each prospect, and whether the visits could be read."""
 
@@ -48,9 +56,14 @@ class _Results:
         self.states: dict[str, str] = {}
         self.is_visit_tracking_available: bool = True
         self.is_missing: bool = False
-        self.calls: int = 0
+        self.builds: list[tuple[int, int]] = []
         self.account_spaces: int | None = 123
         self.names_by_prospect_id: dict[int, str] = {}
+        self.other_campaigns: dict[int, _OtherCampaignResults] = {}
+
+    @property
+    def calls(self) -> int:
+        return len(self.builds)
 
 
 @pytest.fixture
@@ -59,8 +72,18 @@ def results() -> Iterator[_Results]:
     answers = _Results()
     names_by_prospect_id = answers.names_by_prospect_id
 
-    async def build(_db: Session, _user_id: int, _campaign_id: int) -> Any:
-        answers.calls += 1
+    async def build(_db: Session, user_id: int, campaign_id: int) -> Any:
+        answers.builds.append((user_id, campaign_id))
+        other = answers.other_campaigns.get(campaign_id)
+        if other is not None:
+            return SimpleNamespace(
+                prospects=[
+                    SimpleNamespace(id=prospect_id, state=other.states[name])
+                    for prospect_id, name in names_by_prospect_id.items()
+                    if name in other.states
+                ],
+                is_visit_tracking_available=other.is_visit_tracking_available,
+            )
         if answers.is_missing:
             return None
         prospects = [
@@ -124,6 +147,24 @@ def _prospect_with_site(
     return site
 
 
+def _other_campaign(
+    db: Session,
+    answers: _Results,
+    states: dict[str, str],
+    *,
+    user_id: int = _USER_ID,
+    is_visit_tracking_available: bool = True,
+) -> Campaign:
+    """Another campaign that includes the named prospects, whose results give each the state it is named with."""
+    other = _campaign(db, user_id)
+    ids_by_name = {name: prospect_id for prospect_id, name in answers.names_by_prospect_id.items()}
+    for name in states:
+        other.prospects.append(db.get(ProspectDB, ids_by_name[name]))
+    db.commit()
+    answers.other_campaigns[other.id] = _OtherCampaignResults(states, is_visit_tracking_available)
+    return other
+
+
 def _summarize(db: Session, campaign: Campaign) -> Any:
     return asyncio.run(CampaignStoryblokSpacesService.summarize(db, campaign))
 
@@ -150,6 +191,7 @@ def test_only_the_prospects_who_stayed_silent_or_refused_have_their_space_releas
         "Garage Acheteur": "A acheté.",
         "Garage Attente": "Pas encore contacté.",
     }
+    assert results.builds == [(_USER_ID, campaign.id)]
 
 
 def test_the_conditions_of_the_demo_itself_keep_a_silent_prospects_space(db: Session, results: _Results) -> None:
@@ -202,6 +244,83 @@ def test_a_campaign_without_any_space_is_not_asked_for_its_results(db: Session, 
     assert summary.releasable == []
     assert summary.kept == []
     assert results.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("state_in_another_campaign", "reason"),
+    [
+        ("visited", "A regardé sa démo dans une autre campagne."),
+        ("replied", "A répondu dans une autre campagne."),
+        ("interested", "S'est dit intéressé dans une autre campagne."),
+        ("sold", "A acheté dans une autre campagne."),
+    ],
+)
+def test_a_prospect_who_engaged_in_another_campaign_keeps_their_space(
+    db: Session, results: _Results, state_in_another_campaign: str, reason: str
+) -> None:
+    campaign = _campaign(db)
+    _prospect_with_site(db, campaign, results, "Garage Silencieux", "silent")
+    _prospect_with_site(db, campaign, results, "Garage Calme", "silent")
+    _other_campaign(db, results, {"Garage Silencieux": state_in_another_campaign})
+
+    summary = _summarize(db, campaign)
+
+    assert [site.business_name for site in summary.releasable] == ["Garage Calme"]
+    assert [(site.business_name, site.reason) for site in summary.kept] == [("Garage Silencieux", reason)]
+
+
+def test_the_furthest_engagement_across_the_other_campaigns_gives_the_reason(db: Session, results: _Results) -> None:
+    campaign = _campaign(db)
+    _prospect_with_site(db, campaign, results, "Garage A", "silent")
+    _prospect_with_site(db, campaign, results, "Garage B", "silent")
+    _other_campaign(db, results, {"Garage A": "visited", "Garage B": "sold"})
+    _other_campaign(db, results, {"Garage A": "sold", "Garage B": "visited"})
+
+    summary = _summarize(db, campaign)
+
+    assert summary.releasable == []
+    assert {site.reason for site in summary.kept} == {"A acheté dans une autre campagne."}
+
+
+def test_silence_or_a_refusal_in_another_campaign_does_not_keep_a_space(db: Session, results: _Results) -> None:
+    campaign = _campaign(db)
+    for name in ("Garage A", "Garage B", "Garage C", "Garage D"):
+        _prospect_with_site(db, campaign, results, name, "silent")
+    _other_campaign(
+        db, results, {"Garage A": "silent", "Garage B": "refused", "Garage C": "pending", "Garage D": "not_sent"}
+    )
+
+    summary = _summarize(db, campaign)
+
+    assert [site.business_name for site in summary.releasable] == ["Garage A", "Garage B", "Garage C", "Garage D"]
+    assert summary.kept == []
+
+
+def test_a_prospect_of_another_campaign_that_cannot_be_read_keeps_their_space(db: Session, results: _Results) -> None:
+    campaign = _campaign(db)
+    _prospect_with_site(db, campaign, results, "Garage Relancé", "silent")
+    _prospect_with_site(db, campaign, results, "Garage Seul", "silent")
+    _other_campaign(db, results, {"Garage Relancé": "silent"}, is_visit_tracking_available=False)
+
+    summary = _summarize(db, campaign)
+
+    assert [site.business_name for site in summary.releasable] == ["Garage Seul"]
+    assert [(site.business_name, site.reason) for site in summary.kept] == [
+        ("Garage Relancé", TRACKING_UNAVAILABLE_REASON)
+    ]
+
+
+def test_other_campaigns_are_read_only_for_the_prospects_that_would_be_released(db: Session, results: _Results) -> None:
+    campaign = _campaign(db)
+    _prospect_with_site(db, campaign, results, "Garage Curieux", "visited")
+    _prospect_with_site(db, campaign, results, "Garage Silencieux", "silent")
+    only_for_a_visitor = _other_campaign(db, results, {"Garage Curieux": "silent"})
+    of_another_owner = _other_campaign(db, results, {"Garage Silencieux": "silent"}, user_id=_OTHER_USER_ID)
+
+    _summarize(db, campaign)
+
+    assert results.builds == [(_USER_ID, campaign.id), (_OTHER_USER_ID, of_another_owner.id)]
+    assert only_for_a_visitor.id not in [campaign_id for _user_id, campaign_id in results.builds]
 
 
 def test_the_account_count_and_the_cap_come_with_the_lists(db: Session, results: _Results) -> None:
