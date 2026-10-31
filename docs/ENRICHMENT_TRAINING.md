@@ -283,3 +283,39 @@ Même lot, après correction :
   prospects : un seul autre cas, une annonce autoscout24 enregistrée comme site (n° 339), corrigé.
 - Reste à faire : la recherche française ne lit pas l'état du registre d'un candidat trouvé par son nom ;
   deux garages fermés sont passés (n° 302 et un candidat de la réserve). La Suisse le fait déjà (Zefix).
+
+## Manche 4 — les 17 garages français de la vague 5 (31 octobre, nuit)
+
+Lot : les 17 garages validés à la main dans la manche 12 de la recherche (prospects n° 373 à 389), enrichis
+par `enrich_cli.py` sur le PC de Léo. Contrôle : registre des entreprises (dirigeant, activité), fiche
+Google lue dans le navigateur ou par Bright Data quand il répondait, sites déclarés ouverts à la main.
+Limite assumée : la passe « à la main d'abord » n'a pas été complète (photos, horaires et avis non relevés
+à la main) : la clé Bright Data du poste avait expiré, le Web Unlocker échouait une partie de la nuit, et
+Google Maps s'affiche en vue limitée dans le navigateur intégré.
+
+### Ce que l'app a trouvé
+
+- 17 enrichissements terminés. Photos : médiane 25 (de 1 à 38) ; 4 garages sous 5 photos (GARAGE CS AUTO 2,
+  Garage Bel Air 1, Montluçon Automobiles 4, Garage Norville 5). Note et nombre d'avis repris pour 16 sur
+  17, horaires pour 16, logo pour 11, description pour 14.
+- Patron : 15 sur 17 validés seuls par le registre, tous conformes au registre là où il répond. Auto Expert
+  laissé vide (trois gérants au registre : juste). Tourlan et Fils : rien de validé, « Patrick Tourlan »
+  proposé alors que le gérant au registre est Marc Tourlan.
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| DAC Automobiles (n° 384) | a enregistré `www.dacautomobiles-narrosse.fr` comme site, sans état | site en ligne (offre Solocal « Essentiel ») : le garage a un site, il sort de la campagne (écarté à la main) | un site trouvé à l'enrichissement est contrôlé (en ligne, mort, page d'attente) ; s'il est en ligne, le prospect est signalé « a déjà un site » |
+| Garage des Marais (n° 380) | a lu la fiche « Garage des Marais - Motrio » sans rien en tirer | garage du réseau Motrio (écarté à la main, comme AD et Garage Expert) | le titre de la fiche lu à l'enrichissement sert aussi à reconnaître un réseau |
+| Tourlan et Fils (n° 389) | propose « Patrick Tourlan » | gérant au registre : Marc Tourlan | une proposition qui contredit le gérant inscrit au registre est signalée comme conflit, pas proposée seule |
+| 12 des 14 garages dont la recherche avait trouvé la page Facebook (dont Aquitaine Négoce Auto, Carprog86, Dax Carrosserie) | `social_links` vide alors que le prospect a son `facebook_url` | la page existe | la page Facebook connue du prospect entre dans les réseaux sociaux du site |
+| Garage Norville (n° 381) | aucune fiche Google trouvée, pas de note ni d'horaires | la recherche avait vu une note de 5,0 sur 4 avis ; le candidat n'avait ni code postal ni lien Maps | voir la recherche : un candidat doit avoir sa commune et son code postal avant d'être gardé |
+| Aquitaine Négoce Auto (n° 373) | site `aquitainenegoceauto.fr` enregistré, état « mort » | juste (HTTPS en échec, HTTP en 404) | rien : c'est l'accroche « votre site ne répond plus » ; la recherche, elle, ne l'avait pas noté |
+
+### Remplacements
+
+DAC Automobiles et Garage des Marais écartés ; la réserve a été repassée sur Google : GLD Automobiles
+(Motrio), Garage du Paradis (AD), SARL Verge (Bosch Car Service), Garage Martinez Philippe BC (Autoprimo)
+et Garage Aurillac Électro Diesel (site Wix en ligne) refusés ; GARAGE SERV'AUTO (n° 390) et Léon Motors
+(n° 391) validés. La case des garages français reste à 17.
