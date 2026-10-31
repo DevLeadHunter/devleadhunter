@@ -319,3 +319,24 @@ DAC Automobiles et Garage des Marais écartés ; la réserve a été repassée s
 (Motrio), Garage du Paradis (AD), SARL Verge (Bosch Car Service), Garage Martinez Philippe BC (Autoprimo)
 et Garage Aurillac Électro Diesel (site Wix en ligne) refusés ; GARAGE SERV'AUTO (n° 390) et Léon Motors
 (n° 391) validés. La case des garages français reste à 17.
+
+### Résultat
+
+Enrichissement corrigé dans la nuit du 31 octobre au 1er novembre (`d2477016`). Aucun prospect n'a été
+réenrichi ni aucun site régénéré : les quatre règles ont été rejouées hors ligne sur ce que l'enrichissement
+avait enregistré pour les garages n° 373 à 391 (lecture seule), le site de DAC relu en direct.
+
+| Règle | Avant | Après, sur les 19 garages |
+|---|---|---|
+| Un site trouvé à l'enrichissement est contrôlé (en ligne, mort, page d'attente) ; en ligne, le prospect affiche « a déjà un site » | `www.dacautomobiles-narrosse.fr` enregistré sans état | DAC (n° 384) : site en ligne ; Aquitaine Négoce Auto garde son site mort, déjà contrôlé |
+| Le titre de la fiche Google lu à l'enrichissement reconnaît un réseau ou une marque, avec la liste de la recherche, et écarte le prospect avec la raison | Garage des Marais gardé | Garage des Marais (n° 380) écarté : « Sa fiche Google « Garage des Marais - Motrio » est celle d'un réseau ou d'une marque » ; aucun autre garage touché |
+| La page Facebook connue du prospect entre dans les réseaux sociaux du site | 3 garages sur 17 qui en ont une | les 17 ; les 2 sans page (GARAGE CS AUTO, Garage Bel Air) n'en reçoivent pas |
+| Une personne inscrite au registre à l'adresse du garage, autre que le nom retenu, marque la proposition « conflit » avec les deux noms | Tourlan et Fils : le nom proposé seul | Tourlan et Fils (n° 389) : conflit, « … est proposé, mais le registre inscrit … (GARAGE TOURLAN ET FILS, SIREN 323789370) : à vérifier avant de l'utiliser » ; aucun autre garage touché |
+
+- Le cas Tourlan n'était pas celui d'un nom venu d'ailleurs que du registre : le nom proposé est celui du
+  patron d'une autre société du registre (à son nom, SIREN 381 844 505), et la société au nom du garage
+  (SIREN 323 789 370) inscrit une autre personne. La règle joue donc aussi entre deux personnes du registre,
+  sauf quand le nom retenu vient de la société liée au garage par son numéro.
+- Garage Norville (absence de fiche Google à l'enrichissement) : corrigé côté recherche, qui complète
+  maintenant une adresse sans code postal par le registre (« 38 Rue Denis Papin, 03100 Montluçon ») ; voir
+  `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
