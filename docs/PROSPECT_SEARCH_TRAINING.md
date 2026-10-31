@@ -495,3 +495,90 @@ Mulhouse, Aurillac, Perpignan) : elle n'avait pas encore commencé les paysagist
   y compris quand le candidat a déjà email et portable ; domaine au nom de l'entreprise = site ; adresses de
   protection de domaine ; doublons par email et SIREN ; marques automobiles et réseaux de garages ; email
   au nom d'une autre affaire ; email au nom de l'entreprise = preuve « b ».
+
+### Résultat
+
+Moteur corrigé dans la nuit du 31 octobre au 1er novembre (`e8410245`, `3b4a6864`), puis le lot rejoué hors
+ligne. Chaque candidat repart des preuves que
+sa vérification a enregistrées : aucune recherche Google n'est refaite. Ce que le moteur corrigé fait sans
+requête payante est refait pour de vrai : réseaux et marques, lecture des mots de l'email, adresses de
+protection de domaine, page d'accueil et état de chaque domaine, courrier du domaine, registre des
+entreprises, puis les doublons, dans l'ordre où la recherche avait placé les candidats. Critères de la
+n° 17 : email et portable, note ≥ 4,0. Le « avant » des 13 refusés à la main est la place que l'app leur
+avait donnée : l'ancien moteur, rejoué sur les mêmes preuves, redonne exactement la place enregistrée de
+tous les autres.
+
+| Candidat | Avant | Après | Règle qui joue |
+|---|---|---|---|
+| SARL Lucens Automobiles | gardé | écarté, a un site (`lucensautomobiles.fr`) | le domaine porte son nom (« lucens » + « automobiles ») : un domaine à son nom qui répond derrière un contrôle anti-robots est son site ; l'email d'un candidat déjà complet est relu avant de le garder |
+| AG Automobiles | à confirmer | écarté, a un site (`ag-garage.fr`) | initiales + mot du métier dans le domaine |
+| Welington Automobiles | à confirmer | mis de côté, email sans portable (gardé avec « email » seul) | `welington.fr` porte son nom, mais c'est un domaine parqué : un domaine parqué est un site mort, pas un site |
+| Abj Auto | à confirmer | écarté, ni email ni portable | `abjautorepair.net@domainsbyproxy.com` n'est jamais un email ; le domaine révélé, `abjautorepair.net`, a été lu : il n'existe plus |
+| Carrosserie CS Auto | mis de côté | écarté, « même entreprise que GARAGE CS AUTO, une fiche mieux renseignée » | même email, et même SIREN lu au registre ; GARAGE CS AUTO (152 avis contre 26) reste proposé |
+| Peugeot - Dax Auto | à confirmer | écarté avant toute recherche, « agent ou concessionnaire Peugeot » | marque en tête du nom |
+| Peugeot - Garage Thierry Hoff, Renault / Dacia - Garage Tastet | mis de côté | écartés avant toute recherche, agent ou concessionnaire Peugeot, Renault | marque en tête du nom, catégorie « Concessionnaire Peugeot » |
+| Garage Lebreton (Aixam) | mis de côté | écarté avant toute recherche, agent ou concessionnaire Aixam | catégorie de concessionnaire et marque dans le nom |
+| AD Carrosserie et Garage Expert Atelier Panon | mis de côté | écarté avant toute recherche, réseau | réseaux de garages indépendants (AD, Bosch Car Service, Motrio, Eurorepar, Top Garage, Point S, First Stop, Profil Plus, Autoprimo…), lus dans le titre de la fiche, le nom de sa page Facebook, le site qu'elle déclare, le domaine de l'email ou une page du réseau qui nomme le garage dans sa ville |
+| Garage Dyma | mis de côté | à confirmer : « Son email (brd.auto.performance@gmail.com) porte le nom d'une autre affaire » | email au nom d'une autre affaire = aucune preuve |
+| Garage Millésime Auto, Motorsport | à confirmer, sans raison précise | à confirmer, avec la même raison explicite | idem (`garageautohouse@…`, `mdslmotorsport@…`) |
+| GLD Automobiles | à confirmer (preuve « c ») | écarté avant toute recherche, réseau (son email vaut désormais « b ») | site déclaré sur le site d'un réseau (`motrio.fr/shop/GLD AUTOMOBILES/…`) ; email au nom de l'entreprise |
+| Garage des Marais (validé, n° 380) | mis de côté | écarté, réseau | sa page Facebook s'appelle `Motrio.GarageDesMaraisMontlucon`, et le titre de sa fiche finit par « - Motrio » |
+| Garage du Paradis | mis de côté | écarté avant toute recherche, réseau | la page Facebook que déclare sa fiche est « AD-Garage-du-Paradis » |
+| SARL Verge | mis de côté | écarté avant toute recherche, réseau | site déclaré sur `boschcarservice.fr` |
+| Garage Martinez Philippe BC | mis de côté | écarté, réseau, dès que la vérification montre sa page Autoprimo | une page du site d'un réseau (Autoprimo, AD, Motrio, une marque…) qui le nomme dans sa ville |
+| DAC Automobiles (validé, n° 384) | mis de côté | à confirmer, « un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé » | sa page Facebook, trouvée par une recherche, ne tient plus lieu du site déclaré (`www.dacautomobiles-narrosse.fr`, en ligne) ; une page Google vide ne vaut plus vérification |
+| GARAGE NORVILLE (validé, n° 381) | mis de côté, sans ville | mis de côté, « 38 Rue Denis Papin, 03100 Montluçon » | une adresse sans code postal prend celui de la société de son nom installée à cette rue, dans sa ville (registre) |
+
+Le contrôle de la réserve, pendant l'enrichissement de la même nuit, a déplacé six des 24 « bons » : Garage
+des Marais, Garage du Paradis, GLD, SARL Verge et Garage Martinez sont des garages de réseau, DAC a un site.
+Le rejeu hors ligne écarte Garage des Marais et Garage du Paradis ; pour GLD, Verge, Martinez et DAC, la
+preuve qui décide (le site déclaré par la fiche, la page Autoprimo, le bouton « Site Web » non suivi)
+n'avait pas été enregistrée par la n° 17 : la règle est écrite et rejouée dans les tests, le rejeu hors
+ligne les laisse mis de côté. MJV Automobiles (email de la gérante) reste mis de côté.
+
+| Lot de 41 avec email | Gardés | Mis de côté | À confirmer | Écartés |
+|---|---|---|---|---|
+| Avant | 5, dont 1 faux | 29 | 7 | 0 |
+| Après, rejeu hors ligne (email et portable) | 4 | 23 | 3 | 11 |
+| Après, avec les preuves non enregistrées (GLD, Verge, Martinez, DAC) | 4 | 19 | 4 | 14 |
+| Après, rejeu hors ligne (email seul, réglage de la vague 5) | 27 | 0 | 3 | 11 |
+
+- Placés à tort : 7 → 0. « À confirmer » que l'app pouvait trancher : 4 → 0. Restent à confirmer les trois
+  emails au nom d'une autre affaire, avec cette raison écrite, et DAC.
+- Les 23 proposés : les 18 bons qui restent, Welington (bon, voir plus bas) et 4 garages d'Aurillac que le
+  contrôle n'avait pas classés (Garage Laur Sebastien, B&P Auto-services, Garage du Viaduc, Garage Ams).
+- Coût : 105 fiches sur 296 de la n° 17 sont des réseaux ou des marques par leur nom, leur catégorie ou leur
+  page Facebook. Elles sont maintenant écartées dès la lecture de la fiche Google, sans vérification ; 16
+  d'entre elles avaient été proposées et 11 avaient coûté une recherche de contact complète.
+
+Corrections de la vérité terrain (contrôle en direct pendant le rejeu) :
+
+- **Welington Automobiles n'a pas de site** : `welington.fr` ne sert que la page de parking de GoDaddy
+  (redirection vers `/lander`, serveurs `domaincontrol.com`), seul son courrier fonctionne (Outlook). C'est
+  un bon prospect, refusé à tort à la main : à reprendre.
+- **Abj Auto n'a plus de site** : `abjautorepair.net` n'existe plus (aucun DNS, adresse libre selon le
+  RDAP). Il reste écarté, mais faute d'email, pas pour un site.
+- **Tourlan Et Fils (validé, prospect n° 389) est douteux** : il partage son email `ggetourlan@wanadoo.fr`
+  avec AD Garage Expert TOURLAN, dont le site `garagetourlan.com` présente « 2 garages AD Expert » de la
+  famille à Aurillac (pas celui de la rue Cugnot), et cet email vient de sa page `garagetourlan.myautoconseil.com`.
+  À revoir avant l'envoi du 5/11. Le moteur ne peut pas le voir : la fiche AD est maintenant écartée avant sa
+  vérification, son email n'est donc jamais lu.
+
+Règles non écrites, par risque de faux positifs :
+
+- « Garage Expert » seul n'est pas un réseau : l'enseigne d'AD est « Garage AD Expert », et toutes les
+  fiches AD de la manche portent « AD ». Le mot aurait écarté « Garage Expert 68 » (Mulhouse), sans doute
+  indépendant.
+- Une page d'accueil cachée derrière un contrôle anti-robots, sur un domaine qui ne porte pas le nom de
+  l'entreprise, reste sans suite : la distinguer d'un serveur vide qui refuse l'accès demande une lecture de
+  plus. Le cas de Lucens passe par le nom du domaine.
+- Les marques au nom de mot courant (Mini, Smart, Alpine, DS, MG, Lotus) ne comptent que dans la catégorie
+  Google « Concessionnaire <marque> ».
+- Un réseau de carrosseries comme Five Star (l'email de GARAGE CS AUTO vient de sa liste d'adhérents)
+  n'est reconnu que s'il est écrit dans le nom.
+- Un nom qui commence par « AD » ne suffit pas : « AD » suivi de garage, carrosserie ou expert est un
+  réseau, « AD » seul peut être les initiales du patron.
+- Un site Wix gratuit en ligne (Garage Aurillac Électro Diesel, `….wixsite.com/…`) reste un mini-site : la
+  décision du 3 août range `wixsite.com` avec les mini-sites d'annuaire, et ces prospects sont gardés. À
+  trancher avant de le changer : la règle vaut pour toute l'app (filtre « sans site », badges, modèles
+  d'email « site mort »).
