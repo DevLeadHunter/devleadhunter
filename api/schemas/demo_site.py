@@ -281,6 +281,11 @@ class DemoSiteResponse(BaseModel):
     # CMS handover state: not_invited / pending / joined (NULL until first observed).
     storyblok_collaborator_status: str | None = None
     storyblok_joined_at: datetime | None = None
+    # Injected by the route: the space can be deleted now (demo sent, video made, client not inside) while the
+    # demo keeps running from its content.
+    can_release_storyblok_space: bool = False
+    # Injected by the route: why a site that has a space cannot release it yet; None when it can, or has no space.
+    storyblok_release_blocker: str | None = None
     demo_link_sent_at: datetime | None = None
     # Operator's manual "good to send" sign-off from the campaign forecast (NULL until reviewed).
     site_reviewed_at: datetime | None = None

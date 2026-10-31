@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from enums.acquisition import AcquisitionItemStep, AcquisitionRunStatus
 from enums.demo_site_status import DemoSiteStatus
+from enums.demo_video_status import DemoVideoStatus
 from enums.storyblok_collaborator_status import StoryblokCollaboratorStatus
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
@@ -260,6 +261,23 @@ class DemoSiteService:
         return country.format_price_without_approximation(PricingService.sale_price_cents(db, demo_site.user_id))
 
     @staticmethod
+    def is_kept_alive_by_client(demo_site: DemoSite) -> bool:
+        """
+        Whether the demo never expires because its client works in the CMS space.
+
+        A client who joined their Storyblok space is editing the site: the countdown that retires a demo
+        (its space, its video, then the site itself) must not run under them. Like a sold site, such a demo
+        stays until it is sold or deleted by hand.
+
+        Args:
+            demo_site: The demo, or any row carrying its ``storyblok_collaborator_status``.
+
+        Returns:
+            True once the client has joined the space.
+        """
+        return getattr(demo_site, "storyblok_collaborator_status", None) == StoryblokCollaboratorStatus.JOINED.value
+
+    @staticmethod
     def expiry_date_label(demo_site: DemoSite) -> str | None:
         """
         The day the demo goes offline, the same as ``{date_expiration}`` in the prospect's emails (« 2 novembre »).
@@ -268,9 +286,10 @@ class DemoSiteService:
             demo_site: The demo the prospect is looking at.
 
         Returns:
-            The French day and month, or None while the demo link was never sent (countdown not started).
+            The French day and month, or None while the demo link was never sent (countdown not started)
+            or once the client works in the CMS space (the demo no longer has a deadline).
         """
-        if demo_site.demo_link_sent_at is None:
+        if demo_site.demo_link_sent_at is None or DemoSiteService.is_kept_alive_by_client(demo_site):
             return None
         return FrenchDateFormatter.day_month(demo_site.expires_at)
 
@@ -1397,7 +1416,8 @@ class DemoSiteService:
         post-provisioning verification and the demo-host render work. A **sold**
         site (status DELIVERED), a deleted one, or a **dormant** one (EXPIRED, kept
         for a possible SMS relance) is taken down here (404) until it is sold or
-        revived — a sold site then lives only on the client's own domain.
+        revived — a sold site then lives only on the client's own domain. A demo whose client works in
+        the CMS space is never taken down by its date.
         """
         now: datetime = datetime.now(UTC)
         site: DemoSite | None = (
@@ -1414,7 +1434,7 @@ class DemoSiteService:
         if not site:
             return None
 
-        if site.demo_link_sent_at is not None:
+        if site.demo_link_sent_at is not None and not self.is_kept_alive_by_client(site):
             expires_at: datetime = site.expires_at
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=UTC)
@@ -1717,20 +1737,165 @@ class DemoSiteService:
         content_json: dict = site.content_json if isinstance(site.content_json, dict) else {}
         if not content_json:
             raise ValueError("Ce site n'a pas encore de contenu à copier dans Storyblok.")
-        provision = await storyblok_service.provision_space_with_content(
-            business_name=site.business_name,
-            slug=site.slug,
-            template_id=site.template_id,
-            collaborator_email=(site.email or site.storyblok_login_email or "").strip(),
-            preview_url=self.demo_url_for_slug(site.slug),
-            content_json=content_json,
-            invite_client=False,
-            rehost_all_assets=True,
-            country=self._prospect_country_for_site(db, site),
-        )
+        try:
+            provision = await storyblok_service.provision_space_with_content(
+                business_name=site.business_name,
+                slug=site.slug,
+                template_id=site.template_id,
+                collaborator_email=(site.email or site.storyblok_login_email or "").strip(),
+                preview_url=self.demo_url_for_slug(site.slug),
+                content_json=content_json,
+                invite_client=False,
+                rehost_all_assets=True,
+                country=self._prospect_country_for_site(db, site),
+                sync_seed_publication=False,
+            )
+        except StoryblokProvisionError as exc:
+            await self._discard_half_built_space(exc.space_id)
+            raise
         self._apply_storyblok_provision(site, provision)
         db.commit()
         db.refresh(site)
+        return site
+
+    @staticmethod
+    async def _discard_half_built_space(space_id: int | None) -> None:
+        """Delete a space Storyblok created before its seeding failed, so a retry does not pile up empty spaces."""
+        if not space_id:
+            return
+        try:
+            await storyblok_service.delete_space(space_id)
+        except Exception:
+            logger.warning("Half-built Storyblok space %s could not be deleted", space_id, exc_info=True)
+
+    @staticmethod
+    def storyblok_release_blocker(demo_site: DemoSite) -> str | None:
+        """
+        Why the site's Storyblok space cannot be released now, in the words the dashboard shows.
+
+        The space only serves to film the video and to sell: it can go once the demo has gone out, its
+        video is made and nobody works in the space. The demo itself keeps running from its content.
+
+        Args:
+            demo_site: The demo site.
+
+        Returns:
+            The reason, or None when the space can be released.
+        """
+        if not demo_site.storyblok_space_id:
+            return "Ce site n'a pas d'espace Storyblok."
+        if demo_site.status != DemoSiteStatus.ACTIVE.value:
+            return "Seule une démo en ligne peut libérer son espace."
+        if demo_site.storyblok_collaborator_status == StoryblokCollaboratorStatus.JOINED.value:
+            return "Le client a rejoint l'espace : on le garde."
+        if demo_site.storyblok_invite_sent or (
+            demo_site.storyblok_collaborator_status == StoryblokCollaboratorStatus.PENDING.value
+        ):
+            return "Le client a été invité dans l'espace : on le garde."
+        if demo_site.demo_link_sent_at is None:
+            return "Le lien de la démo n'a pas encore été envoyé : on garde l'espace."
+        if demo_site.video_status != DemoVideoStatus.READY.value:
+            return "La vidéo n'est pas encore générée : l'espace sert à la filmer."
+        if demo_site.video_desktop_requested_at is not None:
+            return "Une vidéo est en cours de demande ou de montage : l'espace sert à la filmer."
+        if not demo_site.content_json:
+            return "Ce site n'a pas de contenu enregistré : on ne pourrait pas lui recréer son espace."
+        return None
+
+    @staticmethod
+    def storyblok_asset_urls(demo_site: DemoSite) -> list[str]:
+        """
+        The Storyblok-hosted URLs the demo still shows, in its content and its section overrides.
+
+        Args:
+            demo_site: The demo site.
+
+        Returns:
+            Every URL on a Storyblok host: images that die with the space they live in.
+        """
+        found: list[str] = []
+
+        def collect(node: object) -> None:
+            if isinstance(node, str):
+                if node.startswith(("http://", "https://")) and "storyblok.com" in node.lower():
+                    found.append(node)
+            elif isinstance(node, dict):
+                for value in node.values():
+                    collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    collect(value)
+
+        collect(demo_site.content_json)
+        collect(getattr(demo_site, "section_overrides", None))
+        return found
+
+    async def release_storyblok_space(self, db: Session, site: DemoSite) -> DemoSite:
+        """
+        Delete the site's Storyblok space and keep its demo online exactly as it was.
+
+        The demo's photos live in the space's asset library, so they are first copied onto permanent R2,
+        in place and byte for byte, and the space goes only once no Storyblok URL is left in the content.
+        The content stays in the database, so :meth:`provision_missing_storyblok_space` can later give the
+        site a new space seeded from it, with the same texts and photos.
+
+        Args:
+            db: Database session.
+            site: The demo site whose space is released.
+
+        Returns:
+            The site, without its space.
+
+        Raises:
+            ValueError: With the reason the dashboard shows, when the space cannot be released now, a photo
+                could not be copied, or Storyblok kept the space (it is then still there).
+        """
+        blocker: str | None = self.storyblok_release_blocker(site)
+        if blocker:
+            raise ValueError(blocker)
+
+        async with self._storyblok_swap_lock(site.id):
+            db.refresh(site)
+            blocker = self.storyblok_release_blocker(site)
+            if blocker:
+                raise ValueError(blocker)
+
+            try:
+                await self.persist_content_images_to_r2(site)
+            except Exception as exc:
+                logger.warning("Photo copy before releasing the space failed for slug=%s", site.slug, exc_info=True)
+                raise ValueError("Les photos n'ont pas pu être copiées chez nous : l'espace est conservé.") from exc
+            db.commit()
+            left_behind: list[str] = self.storyblok_asset_urls(site)
+            if left_behind:
+                raise ValueError(
+                    f"{len(left_behind)} photo(s) n'ont pas pu être copiées chez nous : l'espace est conservé, réessayez."
+                )
+
+            space_id: int = int(site.storyblok_space_id)
+            try:
+                await storyblok_service.delete_space(space_id)
+            except Exception as exc:
+                logger.warning("Storyblok space %s of slug=%s could not be deleted", space_id, site.slug, exc_info=True)
+                raise ValueError("Storyblok n'a pas supprimé l'espace : il est conservé, réessayez.") from exc
+
+            site.storyblok_space_id = None
+            site.storyblok_public_token = None
+            site.storyblok_preview_token = None
+            site.storyblok_editor_url = None
+            db.commit()
+            db.refresh(site)
+
+        logger.info("Storyblok space %s released for slug=%s, demo kept online", space_id, site.slug)
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="storyblok_space_released",
+            status=STATUS_INFO,
+            title=f"Espace Storyblok libéré · {site.business_name}",
+            user_id=site.user_id,
+            entity_type="demo_site",
+            entity_id=site.id,
+        )
         return site
 
     def get_public_by_domain(self, db: Session, host: str) -> DemoSite | None:
@@ -2043,7 +2208,8 @@ class DemoSiteService:
         The Storyblok space is freed in every case (only needed at sale). A prospect who can
         still receive an SMS keeps a dormant (EXPIRED) demo — ``content_json`` retained — so an
         auto-relance can revive it with a fresh TTL; everyone else is hard-deleted. Dormant demos
-        nobody relanced are hard-deleted once past the retention window.
+        nobody relanced are hard-deleted once past the retention window. A demo whose client
+        works in the CMS space is left alone: the client is editing it.
 
         Returns:
             Number of sites cleaned up.
@@ -2061,6 +2227,8 @@ class DemoSiteService:
 
         cleaned: int = 0
         for site in due_sites:
+            if self.is_kept_alive_by_client(site):
+                continue
             keep_dormant: bool = self._should_keep_dormant(db, site)
             # A dormant demo will be revived for an SMS relance, so copy its images onto permanent R2 now,
             # while the Storyblok space still serves them (it is deleted just below). Best-effort — a

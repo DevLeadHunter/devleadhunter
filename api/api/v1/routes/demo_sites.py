@@ -131,6 +131,9 @@ def _demo_site_response(
         if isinstance(logo, str) and logo.strip():
             payload["brand_color"] = brand_color_service.extract_brand_color(logo)
     payload["tax_credit"] = demo_site_service.get_tax_credit(site)
+    release_blocker: str | None = demo_site_service.storyblok_release_blocker(site)
+    payload["can_release_storyblok_space"] = release_blocker is None
+    payload["storyblok_release_blocker"] = release_blocker if site.storyblok_space_id else None
     if has_ready_video(site):
         payload["video_page_url"] = video_page_url(site.slug)
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
@@ -601,6 +604,21 @@ async def provision_demo_site_storyblok_space(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except StoryblokProvisionError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    return _serialize_demo_site(db, site)
+
+
+@router.delete("/{demo_site_id}/storyblok-space", response_model=DemoSiteResponse)
+async def release_demo_site_storyblok_space(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Delete the CMS space of a demo whose video is made, keeping the demo online exactly as it was."""
+    site = _get_editable_demo_site(db, current_user.id, demo_site_id)
+    try:
+        site = await demo_site_service.release_storyblok_space(db, site)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return _serialize_demo_site(db, site)
 
 

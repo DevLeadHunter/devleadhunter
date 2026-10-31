@@ -203,6 +203,8 @@ export type DemoSite = {
   /** CMS handover state: not_invited / pending / joined (null until first observed). */
   storyblok_collaborator_status?: StoryblokCollaboratorStatus | null
   storyblok_joined_at?: string | null
+  can_release_storyblok_space?: boolean
+  storyblok_release_blocker?: string | null
   /** When the demo link was first emailed — null until then (TTL not started). */
   demo_link_sent_at?: string | null
   /** Operator's manual "good to send" sign-off from the campaign forecast (null until reviewed). */
@@ -413,6 +415,24 @@ export class DemoSiteService {
   }
 
   /**
+   * Create the site's Storyblok space from its saved content: a site that has none yet, or one that gave it up.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The demo site, with its new space.
+   */
+  static async createDemoSiteStoryblokSpace(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/storyblok-space`, {})
+  }
+
+  /**
+   * Delete the site's Storyblok space to make room, the demo staying online exactly as it was.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The demo site, without its space.
+   */
+  static async releaseDemoSiteStoryblokSpace(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/storyblok-space`)
+  }
+
+  /**
    * Put an expired demo back online for a full new window, for a prospect who comes back after its deadline.
    * @param demoSiteId - Id of the demo site.
    * @returns The demo site, online again.
@@ -603,6 +623,13 @@ export class DemoSiteService {
    */
   static isTtlPending(site: DemoSite): boolean {
     return !site.demo_link_sent_at
+  }
+
+  /**
+   * Whether the demo has no deadline because its client works in the CMS space (the countdown skips it).
+   */
+  static isKeptAliveByClient(site: DemoSite): boolean {
+    return site.storyblok_collaborator_status === 'joined'
   }
 
   /**
