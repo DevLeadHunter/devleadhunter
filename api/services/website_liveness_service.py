@@ -59,7 +59,7 @@ class WebsiteLivenessService:
         }
     )
 
-    # Lowercase markers of hosting error pages that answer for a dead site.
+    # Lowercase markers of hosting error pages and parked domains that answer for a dead site.
     DEAD_PAGE_MARKERS: tuple[str, ...] = (
         "site not found",
         "account suspended",
@@ -74,6 +74,11 @@ class WebsiteLivenessService:
         "domain steht zum verkauf",
         "site is currently suspended",
         "website unavailable",
+        # Parked domains: the registrar's lander (GoDaddy's « /lander »), a parking company's page.
+        'location.href="/lander"',
+        "parking-lander",
+        "sedoparking.com",
+        "parkingcrew.net",
     )
 
     HOSTING_WELCOME_TITLE_PREFIXES: tuple[str, ...] = ("bienvenue sur", "welcome to", "willkommen auf", "benvenuto su")

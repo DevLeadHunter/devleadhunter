@@ -97,6 +97,7 @@ class CandidateStore:
             google_cid=facts.google_cid,
             facebook_url=facts.facebook_url,
             email=facts.email,
+            registry_number=facts.registry_number,
         )
 
     @classmethod

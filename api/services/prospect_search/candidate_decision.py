@@ -21,6 +21,7 @@ from enums.prospect_search import (
 from enums.website_status import WebsiteStatus
 from models.prospect_search import ProspectSearch
 from services.prospect_search.candidate_facts import CandidateFacts
+from services.prospect_search.name_in_address import NameInAddress
 from services.prospect_search.trade_catalog import TradeProfile
 
 # A rating read on fewer reviews says too little to discard a business.
@@ -125,10 +126,7 @@ class CandidateDecision:
                 CandidateStatus.NEEDS_BROWSER, detail="Sa page Facebook reste à lire pour y chercher son email."
             )
         if has_guessed_email:
-            return CandidateVerdict(
-                CandidateStatus.TO_CONFIRM,
-                detail="Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir.",
-            )
+            return CandidateVerdict(CandidateStatus.TO_CONFIRM, detail=cls._guessed_email_detail(facts))
         if has_proven_email or has_mobile:
             return CandidateVerdict(
                 CandidateStatus.SET_ASIDE, detail=cls._set_aside_detail(has_proven_email, has_mobile)
@@ -145,6 +143,13 @@ class CandidateDecision:
         if channel == ProspectSearchChannel.EMAIL_AND_SMS:
             return has_email and has_mobile
         return has_email
+
+    @staticmethod
+    def _guessed_email_detail(facts: CandidateFacts) -> str:
+        """Why an email without a frank proof is left to the user: it may even name another business."""
+        if facts.email is not None and NameInAddress.email_names_another_business(facts.email, facts):
+            return f"Son email ({facts.email}) porte le nom d'une autre affaire : à vérifier."
+        return "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir."
 
     @staticmethod
     def _set_aside_detail(has_email: bool, has_mobile: bool) -> str:
@@ -185,9 +190,7 @@ class CandidateDecision:
                 CandidateRejectReason.HOMONYM, "Google montre une autre entreprise du même nom, dans une autre ville."
             )
         if facts.is_chain:
-            return cls._rejected(
-                CandidateRejectReason.CHAIN, "Enseigne de réseau ou franchise : le patron ne décide pas seul."
-            )
+            return cls._rejected(CandidateRejectReason.CHAIN, cls._chain_detail(facts))
         if not facts.matches_trade or not trade.accepts_category(facts.google_category):
             category = facts.google_category or "autre activité"
             return cls._rejected(
@@ -211,6 +214,13 @@ class CandidateDecision:
                 f"Note Google {facts.google_rating:.1f} sur {facts.google_reviews_count} avis, sous le seuil demandé.",
             )
         return None
+
+    @staticmethod
+    def _chain_detail(facts: CandidateFacts) -> str:
+        """The network a discarded outlet belongs to: a brand it is the agent or dealer of, or a chain."""
+        if facts.outlet_brand is not None:
+            return f"Agent ou concessionnaire {facts.outlet_brand} : le patron ne décide pas seul."
+        return "Enseigne de réseau ou franchise : le patron ne décide pas seul."
 
     @staticmethod
     def _closed_detail(facts: CandidateFacts) -> str:

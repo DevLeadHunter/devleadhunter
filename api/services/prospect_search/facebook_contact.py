@@ -20,6 +20,7 @@ from models.prospect_search_candidate import ProspectSearchCandidate
 from scrappers.email_candidate_scoring import email_candidate_scorer
 from services.organization_service import organization_service
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
+from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
 from services.prospect_search.candidate_store import CandidateStore
@@ -111,13 +112,15 @@ class FacebookContactRecorder:
             row = db.get(ProspectSearchCandidate, candidate_id)
             if row is None or row.status != CandidateStatus.NEEDS_BROWSER.value:
                 return None
-            # The page may reveal an email the user already wrote to, or one of an existing prospect.
+            # The page may reveal an email the user already wrote to, or one of an existing prospect,
+            # or of another listing of the search: a single listing of the business stays proposed.
             known = KnownBusinessIndex.load(
                 db, user_id=row.user_id, organization_id=organization_id, search_id=row.search_id
             ).match(CandidateStore.identity_keys(facts))
             if known is not None and verdict.status != CandidateStatus.REJECTED:
                 verdict = CandidateVerdict(CandidateStatus.REJECTED, known.reason, known.detail)
             CandidateStore.write_back(row, facts, verdict)
+            CandidateDuplicates.settle(db, row)
             db.commit()
             if creates_prospect:
                 await CandidateStore.promote_or_leave_to_confirm(db, row, facts, trade, organization_id=organization_id)

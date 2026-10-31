@@ -50,6 +50,7 @@ from services.french_overseas import FrenchOverseas
 from services.organization_service import organization_service
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
+from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
 from services.prospect_search.candidate_store import CandidateStore
@@ -466,9 +467,11 @@ class ProspectSearchRunner:
                         facts, destination, source="Bouton « Site Web » de la fiche Google", proof_url=destination
                     )
                     facts.has_website_button = facts.website is not None
+                CandidateVerifier.mark_network_outlet(facts, profile, listing_name=listing.name)
                 early_verdict: CandidateVerdict | None = None
                 is_elsewhere = facts.is_abroad or facts.is_outside_region
-                if facts.is_closed or is_elsewhere or not profile.accepts_category(listing.category):
+                is_ruled_out = facts.is_closed or is_elsewhere or facts.is_chain
+                if is_ruled_out or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)
                 is_left_unverified = bool(facts.has_website_button) and leaves_website_listings_unverified
@@ -591,7 +594,7 @@ class ProspectSearchRunner:
                     and verdict.reject_reason != CandidateRejectReason.NO_CONTACT
                 )
                 if verdict.status == CandidateStatus.KEPT:
-                    await self._contact_finder.drop_dead_email(facts)
+                    await self._contact_finder.check_email(facts, profile)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 elif not is_final_rejection and facts.is_verified:
                     await self._contact_finder.find(facts, profile)
@@ -605,9 +608,10 @@ class ProspectSearchRunner:
                 verdict = CandidateVerdict(
                     CandidateStatus.TO_CONFIRM, detail="Une erreur a interrompu sa vérification : fiche non contrôlée."
                 )
-            # The verification reveals keys the listing did not carry (email, Facebook page, Google id):
-            # a business already known under one of them must not become a second prospect.
-            known = self._index.match(CandidateStore.identity_keys(facts))
+            # The verification reveals keys the listing did not carry (email, Facebook page, Google id, registry
+            # number): a business already known under one of them must not become a second prospect. Another
+            # listing of this search is compared with it once it is saved.
+            known = self._index.match(CandidateStore.identity_keys(facts), include_run_proposals=False)
             if known is not None and verdict.status != CandidateStatus.REJECTED:
                 verdict = CandidateVerdict(CandidateStatus.REJECTED, known.reason, known.detail)
             await self._save(state, profile, candidate_id, facts, verdict)
@@ -623,8 +627,9 @@ class ProspectSearchRunner:
         """
         Store a candidate's verdict and, in an automatic search, create its prospect when it is kept or set aside.
 
-        The creation has the last word: a business that became a prospect meanwhile is discarded
-        as already known, and a creation that fails leaves the candidate to the user.
+        Another listing of the same business in the search leaves a single one proposed, the better-informed,
+        before any prospect is created. The creation has the last word: a business that became a prospect
+        meanwhile is discarded as already known, and a creation that fails leaves the candidate to the user.
         """
         with SessionLocal() as db:
             row = db.get(ProspectSearchCandidate, candidate_id)
@@ -632,6 +637,13 @@ class ProspectSearchRunner:
                 return
             self._add_count(row.trade, row.status, -1)
             CandidateStore.write_back(row, facts, verdict)
+            for listing, previous_status in CandidateDuplicates.settle(db, row):
+                if listing is row:
+                    continue
+                self._add_count(listing.trade, previous_status, -1)
+                self._add_count(listing.trade, listing.status, 1)
+                self._index.remember_rejected(listing.identity_keys or [], listing.reject_reason)
+                self._log(f"{listing.name} : écarté. {listing.reject_detail or ''}".strip())
             db.commit()
             if state.creates_prospects:
                 await CandidateStore.promote_or_leave_to_confirm(

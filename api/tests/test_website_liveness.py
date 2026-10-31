@@ -243,3 +243,12 @@ def test_a_site_welcoming_its_visitors_by_name_stays_live() -> None:
     )
 
     assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.LIVE
+
+
+def test_a_domain_parked_by_its_registrar_is_dead() -> None:
+    _FakeAsyncClient.response = _FakeResponse(
+        200,
+        '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script></head></html>',
+    )
+
+    assert _check(WebsiteLivenessService(), "https://welington.fr") is WebsiteStatus.DEAD

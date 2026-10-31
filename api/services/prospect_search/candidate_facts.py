@@ -14,6 +14,8 @@ from services.sms.phone_normalizer import PhoneNumberPlans, is_number_of_country
 
 _SNIPPET_MAX_CHARS: int = 240
 _MAINLAND_LANDLINE_LEADS: tuple[str, ...] = ("+331", "+332", "+333", "+334", "+335")
+# The chain evidence of a brand's agent or dealer reads « marque Peugeot ».
+BRAND_OUTLET_EVIDENCE_PREFIX: str = "marque "
 
 
 @dataclass
@@ -114,6 +116,20 @@ class CandidateFacts:
         return bool(domain) and any(
             line.get("fact") == "email_domain_site" and line.get("value") == domain for line in self.evidence
         )
+
+    @property
+    def outlet_brand(self) -> str | None:
+        """The brand the business is the agent or the dealer of, when its listing says so."""
+        for line in self.evidence:
+            value = line.get("value", "")
+            if line.get("fact") == "chain" and value.startswith(BRAND_OUTLET_EVIDENCE_PREFIX):
+                return value.removeprefix(BRAND_OUTLET_EVIDENCE_PREFIX)
+        return None
+
+    @property
+    def privacy_proxied_domains(self) -> list[str]:
+        """The domains a privacy service's address revealed for the business (« exemple.fr@domainsbyproxy.com »)."""
+        return [line["value"] for line in self.evidence if line.get("fact") == "privacy_proxied_domain"]
 
     @property
     def is_ruled_out_before_search(self) -> bool:

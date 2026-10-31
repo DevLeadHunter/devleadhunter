@@ -26,6 +26,9 @@ _PLUMBER = TradeCatalog.resolve("plombier")
 _ELECTRICIAN = TradeCatalog.resolve("électricien")
 _GARAGE = TradeCatalog.resolve("garage")
 _EMAIL_ONLY = SearchCriteria(channel=ProspectSearchChannel.EMAIL, only_without_website=True, minimum_rating=None)
+_EMAIL_AND_MOBILE = SearchCriteria(
+    channel=ProspectSearchChannel.EMAIL_AND_SMS, only_without_website=True, minimum_rating=4.0
+)
 
 
 class _OnePageClient:
@@ -793,3 +796,203 @@ def test_an_email_domain_spelling_the_name_without_its_legal_form_is_its_website
     asyncio.run(CandidateVerifier.consider_email_domain(facts, TradeCatalog.resolve("garage")))
 
     assert facts.website == "https://adnauto.ch/"
+
+
+@pytest.mark.parametrize(
+    ("name", "city", "email", "front_page"),
+    [
+        # The domain hides its page behind a bot check: its name is all there is to read.
+        ("SARL Lucens Automobiles montluçon", "Montluçon", "contact@lucensautomobiles.fr", None),
+        # The page is a network's: it names « AG GARAGE », never « AG Automobiles ».
+        (
+            "AG Automobiles",
+            "Ingrandes",
+            "contact@ag-garage.fr",
+            (
+                "https://www.ag-garage.fr/",
+                "<title>Entretien voiture Multi-marques - Bosch Car Services - AG GARAGE</title>",
+            ),
+        ),
+    ],
+)
+def test_a_domain_spelling_the_business_s_own_words_beside_trade_words_is_its_website(
+    monkeypatch: pytest.MonkeyPatch, name: str, city: str, email: str, front_page: tuple[str, str] | None
+) -> None:
+    facts = _facts(
+        name=name,
+        city=city,
+        country="FR",
+        phone="06 00 00 00 31",
+        email=email,
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        is_verified=True,
+    )
+    if front_page is not None:
+        _serve_front_page(monkeypatch, *front_page)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_AND_MOBILE)
+
+    assert facts.website_status == WebsiteStatus.LIVE.value
+    assert verdict.reject_reason == CandidateRejectReason.HAS_WEBSITE
+
+
+@pytest.mark.parametrize(
+    ("name", "email"),
+    [
+        ("AG Automobiles", "contact@ag.fr"),
+        ("SARL Lucens Automobiles montluçon", "contact@lucens-immobilier.fr"),
+    ],
+)
+def test_initials_alone_or_a_word_the_business_does_not_carry_do_not_make_its_domain(name: str, email: str) -> None:
+    facts = _facts(name=name, city="Montluçon", country="FR", phone=None, email=email)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+
+    assert facts.website is None
+
+
+def test_a_parked_domain_named_after_the_business_leaves_it_without_a_working_website(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facts = _facts(
+        name="Welington Automobiles",
+        city="Montluçon",
+        country="FR",
+        phone="04 00 00 00 32",
+        email="contact@welington.fr",
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        is_verified=True,
+    )
+    _serve_front_page(
+        monkeypatch,
+        "https://welington.fr",
+        '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script>'
+        "</head></html>",
+    )
+
+    async def parked(website: str | None) -> WebsiteStatus | None:
+        return WebsiteStatus.DEAD
+
+    monkeypatch.setattr(website_liveness_service, "check_website_status", parked)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website_status == WebsiteStatus.DEAD.value
+    assert verdict.status == CandidateStatus.KEPT
+
+
+@pytest.mark.parametrize(
+    ("revealed_domain_front_page", "revealed_domain_status", "expected_website"),
+    [
+        (None, WebsiteStatus.DEAD, None),
+        (
+            ("https://abjautorepair.net/", "<title>Votre garage</title>"),
+            WebsiteStatus.LIVE,
+            "https://abjautorepair.net/",
+        ),
+    ],
+)
+def test_a_privacy_service_s_address_is_no_email_and_the_domain_it_hides_is_read_as_the_business_s(
+    monkeypatch: pytest.MonkeyPatch,
+    revealed_domain_front_page: tuple[str, str] | None,
+    revealed_domain_status: WebsiteStatus,
+    expected_website: str | None,
+) -> None:
+    facts = _facts(name="Abj Auto", city="Saint-Paul-lès-Dax", country="FR", phone="05 00 00 00 33")
+    company_page = _result(
+        "https://www.google.com/goto?url=abj",
+        "ABJ AUTO (ABJ) | Données juridiques, financières et légales",
+        "ABJ AUTO (ABJ). 1050 RUE EXEMPLE - 40990 SAINT-PAUL-LES-DAX. 05 00 00 00 33. "
+        "abjautorepair.net@domainsbyproxy.com. Télécharger le Kbis.",
+    )
+
+    async def front_page(domain: str) -> tuple[str, str] | None:
+        return revealed_domain_front_page if domain == "abjautorepair.net" else None
+
+    async def status(website: str | None) -> WebsiteStatus | None:
+        return revealed_domain_status
+
+    monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(front_page))
+    monkeypatch.setattr(website_liveness_service, "check_website_status", status)
+
+    asyncio.run(
+        ContactFinder(_OnePageClient({"organic": [company_page]}), _ScriptedJudge()).find(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.email is None
+    assert facts.privacy_proxied_domains == ["abjautorepair.net"]
+    assert facts.website == expected_website
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "email"),
+    [
+        (
+            "Garage Dyma",
+            "Garage Dyma, Châtellerault, FR | Informations sur l'entreprise",
+            "brd.auto.performance@gmail.com",
+        ),
+        ("Garage Millesime Auto", "Garage Millesime Auto à Mulhouse", "garageautohouse@gmail.com"),
+    ],
+)
+def test_an_email_naming_another_business_is_no_proof_and_leaves_the_business_to_confirm(
+    name: str, title: str, email: str
+) -> None:
+    facts = _facts(name=name, city="Châtellerault", country="FR", phone="05 00 00 00 34")
+
+    _verify(
+        facts,
+        {"organic": [_result("https://www.google.com/goto?url=entreprise", title, f"Achat et revente. email {email}")]},
+        trade=_GARAGE,
+    )
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert (facts.email, facts.email_proof_level) == (email, EmailProofLevel.GUESSED.value)
+    assert verdict.status == CandidateStatus.TO_CONFIRM
+    assert verdict.detail == f"Son email ({email}) porte le nom d'une autre affaire : à vérifier."
+
+
+def test_the_manager_s_own_address_given_by_a_directory_stays_a_proof() -> None:
+    facts = _facts(name="MJV Automobiles", city="Jardres", country="FR", phone="05 00 00 00 35")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.google.com/goto?url=entreprise",
+                    "MJV Automobiles, Jardres | Informations sur l'entreprise",
+                    "MJV Automobiles. 86800 Jardres. email claire.exemple@gmail.com",
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert (facts.email, facts.email_proof_level) == ("claire.exemple@gmail.com", EmailProofLevel.DIRECTORY.value)
+
+
+def test_an_email_spelling_the_business_name_is_a_proof_even_on_a_page_that_does_not_name_it() -> None:
+    facts = _facts(name="GLD Automobiles", city="Dax", country="FR", phone="05 00 00 00 36")
+    judge = _ScriptedJudge(
+        JudgeVerdict(emails=[JudgedEmail(email="gld-automobiles@orange.fr", result_index=0, belongs_to_business=True)])
+    )
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.google.com/goto?url=page",
+                    "Motrio | Dax",
+                    "Garage réparation automobile, entretien ... gld-automobiles@orange.fr. Contact info.",
+                )
+            ]
+        },
+        judge=judge,
+        trade=_GARAGE,
+    )
+
+    assert (facts.email, facts.email_proof_level) == ("gld-automobiles@orange.fr", EmailProofLevel.DIRECTORY.value)

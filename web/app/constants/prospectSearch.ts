@@ -211,6 +211,8 @@ export const PROSPECT_SEARCH_WEBSITE_WARNINGS: Record<string, StatusPresentation
 export const PROSPECT_SEARCH_EVIDENCE_FACT_LABELS: Record<string, string> = {
   email: 'Email',
   email_dropped: 'Email retiré',
+  email_domain_site: 'Site du domaine de son email',
+  privacy_proxied_domain: "Domaine caché par un service d'anonymat",
   phone: 'Téléphone',
   website: 'Site web',
   facebook: 'Page Facebook',

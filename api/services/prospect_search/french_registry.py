@@ -2,7 +2,8 @@
 French company register — whether a French business a search found is still open, as the official registry says.
 
 A garage struck off last spring keeps its Google listing for months. The registry (recherche-entreprises) is read only
-for a candidate about to be proposed: the companies of its name in its département, at its address.
+for a candidate about to be proposed: the companies of its name in its département, at its address. The one open
+company of its name at its place gives it its SIREN: two listings of a search with the same SIREN are one business.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ class FrenchRegistry:
 
     async def read_closing(self, facts: CandidateFacts) -> None:
         """
-        Take the registry's recent closing of the business's company as the closing of the business.
+        Take the registry's recent closing of the business's company as the closing of the business, and its SIREN.
 
         Only a company of the business's name (its legal name or a trade name it declared) at the business's place
         (its postal code, else its town) counts. An open one there clears the business; so does an open company of
@@ -55,7 +56,35 @@ class FrenchRegistry:
                     named.setdefault(str(company.get("siren") or len(named)), company)
             if any(self.is_at_place(company, facts, postal_code=postal_code) for company in named.values()):
                 break
+        self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
+
+    @classmethod
+    def take_registry_number(
+        cls, facts: CandidateFacts, named: list[dict[str, Any]], *, postal_code: str | None
+    ) -> None:
+        """
+        Give the business the SIREN of the one open company of its name at its place.
+
+        Several open companies there, or none, leave it without: a wrong number would merge two businesses.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+            postal_code: The business's postal code, if its address gives one.
+        """
+        if facts.registry_number:
+            return
+        sirens = {
+            str(company["siren"])
+            for company in named
+            if company.get("siren")
+            and company.get("etat_administratif") == _ACTIVE_STATE
+            and cls.is_at_place(company, facts, postal_code=postal_code)
+        }
+        if len(sirens) == 1:
+            facts.registry_number = sirens.pop()
+            facts.add_evidence("registry", facts.registry_number, source=_REGISTER_SOURCE)
 
     async def _read_closing_of(
         self, facts: CandidateFacts, named: list[dict[str, Any]], *, department: str, postal_code: str | None

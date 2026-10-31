@@ -15,6 +15,15 @@ from dataclasses import dataclass, field
 from services.decision_maker.normalize import fold
 
 _DEFAULT_COUNTRY: str = "*"
+_NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
+# Words a dealer's name may start with before its brand (« Garage Renault Exemple », « Ets Peugeot »).
+_LEADING_DEALER_WORDS: frozenset[str] = frozenset(
+    {"garage", "garages", "agence", "agent", "concession", "concessionnaire", "ets", "etablissements", "sarl", "sas"}
+)
+# Words naming a brand's outlet wherever they stand (« Garage Exemple Agent Renault »).
+_DEALER_WORDS: tuple[str, ...] = ("agent", "concession", "concessionnaire", "distributeur", "reparateur agree")
+_DEALER_CATEGORY_WORD: str = "concessionnaire"
+_SHORT_BRAND_MAX_CHARS: int = 3
 
 
 @dataclass(frozen=True)
@@ -30,12 +39,48 @@ class TradeProfile:
     excluded_category_keywords: tuple[str, ...] = ()
     rge_domains: tuple[str, ...] = ()
     rbq_subcategories: tuple[str, ...] = ()
+    brand_names: tuple[str, ...] = ()
+    brands_named_by_category_only: tuple[str, ...] = ()
     is_generic: bool = field(default=False)
 
     def names_trade(self, name: str) -> bool:
         """Whether a business name says the trade (« Rochat Électricité », « Jardins du Lac »)."""
         folded_name = fold(name)
         return any(fold(word) in folded_name for word in (*self.aliases, *self.category_keywords))
+
+    def brand_outlet_of(self, name: str, google_category: str | None) -> str | None:
+        """
+        The brand a business is the agent or the dealer of, as its listing shows it.
+
+        A brand heads its name (« Peugeot - Garage Exemple », « Renault / Dacia - Garage Exemple »), follows
+        « agent » or « concession » in it, or names its category (« Concessionnaire Peugeot »); a dealer's
+        category without a brand (« Concessionnaire automobile ») counts with a brand anywhere in the name
+        (« Garage Exemple voitures sans permis Aixam »). A brand whose name is a common word (« Mini »)
+        counts only in the category. Its owner does not decide on a website alone.
+
+        Args:
+            name: The business name, as the listing writes it.
+            google_category: Its Google category, if known.
+
+        Returns:
+            The brand, written for a reader (« Peugeot », « BMW »), or None for an independent business.
+        """
+        name_words = f" {_NAME_WORD_SEPARATORS_RE.sub(' ', fold(name)).strip()} "
+        words = name_words.split()
+        while words and words[0] in _LEADING_DEALER_WORDS:
+            words.pop(0)
+        head = f" {' '.join(words)} "
+        category = _NAME_WORD_SEPARATORS_RE.sub(" ", fold(google_category or "")).strip()
+        for brand in (*self.brand_names, *self.brands_named_by_category_only):
+            is_brand_category = f"{category} ".startswith(f"{_DEALER_CATEGORY_WORD} {brand} ")
+            is_named_brand = brand in self.brand_names and (
+                head.startswith(f" {brand} ")
+                or any(f" {word} {brand} " in name_words for word in _DEALER_WORDS)
+                or (category.startswith(_DEALER_CATEGORY_WORD) and f" {brand} " in name_words)
+            )
+            if is_brand_category or is_named_brand:
+                return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
+        return None
 
     def terms_for(self, country: str) -> tuple[str, ...]:
         """Search words of the trade in a country (the default words when none are specific)."""
@@ -192,6 +237,67 @@ _PROFILES: tuple[TradeProfile, ...] = (
             "fourriere",
             "recharge",
         ),
+        brand_names=(
+            "abarth",
+            "aixam",
+            "alfa romeo",
+            "aston martin",
+            "audi",
+            "bentley",
+            "bmw",
+            "byd",
+            "chatenet",
+            "chevrolet",
+            "chrysler",
+            "citroen",
+            "cupra",
+            "dacia",
+            "dodge",
+            "ducati",
+            "ferrari",
+            "fiat",
+            "ford",
+            "harley davidson",
+            "honda",
+            "hyundai",
+            "infiniti",
+            "isuzu",
+            "iveco",
+            "jaguar",
+            "jeep",
+            "kawasaki",
+            "kia",
+            "lamborghini",
+            "lancia",
+            "land rover",
+            "lexus",
+            "ligier",
+            "maserati",
+            "mazda",
+            "mercedes",
+            "microcar",
+            "mitsubishi",
+            "nissan",
+            "opel",
+            "peugeot",
+            "piaggio",
+            "porsche",
+            "renault",
+            "seat",
+            "skoda",
+            "ssangyong",
+            "subaru",
+            "suzuki",
+            "tesla",
+            "toyota",
+            "triumph",
+            "volkswagen",
+            "volvo",
+            "vw",
+            "yamaha",
+        ),
+        # Brands named like common words (« Mini », « Smart »): only Google's category tells their dealers.
+        brands_named_by_category_only=("alpine", "ds", "lotus", "mg", "mini", "smart"),
     ),
     TradeProfile(
         key="couvreur",

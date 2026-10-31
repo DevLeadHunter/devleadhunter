@@ -258,6 +258,26 @@ BLOCKED_LOCAL_PREFIXES: tuple[str, ...] = (
 
 BLOCKED_LOCAL_PARTS: frozenset[str] = frozenset({"dpo", "rgpd", "privacy", "abuse", "postmaster", "webmaster"})
 
+# Services hiding a domain's owner write their own address in its public record (« exemple.fr@domainsbyproxy.com »):
+# a company data page copying that record shows an address nobody reads.
+PRIVACY_PROXY_DOMAINS: frozenset[str] = frozenset(
+    {
+        "domainsbyproxy.com",
+        "contactprivacy.com",
+        "withheldforprivacy.com",
+        "privacyprotect.org",
+        "whoisguard.com",
+        "perfectprivacy.com",
+        "privacyguardian.org",
+        "domainprivacygroup.com",
+        "anonymize.com",
+        "super-privacy.com",
+        "o-w-o.info",
+    }
+)
+_PRIVACY_PROXY_DOMAIN_RE: re.Pattern[str] = re.compile(r"whois|domainsbyproxy|privacyprotect|withheldforprivacy")
+_DOMAIN_NAME_RE: re.Pattern[str] = re.compile(r"(?:[a-z0-9-]+\.)+[a-z]{2,}")
+
 # Role inboxes that are typically the business's own contact address.
 ROLE_LOCAL_PARTS: frozenset[str] = frozenset(
     {
@@ -376,6 +396,28 @@ class EmailCandidateScorer:
         """Whether *host* is a known directory, registry or platform (subdomains included)."""
         return cls._is_blocked_domain(host.lower().removeprefix("www."))
 
+    @staticmethod
+    def is_privacy_proxy_address(email: str) -> bool:
+        """Whether *email* is the address a privacy service writes in a domain's public record instead of its owner's."""
+        domain = email.strip().lower().rpartition("@")[2]
+        return domain in PRIVACY_PROXY_DOMAINS or _PRIVACY_PROXY_DOMAIN_RE.search(domain) is not None
+
+    @classmethod
+    def domain_behind_privacy_proxy(cls, email: str) -> str | None:
+        """
+        The domain a privacy service's address stands for (« exemple.fr » in « exemple.fr@domainsbyproxy.com »).
+
+        Args:
+            email: Any address.
+
+        Returns:
+            The domain written before the « @ », or None when the address is no privacy service's or hides it.
+        """
+        local = email.strip().lower().rpartition("@")[0]
+        if not cls.is_privacy_proxy_address(email) or _DOMAIN_NAME_RE.fullmatch(local) is None:
+            return None
+        return local
+
     def _is_disqualified(self, email: str, city_key: str) -> bool:
         """True when *email* provably belongs to a non-prospect (the only hard reject)."""
         local, _, domain = email.partition("@")
@@ -383,7 +425,7 @@ class EmailCandidateScorer:
             return True
         if any(local.startswith(prefix) for prefix in BLOCKED_LOCAL_PREFIXES) or local in BLOCKED_LOCAL_PARTS:
             return True
-        if self._is_blocked_domain(domain):
+        if self._is_blocked_domain(domain) or self.is_privacy_proxy_address(email):
             return True
         if any(chunk in domain for chunk in BLOCKED_DOMAIN_SUBSTRINGS):
             return True
@@ -393,7 +435,7 @@ class EmailCandidateScorer:
         return bool(
             domain not in GENERIC_EMAIL_PROVIDERS
             and city_key
-            and self._alnum(self._registrable_label(domain)) == city_key
+            and self._alnum(self.registrable_label(domain)) == city_key
         )
 
     def _positive_score(
@@ -407,7 +449,7 @@ class EmailCandidateScorer:
     ) -> float:
         """Positive-only score: ownership signals raise it, nothing lowers it."""
         local, _, domain = email.partition("@")
-        label = self._registrable_label(domain)
+        label = self.registrable_label(domain)
         is_generic = domain in GENERIC_EMAIL_PROVIDERS
 
         score = 1.0  # base: keep every survivor in the race for the floor rule
@@ -460,7 +502,7 @@ class EmailCandidateScorer:
         return any(".".join(labels[index:]) in BLOCKED_DOMAINS for index in range(len(labels) - 1))
 
     @staticmethod
-    def _registrable_label(domain: str) -> str:
+    def registrable_label(domain: str) -> str:
         """Label registered before the suffix, ``.fr`` as ``.qc.ca`` (``plomberie-tremblay`` in ``plomberie-tremblay.qc.ca``)."""
         parts = [part for part in domain.lower().split(".") if part]
         has_canadian_second_level_suffix = len(parts) >= 3 and ".".join(parts[-2:]) in _CANADIAN_SECOND_LEVEL_SUFFIXES
@@ -479,7 +521,7 @@ class EmailCandidateScorer:
             candidate = "//" + candidate
         host = (urlparse(candidate).hostname or "").lower()
         host = host.removeprefix("www.")
-        return cls._registrable_label(host)
+        return cls.registrable_label(host)
 
 
 email_candidate_scorer = EmailCandidateScorer()

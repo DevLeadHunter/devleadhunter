@@ -1868,3 +1868,200 @@ def test_a_refused_request_is_not_tried_again() -> None:
     refusal = httpx.HTTPStatusError("refused", request=request, response=httpx.Response(422, request=request))
 
     assert ProspectSearchCli.is_transient_api_error(refusal) is False
+
+
+def _directory_page(name: str, phone: str, email: str) -> dict[str, Any]:
+    """The search page of a business whose directory entry gives its email."""
+    return {
+        "organic": [
+            {
+                "link": f"https://www.local.ch/fr/d/sion/1950/paysagiste/{name.lower().replace(' ', '-')}",
+                "title": f"{name} – Paysagiste à Sion",
+                "description": f"{name}, Rte Exemple 1. Portable: {phone}. E-mail: {email}",
+            }
+        ]
+    }
+
+
+class _OneBusinessUnderTwoListingsClient(_CannedSearchClient):
+    """Two Google listings of one landscaper (the second better reviewed): the directory gives one email to both."""
+
+    async def google_local_html(self, query: str, *, country: str = "FR", start: int = 0) -> str | None:
+        self.request_count += 1
+        if start != 0 or not query.startswith("paysagiste"):
+            return None
+        return (
+            "<html><body>"
+            + _card("Jardins Exemple", ["4,6 (26) · Paysagiste", "Sion", "078 000 00 41"], has_website=False)
+            + _card("Exemple Paysage", ["4,8 (152) · Paysagiste", "Sion", "078 000 00 42"], has_website=False)
+            + "</body></html>"
+        )
+
+    async def google_parsed(
+        self, query: str, *, country: str = "FR", start: int = 0, local: bool = False
+    ) -> dict[str, Any] | None:
+        self.request_count += 1
+        self.queries.append(query)
+        pages = {
+            '"Jardins Exemple" Sion': _directory_page("Jardins Exemple", "078 000 00 41", "exemple.paysage@bluewin.ch"),
+            '"Exemple Paysage" Sion': _directory_page("Exemple Paysage", "078 000 00 42", "exemple.paysage@bluewin.ch"),
+        }
+        return pages.get(query, {"organic": []})
+
+
+def test_two_listings_found_to_share_an_email_leave_the_better_informed_one_proposed(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(runner_module, "BrightDataClient", _OneBusinessUnderTwoListingsClient)
+    search_id = _create_search(db, count=2)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    candidates = _candidates(db, search_id)
+
+    assert candidates["Exemple Paysage"].status == CandidateStatus.KEPT.value
+    second_listing = candidates["Jardins Exemple"]
+    assert (second_listing.status, second_listing.reject_reason) == (
+        CandidateStatus.REJECTED.value,
+        CandidateRejectReason.AWAITING_DECISION.value,
+    )
+    assert second_listing.reject_detail == (
+        "Même entreprise que « Exemple Paysage », une fiche mieux renseignée de cette recherche."
+    )
+
+
+class _CompleteListingClient(_CannedSearchClient):
+    """One landscaper with a mobile, whose email a directory gives on a domain that does not spell its name."""
+
+    async def google_local_html(self, query: str, *, country: str = "FR", start: int = 0) -> str | None:
+        self.request_count += 1
+        if start != 0 or not query.startswith("paysagiste"):
+            return None
+        return (
+            "<html><body>"
+            + _card("Exemple Paysage", ["4,8 (15) · Paysagiste", "Sion", "078 000 00 45"], has_website=False)
+            + "</body></html>"
+        )
+
+    async def google_parsed(
+        self, query: str, *, country: str = "FR", start: int = 0, local: bool = False
+    ) -> dict[str, Any] | None:
+        self.request_count += 1
+        self.queries.append(query)
+        if query == '"Exemple Paysage" Sion':
+            return _directory_page("Exemple Paysage", "078 000 00 45", "info@jardins-du-lac.ch")
+        return {"organic": []}
+
+
+def test_the_email_domain_of_a_complete_listing_is_read_again_before_it_is_kept(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Its site answered too late for the verification's read: the read before keeping finds it."""
+    front_page_reads: list[str] = []
+
+    async def front_page_answering_late(domain: str) -> tuple[str, str] | None:
+        front_page_reads.append(domain)
+        if len(front_page_reads) == 1:
+            return None
+        return f"https://{domain}/", "<title>Exemple Paysage, les jardins du Lac à Sion</title>"
+
+    monkeypatch.setattr(runner_module, "BrightDataClient", _CompleteListingClient)
+    monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(front_page_answering_late))
+    search_id = _create_search(db)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    listing = _candidates(db, search_id)["Exemple Paysage"]
+
+    assert front_page_reads == ["jardins-du-lac.ch", "jardins-du-lac.ch"]
+    assert (listing.status, listing.reject_reason) == (
+        CandidateStatus.REJECTED.value,
+        CandidateRejectReason.HAS_WEBSITE.value,
+    )
+    assert listing.website == "https://jardins-du-lac.ch/"
+
+
+def test_a_facebook_read_giving_the_email_of_another_listing_leaves_one_listing_proposed(
+    canned_world: None, db: Session
+) -> None:
+    search_id = _create_search(db)
+    garage = _store_candidate(
+        db,
+        search_id,
+        "GARAGE CS AUTO",
+        CandidateStatus.KEPT,
+        email="garagecsauto@gmail.com",
+        phone="05 00 00 00 43",
+        identity_keys=["tel:+33500000043", "mail:garagecsauto@gmail.com"],
+    )
+    body_shop = _store_candidate(
+        db,
+        search_id,
+        "Carrosserie CS Auto",
+        CandidateStatus.NEEDS_BROWSER,
+        phone="05 00 00 00 44",
+        identity_keys=["tel:+33500000044", "fb:100000000000001"],
+    )
+    garage.google_reviews_count, body_shop.google_reviews_count = 152, 26
+    garage.phone_is_mobile = body_shop.phone_is_mobile = False
+    body_shop.facebook_url = "https://www.facebook.com/100000000000001"
+    db.commit()
+
+    verdict = asyncio.run(
+        facebook_contact_recorder.record(
+            body_shop.id, FacebookContactRead(is_readable=True, emails=["garagecsauto@gmail.com"])
+        )
+    )
+    db.expire_all()
+
+    assert verdict is not None
+    assert (verdict.status, verdict.reject_reason) == (
+        CandidateStatus.REJECTED,
+        CandidateRejectReason.AWAITING_DECISION,
+    )
+    assert db.get(ProspectSearchCandidate, garage.id).status == CandidateStatus.KEPT.value  # type: ignore[union-attr]
+
+
+class _DealerListingClient(_CannedSearchClient):
+    """A Peugeot dealer among the garages of Mulhouse."""
+
+    async def google_local_html(self, query: str, *, country: str = "FR", start: int = 0) -> str | None:
+        self.request_count += 1
+        if start != 0 or not query.startswith("garage automobile"):
+            return None
+        return (
+            "<html><body>"
+            + _card(
+                "Peugeot - Garage Paul Exemple",
+                ["4,7 (210) · Concessionnaire Peugeot", "Mulhouse", "03 00 00 00 46"],
+                has_website=False,
+            )
+            + "</body></html>"
+        )
+
+
+def test_a_brand_dealer_listing_is_discarded_without_any_search(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(runner_module, "BrightDataClient", _DealerListingClient)
+    search = prospect_search_service.create(
+        db,
+        USER_ID,
+        ProspectSearchCreate(
+            trades=["garage"],
+            country="FR",
+            cities=["Mulhouse"],
+            count_per_trade=1,
+            channel=ProspectSearchChannel.EMAIL,
+            validation_mode=ProspectSearchValidationMode.MANUAL,
+        ),
+    )
+    runner = ProspectSearchRunner(search.id)
+
+    asyncio.run(runner.run())
+    db.expire_all()
+    dealer = _candidates(db, search.id)["Peugeot - Garage Paul Exemple"]
+
+    assert (dealer.status, dealer.reject_reason) == (CandidateStatus.REJECTED.value, CandidateRejectReason.CHAIN.value)
+    assert dealer.reject_detail == "Agent ou concessionnaire Peugeot : le patron ne décide pas seul."
+    assert not any("Peugeot" in query for query in runner._client.queries)  # type: ignore[attr-defined]
