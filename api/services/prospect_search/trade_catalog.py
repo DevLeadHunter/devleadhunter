@@ -24,6 +24,8 @@ _LEADING_DEALER_WORDS: frozenset[str] = frozenset(
 _DEALER_WORDS: tuple[str, ...] = ("agent", "concession", "concessionnaire", "distributeur", "reparateur agree")
 _DEALER_CATEGORY_WORD: str = "concessionnaire"
 _SHORT_BRAND_MAX_CHARS: int = 3
+# A brand opening a word of an email address (« aixamautomobile ») must be long enough not to open a name by chance.
+_BRAND_OPENING_AN_ADDRESS_MIN_CHARS: int = 5
 # Crafts a business name may say (« La petite Maçonnerie », « Exemple Chauffagiste »): the craft, seldom the
 # craftsman, whose word is often a family name (« Barbier », « Couvreur »).
 _CRAFT_NAME_WORDS: frozenset[str] = frozenset(
@@ -128,6 +130,36 @@ class TradeProfile:
                 or (category.startswith(_DEALER_CATEGORY_WORD) and f" {brand} " in name_words)
             )
             if is_brand_category or is_named_brand:
+                return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
+        return None
+
+    def brand_named_in_address(self, address_part: str) -> str | None:
+        """
+        The brand the words of an email address open with (« aixamautomobile » for an Aixam dealer).
+
+        A brand counts as a whole word of the address, or at the start of one when it is long enough not to start
+        a name by chance. A brand named like a common word (« Mini ») or a first name (« Mercedes ») never counts
+        there: « mercedes.exemple@… » is a person's address.
+
+        Args:
+            address_part: The words before an email's « @ ».
+
+        Returns:
+            The brand, written for a reader (« Aixam »), or None.
+        """
+        from services.decision_maker.given_names import GivenNames
+
+        segments = [segment for segment in _NAME_WORD_SEPARATORS_RE.split(fold(address_part)) if segment]
+        for brand in self.brand_names:
+            if GivenNames.is_given_name(brand.split()[0]):
+                continue
+            compact_brand = brand.replace(" ", "")
+            is_named = any(
+                segment == compact_brand
+                or (len(compact_brand) >= _BRAND_OPENING_AN_ADDRESS_MIN_CHARS and segment.startswith(compact_brand))
+                for segment in segments
+            )
+            if is_named:
                 return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
         return None
 

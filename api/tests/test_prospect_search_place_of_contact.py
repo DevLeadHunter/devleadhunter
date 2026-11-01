@@ -120,16 +120,24 @@ def _verify(facts: CandidateFacts, results: list[dict[str, str]], judge: _Script
         ),
     ],
 )
-def test_an_email_written_beside_another_number_is_that_number_s_owner_s(
+def test_an_email_spelling_the_name_beside_another_number_is_left_to_confirm(
     name: str, town: str, trade: Any, title: str, description: str, email: str
 ) -> None:
-    """A namesake's page writes its own number beside its address: the judge giving it the business changes nothing."""
+    """
+    A namesake's page writes its own number beside its address, which spells the same name: the judge giving it the
+    business proves nothing, a person decides (a manager's other number reads the same, Bèl Jaden in Martinique).
+    """
     facts = _facts(name, town, trade=trade.key, city=town, phone="06 00 00 00 31")
     judge = _ScriptedJudge(JudgeVerdict(emails=[JudgedEmail(email=email, result_index=0, belongs_to_business=True)]))
 
     _verify(facts, [_result("https://www.exemple-annuaire.fr/fiche", title, description)], judge, trade)
+    verdict = CandidateDecision.decide(facts, trade, _EMAIL_ONLY)
 
-    assert facts.email is None
+    assert (facts.email, facts.email_proof_level) == (email, EmailProofLevel.GUESSED.value)
+    assert (verdict.status, verdict.detail) == (
+        CandidateStatus.TO_CONFIRM,
+        f"Son email ({email}) est écrit à côté d'un autre numéro que le sien : à vérifier, ce peut être un homonyme.",
+    )
 
 
 def test_the_directory_entry_after_the_business_s_number_gives_its_email_to_the_next_business() -> None:

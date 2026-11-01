@@ -176,6 +176,7 @@ class ContactFinder:
         await CandidateVerifier.consider_email_source_site(facts, trade)
         await CandidateVerifier.consider_privacy_proxied_domains(facts, trade)
         await PlaceOfContact.note_contact_elsewhere(facts)
+        CandidateVerifier.mark_brand_named_in_email(facts, trade)
 
     async def drop_dead_email(self, facts: CandidateFacts) -> None:
         """Forget the candidate's email when its domain receives no mail."""
@@ -233,7 +234,10 @@ class ContactFinder:
             if facebook_page != facts.facebook_url:
                 continue
             for email in self._usable_emails(line.text, facts):
-                if PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone):
+                is_another_entry_s = PlaceOfContact.is_beside_another_phone(
+                    line.text, email, facts.phone
+                ) and not CandidateVerifier.email_carries_name(email, facts, trade)
+                if is_another_entry_s:
                     continue
                 facts.offer_email(
                     email, EmailProofLevel.DIRECTORY, source="Page Facebook", url=line.link, snippet=line.text
@@ -249,7 +253,10 @@ class ContactFinder:
             return
         results = CandidateVerifier.result_lines(page)
         for line in results:
-            if not self._is_unreliable_source(line, facts) and self._is_about_business(line, facts, trade):
+            if self._is_unreliable_source(line, facts):
+                continue
+            CandidateVerifier.take_site_showing_contact(facts, line, trade, source="Recherche de son email")
+            if self._is_about_business(line, facts, trade):
                 CandidateVerifier.read_privacy_proxy_addresses(facts, line)
         candidates = [
             (email, index)
@@ -286,6 +293,7 @@ class ContactFinder:
                 email,
                 CandidateVerifier.grade_email_by_its_words(email, proof, facts),
                 line,
+                trade,
                 department=department,
                 is_own_text=False,
             )
@@ -350,6 +358,7 @@ class ContactFinder:
             if not self._shows_phone(line.text, facts) or self._is_foreign_page(line, facts):
                 continue
             CandidateVerifier.read_no_advertising_mark(facts, line)
+            CandidateVerifier.take_site_showing_contact(facts, line, trade, source="Recherche par son numéro")
             if self._is_legal_notice_of_a_website(line):
                 site = urlparse(line.link)
                 CandidateVerifier.consider_website(
@@ -367,13 +376,15 @@ class ContactFinder:
                 continue
             CandidateVerifier.read_privacy_proxy_addresses(facts, line)
             emails = self._usable_emails(line.text, facts)
-            if len(emails) == 1 and not PlaceOfContact.is_beside_another_phone(line.text, emails[0], facts.phone):
-                facts.offer_email(
+            if len(emails) == 1:
+                CandidateVerifier.offer_email_read_in(
+                    facts,
                     emails[0],
                     CandidateVerifier.grade_email_by_its_words(emails[0], EmailProofLevel.DIRECTORY, facts),
-                    source=line.host,
-                    url=line.link,
-                    snippet=line.text,
+                    line,
+                    trade,
+                    department=None,
+                    is_own_text=False,
                 )
 
     @classmethod

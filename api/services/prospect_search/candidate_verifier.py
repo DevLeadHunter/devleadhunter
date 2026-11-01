@@ -100,6 +100,8 @@ _LIQUIDATION_WORDS_BY_REGISTER_MARKER: dict[str, str] = {
 _SAME_BUSINESS_SIMILARITY: float = 0.5
 _NAMED_IN_TEXT_SIMILARITY: float = 0.4
 _DISTINCTIVE_TOKEN_MIN_CHARS: int = 5
+# National numbers are nine digits after the trunk zero in France, Switzerland and Belgium.
+_PHONE_DIGITS_COMPARED: int = 9
 _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
@@ -429,6 +431,25 @@ class CandidateVerifier:
         return None
 
     @staticmethod
+    def mark_brand_named_in_email(facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        Mark the business as a brand's dealer when the words of its email open with the brand.
+
+        « aixamautomobille@… » is an Aixam dealer's address: a brand in the email counts like a brand heading the
+        name.
+
+        Args:
+            facts: The candidate, completed in place.
+            trade: Profile of the searched trade, knowing the brands of its dealers.
+        """
+        if facts.email is None or facts.is_chain:
+            return
+        brand = trade.brand_named_in_address(facts.email.rpartition("@")[0])
+        if brand is not None:
+            facts.is_chain = True
+            facts.add_evidence("chain", f"{BRAND_OUTLET_EVIDENCE_PREFIX}{brand}", source="Son email")
+
+    @staticmethod
     def mark_network_outlet(facts: CandidateFacts, trade: TradeProfile, *, listing_name: str | None = None) -> bool:
         """
         Mark the business as a network's outlet when its name, its Facebook page or its listing shows a network.
@@ -526,9 +547,12 @@ class CandidateVerifier:
         A business named after its owner shares its name with strangers' personal
         profiles: the result must also place it in the town or in the trade. A page whose
         name puts another word in place of the business's trade (« La Taverne d'Odin » for
-        « Les Jardins d'Odin ») is another business's.
+        « Les Jardins d'Odin ») is another business's, and so is a page placed elsewhere
+        without the business's phone (« … | Le Marin Martinique » for a garage of Ducos).
         """
         if not cls.names_business(line.title, facts, trade) or cls._swaps_the_trade(line.title, facts, trade):
+            return False
+        if PlaceOfContact.names_another_place(line.text, facts) and not cls.shows_contact_of(line.text, facts):
             return False
         if not FacebookPageResults.is_page_root(line.link) and not cls._page_address_names_business(
             line.link, facts, trade
@@ -662,14 +686,49 @@ class CandidateVerifier:
                 facts.add_evidence("chain", line.host, source="Page de son réseau", url=line.link, snippet=line.text)
             if self.is_known_third_party(line.link, line.host):
                 continue
-            if not self.names_business(line.text, facts, trade):
-                continue
-            compact_host = re.sub(r"[^a-z0-9]", "", line.host.rsplit(".", 1)[0])
-            if any(len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS and token in compact_host for token in distinctive):
+            is_about_business = self.names_business(line.text, facts, trade)
+            is_showing_its_contact = self.shows_contact_of(line.text, facts)
+            if self._is_host_named_after(line.host, distinctive) and (is_about_business or is_showing_its_contact):
                 self.consider_website(facts, line.link, source="Recherche Google", proof_url=line.link)
-            else:
+            elif is_about_business:
                 has_unsettled_results = True
         return has_unsettled_results
+
+    @classmethod
+    def take_site_showing_contact(
+        cls, facts: CandidateFacts, line: SearchResultLine, trade: TradeProfile, *, source: str
+    ) -> None:
+        """
+        Take as the business's website a domain carrying its name whose page shows its phone or its email.
+
+        Its contact page or legal notice publishes them (« garageexemple.fr/contact »), even when its Google listing
+        declares only a Facebook page.
+
+        Args:
+            facts: The candidate, completed in place.
+            line: A result of one of its searches.
+            trade: Profile of the searched trade.
+            source: How the evidence names the search.
+        """
+        if cls.is_known_third_party(line.link, line.host) or not cls.shows_contact_of(line.text, facts):
+            return
+        if cls._is_host_named_after(line.host, cls.distinctive_tokens(facts, trade)):
+            site = urlparse(line.link)
+            cls.consider_website(facts, f"{site.scheme}://{site.netloc}/", source=source, proof_url=line.link)
+
+    @staticmethod
+    def shows_contact_of(text: str, facts: CandidateFacts) -> bool:
+        """Whether a text shows the business's phone number, however spaced, or its email."""
+        phone_digits = re.sub(r"\D", "", facts.phone or "")[-_PHONE_DIGITS_COMPARED:]
+        if len(phone_digits) == _PHONE_DIGITS_COMPARED and phone_digits in re.sub(r"\D", "", text):
+            return True
+        return bool(facts.email) and (facts.email or "") in text.lower()
+
+    @staticmethod
+    def _is_host_named_after(host: str, distinctive: set[str]) -> bool:
+        """Whether a host carries one of the business's distinctive words (« exemple » in « garagemexemple.fr »)."""
+        compact_host = re.sub(r"[^a-z0-9]", "", host.rsplit(".", 1)[0])
+        return any(len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS and token in compact_host for token in distinctive)
 
     @classmethod
     def _read_liquidation(cls, facts: CandidateFacts, line: SearchResultLine, trade: TradeProfile) -> None:
@@ -1033,7 +1092,7 @@ class CandidateVerifier:
             if not is_own_page:
                 proof = self.grade_email_by_its_words(email, proof, facts)
             is_own_text = is_own_page or (bool(own_host) and line.host == own_host)
-            self.offer_email_read_in(facts, email, proof, line, department=department, is_own_text=is_own_text)
+            self.offer_email_read_in(facts, email, proof, line, trade, department=department, is_own_text=is_own_text)
 
     @staticmethod
     def offer_email_read_in(
@@ -1041,6 +1100,7 @@ class CandidateVerifier:
         email: str,
         proof: EmailProofLevel,
         line: SearchResultLine,
+        trade: TradeProfile,
         *,
         department: str | None,
         is_own_text: bool,
@@ -1049,24 +1109,40 @@ class CandidateVerifier:
         Offer an email read in a result, unless the result gives it to another business.
 
         A directory writes each business's number beside its address: an email nearest another number is that
-        number's owner's. A third party's page that does not place the business (its phone, its town, a postal code of
-        its département) leaves the email unproven, whatever its words: a namesake elsewhere carries the same.
+        number's owner's, unless it spells the business's name (its manager's other number, a namesake: a person
+        decides). A third party's page that does not place the business (its phone, its town, a postal code of its
+        département) leaves the email unproven, whatever its words: a namesake elsewhere carries the same.
 
         Args:
             facts: The candidate, completed in place.
             email: The address read.
             proof: How well the result proves the address is the business's.
             line: The result it was read in.
+            trade: Profile of the searched trade.
             department: The business's French département, when known.
             is_own_text: Whether the result is the business's own page or site.
         """
-        if PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone):
+        is_beside_another_phone = PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone)
+        if is_beside_another_phone and not CandidateVerifier.email_carries_name(email, facts, trade):
             return
-        is_unplaced = not is_own_text and not PlaceOfContact.shows_place_of(line.text, facts, department)
-        if is_unplaced:
+        doubt: str | None = None
+        if not is_own_text and is_beside_another_phone:
+            doubt = "email_beside_another_phone"
+        elif not is_own_text and not PlaceOfContact.shows_place_of(line.text, facts, department):
+            doubt = "email_unplaced"
+        if doubt is not None:
             proof = EmailProofLevel.GUESSED
-        if facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text) and is_unplaced:
-            facts.add_evidence("email_unplaced", email, source=line.host, url=line.link)
+        if facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text) and doubt is not None:
+            facts.add_evidence(doubt, email, source=line.host, url=line.link)
+
+    @classmethod
+    def email_carries_name(cls, email: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
+        """Whether an email spells the business's name, or carries one of its distinctive words (« bel.jaden@ »)."""
+        local_part = email.rpartition("@")[0].lower()
+        return NameInAddress.email_names_business(email, facts) or any(
+            len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS and token in local_part
+            for token in cls.distinctive_tokens(facts, trade)
+        )
 
     @staticmethod
     def grade_email_by_its_words(email: str, proof: EmailProofLevel, facts: CandidateFacts) -> EmailProofLevel:

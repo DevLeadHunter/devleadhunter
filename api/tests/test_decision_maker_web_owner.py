@@ -262,6 +262,24 @@ def test_a_trade_word_or_a_last_name_said_with_monsieur_names_nobody() -> None:
     assert strategy.candidates_of(civility) == []
 
 
+@pytest.mark.parametrize(
+    ("listing_title", "owner"),
+    [
+        # Alex'Élec (prospect n° 403): the trade name, then the owner's first and last names.
+        ("Max'Elec Marc Exemple", ("Marc", "Exemple")),
+        ("Jean Pierre Exemple", None),
+        ("Exemple Christophe", None),
+    ],
+)
+def test_a_listing_title_signed_after_its_trade_name_proposes_its_owner(
+    listing_title: str, owner: tuple[str, str] | None
+) -> None:
+    candidates = BusinessNameOwnerStrategy().candidates_of(ResolutionContext(company_name=listing_title, country="FR"))
+
+    assert [(candidate.first, candidate.last) for candidate in candidates] == ([owner] if owner else [])
+    assert all(candidate.primary is False for candidate in candidates)
+
+
 def test_an_owner_placed_nowhere_and_without_the_phone_names_nobody() -> None:
     """« Jean Modèle, fondateur de Exemple Garage » on a page naming no town nor phone may be a namesake's owner."""
     context = ResolutionContext(company_name="Exemple Garage", city="Lausanne", phone="021 555 01 99", country="CH")

@@ -112,6 +112,7 @@ class FacebookContactRecorder:
         await self._domain_check.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
         await PlaceOfContact.note_contact_elsewhere(facts)
+        CandidateVerifier.mark_brand_named_in_email(facts, trade)
 
         verdict = CandidateDecision.decide(facts, trade, criteria)
         with SessionLocal() as db:

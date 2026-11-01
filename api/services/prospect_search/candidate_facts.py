@@ -162,8 +162,17 @@ class CandidateFacts:
     @property
     def is_email_unplaced(self) -> bool:
         """Whether the email was read on a third party's page that does not say where the business is."""
+        return self._has_email_doubt("email_unplaced")
+
+    @property
+    def is_email_beside_another_phone(self) -> bool:
+        """Whether the email was read beside another number than the business's (a namesake, or its manager's)."""
+        return self._has_email_doubt("email_beside_another_phone")
+
+    def _has_email_doubt(self, doubt: str) -> bool:
+        """Whether the evidence notes that doubt about the current email."""
         return self.email is not None and any(
-            line.get("fact") == "email_unplaced" and line.get("value") == self.email for line in self.evidence
+            line.get("fact") == doubt and line.get("value") == self.email for line in self.evidence
         )
 
     @property

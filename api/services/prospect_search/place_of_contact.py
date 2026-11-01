@@ -17,6 +17,7 @@ from urllib.parse import unquote, urlparse
 
 from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.normalize import fold
+from services.french_overseas import FrenchOverseas
 from services.prospect_search.candidate_facts import CandidateFacts
 
 # An international number (« +33 6 81 15 68 06 »), a national one (« 04.73.28.04.37 », « 078 757 57 42 »), or a
@@ -153,6 +154,51 @@ class PlaceOfContact:
         return department is not None and any(
             FrenchDepartments.of_postal_code(code) == department for code in _POSTAL_CODE_RE.findall(text)
         )
+
+    @classmethod
+    def names_another_place(cls, text: str, facts: CandidateFacts) -> str | None:
+        """
+        The place a page names that is not the business's, when the page does not name the business's own.
+
+        In an overseas department, another of its communes: « Garage Flash Auto Carrosserie | Le Marin Martinique »
+        is not the page of Flash Car, in Ducos. Elsewhere, a postal code of another département than the one of
+        the business's address.
+
+        Args:
+            text: The page's words (a result's title and snippet).
+            facts: The business: its address, town and searched town.
+
+        Returns:
+            The commune or the postal code named, or None when the page names no other place, or the business's too.
+        """
+        overseas = facts.searched_department or FrenchOverseas.of_address(facts.address)
+        if overseas is not None:
+            own_commune = next(
+                (
+                    commune
+                    for place in (facts.address, facts.city, facts.searched_city)
+                    if (commune := overseas.commune_in(place))
+                ),
+                None,
+            )
+            named_commune = overseas.commune_in(text)
+            is_another_commune = own_commune is not None and named_commune not in (None, own_commune)
+            return named_commune if is_another_commune and not cls._names(text, own_commune or "") else None
+        address_postal_code = next(iter(_POSTAL_CODE_RE.findall(facts.address or "")), None)
+        department = FrenchDepartments.of_postal_code(address_postal_code)
+        if department is None:
+            return None
+        named_departments = {code: FrenchDepartments.of_postal_code(code) for code in _POSTAL_CODE_RE.findall(text)}
+        if department in named_departments.values():
+            return None
+        return next((code for code, named in named_departments.items() if named is not None), None)
+
+    @staticmethod
+    def _names(text: str, place: str) -> bool:
+        """Whether a text names a place, whatever its accents, case and hyphens."""
+        words = f" {' '.join(_ADDRESS_SEPARATORS_RE.split(fold(text)))} "
+        place_words = " ".join(word for word in _ADDRESS_SEPARATORS_RE.split(fold(place)) if word)
+        return bool(place_words) and f" {place_words} " in words
 
     @staticmethod
     async def department_of(facts: CandidateFacts) -> str | None:

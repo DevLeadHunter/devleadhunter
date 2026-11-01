@@ -168,6 +168,11 @@ class CandidateDecision:
         """Why an email without a frank proof is left to the user: it may even name another business."""
         if facts.email is not None and NameInAddress.email_names_another_business(facts.email, facts):
             return f"Son email ({facts.email}) porte le nom d'une autre affaire : à vérifier."
+        if facts.is_email_beside_another_phone:
+            return (
+                f"Son email ({facts.email}) est écrit à côté d'un autre numéro que le sien : à vérifier, ce peut être "
+                "un homonyme."
+            )
         if facts.is_email_unplaced:
             return f"La page qui donne son email ({facts.email}) ne dit pas où il est : à vérifier, ce peut être un homonyme."
         return "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir."

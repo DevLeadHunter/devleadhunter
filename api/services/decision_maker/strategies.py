@@ -94,6 +94,10 @@ _GROUP_REGISTRY = "registry"
 _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
 _GROUP_CUSTOMER_REVIEWS = "customer_reviews"
+# The title the tradesman gave his Google listing (« Max'Elec Marc Exemple »).
+_GROUP_LISTING_TITLE = "listing_title"
+# A signed title holds a trade name, then a first name and a last name.
+_MIN_SIGNED_TITLE_WORDS = 3
 
 _TRADE_AND_LEGAL_FORM_WORDS: frozenset[str] = frozenset(
     {
@@ -1215,7 +1219,7 @@ class BusinessNameOwnerStrategy:
         """
         company_words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
         if all(self._is_name_word(word) for word in company_words):
-            return []
+            return self._owner_after_the_trade_name(context, company_words)
         customer_texts = [text for text in [*context.review_texts, *context.owner_responses] if text]
         for first, last in pairwise(company_words):
             if not (self._is_name_word(first) and self._is_name_word(last)):
@@ -1241,7 +1245,54 @@ class BusinessNameOwnerStrategy:
                         raw={"mentions": mentions},
                     )
                 ]
-        return self._first_name_of_initials(context)
+        return self._owner_after_the_trade_name(context, company_words) or self._first_name_of_initials(context)
+
+    def _owner_after_the_trade_name(self, context: ResolutionContext, company_words: list[str]) -> list[NameCandidate]:
+        """
+        The owner whose first name and last name close the listing's title, after the trade name: a proposal.
+
+        A tradesman often signs his listing (« Max'Elec Marc Exemple »): a known first name then a name word, after
+        a trade name that is not itself a first name (« Jean Pierre Exemple » names one person, not a business). A
+        customer calling the first word « M. Martin » makes it a last name: the title then tells nothing.
+
+        Args:
+            context: The business looked for.
+            company_words: The words of its name.
+
+        Returns:
+            The owner, or nothing when the title ends otherwise.
+        """
+        if len(company_words) < _MIN_SIGNED_TITLE_WORDS:
+            return []
+        trade_name, (first, last) = company_words[:-2], company_words[-2:]
+        customer_texts = " ".join(text for text in [*context.review_texts, *context.owner_responses] if text)
+        is_called_by_last_name = any(
+            fold(name) == fold(first) for name in _CIVILITY_BEFORE_LAST_NAME_RE.findall(customer_texts)
+        )
+        is_signed = (
+            self._is_name_word(first)
+            and self._is_name_word(last)
+            and GivenNames.is_given_name(first)
+            and not all(GivenNames.is_given_name(word) for word in trade_name)
+            and not is_called_by_last_name
+        )
+        if not is_signed:
+            return []
+        first_name, last_name = title_case_name(first), title_case_name(last)
+        return [
+            NameCandidate(
+                first=first_name,
+                last=last_name,
+                gender=infer_gender(first_name),
+                source=self.name,
+                confidence=0.6,
+                primary=False,
+                evidence_group=_GROUP_LISTING_TITLE,
+                provenance=(
+                    f"Titre de la fiche « {context.company_name} » : son enseigne, puis le prénom et le nom de son patron"
+                ),
+            )
+        ]
 
     def _first_name_of_initials(self, context: ResolutionContext) -> list[NameCandidate]:
         """
