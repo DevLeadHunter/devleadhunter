@@ -603,3 +603,43 @@ reste un mini-site, comme le range la règle du 3 août avec les mini-sites d'an
 Le site démo lui est proposé comme un vrai site à la place d'une page gratuite ; un message ne lui écrit jamais
 qu'il n'a pas de site. Garage Aurillac Électro Diesel, refusé à la main dans la réserve, redevient un bon
 prospect.
+
+Suite du 1er novembre : Garage Aurillac Électro Diesel, validé (prospect n° 393), est sorti de la campagne dès
+son enrichissement : sa fiche s'appelle « Garage Aurillac Electro Diesel - Bosch Car Service » (réseau). Et
+Welington Automobiles, repris (n° 392), a bien un site en ligne, `welingtonautomobiles.fr` (« Spécialiste
+vente voitures occasion Montluçon »), que le contrôle de site de l'enrichissement a trouvé : `welington.fr`,
+le domaine de son email, n'est qu'un domaine parqué. Le refus d'origine était juste, pour une autre raison.
+
+## Manche 13 — France, paysagistes et électriciens, vague 5 (1er novembre, nuit)
+
+Recherche de l'app n° 18 (17 paysagistes et 17 électriciens, canal « email », note ≥ 4,0, sans les registres,
+mode « Je valide »), terminée avec 18 gardés par métier après 1 256 requêtes. Elle a tourné presque entière
+avec le moteur d'avant les corrections de la manche 12 (déployées vers minuit).
+
+### Vérité terrain (48 candidats avec email : 36 gardés, 12 à confirmer)
+
+Contrôles : registre des entreprises, Google « "nom" ville » et « "email" » par Bright Data (revenu dans la
+nuit), sites déclarés ouverts à la main.
+
+- **15 validés** (n° 394 à 408). Paysagistes : Medina Paysage, Oh Joli Jardin, T&A Paysage, Vulcan'Paysage,
+  Jardin Authentique, LT Services, Un Temps au Jardin. Électriciens : Bost Électricité, Le Petit Élec,
+  Alex'Élec, KR Électricité Générale, Ticheur Christophe, BM Élec, Les Solutions d'Olivier, LDBM Élec.
+- **Réserve** : Pierre et Jardins (Metz, le registre trouvé par le nom est une autre société à Villeurbanne),
+  Flash Élec 24 (email `flashelecidf@…`).
+- **Précision des gardés : 7 bons sur 18 paysagistes (39 %), 8 sur 18 électriciens (44 %).**
+- **31 refusés** :
+
+| Cause | Cas | Règle à écrire |
+|---|---|---|
+| Email ou page d'un homonyme ailleurs en France | Élagage Pierrot (Reims) : l'email est celui de « Pierrot Élagage » à La Crau (83) ; Les Jardins d'Eden (Reims) : `lejardindeden.occitanie@…` ; greentouch (Reims) : page Facebook « Green Touch » à Saint-Martin-Longueau (60) ; Les jardins d'Odin (Reims) : au registre dans le 63, email `taverneodin@…` ; Stéphane Demerges (Clermont-Ferrand) : sa page dit Le Tronquay (14) ; Bernard Frères (Dordogne) : l'email est sur la fiche d'une « Société Bernard Électricité » à Besançon ; DAM'ÉLEC (Coulon) : page « DAM ELEC services » à Péronne (80) ; Rg Élec (Nancy) : `rg.elec.89@…`, registre dans le 30 ; JS Électricité (Nancy) : registre à La Réunion ; Ogelec (Périgueux) : `kisscool29@…`, registre dans le 30 | la page où l'email a été trouvé doit parler du même lieu (code postal, département, commune ou téléphone du candidat) ; un numéro de département dans la partie locale qui contredit celui du candidat, ou une région écrite en toutes lettres, met le candidat « à confirmer » |
+| Adresse absente, ville cherchée prise par défaut | 5 des 6 paysagistes gardés à Reims étaient des entreprises d'ailleurs | un candidat sans adresse dans la zone cherchée reçoit sa vraie adresse (fiche, registre, page) avant d'être gardé |
+| Email sans rapport avec l'entreprise | GL Énergie : `hhj@imaeil.com` (un journaliste d'un quotidien coréen) ; Laurier : `pjheng@naver.com` ; Un jardin un service : `1service@gmail.com` (une société de location de voitures) ; Aurélec : `lannexe@wanadoo.fr` (« L'annexe », une autre affaire) ; M.A.S Élec 30 : `bc.elec30@…` (« BC Élec ») | un email lu sur une page qui ne parle pas du candidat n'est pas une preuve, même « b » ; une page en langue étrangère sur un domaine sans rapport ne donne jamais d'email |
+| Mauvais métier | La petite Maçonnerie (code 43.99C, maçonnerie) en paysagiste ; Solosecc Chauffagiste en électricien ; Gazelec Gardois (association sportive) ; Asser (réparation d'équipements, 33.14Z) | un nom qui porte un autre métier (maçonnerie, chauffagiste, plomberie…) ou un code d'activité d'un autre métier ou d'une association écarte le candidat |
+| Site déclaré en ligne | Les Compagnons du Paysage, Les Jardins Périgordins, Au fil du Paysage (gardés), Nancy Élec, Green Concepts, S.T.E.C.O, Ets Bourreau, C-velec, MR Électricien, JCB Électricité (à confirmer) | couvert par la correction du 1er novembre (une vérification qui échoue ne vaut pas « pas de site ») ; à vérifier sur la manche suivante |
+| Réseau | PPF (agence du réseau ppf.fr) | ajouter PPF aux réseaux |
+| Fermé | Laurier Jean Pierre (cessé au registre) | déjà couvert |
+
+### Suite
+
+Il manque 10 paysagistes et 8 électriciens français : recherche n° 22 (14 par métier, mêmes réglages) lancée
+avec le moteur corrigé, pour mesurer l'« après » sur une recherche neuve.
