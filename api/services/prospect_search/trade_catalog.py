@@ -72,6 +72,8 @@ class TradeProfile:
     rbq_subcategories: tuple[str, ...] = ()
     brand_names: tuple[str, ...] = ()
     brands_named_by_category_only: tuple[str, ...] = ()
+    # Short forms of the trade a business name carries (« BM Elec »): a trade word there, never the business's name.
+    name_abbreviations: tuple[str, ...] = ()
     is_generic: bool = field(default=False)
 
     def names_trade(self, name: str) -> bool:
@@ -193,7 +195,8 @@ _PROFILES: tuple[TradeProfile, ...] = (
         key="electricien",
         label="Électricien",
         prospect_category="électricien",
-        aliases=("electricien", "electriciens", "electricite", "electricite generale", "elec"),
+        aliases=("electricien", "electriciens", "electricite", "electricite generale"),
+        name_abbreviations=("elec",),
         search_terms={_DEFAULT_COUNTRY: ("électricien",), "CA": ("électricien", "entrepreneur électricien")},
         category_keywords=("electri", "domotique", "eclairage"),
         excluded_category_keywords=(

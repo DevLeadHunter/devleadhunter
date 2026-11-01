@@ -486,7 +486,11 @@ class CandidateVerifier:
     @staticmethod
     def own_name_words(facts: CandidateFacts, trade: TradeProfile) -> set[str]:
         """Words of the business name that belong to it alone: no linking word, trade word, common word or town."""
-        trade_words = {token for alias in (*trade.aliases, trade.label) for token in company_tokens(alias)}
+        trade_words = {
+            token
+            for alias in (*trade.aliases, *trade.name_abbreviations, trade.label)
+            for token in company_tokens(alias)
+        }
         town_words = company_tokens(facts.town)
         return {
             token
