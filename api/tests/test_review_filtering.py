@@ -64,3 +64,23 @@ def test_duplicate_reviews_are_shown_once() -> None:
         }
     )
     assert [r["text"] for r in reviews] == ["Super salon", "Autre visite tout aussi top"]
+
+
+def test_a_five_star_complaint_stays_off_the_site_but_not_disappointed_is_praise() -> None:
+    """Stars do not make praise: a disappointed 5-star text is dropped, « pas déçu » is kept."""
+    reviews = _site_reviews(
+        {
+            "reviews": [
+                {
+                    "author": "Vanessa",
+                    "text": "De très bon conseil. En ce qui concerne mon projet, je suis un peu déçue car il ne "
+                    "répond plus aux messages... Je vais à regrets devoir me tourner vers un autre professionnel",
+                    "rating": 5,
+                },
+                {"author": "Theo", "text": "Jamais déçu, véhicule livré dans les temps.", "rating": 5},
+                {"author": "Lea", "text": "Vous ne serez pas déçus, je recommande.", "rating": 5},
+                {"author": "Paul", "text": "Garage à éviter, aucune réponse au devis.", "rating": 4},
+            ]
+        }
+    )
+    assert [r["author"] for r in reviews] == ["Theo", "Lea"]

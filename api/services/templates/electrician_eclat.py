@@ -21,6 +21,7 @@ from typing import Any
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
     apply_real_trust_stats,
+    drop_unbacked_emergency_claims,
     fixed_trade_services,
     map_prospect_and_enrichment,
     to_storyblok_site_content,
@@ -298,6 +299,7 @@ def build_site_content(
     site["heroTitle"] = _hero_title(city)
     site["steps"] = [dict(step) for step in _DEFAULT_STEPS]
     apply_real_trust_stats(site, enrichment)
+    drop_unbacked_emergency_claims(site, enrichment)
     site["images"] = {"ctaBackground": _DEFAULT_CTA_BACKGROUND}
     # The small photo over the hero is left empty when the prospect has gallery photos: the layer then
     # shows his first gallery photo, so it follows any reordering (live preview included) instead of

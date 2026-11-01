@@ -74,6 +74,7 @@ from services.templates.site_content import (
     clean_tax_credit,
     clean_trust_items,
     from_storyblok_site_content,
+    is_complaint_review,
     overrides_from_published_story,
     usable_site_photos,
 )
@@ -944,6 +945,7 @@ class DemoSiteService:
                 and str(review.get("text") or "").strip()
                 and isinstance(review.get("rating"), (int, float))
                 and review["rating"] >= 4
+                and not is_complaint_review(review.get("text"))
             ],
             rating=float(record.rating) if isinstance(record.rating, (int, float)) else None,
             reviews_count=int(record.reviews_count) if isinstance(record.reviews_count, (int, float)) else None,

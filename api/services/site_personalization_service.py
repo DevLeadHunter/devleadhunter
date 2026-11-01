@@ -70,6 +70,8 @@ _DEFAULT_HERO_KINDS: tuple[str, ...] = (CRAFT_KIND_WORK, CRAFT_KIND_PREMISES, CR
 _ABOUT_PHOTO_KINDS: tuple[str, ...] = (CRAFT_KIND_TEAM, CRAFT_KIND_PREMISES, CRAFT_KIND_WORK)
 _PORTFOLIO_PHOTO_KINDS: tuple[str, ...] = (CRAFT_KIND_WORK,)
 _DASHES_RE = re.compile(r"\s*[—–]\s*")
+# The model sometimes bolds the business name (« **Les Jardins de Tistou** »): the site shows the stars as they are.
+_MARKDOWN_EMPHASIS_RE = re.compile(r"\*+|_{2,}")
 _EXCLAMATION_RE = re.compile(r"\s*!")
 _EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF☀-➿️]")
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
@@ -273,7 +275,8 @@ def profile_for_template(template_id: str) -> TemplatePersonalizationProfile:
 
 def clean_copy(text: Any, limit: int, *, is_sentence: bool = True) -> str:
     """
-    Tidy a text the model wrote: one line, no em dash, no exclamation mark, no emoji, within ``limit``.
+    Tidy a text the model wrote: one line, no markdown emphasis, no em dash, no exclamation mark, no emoji, within
+    ``limit``.
 
     A text too long is cut where it still reads whole: at its last comma (when that keeps half of it), else after
     its last full word, never on « de », « et », « avec »…; a cut sentence ends with a full stop.
@@ -286,7 +289,7 @@ def clean_copy(text: Any, limit: int, *, is_sentence: bool = True) -> str:
     Returns:
         The clean text, empty when there was none.
     """
-    cleaned = " ".join(str(text or "").split())
+    cleaned = " ".join(_MARKDOWN_EMPHASIS_RE.sub("", str(text or "")).split())
     cleaned = _EXCLAMATION_RE.sub(".", _DASHES_RE.sub(", ", cleaned))
     cleaned = " ".join(_EMOJI_RE.sub("", cleaned).split())
     cleaned = cleaned.replace(" .", ".")

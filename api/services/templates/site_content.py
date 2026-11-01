@@ -415,6 +415,52 @@ def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
     site["trustItems"] = result
 
 
+_ROUND_THE_CLOCK_RE = re.compile(
+    r"7\s*j(?:ours)?\s*(?:/|sur)\s*7|24\s*h(?:eures)?\s*(?:/|sur)\s*24|\burgences?\b", re.IGNORECASE
+)
+_LOCAL_TRUST_ITEM: dict[str, str] = {"value": "Local", "label": "Artisan de proximité"}
+_CALL_US_ANSWER: str = "Appelez-nous : nous vous disons quand nous pouvons passer."
+_DAYS_IN_A_WEEK: int = 7
+
+
+def drop_unbacked_emergency_claims(site: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
+    """
+    Take a template's « 7j/7 » and emergency promises off a site whose data never makes them.
+
+    A business that closes on a day of its Google hours (or whose hours are unknown) and never speaks of
+    emergencies, in its description or its reviews, gets no « Dépannage 7j/7 » marker and no « nous intervenons
+    7j/7 » answer: its owner would read a promise he never made. The marker becomes a local one and the answer
+    tells to call. Mutates ``site`` in place.
+
+    Args:
+        site: The flat SiteContent being built (its ``trustItems`` and ``faq`` are replaced).
+        enrichment: Scraped enrichment dict, or None.
+    """
+    enr = enrichment or {}
+    reviews = [str(review.get("text") or "") for review in enr.get("reviews") or [] if isinstance(review, dict)]
+    open_days = {
+        str(row.get("day", "")).lower()
+        for row in site.get("openingHours") or []
+        if isinstance(row, dict) and "ferm" not in str(row.get("hours", "")).lower()
+    }
+    if len(open_days) >= _DAYS_IN_A_WEEK or _ROUND_THE_CLOCK_RE.search(
+        " ".join([str(enr.get("description") or ""), *reviews])
+    ):
+        return
+    site["trustItems"] = [
+        dict(_LOCAL_TRUST_ITEM)
+        if isinstance(item, dict) and _ROUND_THE_CLOCK_RE.search(f"{item.get('value', '')} {item.get('label', '')}")
+        else item
+        for item in site.get("trustItems") or []
+    ]
+    site["faq"] = [
+        {**item, "answer": _CALL_US_ANSWER}
+        if isinstance(item, dict) and _ROUND_THE_CLOCK_RE.search(str(item.get("answer", "")))
+        else item
+        for item in site.get("faq") or []
+    ]
+
+
 _PRICE_SUFFIX_RE = re.compile(r"\s*[—–\-]\s*\d+(?:[.,]\d+)?\s*€\s*$")
 
 
@@ -973,6 +1019,30 @@ def _clean_review_text(raw: Any) -> str:
     return text
 
 
+# A five-star rating does not make a review praise: « … je suis un peu déçue car il ne répond plus aux messages ».
+_COMPLAINT_RE = re.compile(
+    r"\bd[ée][çc]u(?:e|s|es)?\b|\bd[ée]ception\b|\bne r[ée]pond (?:plus|pas|jamais)\b|\baucune r[ée]ponse\b"
+    r"|\bsans r[ée]ponse\b|\bjamais rappel|\b[àa] [ée]viter\b|\barnaque|\bescro(?:c|querie)|\bfuyez\b"
+    r"|\bne (?:le |la |les |vous )?recommande pas\b|\bme tourner vers un autre\b|\b[àa] regrets?\b",
+    re.IGNORECASE,
+)
+_NOT_DISAPPOINTED_RE = re.compile(r"\b(?:pas|jamais|aucunement)\s+(?:été\s+)?d[ée][çc]u(?:e|s|es)?\b", re.IGNORECASE)
+
+
+def is_complaint_review(text: Any) -> bool:
+    """
+    Whether a review complains, whatever its stars: the site and the about text show praise only.
+
+    Args:
+        text: The review's text.
+
+    Returns:
+        True when the text voices a disappointment (« déçue », « ne répond plus », « à éviter »…); « pas déçu »,
+        « vous ne serez pas déçus » read as praise.
+    """
+    return bool(_COMPLAINT_RE.search(_NOT_DISAPPOINTED_RE.sub("", str(text or ""))))
+
+
 _SPECIALTY_RE = re.compile(r"sp[ée]cialit[ée]s?\s*:\s*(.+)", re.IGNORECASE)
 _GLUED_LABEL_RE = re.compile(r"\s+[A-ZÀ-Ý][\wÀ-ÿ]*\s*:")
 
@@ -1061,7 +1131,7 @@ def map_prospect_and_enrichment(
         # can't be trusted as positive — both are dropped. (The enrichment record keeps every
         # review; this curation happens only for the generated site.)
         rating_value = review.get("rating")
-        if not isinstance(rating_value, (int, float)) or rating_value < 4:
+        if not isinstance(rating_value, (int, float)) or rating_value < 4 or is_complaint_review(text):
             continue
         author = str(review.get("author", "")).strip() or "Client"
         # Drop duplicate reviews at generation time. Scrapers can capture the same review twice, and
