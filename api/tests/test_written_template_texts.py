@@ -234,3 +234,31 @@ def test_a_client_publish_keeps_the_written_texts_and_takes_the_client_edits() -
     assert edited["heroTitle"] == "Clôtures et portails à Bavilliers"
     assert edited["ctaLead"] == _WRITTEN_TEXTS["ctaLead"]
     assert "steps" not in edited
+
+
+def test_a_publication_of_a_garage_site_keeps_the_texts_written_for_it() -> None:
+    garage_texts: dict[str, Any] = {
+        "heroTitle": "Votre garage au Locle",
+        "subtitle": "Garage au Locle : entretien, réparations et montage de pneus.",
+        "servicesLead": "Entretien, réparations et pneus, rue de France.",
+        "ctaTitle": "Prendre rendez-vous",
+        "ctaLead": "Appelez le 076 290 34 24 ou écrivez avec le formulaire.",
+        "steps": _STEPS,
+    }
+    site = {"businessName": "Garage Roland SNC", "city": "Le Locle", **garage_texts}
+    story = {"component": "page", "body": registry.to_storyblok_site_content("mechanic-pitlane", site)}
+
+    refreshed = overrides_from_published_story(garage_texts, story, from_storyblok_site_content(story))
+
+    assert refreshed == garage_texts
+
+
+def test_the_garage_editor_names_the_appointment_heading_after_the_form() -> None:
+    fields_by_section = {
+        component["name"]: component["schema"] for component in registry.content_schemas("mechanic-pitlane", "CH")
+    }
+
+    assert "heroTitle" in fields_by_section["section_hero"]
+    assert "servicesLead" in fields_by_section["section_services"]
+    assert fields_by_section["section_contact"]["ctaTitle"]["display_name"] == "Titre du formulaire de rendez-vous"
+    assert fields_by_section["section_contact"]["ctaLead"]["display_name"] == "Texte du formulaire de rendez-vous"

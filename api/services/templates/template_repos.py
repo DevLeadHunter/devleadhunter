@@ -21,7 +21,7 @@ TEMPLATE_REPOS: dict[str, tuple[str, str]] = {
     "plumber-cuivre": ("devleadhunter-template-plumber-cuivre", "v1.4.0"),
     "electrician-eclat": ("devleadhunter-template-electrician-eclat", "v1.0.4"),
     "electrician-lumen": ("devleadhunter-template-electrician-lumen", "v1.4.0"),
-    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.4.2"),
+    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.6.0"),
     "dental": ("devleadhunter-template-dental", "v1.3.0"),
     "food": ("devleadhunter-template-food", "v1.2.0"),
     "barber": ("devleadhunter-template-barber", "v1.3.0"),

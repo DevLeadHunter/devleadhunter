@@ -82,6 +82,39 @@ EXTRA_SECTION_IMAGES: dict[str, list[dict[str, str]]] = {
     "faq": [{"field": "faqImage", "label": "Photo de la section FAQ"}],
 }
 
+# Written texts this layer shows; a field left out here is wiped by every publication, the API's own included.
+SECTION_FIELDS: dict[str, list[str]] = {
+    "hero": ["heroBadge", "heroTitle", "subtitle", "heroImage", "heroPoints", "ctaCallLabel", "ctaQuoteLabel"],
+    "services": ["servicesHeading", "servicesLead", "services"],
+    "contact": [
+        "contactHeading",
+        "ctaTitle",
+        "ctaLead",
+        "businessName",
+        "phone",
+        "email",
+        "city",
+        "area",
+        "professionalLicenseLabel",
+        "professionalLicenseNumber",
+        "logo",
+        "openingHours",
+        "social",
+    ],
+}
+
+# ``ctaTitle`` and ``ctaLead`` drive the appointment form's heading here, not a banner above the contact.
+FIELD_SCHEMA_OVERRIDES: dict[str, dict[str, Any]] = {
+    "ctaTitle": {
+        "display_name": "Titre du formulaire de rendez-vous",
+        "description": "Remplace « Prendre un rendez-vous » au-dessus du formulaire",
+    },
+    "ctaLead": {
+        "display_name": "Texte du formulaire de rendez-vous",
+        "description": "La phrase sous ce titre, au-dessus du formulaire",
+    },
+}
+
 # Default photo pool for the per-service card images + the two one-off slots — EXACT mirror of the layer
 # defaults (devleadhunter-template-mechanic-pitlane app/types/pitlane.ts ``defaults.images.gallery``).
 _DEFAULT_SERVICE_IMAGES: list[str] = [
