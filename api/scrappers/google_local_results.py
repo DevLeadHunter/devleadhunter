@@ -14,6 +14,7 @@ carries fewer fields (no phone, no website flag).
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -27,6 +28,9 @@ from services.sms.phone_normalizer import to_e164
 
 _RATING_LINE_RE: re.Pattern[str] = re.compile(r"^(\d[.,]\d)\s*\(([\d\s\u202f\u00a0.,]+)\)")
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"!1s0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
+# The page's inline data draws each card from a place record opening on the business's name and holding its feature id.
+_PLACE_RECORD_RE: re.Pattern[str] = re.compile(r'\{"498469725":\["((?:[^"\\]|\\.)*)"')
+_RECORD_FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]{6,}:0x([0-9a-f]+)", re.IGNORECASE)
 _PHONE_SHAPE_RE: re.Pattern[str] = re.compile(r"^\+?\(?\d[\d\s().\-]{6,18}\d$")
 _PERMANENTLY_CLOSED_MARKERS: tuple[str, ...] = ("définitivement fermé", "fermé définitivement", "permanently closed")
 _TEMPORARILY_CLOSED_MARKERS: tuple[str, ...] = ("fermé temporairement", "temporairement fermé", "temporarily closed")
@@ -98,7 +102,55 @@ class GoogleLocalResultsParser:
             # Some country layouts carry no action link at all: the website is then unknown, not absent.
             for listing in listings:
                 listing.has_website_button = None
+        cls._take_ids_of_place_records(listings, html)
         return listings
+
+    @classmethod
+    def _take_ids_of_place_records(cls, listings: list[LocalListing], html: str) -> None:
+        """
+        Give a card without directions link the Google identifier of its place record.
+
+        A business serving its area shows no address, so its card has no « Itinéraire » link to read the identifier
+        from; the place record the page draws the card from still holds it.
+
+        Args:
+            listings: The page's listings, completed in place.
+            html: Raw page HTML.
+        """
+        if all(listing.cid for listing in listings):
+            return
+        cids = cls.cids_of_place_records(html)
+        for listing in listings:
+            listing.cid = listing.cid or cids.get(cls._name_key(listing.name))
+
+    @classmethod
+    def cids_of_place_records(cls, html: str) -> dict[str, str]:
+        """
+        The Google identifier of each place record of a local results page, by its business's name (pure — testable).
+
+        Args:
+            html: Raw page HTML.
+
+        Returns:
+            The identifiers, keyed by the folded business name.
+        """
+        records = list(_PLACE_RECORD_RE.finditer(html))
+        cids: dict[str, str] = {}
+        for index, record in enumerate(records):
+            record_end = records[index + 1].start() if index + 1 < len(records) else len(html)
+            feature_id = _RECORD_FEATURE_ID_RE.search(html, record.start(), record_end)
+            try:
+                name = json.loads(f'"{record.group(1)}"')
+            except ValueError:
+                continue
+            if feature_id and name.strip():
+                cids.setdefault(cls._name_key(name), str(int(feature_id.group(1), 16)))
+        return cids
+
+    @staticmethod
+    def _name_key(name: str) -> str:
+        """A business name as cards and place records both write it: lowercase, single spaces."""
+        return " ".join(name.split()).lower()
 
     @classmethod
     def parse_snack_pack(cls, snack_pack: list[dict[str, Any]]) -> list[LocalListing]:

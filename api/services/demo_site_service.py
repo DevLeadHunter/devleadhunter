@@ -301,7 +301,7 @@ class DemoSiteService:
             return None
         record = enrichment_service.get_for_prospect(db, demo_site.user_id, prospect_id)
         prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
-        return self._with_prospect_location(enrichment_service.to_dict(record), prospect)
+        return self._with_prospect_listing(enrichment_service.to_dict(record), prospect)
 
     async def _resolve_enrichment_for_creation(self, db: Session, user_id: int, prospect_id: int | None) -> dict | None:
         """Fetch (and run on demand if missing) the prospect enrichment before generation."""
@@ -312,7 +312,7 @@ class DemoSiteService:
             if not prospect:
                 return None
             record = await enrichment_service.ensure_enriched(db, user_id, prospect)
-            return self._with_prospect_location(enrichment_service.to_dict(record), prospect)
+            return self._with_prospect_listing(enrichment_service.to_dict(record), prospect)
         except Exception:
             logger.warning("Enrichment resolution failed for prospect_id=%s", prospect_id, exc_info=True)
             return None
@@ -336,13 +336,15 @@ class DemoSiteService:
         return float(match.group(1)), float(match.group(2))
 
     @classmethod
-    def _with_prospect_location(cls, enrichment: dict | None, prospect: object) -> dict | None:
-        """Fold the prospect's real street address + map coordinates into the enrichment dict.
+    def _with_prospect_listing(cls, enrichment: dict | None, prospect: object) -> dict | None:
+        """Fold the prospect's real street address, map coordinates and Google rating into the enrichment dict.
 
         The street address and Google Maps URL live on the prospect, not the enrichment record,
-        yet the templates need them for the contact block and the map. Returns an augmented copy
-        (the record's dict is never mutated); may return a fresh dict even without enrichment so the
-        location still reaches generation.
+        yet the templates need them for the contact block and the map. The rating and review count
+        the prospect search read on the listing stand in when the enrichment could not open the
+        listing (a business serving its area, whose listing gives no address). Returns an augmented
+        copy (the record's dict is never mutated); may return a fresh dict even without enrichment so
+        the location still reaches generation.
         """
         if prospect is None:
             return enrichment
@@ -353,6 +355,11 @@ class DemoSiteService:
         coords = cls._coords_from_maps_url(getattr(prospect, "google_maps_url", None))
         if coords:
             data["lat"], data["lng"] = coords
+        searched_rating = getattr(prospect, "google_rating", None)
+        has_enrichment_rating = isinstance(data.get("rating"), (int, float))
+        if not has_enrichment_rating and isinstance(searched_rating, (int, float)) and searched_rating > 0:
+            data["rating"] = searched_rating
+            data["reviews_count"] = getattr(prospect, "google_reviews_count", None)
         return data or None
 
     def _build_content_for_site(self, db: Session, demo_site: DemoSite) -> dict:

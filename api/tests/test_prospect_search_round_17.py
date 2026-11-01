@@ -1,11 +1,12 @@
 """
 Round 17 of the search training (search n° 18 resumed): a region's abbreviation in an email, an email named after
 someone other than the person the registry, a page or the listing names, a namesake's Facebook page for a listing
-without address, and the owner the search read becoming the prospect's contact. Each case is a real one, its names,
-numbers and people replaced.
+without address, the owner the search read becoming the prospect's contact, and a business serving its area keeping
+its Google identifier and its rating. Each case is a real one, its names, numbers and people replaced.
 """
 
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -14,11 +15,13 @@ from sqlalchemy.orm import Session
 from enums.prospect_search import CandidateOrigin, CandidateStatus, ProspectSearchChannel
 from models.prospect_db import ProspectDB
 from models.prospect_search_candidate import ProspectSearchCandidate
+from scrappers.google_local_results import GoogleLocalResultsParser
 from services.decision_maker.email_owner import EmailOwnerStrategy
 from services.decision_maker.resolver import DecisionMakerResolver, context_from_prospect
 from services.decision_maker.search_owner import SearchOwnerStrategy
 from services.decision_maker.strategies import BusinessNameOwnerStrategy
 from services.decision_maker.types import NameResolution, ResolutionContext, SearchedOwner
+from services.demo_site_service import DemoSiteService
 from services.enrichment_service import EnrichmentService
 from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -377,3 +380,97 @@ def test_an_owner_read_on_a_register_list_is_proposed_without_a_page(db: Session
 
     assert searched_owner == SearchedOwner("Aurelie Exemple")
     assert [candidate.provenance for candidate in candidates] == ["Lu par la recherche de prospects"]
+
+
+_DIRECTIONS_TO_EXEM_CLIM = (
+    "<a href=\"/maps/dir//Exem+Clim,+1+Rue+de+l'Exemple,+57000+Metz/"
+    'data=!4m6!4m5!1m1!4e2!1m2!1m1!1s0x4794aaaaaaaaaaaa:0x10e1?sa=X">Itinéraire</a>'
+)
+
+
+def _local_card(name: str, lines: list[str], *, links: str = "") -> str:
+    """One card of a Google local results page."""
+    body = "".join(f"<div>{line}</div>" for line in lines)
+    return (
+        '<div class="VkpGBb"><div><div class="rllt__details">'
+        f'<div role="heading"><span>{name}</span></div>{body}'
+        f"</div></div>{links}</div>"
+    )
+
+
+def _place_record(name: str, feature_id: str) -> str:
+    """The inline place record a card is drawn from, its business's name escaped as the page's data writes it."""
+    return (
+        f'{{"498469725":["{name}",[4,null,null,[5]],null,[[null,["Électricien"]]]]}},'
+        f'["{feature_id}",[["{name}",772642124,2,1,[209651,null,0],"Nom de lieu"]]]'
+    )
+
+
+def _local_page(cards: list[str], records: list[str]) -> str:
+    return f"<html><body>{''.join(cards)}<script>var data = [{','.join(records)}];</script></body></html>"
+
+
+def test_a_business_serving_its_area_keeps_the_google_identifier_of_its_place_record() -> None:
+    """« Exemple Élec » shows no address, hence no « Itinéraire » link: its record still holds its identifier."""
+    page = _local_page(
+        [
+            _local_card("Exem Clim", ["4,9 (71) · Électricien", "Metz"], links=_DIRECTIONS_TO_EXEM_CLIM),
+            _local_card("Exemple Élec", ["4,0 (5) · Électricien", "Ouvert 24h/24"]),
+        ],
+        [
+            _place_record("Exem Clim", "0x4794aaaaaaaaaaaa:0x2a"),
+            _place_record("Exemple Élec", "0x4794bbbbbbbbbbbb:0x4d2"),
+        ],
+    )
+
+    exem_clim, exemple_elec = GoogleLocalResultsParser.parse_html(page, country="FR")
+
+    assert exemple_elec.cid == "1234"
+    assert exemple_elec.maps_url == "https://www.google.com/maps?cid=1234"
+    assert exem_clim.cid == "4321"
+
+
+def test_a_page_whose_cards_carry_no_link_still_leaves_their_website_unknown() -> None:
+    page = _local_page(
+        [_local_card("Exemple Élec", ["4,0 (5) · Électricien"]), _local_card("Exem Clim", ["4,9 (71) · Électricien"])],
+        [
+            _place_record("Exemple Élec", "0x4794bbbbbbbbbbbb:0x4d2"),
+            _place_record("Exem Clim", "0x4794aaaaaaaaaaaa:0x10e1"),
+        ],
+    )
+
+    listings = GoogleLocalResultsParser.parse_html(page, country="FR")
+
+    assert [(listing.cid, listing.has_website_button) for listing in listings] == [("1234", None), ("4321", None)]
+
+
+def test_a_place_record_s_escaped_name_is_read_as_the_card_writes_it() -> None:
+    page = _local_page(
+        [_local_card("Exemple &amp; Fils", ["4,0 (5) · Électricien"], links=_DIRECTIONS_TO_EXEM_CLIM)],
+        [_place_record("Exemple \\u0026 Fils", "0x4794bbbbbbbbbbbb:0x4d2")],
+    )
+
+    assert GoogleLocalResultsParser.cids_of_place_records(page) == {"exemple & fils": "1234"}
+
+
+def test_a_site_whose_enrichment_has_no_rating_shows_the_one_the_search_read() -> None:
+    """The enrichment could not open the listing of a business serving its area; the search read 4,0 on 5 reviews."""
+    prospect = SimpleNamespace(
+        address="57050 Exempleville", google_maps_url=None, google_rating=4.0, google_reviews_count=5
+    )
+
+    site_data = DemoSiteService._with_prospect_listing({"rating": None, "reviews_count": None}, prospect)
+
+    assert site_data is not None
+    assert (site_data["rating"], site_data["reviews_count"]) == (4.0, 5)
+
+
+def test_the_enrichment_s_own_rating_stays_and_an_unrated_listing_adds_none() -> None:
+    rated = SimpleNamespace(address=None, google_maps_url=None, google_rating=4.0, google_reviews_count=5)
+    unrated = SimpleNamespace(address=None, google_maps_url=None, google_rating=None, google_reviews_count=None)
+
+    assert DemoSiteService._with_prospect_listing({"rating": 4.6, "reviews_count": 31}, rated) == {
+        "rating": 4.6,
+        "reviews_count": 31,
+    }
+    assert DemoSiteService._with_prospect_listing({"photos": []}, unrated) == {"photos": []}
