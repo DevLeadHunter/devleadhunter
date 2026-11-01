@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from urllib.parse import unquote, urlparse
 
+from services.country_profiles import CountryProfiles
 from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.normalize import fold
 from services.french_overseas import FrenchOverseas
@@ -106,6 +107,8 @@ _FACEBOOK_PAGE_PREFIXES: frozenset[str] = frozenset({"p", "pages", "people"})
 _EMAIL_SOURCE: str = "Son email"
 _EMAIL_PAGE_SOURCE: str = "La page Facebook de son email"
 _FACEBOOK_PAGE_SOURCE: str = "Sa page Facebook"
+_PAGE_PART_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s[-–—]\s|[·•|⋅…]|\.\s")
+_POSTAL_CODE_BEFORE_COMMUNE_RE: re.Pattern[str] = re.compile(r"(?<!\d)(\d{5})\s+(?=[A-ZÀ-Ý])")
 
 
 class PlaceOfContact:
@@ -266,6 +269,57 @@ class PlaceOfContact:
             return None
         return next((code for code, named in named_departments.items() if named is not None), None)
 
+    @classmethod
+    def place_elsewhere_in(cls, text: str, facts: CandidateFacts, department: str | None) -> str | None:
+        """
+        The other place a page puts a business that only the searched town places (its listing gives no address).
+
+        A town written with another country (« Tinténiac, France » for a Swiss search) or a postal code of another
+        département before its commune (« 41000 Exempleville » for a listing searched from Agen) puts the page's
+        business elsewhere: a namesake, nothing but the name tying the page to the listing.
+
+        Args:
+            text: The page's words (a result's title and snippet).
+            facts: The business, placed by the searched town only.
+            department: The searched town's département, when known.
+
+        Returns:
+            The country or the postal code named, or None when the page names neither, names a town of the search's
+            country too, or places the business where it was searched (its phone, its town, a postal code of its
+            département).
+        """
+        if cls.shows_place_of(text, facts, department):
+            return None
+        other_country = cls._other_country_named_in(text, facts.country)
+        if other_country is not None or department is None:
+            return other_country
+        return cls._postal_code_of_another_department_in(text, department)
+
+    @staticmethod
+    def _other_country_named_in(text: str, country: str) -> str | None:
+        """The other country a page writes after a town (« Tinténiac, France »), unless it writes one of its own too."""
+        home_country_names = {name.lower() for name in CountryProfiles.get(country).address_trailing_names}
+        other_country: str | None = None
+        for part in _PAGE_PART_SEPARATOR_RE.split(text):
+            if "," not in part:
+                continue
+            if part.rsplit(",", 1)[1].strip().lower() in home_country_names:
+                return None
+            foreign_profile = CountryProfiles.foreign_country_of_address(part, country=country)
+            if foreign_profile is not None and other_country is None:
+                other_country = foreign_profile.label
+        return other_country
+
+    @staticmethod
+    def _postal_code_of_another_department_in(text: str, department: str) -> str | None:
+        """A postal code of another French département a page writes before its commune (« 41000 Exempleville »)."""
+        for postal_code in _POSTAL_CODE_BEFORE_COMMUNE_RE.findall(text):
+            named_department = FrenchDepartments.of_postal_code(postal_code)
+            is_department = named_department in _MAINLAND_DEPARTMENTS or named_department in _OVERSEAS_DEPARTMENTS
+            if is_department and named_department != department:
+                return postal_code
+        return None
+
     @staticmethod
     def _names(text: str, place: str) -> bool:
         """Whether a text names a place, whatever its accents, case and hyphens."""
@@ -340,7 +394,8 @@ class PlaceOfContact:
         Note the place another than the business's that its email, or the Facebook page giving it, names.
 
         The words before the « @ », the name in the address of the Facebook page the email was read on and the name
-        of the business's Facebook page are read; the first other place found is noted once.
+        of the business's Facebook page are read; the first other place found is noted once. For a listing only the
+        searched town places, an email read on a page that does not place it either is a namesake's: it is dropped.
 
         Args:
             facts: The candidate, completed in place.
@@ -365,9 +420,22 @@ class PlaceOfContact:
         ]
         for source, shown, address_part in readings:
             place = cls.place_named_in_address(address_part, department) if address_part else None
-            if place is not None:
+            if place is None:
+                continue
+            if facts.is_placed_by_the_search_only and facts.is_email_unplaced:
+                facts.add_evidence(
+                    "email_dropped",
+                    facts.email,
+                    source=(
+                        f"{source} désigne un autre endroit ({place}) que {facts.town}, "
+                        "sur une page qui ne le place pas"
+                    ),
+                )
+                facts.email = None
+                facts.email_proof_level = None
+            else:
                 facts.add_evidence("contact_elsewhere", place, source=source, url=shown if "://" in shown else None)
-                return
+            return
 
     @staticmethod
     def facebook_addresses_of(facts: CandidateFacts) -> list[str]:

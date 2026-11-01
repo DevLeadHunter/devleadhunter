@@ -36,6 +36,7 @@ _PERMANENTLY_CLOSED_MARKERS: tuple[str, ...] = ("définitivement fermé", "ferm�
 _TEMPORARILY_CLOSED_MARKERS: tuple[str, ...] = ("fermé temporairement", "temporairement fermé", "temporarily closed")
 _OPENING_PREFIXES: tuple[str, ...] = ("ouvert", "fermé", "ouvre", "ferme", "open", "closed", "opens", "closes")
 _SENIORITY_MARKERS: tuple[str, ...] = ("en activité", "in business")
+_NO_REVIEWS_PREFIXES: tuple[str, ...] = ("aucun avis", "no reviews")
 _WEBSITE_BUTTON_LABELS: frozenset[str] = frozenset({"site web", "website", "site internet"})
 _REGION_NAMES: tuple[str, ...] = ("QC", "Québec", "Quebec", *FrenchOverseas.address_names())
 _REGION_SUFFIX_RE: re.Pattern[str] = re.compile(
@@ -171,11 +172,12 @@ class GoogleLocalResultsParser:
             status_text = f"{place.get('work_status') or ''} {place.get('work_status_details') or ''}".lower()
             rating = place.get("rating")
             reviews_count = place.get("reviews_cnt")
+            address_line = str(place.get("address") or "")
             listings.append(
                 LocalListing(
                     name=name,
-                    category=str(place.get("type") or "").strip() or None,
-                    locality=cls._locality_of(str(place.get("address") or "")),
+                    category=str(place.get("type") or "").strip() or cls._category_of_unrated(address_line),
+                    locality=cls._locality_of(address_line),
                     rating=float(rating) if isinstance(rating, int | float) else None,
                     reviews_count=int(reviews_count) if isinstance(reviews_count, int | float) else None,
                     is_permanently_closed=any(marker in status_text for marker in _PERMANENTLY_CLOSED_MARKERS),
@@ -236,7 +238,7 @@ class GoogleLocalResultsParser:
         for segment in segments[1:] if match else segments:
             if cls._is_phone(segment, country):
                 listing.phone = listing.phone or segment
-            elif not _STREET_SEGMENT_RE.match(segment) and not segment.lower().startswith(("aucun avis", "no reviews")):
+            elif not _STREET_SEGMENT_RE.match(segment) and not segment.lower().startswith(_NO_REVIEWS_PREFIXES):
                 category_segments.append(segment)
         listing.category = category_segments[-1] if category_segments else None
 
@@ -255,10 +257,28 @@ class GoogleLocalResultsParser:
 
     @classmethod
     def _locality_of(cls, address_line: str) -> str | None:
-        """Town part of the parsed JSON's address line (« Plus de 7 ans en activité ⋅ Sion »)."""
-        segments = [segment.strip() for segment in re.split(r"[⋅·]", address_line) if segment.strip()]
+        """
+        Town part of the parsed JSON's address line (« Plus de 7 ans en activité ⋅ Sion »).
+
+        A listing without reviews has its rating line there instead (« Aucun avis ⋅ Paysagiste »): it names no town.
+        """
+        segments = cls._json_line_segments(address_line)
+        if segments and segments[0].lower().startswith(_NO_REVIEWS_PREFIXES):
+            return None
         towns = [segment for segment in segments if not any(marker in segment.lower() for marker in _SENIORITY_MARKERS)]
         return cls._town_of(towns[-1]) if towns else None
+
+    @classmethod
+    def _category_of_unrated(cls, address_line: str) -> str | None:
+        """The category a listing without reviews gives on the parsed JSON's address line (« Aucun avis ⋅ Maçon »)."""
+        segments = cls._json_line_segments(address_line)
+        is_rating_line = len(segments) > 1 and segments[0].lower().startswith(_NO_REVIEWS_PREFIXES)
+        return segments[-1] if is_rating_line else None
+
+    @staticmethod
+    def _json_line_segments(line: str) -> list[str]:
+        """The parts of a parsed JSON line, split on its dots (« Plus de 7 ans en activité ⋅ Sion »)."""
+        return [segment.strip() for segment in re.split(r"[⋅·]", line) if segment.strip()]
 
     @staticmethod
     def _town_of(segment: str) -> str | None:

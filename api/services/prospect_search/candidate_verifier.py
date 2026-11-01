@@ -633,7 +633,8 @@ class CandidateVerifier:
         """
         Take the phone, address, rating, website and status of Google's panel when it is this business, the network
         its full name carries (« Garage Exemple | stop+go | … ») and the brand its presentation says it is approved
-        by (« atelier … agréé Renault »).
+        by (« atelier … agréé Renault »). A listing's namesake has another Google identifier: its panel is the
+        listing's only when it shows the listing's phone or town.
         """
         if not isinstance(panel, dict):
             return
@@ -646,7 +647,12 @@ class CandidateVerifier:
         has_same_name = company_similarity(panel_name, facts.name) >= _SAME_BUSINESS_SIMILARITY
         panel_address = str(panel.get("address") or "")
         is_in_same_town = facts.is_town_named_in(panel_address)
-        is_listing_itself = facts.origin == CandidateOrigin.GOOGLE_LOCAL.value and has_same_name
+        feature_id = _FEATURE_ID_RE.search(str(panel.get("fid") or ""))
+        panel_cid = str(int(feature_id.group(1), 16)) if feature_id else None
+        is_another_listing = panel_cid is not None and facts.google_cid is not None and panel_cid != facts.google_cid
+        is_listing_itself = (
+            facts.origin == CandidateOrigin.GOOGLE_LOCAL.value and has_same_name and not is_another_listing
+        )
         if not (has_same_phone or is_listing_itself or (has_same_name and is_in_same_town)):
             is_placed_in_another_town = bool(panel_address) and bool(facts.town) and not is_in_same_town
             if has_same_name and is_placed_in_another_town:
@@ -668,9 +674,8 @@ class CandidateVerifier:
             facts.google_rating = float(panel["rating"])
         if isinstance(panel.get("reviews_cnt"), int | float):
             facts.google_reviews_count = int(panel["reviews_cnt"])
-        feature_id = _FEATURE_ID_RE.search(str(panel.get("fid") or ""))
-        if feature_id and not facts.google_cid:
-            facts.google_cid = str(int(feature_id.group(1), 16))
+        if panel_cid is not None and not facts.google_cid:
+            facts.google_cid = panel_cid
             facts.google_maps_url = f"https://www.google.com/maps?cid={facts.google_cid}"
         summary = str(panel.get("summary") or panel.get("subtitle") or "")
         if summary and not facts.google_category:
@@ -1244,7 +1249,12 @@ class CandidateVerifier:
         *,
         department: str | None,
     ) -> None:
-        """Keep the emails the results give to this business, graded by how well the result proves it."""
+        """
+        Keep the emails the results give to this business, graded by how well the result proves it.
+
+        A Facebook page about the business is its own; for a listing without address, only one naming its town or
+        showing its contact (see :meth:`is_facebook_page_of`).
+        """
         judged = {
             (entry.email, entry.result_index): entry.belongs_to_business
             for entry in (verdict.emails if verdict else [])
@@ -1265,7 +1275,11 @@ class CandidateVerifier:
             if email_candidate_scorer.belongs_to_an_institution(email, city=facts.town):
                 continue
             carries_name = any(token in email for token in distinctive if len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS)
-            is_own_page = FacebookPageUrl.canonical(line.link) is not None and is_about_business
+            is_facebook_page = FacebookPageUrl.canonical(line.link) is not None
+            if facts.is_placed_by_the_search_only:
+                is_own_page = is_facebook_page and self.is_facebook_page_of(line, facts, trade)
+            else:
+                is_own_page = is_facebook_page and is_about_business
             is_directory_entry = self.is_known_third_party(line.link, line.host) and is_about_business
             proof = (
                 EmailProofLevel.DIRECTORY
@@ -1296,9 +1310,11 @@ class CandidateVerifier:
         decides). A page about another business at another street (« Auto Exemple, Route des Ateliers 8 » for a
         garage of the Route de la Bourgeoisie) gives that business's email. A third party's page that does not place
         the business (its phone, its town, a postal code of its département) leaves the email unproven, whatever its
-        words: a namesake elsewhere carries the same. An email spelling the business's name, written beside its own
-        number on a page naming it, is published by the business itself. The site's own address, read on its page
-        about the business, is never the business's (see :meth:`is_publisher_address`).
+        words: a namesake elsewhere carries the same. A listing without address is placed by the searched town only:
+        a page putting the business in another country or département gives a namesake's email, dropped. An email
+        spelling the business's name, written beside its own number on a page naming it, is published by the
+        business itself. The site's own address, read on its page about the business, is never the business's (see
+        :meth:`is_publisher_address`).
 
         Args:
             facts: The candidate, completed in place.
@@ -1315,6 +1331,19 @@ class CandidateVerifier:
         if is_beside_another_phone and not CandidateVerifier.email_carries_name(email, facts, trade):
             return
         if not is_own_text and CandidateVerifier.is_about_another_business(line, facts, trade):
+            return
+        place_elsewhere = (
+            PlaceOfContact.place_elsewhere_in(line.text, facts, department)
+            if not is_own_text and facts.is_placed_by_the_search_only
+            else None
+        )
+        if place_elsewhere is not None:
+            facts.add_evidence(
+                "email_dropped",
+                email,
+                source=f"La page qui le donne le place ailleurs ({place_elsewhere})",
+                url=line.link,
+            )
             return
         doubt: str | None = None
         if CandidateVerifier.is_published_beside_its_phone(email, line, facts, trade):
