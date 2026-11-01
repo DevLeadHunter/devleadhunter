@@ -643,3 +643,58 @@ nuit), sites déclarés ouverts à la main.
 
 Il manque 10 paysagistes et 8 électriciens français : recherche n° 22 (14 par métier, mêmes réglages) lancée
 avec le moteur corrigé, pour mesurer l'« après » sur une recherche neuve.
+
+### Résultat
+
+Moteur corrigé le 1er novembre (`ef9627cc`, `ed91e02e`), puis le lot rejoué hors ligne : chaque candidat repart des
+preuves que sa vérification a enregistrées, sans nouvelle recherche Google. Le registre des entreprises, la liste
+des communes, les pages d'accueil et le courrier des domaines sont relus pour de vrai. Les trois sites déclarés ont
+été relus en direct (trois vérifications, deux cartes locales). Hors ligne, le nom d'une page Facebook trouvée par
+une recherche est lu dans son adresse (« /p/La-Taverne-dOdin-… ») ; le moteur lit le titre que Google lui donne.
+Critères de la n° 18 : email, note ≥ 4,0.
+
+| Écart | Cas | Règle écrite | Après |
+|---|---|---|---|
+| Un autre numéro écrit à côté de l'email | DAM'ÉLEC, greentouch, Rg Élec, Aurelec (liste des entreprises de Beaumont), Flash Élec 24, Green Concepts | dans un résultat qui montre des numéros, l'email appartient au numéro écrit le plus près : si ce n'est pas celui du candidat, l'email n'est pas pris, même quand le juge le lui donne | email écarté : mis de côté (portable) ou écarté faute de contact |
+| Page dans une autre écriture | les candidats n° 4981 et 4998 (pages coréennes, dont l'une montre un numéro aux mêmes chiffres que le sien) | un résultat écrit surtout en coréen, cyrillique, arabe… ne donne jamais d'email | email écarté |
+| Page qui ne situe pas l'entreprise | Élagage Pierrot (« Pierrot Elagage, La Crau, FR »), le paysagiste n° 4796 (fiche infobel « à Le Tronquay ») | l'email lu sur la page d'un tiers qui ne montre ni le numéro du candidat, ni sa commune, ni un code postal de son département vaut au plus « c » : « La page qui donne son email (…) ne dit pas où il est : à vérifier, ce peut être un homonyme. » | à confirmer |
+| Lieu écrit dans l'email ou une page | Ogelec (`29`), Les Jardins d'Eden (`occitanie`), JS Électricité (page `…belux`), Asser (page `Asser84700`) ; Rg Élec (`89`) et Flash Élec 24 (`idf`) sont déjà écartés par le numéro | un numéro de département, un code postal, une région ou un pays voisin écrit avant le « @ », dans l'adresse de la page Facebook qui a donné l'email ou dans celle du candidat, et qui n'est pas son département, le laisse « à confirmer » avec le lieu lu | à confirmer |
+| Page Facebook d'une autre affaire | Les jardins d'Odin (page « La Taverne d'Odin »), M.A.S Élec 30 (page « BC Elec ») | une page dont le nom met un autre mot à la place du métier (« taverne » pour « jardins ») n'est pas la sienne ; « Elec » est un mot du métier, pas un nom | page et email laissés de côté : mis de côté (portable) |
+| Ville cherchée prise par défaut | Élagage Pierrot, Les Jardins d'Eden, Les jardins d'Odin, Rg Élec… | une fiche Google sans adresse ni commune prend celle du panneau Google, ou du registre : la seule société ouverte du département qui porte exactement son nom (« 51350 Cormontreuil » pour Les jardins d'Odin, « 24380 Sanilhac » pour Medina Paysage), commune et code postal seulement. Sans elle : « Sa fiche Google ne donne pas d'adresse : rien ne montre qu'il est à Reims, à vérifier. » | gardé avec sa vraie commune, ou à confirmer |
+| Autre métier dans le nom | La petite Maçonnerie, Solosecc Chauffagiste | un nom qui dit un autre métier (maçonnerie, plomberie, chauffagiste, peinture…) et pas le métier cherché est écarté dès la fiche Google | écarté, sans vérification payante |
+| Association | Gazelec S. Gardois | toutes les sociétés ouvertes du département qui portent les mots de son nom sont des associations au registre, et son nom ou sa page Facebook dit un club (« Sportif ») | écarté |
+| Réseau | PPF Niort | `ppf.fr` et `preservationdupatrimoine.fr` ajoutés aux sites de réseaux : un email sur ce domaine fait un réseau | écarté |
+| Site déclaré en ligne | Les Jardins Périgordins, Les Compagnons du Paysage, Au fil du Paysage | correction du 1er novembre : une page Facebook trouvée par une recherche ne vaut plus le site que déclare la fiche | relus en direct : le panneau donne `lesjardinsperigordins-24.fr`, les boutons « Site Web » mènent à `lescompagnonsdupaysage.fr` et `aufildupaysage17.fr` : écartés ; un bouton qu'on ne peut pas suivre les laisse « à confirmer » |
+
+| Lot de 48 avec email | Gardés (dont bons) | Mis de côté | À confirmer | Écartés |
+|---|---|---|---|---|
+| Avant, la recherche | 36 (15, 42 %) | 0 | 12 | 0 |
+| Avant, l'ancien moteur rejoué sur les mêmes preuves | 38 (15, 39 %) | 0 | 10 | 0 |
+| Après, rejeu hors ligne | 14 (10, 71 %) | 5 | 19 | 10 |
+
+- Gardés à tort après : 4. Nancy Élec et C-velec ont un site déclaré en ligne que le rejeu hors ligne ne voit
+  pas : la recherche lit le bouton « Site Web » ou le panneau, comme pour les trois sites relus en direct (5 bons
+  sur 6 électriciens gardés, 10 sur 12 en tout). Restent Un jardin un service et Bernard Frères (voir plus bas).
+- Paysagistes gardés : 5 bons sur 6.
+- Bons laissés « à confirmer » : 5 sur 15. Quatre sans adresse que ni le panneau ni le registre ne placent
+  (Vulcan'Paysage, Bost Électricité, Alex'Élec, KR Électricité), un dont l'email porte `33` pour Niort (Oh Joli
+  Jardin). C'est le prix de la règle du lieu : un contrôle à la main, pas un refus.
+- Même rejeu sur la n° 17 (garages) : les validés restent gardés, sauf Garage des Marais (réseau, déjà su) et
+  Tourlan et Fils (déjà douteux : l'email de sa fiche est écrit à côté d'un autre numéro).
+
+Vérité terrain contrôlée en direct : l'email de Bernard Frères (`electricite.bernard@orange.fr`) ne ressort sur
+Google qu'au nom de la Société Bernard Électricité de Besançon (25000). La page qui l'a donné (« Top 10 des
+chauffagistes à Trélissac ») l'écrit pourtant juste après le numéro du candidat, et la société BERNARD FRÈRES de
+Boulazac a pour enseigne « Entreprise Bernard Électricité ».
+
+Règles non écrites :
+
+- L'email d'un homonyme écrit sur un annuaire juste après le numéro du candidat (Bernard Frères) : seule une
+  recherche de l'email lui-même le montre, une requête payante de plus par candidat.
+- Un email coupé par la mise en page d'un magazine (« 1jardin 1service@gmail.com », lu `1service@gmail.com`,
+  l'adresse d'une société de location de voitures) : Google ne connaît pas l'adresse entière, rien ne permet de la
+  recoller sûrement.
+- Le code d'activité du registre ne sert pas à écarter : Medina Paysage (validé) y est inscrit en 81.21Z
+  (nettoyage), Les jardins d'Odin en 46.62Z. Seule la forme d'association compte.
+- Un département écrit dans l'email ne vaut pas refus : ce peut être une année de naissance ou un département
+  voisin ; le candidat reste « à confirmer ».
