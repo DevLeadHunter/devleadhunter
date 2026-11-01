@@ -71,6 +71,7 @@ class FrenchRegistry:
         self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
         self.complete_address(facts, list(named.values()))
         self.note_association(facts, list(found.values()))
+        self.note_registered_activity(facts, list(named.values()))
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
 
     @classmethod
@@ -143,6 +144,40 @@ class FrenchRegistry:
         )
         if are_associations and says_a_club:
             facts.add_evidence("association", str(open_companies[0].get("nom_complet") or ""), source=_REGISTER_SOURCE)
+
+    @classmethod
+    def note_registered_activity(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note the activity of another trade the one open company of the business's exact name declares.
+
+        « Au Jardin de l'Exemple », a landscaper on Google, is filed as a greengrocer (« 52.2A »): the listing may be
+        the shop's, a person checks it. An activity close to the trade (earthworks for a landscaper) says nothing.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        from services.decision_maker.activity import activity_consistency
+        from services.trade_normalizer import TradeNormalizer
+
+        carrying_its_name = [
+            company
+            for company in named
+            if company.get("etat_administratif") == _ACTIVE_STATE and cls._carries_exact_name(company, facts)
+        ]
+        if len(carrying_its_name) != 1:
+            return
+        company = carrying_its_name[0]
+        siege = company.get("siege") or {}
+        activity = str(siege.get("activite_principale") or company.get("activite_principale") or "")
+        if activity_consistency(TradeNormalizer.normalize(facts.trade_key), activity) is not False:
+            return
+        facts.add_evidence(
+            "registered_activity",
+            activity,
+            source=_REGISTER_SOURCE,
+            snippet=str(company.get("nom_complet") or ""),
+        )
 
     @staticmethod
     def _carries_exact_name(company: dict[str, Any], facts: CandidateFacts) -> bool:

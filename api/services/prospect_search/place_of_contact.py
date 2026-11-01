@@ -42,6 +42,12 @@ _FOREIGN_SCRIPT_RE: re.Pattern[str] = re.compile(
     r"가-힯]"
 )
 _LATIN_LETTER_RE: re.Pattern[str] = re.compile(r"[a-zA-ZÀ-ɏ]")
+# A street as an address writes it, read on folded text: its kind, then the first word of its name (« Rte de la
+# Bourgeoisie 5 » names « bourgeoisie », « 2 rue des Gorges » « gorges »).
+_STREET_NAME_RE: re.Pattern[str] = re.compile(
+    r"\b(?:rue|route|rte|chemin|ch|avenue|av|boulevard|bd|place|pl|impasse|imp|allee|quai|chaussee|faubourg|sentier"
+    r"|passage|square|cours|ruelle|promenade)\b\.?\s+(?:(?:de|du|des|la|le|les|d|l)\b['’\s]*)*([a-z][a-z-]{2,})"
+)
 _MAINLAND_DEPARTMENTS: frozenset[str] = frozenset(
     f"{number:02d}" for number in range(1, _HIGHEST_MAINLAND_DEPARTMENT + 1)
 ) - {"20"}
@@ -107,9 +113,36 @@ class PlaceOfContact:
             none, or the business has no number to compare.
         """
         own_digits = _NON_DIGITS_RE.sub("", phone or "")[-_PHONE_DIGITS_COMPARED:]
-        email_start = text.lower().find(email.lower())
-        if len(own_digits) < _PHONE_DIGITS_COMPARED or email_start < 0:
+        nearest_digits = cls._number_nearest(text, email)
+        if len(own_digits) < _PHONE_DIGITS_COMPARED or nearest_digits is None:
             return False
+        return not nearest_digits.endswith(own_digits)
+
+    @classmethod
+    def is_beside_own_phone(cls, text: str, email: str, phone: str | None) -> bool:
+        """
+        Whether the phone number written nearest the email in a text is the business's own (« Tél. 078 … • E-mail: … »).
+
+        Args:
+            text: A result's title and snippet.
+            email: An address read in it.
+            phone: The business's phone number.
+
+        Returns:
+            True when the closest number to the address is the business's.
+        """
+        own_digits = _NON_DIGITS_RE.sub("", phone or "")[-_PHONE_DIGITS_COMPARED:]
+        nearest_digits = cls._number_nearest(text, email)
+        return (
+            len(own_digits) == _PHONE_DIGITS_COMPARED and bool(nearest_digits) and nearest_digits.endswith(own_digits)
+        )
+
+    @staticmethod
+    def _number_nearest(text: str, email: str) -> str | None:
+        """The digits of the phone number written nearest an email in a text, or None when it shows none."""
+        email_start = text.lower().find(email.lower())
+        if email_start < 0:
+            return None
         email_end = email_start + len(email)
         # At equal distance, the number written before the address is its owner's (« Exemple · 05 … · contact@… »).
         numbers = [
@@ -120,10 +153,37 @@ class PlaceOfContact:
             )
             for match in _PHONE_RE.finditer(text)
         ]
-        if not numbers:
-            return False
-        _, _, nearest_digits = min(numbers)
-        return not nearest_digits.endswith(own_digits)
+        return min(numbers)[2] if numbers else None
+
+    @staticmethod
+    def street_names(text: str | None) -> set[str]:
+        """
+        The streets a text writes, by the first word of their name (« Rte de la Bourgeoisie 5 » gives « bourgeoisie »).
+
+        Args:
+            text: An address, a result's snippet.
+
+        Returns:
+            The folded first words of the streets' names.
+        """
+        return set(_STREET_NAME_RE.findall(fold(text or "")))
+
+    @classmethod
+    def shows_another_street(cls, text: str, facts: CandidateFacts) -> bool:
+        """
+        Whether a text writes street addresses, none of them the business's: the entry of a business living elsewhere.
+
+        Args:
+            text: A result's title and snippet.
+            facts: The business, with its street address.
+
+        Returns:
+            True when the text names streets and the business's street is not among them; False when the business's
+            address names no street.
+        """
+        own_streets = cls.street_names(facts.address)
+        written_streets = cls.street_names(text)
+        return bool(own_streets) and bool(written_streets) and not own_streets & written_streets
 
     @staticmethod
     def is_in_foreign_script(text: str) -> bool:

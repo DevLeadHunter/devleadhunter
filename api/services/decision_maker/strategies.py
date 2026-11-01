@@ -1200,9 +1200,9 @@ class WebRegistryStrategy:
         ]
 
 
-# « Réponse du propriétaire » signatures: a line/dash followed by a short name.
+# « Réponse du propriétaire » signatures: a line/dash followed by a short name, a full stop after it (« Jules. »).
 _OWNER_SIGNATURE_RE = re.compile(
-    r"(?:^|[\n\-—–])\s*(?:cordialement|merci|à bientôt)?[,\s]*([A-ZÀ-Ü][a-zà-ü]{2,15})\s*$",
+    r"(?:^|[\n\-—–])\s*(?:cordialement|merci|à bientôt)?[,\s]*([A-ZÀ-Ü][a-zà-ü]{2,15})\s*[.!]?\s*$",
     re.MULTILINE,
 )
 _FULL_NAME_SIGNATURE_RE = re.compile(
@@ -1248,7 +1248,8 @@ class OwnerResponseStrategy:
 
     Uses only text already captured by the enrichment scraper (no network).
     A recurring signature (« … à bientôt ! — Léo ») is a decent first-name
-    signal, scored moderately; a word no one is given as a first name
+    signal, scored moderately, and used alone when the business's name or its
+    email writes it too; a word no one is given as a first name
     (« Avatacar », the booking platform answering for the garage) is no person.
     A reply signed with a full name (« Jules Exemple, Gérant. ») names the
     person too: never a primary source, it confirms the registry's head or,
@@ -1273,6 +1274,10 @@ class OwnerResponseStrategy:
         (first, last), seen = max(counts.items(), key=lambda kv: (kv[1], kv[0][1] is not None))
         confidence = 0.7 if seen > 1 else (0.6 if last else 0.55)
         signature = f"{first} {last}" if last else first
+        named_by = self.where_the_business_writes(first, context) if last is None else None
+        provenance = (
+            f"Signature « {signature} » dans {seen} réponse{'s' if seen > 1 else ''} du propriétaire aux avis Google"
+        )
         return [
             NameCandidate(
                 first=first,
@@ -1282,13 +1287,34 @@ class OwnerResponseStrategy:
                 confidence=confidence,
                 primary=False,
                 evidence_group=_GROUP_SCRAPED_TEXT,
-                provenance=(
-                    f"Signature « {signature} » dans {seen} réponse{'s' if seen > 1 else ''} du propriétaire aux "
-                    "avis Google"
-                ),
+                provenance=f"{provenance}, et {named_by}" if named_by else provenance,
                 raw={"occurrences": seen},
+                self_declared=named_by is not None,
             )
         ]
+
+    @staticmethod
+    def where_the_business_writes(first_name: str, context: ResolutionContext) -> str | None:
+        """
+        Where the business itself writes the first name the owner's replies are signed with (pure — testable).
+
+        « Jardins Exemple » signed « Exemple. » and written « jardins.exemple@… »: the business names the person who
+        answers, whose first name is then used alone.
+
+        Args:
+            first_name: The first name the replies are signed with.
+            context: The business, with its name and its emails.
+
+        Returns:
+            The words naming it (« le nom de l'entreprise »), or None when the business never writes it.
+        """
+        wanted = fold(first_name)
+        if wanted in _PERSON_NAME_WORD_RE.findall(fold(context.company_name or "")):
+            return f"le nom de l'entreprise « {context.company_name} »"
+        for email in context.emails:
+            if wanted in re.findall(r"[a-z]+", fold(email.partition("@")[0])):
+                return f"son adresse mail « {email} »"
+        return None
 
     @staticmethod
     def full_name_signed(text: str, context: ResolutionContext) -> tuple[str, str] | None:

@@ -48,6 +48,7 @@ _NETWORK_NAMES: tuple[str, ...] = (
     "rapid pare brise",
     "france pare brise",
     "mondial pare brise",
+    "stop go",
 )
 # Sites where a network or a brand gives each outlet its own page (« www.motrio.fr/shop/… »).
 _NETWORK_HOSTS: tuple[str, ...] = (
@@ -75,6 +76,7 @@ _NETWORK_HOSTS: tuple[str, ...] = (
     "dacia.fr",
     "ppf.fr",
     "preservationdupatrimoine.fr",
+    "stopgo.ch",
 )
 # Parts of a Facebook page's address that are no name: its kind of address, its number.
 _FACEBOOK_ADDRESS_WORDS: frozenset[str] = frozenset({"pages", "p", "people", "profile.php"})

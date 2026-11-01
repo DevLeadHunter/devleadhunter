@@ -334,6 +334,31 @@ def test_a_signature_no_one_is_given_as_a_first_name_is_no_person() -> None:
     assert [candidate.first for candidate in asyncio.run(OwnerResponseStrategy().resolve(owner))] == ["Jules"]
 
 
+def test_a_first_name_signing_the_replies_and_written_by_the_business_is_used_alone() -> None:
+    """« Jardins Jules » signs « Jules. » and writes from « jardins.jules@ »: Jules is used alone, without a last name;
+    the same signature for « Jardins du Lac » stays a proposal."""
+    from services.decision_maker.strategies import OwnerResponseStrategy
+
+    replies = [
+        "il y a 7 mois\nMerci Anne pour votre confiance et votre recommandation !\nJules.",
+        "il y a 3 mois\nMerci beaucoup pour cet avis !",
+        "il y a un an\nAvec plaisir d'avoir pu donner de l'allure à votre haie.\nJules.",
+    ]
+    signed = ResolutionContext(
+        company_name="Jardins Jules", emails=["jardins.jules@exemple.fr"], owner_responses=replies
+    )
+    unnamed = ResolutionContext(company_name="Jardins du Lac", emails=["contact@exemple.fr"], owner_responses=replies)
+
+    [candidate] = asyncio.run(OwnerResponseStrategy().resolve(signed))
+    statuses = [
+        DecisionMakerResolver(strategies=[]).pick_best(asyncio.run(OwnerResponseStrategy().resolve(context))).status
+        for context in (signed, unnamed)
+    ]
+
+    assert (candidate.first, candidate.last, candidate.self_declared) == ("Jules", None, True)
+    assert statuses == [NameResolution.AUTO, NameResolution.PROPOSED]
+
+
 def test_among_the_family_the_company_of_the_trade_s_main_activity_is_the_business(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -138,6 +138,16 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail=f"Sa fiche Google ne donne pas d'adresse : rien ne montre qu'il est à {facts.town}, à vérifier.",
             )
+        registered_activity = facts.activity_of_another_trade
+        if registered_activity is not None and (has_proven_email or has_guessed_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Le registre inscrit « {registered_activity.get('snippet') or facts.name} » sous une autre "
+                    f"activité ({registered_activity['value']}) : à vérifier, ce n'est peut-être pas un "
+                    f"{trade.label.lower()}."
+                ),
+            )
         if cls._meets_channel(criteria.channel, has_email=has_proven_email, has_mobile=has_mobile):
             return CandidateVerdict(CandidateStatus.KEPT)
         if not has_proven_email and can_read_facebook_page and criteria.channel != ProspectSearchChannel.SMS:

@@ -254,7 +254,7 @@ def test_an_email_from_a_page_placing_the_business_nowhere_is_left_to_confirm() 
 
 
 def test_an_email_from_a_page_showing_the_business_s_number_stays_proven() -> None:
-    """Jardin Authentique: the page giving its email shows its number beside it, which places it."""
+    """Jardin Authentique: the page naming it shows its mobile beside an email spelling its name: published by it."""
     facts = _facts("Jardin Authentique", "Clermont-Ferrand", phone="06 00 00 11 19")
 
     _verify(
@@ -272,7 +272,7 @@ def test_an_email_from_a_page_showing_the_business_s_number_stays_proven() -> No
 
     assert (facts.email, facts.email_proof_level) == (
         "jardinauthentique63@gmail.com",
-        EmailProofLevel.DIRECTORY.value,
+        EmailProofLevel.PUBLISHED.value,
     )
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 from services.decision_maker.normalize import fold
 
@@ -160,6 +161,28 @@ class TradeProfile:
                 for segment in segments
             )
             if is_named:
+                return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
+        return None
+
+    def brand_of_site(self, url: str) -> str | None:
+        """
+        The brand whose own site an address is on (« garage.toyota.ch/exemple-develier », « www.kia.fr/… »).
+
+        A page there naming a business lists one of the brand's dealers.
+
+        Args:
+            url: An address, with or without its scheme.
+
+        Returns:
+            The brand, written for a reader (« Toyota »), or None when the site is no brand's.
+        """
+        host = (urlparse(url if "//" in url else f"//{url}").hostname or "").lower()
+        labels = host.split(".")
+        if len(labels) < 2:
+            return None
+        site_name = _NAME_WORD_SEPARATORS_RE.sub("", labels[-2])
+        for brand in self.brand_names:
+            if site_name == brand.replace(" ", ""):
                 return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
         return None
 

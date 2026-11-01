@@ -24,17 +24,19 @@ from services.decision_maker.normalize import fold
 # normalised code, so "8130" covers "81.30Z". Kept intentionally broad — an
 # artisan often declares a neighbouring activity (a landscaper filed under
 # forestry or earthworks). The goal is to catch the gross mismatch (cleaning vs
-# landscaping), never to police the exact sub-class.
+# landscaping), never to police the exact sub-class. A company that never updated its
+# code since 2008 still declares the former nomenclature (« 50.2Z » for a garage,
+# « 45.3A » for an electrician, « 01.4A » for a landscaper).
 _NAF_BY_TRADE: dict[str, frozenset[str]] = {
-    "garagiste": frozenset({"4520", "4532", "4540", "4519", "4511", "4531"}),
-    "carrossier": frozenset({"4520", "4532"}),
+    "garagiste": frozenset({"4520", "4532", "4540", "4519", "4511", "4531", "501Z", "502Z", "503A", "503B", "504Z"}),
+    "carrossier": frozenset({"4520", "4532", "502Z"}),
     "plombier": frozenset({"4322", "4329"}),
     "chauffagiste": frozenset({"4322", "4329"}),
-    "electricien": frozenset({"4321", "4329", "4399", "4321A"}),
+    "electricien": frozenset({"4321", "4329", "4399", "4321A", "453A"}),
     "barbier": frozenset({"9602"}),
     "coiffeur": frozenset({"9602"}),
     "dentiste": frozenset({"8623", "8622"}),
-    "paysagiste": frozenset({"8130", "0161", "0240", "4312", "0130"}),
+    "paysagiste": frozenset({"8130", "0161", "0240", "4312", "0130", "014A"}),
     "fleuriste": frozenset({"4776", "0130", "4619"}),
     "menuisier": frozenset({"4332", "1623", "3109", "3101"}),
     "serrurier": frozenset({"4332", "2572", "4399", "2562"}),

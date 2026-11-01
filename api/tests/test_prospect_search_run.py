@@ -1982,6 +1982,8 @@ def test_the_email_domain_of_a_complete_listing_is_read_again_before_it_is_kept(
     front_page_reads: list[str] = []
 
     async def front_page_answering_late(domain: str) -> tuple[str, str] | None:
+        if domain != "jardins-du-lac.ch":
+            return None
         front_page_reads.append(domain)
         if len(front_page_reads) == 1:
             return None

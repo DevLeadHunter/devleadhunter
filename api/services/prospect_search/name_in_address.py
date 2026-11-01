@@ -232,7 +232,28 @@ class NameInAddress:
         Returns:
             True when the address is another business's.
         """
-        segments = cls._segments(email.rpartition("@")[0])
+        return cls._spells_another_business(email.rpartition("@")[0], facts)
+
+    @classmethod
+    def domain_names_another_business(cls, domain: str, facts: CandidateFacts) -> bool:
+        """
+        Whether a domain's registered name plainly names a business other than this one (« temoin-auto.ch »).
+
+        A group's domain (« groupe-exemple.ch ») carries no trade's word: it names no other business.
+
+        Args:
+            domain: The domain, without scheme.
+            facts: The business: its name, town and owner.
+
+        Returns:
+            True when the domain is another business's.
+        """
+        return cls._spells_another_business(email_candidate_scorer.registrable_label(domain), facts)
+
+    @classmethod
+    def _spells_another_business(cls, address_part: str, facts: CandidateFacts) -> bool:
+        """Whether words of an address carry a trade's word and a name of their own, none of the business's."""
+        segments = cls._segments(address_part)
         compact = "".join(segments)
         is_business_address = any(
             word in compact for word in _ACTIVITY_WORDS if len(word) >= _ACTIVITY_MARKER_MIN_CHARS

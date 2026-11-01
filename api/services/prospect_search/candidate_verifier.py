@@ -105,6 +105,15 @@ _PHONE_DIGITS_COMPARED: int = 9
 _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
+# A name of one word is anybody's domain; a listing's tagline is nobody's.
+_NAMED_DOMAIN_MIN_WORDS: int = 2
+_NAMED_DOMAIN_MAX_WORDS: int = 4
+_NAMED_DOMAIN_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "FR": ("fr", "com"),
+    "CH": ("ch", "com"),
+    "BE": ("be", "com"),
+    "CA": ("ca", "com"),
+}
 
 _COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 # Directories, marketplaces and network sites missing from the shared blocklist. A garage's page on
@@ -263,6 +272,8 @@ class CandidateVerifier:
         if (facts.phone, facts.address) != contact_before_search:
             directory_entry = await self._find_swiss_directory_entry(facts, trade) or directory_entry
         self._read_swiss_directory_entry(facts, directory_entry, trade)
+        if facts.website is None and facts.has_website_button is not False:
+            await self.consider_domains_named_after_business(facts, trade)
 
         if facts.website:
             status = await website_liveness_service.check_website_status(facts.website)
@@ -528,11 +539,13 @@ class CandidateVerifier:
         Whether a text talks about this business: close name, or every distinctive word present.
 
         A text carrying none of the words that belong to the name alone names another business,
-        however close the rest (« Garage du Moulin » is not « Garage du Soleil »).
+        however close the rest (« Garage du Moulin » is not « Garage du Soleil »); a number the name
+        carries besides its words (a département's « 66 ») tells nothing on its own.
         """
         own_words = cls.own_name_words(facts, trade)
+        naming_words = {word for word in own_words if not word.isdigit()} or own_words
         text_words = company_tokens(text)
-        if own_words and not own_words & text_words:
+        if naming_words and not naming_words & text_words:
             return False
         if company_similarity(text, facts.name) >= _NAMED_IN_TEXT_SIMILARITY:
             return True
@@ -603,7 +616,10 @@ class CandidateVerifier:
         return carries_name or not path_segments
 
     def _read_knowledge_panel(self, facts: CandidateFacts, panel: Any) -> None:
-        """Take the phone, address, rating, website and status of Google's panel when it is this business."""
+        """
+        Take the phone, address, rating, website and status of Google's panel when it is this business, and the network
+        its full name carries (« Garage Exemple | stop+go | … »).
+        """
         if not isinstance(panel, dict):
             return
         panel_phone = str(panel.get("phone") or "") or None
@@ -653,10 +669,15 @@ class CandidateVerifier:
         site = str(panel.get("site") or "").strip()
         if site:
             self.consider_website(facts, site, source="Fiche Google", proof_url=maps_link or site)
+        full_panel_name = str(panel.get("name") or "")
+        if NetworkOutlets.names_network(full_panel_name):
+            facts.is_chain = True
+            facts.add_evidence("chain", full_panel_name, source="Fiche Google", url=maps_link or None)
 
     def _read_results(self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile) -> bool:
         """
-        Sort the results by rule: Facebook page, registry number, own website.
+        Sort the results by rule: Facebook page, registry number, own website, a page of its network's or its brand's
+        site naming it in its town (« garage.toyota.ch/exemple-develier »).
 
         Returns:
             Whether results naming the business remain on hosts the rules do not know.
@@ -677,13 +698,20 @@ class CandidateVerifier:
                     facts.add_evidence("facebook", facebook_page, source="Recherche Google", url=line.link)
                 continue
             is_in_town = bool(facts.town) and fold(facts.town) in fold(line.text)
-            if (
-                NetworkOutlets.is_network_page(line.link)
-                and is_in_town
-                and self.names_business(line.title, facts, trade)
-            ):
+            is_named_there = is_in_town and self.names_business(line.title, facts, trade)
+            if NetworkOutlets.is_network_page(line.link) and is_named_there:
                 facts.is_chain = True
                 facts.add_evidence("chain", line.host, source="Page de son réseau", url=line.link, snippet=line.text)
+            brand = trade.brand_of_site(line.link)
+            if brand is not None and is_named_there and facts.outlet_brand is None:
+                facts.is_chain = True
+                facts.add_evidence(
+                    "chain",
+                    f"{BRAND_OUTLET_EVIDENCE_PREFIX}{brand}",
+                    source="Page du site de sa marque",
+                    url=line.link,
+                    snippet=line.text,
+                )
             if self.is_known_third_party(line.link, line.host):
                 continue
             is_about_business = self.names_business(line.text, facts, trade)
@@ -716,13 +744,16 @@ class CandidateVerifier:
             site = urlparse(line.link)
             cls.consider_website(facts, f"{site.scheme}://{site.netloc}/", source=source, proof_url=line.link)
 
-    @staticmethod
-    def shows_contact_of(text: str, facts: CandidateFacts) -> bool:
+    @classmethod
+    def shows_contact_of(cls, text: str, facts: CandidateFacts) -> bool:
         """Whether a text shows the business's phone number, however spaced, or its email."""
+        return cls.shows_phone_of(text, facts) or (bool(facts.email) and (facts.email or "") in text.lower())
+
+    @staticmethod
+    def shows_phone_of(text: str, facts: CandidateFacts) -> bool:
+        """Whether a text shows the business's phone number, however spaced."""
         phone_digits = re.sub(r"\D", "", facts.phone or "")[-_PHONE_DIGITS_COMPARED:]
-        if len(phone_digits) == _PHONE_DIGITS_COMPARED and phone_digits in re.sub(r"\D", "", text):
-            return True
-        return bool(facts.email) and (facts.email or "") in text.lower()
+        return len(phone_digits) == _PHONE_DIGITS_COMPARED and phone_digits in re.sub(r"\D", "", text)
 
     @staticmethod
     def _is_host_named_after(host: str, distinctive: set[str]) -> bool:
@@ -810,8 +841,9 @@ class CandidateVerifier:
         the Facebook page) and once more before a candidate is kept. The domain's front page
         counts as the business's website when it names the business, shows its phone, or the
         domain spells the business's name; a dead site or a directory mini-site known so far
-        gives way to it. A live front page that does none of this is noted once: the address may
-        be a group's or another business's, to be checked. A domain spelling the business name
+        gives way to it. A live front page that does none of this is noted once: on a domain naming
+        another business (« temoin-auto.ch »), the address is that business's and the email is
+        forgotten; a group's address waits for a check. A domain spelling the business name
         that answers without showing its page (a bot check) is its website all the same; a parked
         domain only shows a dead site.
 
@@ -883,7 +915,8 @@ class CandidateVerifier:
             domain: The domain.
             trade: Profile of the searched trade.
             subject: How the evidence names the domain (« Le domaine de son email »).
-            notes_unnamed_site: Whether a live page that does not name the business is noted for a check.
+            notes_unnamed_site: Whether a live page that does not name the business is noted, and the email written
+                from a domain naming another business forgotten.
         """
         if facts.website_status == WebsiteStatus.LIVE.value:
             return
@@ -913,6 +946,7 @@ class CandidateVerifier:
             if notes_unnamed_site and not is_site_already_noted:
                 if await website_liveness_service.check_website_status(page_url) == WebsiteStatus.LIVE:
                     facts.add_evidence("email_domain_site", domain, source=subject, url=page_url)
+                    cls._drop_email_of_another_site(facts, domain)
             return
         status = await website_liveness_service.check_website_status(page_url)
         if facts.website is not None and status != WebsiteStatus.LIVE:
@@ -920,6 +954,75 @@ class CandidateVerifier:
         facts.website = page_url
         facts.website_status = status.value if status is not None else None
         facts.add_evidence("website", page_url, source=f"{subject} répond", url=page_url)
+
+    @classmethod
+    async def consider_domains_named_after_business(cls, facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        Read the front page of the domains spelling the business's name, when no website is known and its listing may
+        declare one (« espaces-verts-exemple.fr » for Espaces Verts Exemple).
+
+        Google's results for the name may show only directories, and a page of local results read from the parsed JSON
+        carries no « Site Web » button. A front page there is the business's website when it names the business and
+        shows its number or its town: a namesake's site elsewhere does neither.
+
+        Args:
+            facts: The candidate, completed in place.
+            trade: Profile of the searched trade.
+        """
+        for domain in cls.domains_named_after(facts, trade):
+            front_page = await cls._front_page_of(domain)
+            if front_page is None:
+                continue
+            page_url, page_text = front_page
+            shows_its_town = bool(facts.town) and fold(facts.town) in fold(page_text)
+            if not cls.names_business(page_text, facts, trade) or not (
+                cls.shows_contact_of(page_text, facts) or shows_its_town
+            ):
+                continue
+            status = await website_liveness_service.check_website_status(page_url)
+            facts.website = page_url
+            facts.website_status = status.value if status is not None else None
+            facts.add_evidence("website", page_url, source="Le domaine à son nom répond", url=page_url)
+            return
+
+    @classmethod
+    def domains_named_after(cls, facts: CandidateFacts, trade: TradeProfile) -> list[str]:
+        """
+        The domains a business would register under its name, its country's first (« espaces-verts-exemple.fr »).
+
+        A name without a word of its own (« Garage du Centre »), a single word or a listing's long tagline gives none.
+
+        Args:
+            facts: The business: its name and its country.
+            trade: Profile of the searched trade.
+
+        Returns:
+            The domains, the words joined by hyphens, then glued.
+        """
+        if not {word for word in cls.own_name_words(facts, trade) if not word.isdigit()}:
+            return []
+        words = re.findall(r"[a-z0-9]+", fold(BusinessName.without_legal_form(facts.name)))
+        if not _NAMED_DOMAIN_MIN_WORDS <= len(words) <= _NAMED_DOMAIN_MAX_WORDS:
+            return []
+        labels = dict.fromkeys(("-".join(words), "".join(words)))
+        return [
+            f"{label}.{suffix}" for suffix in _NAMED_DOMAIN_SUFFIXES.get(facts.country, ("com",)) for label in labels
+        ]
+
+    @staticmethod
+    def _drop_email_of_another_site(facts: CandidateFacts, domain: str) -> None:
+        """
+        Forget an email written from the domain of another business's live site (« info@temoin-auto.ch »).
+
+        A group's domain (« groupe-exemple.ch ») may be the business's own mailbox: its email waits for a check.
+        """
+        if facts.email is None or facts.email.rsplit("@", 1)[-1] != domain:
+            return
+        if not NameInAddress.domain_names_another_business(domain, facts):
+            return
+        facts.add_evidence("email_dropped", facts.email, source=f"{domain} est le site en ligne d'une autre entreprise")
+        facts.email = None
+        facts.email_proof_level = None
 
     @staticmethod
     async def _take_domain_named_after_business(facts: CandidateFacts, domain: str, *, source: str) -> None:
@@ -1037,8 +1140,9 @@ class CandidateVerifier:
             facts.matches_trade = False
         if verdict.owner_name and verdict.owner_name_index is not None and not facts.owner_name:
             line = results[verdict.owner_name_index]
-            facts.owner_name = verdict.owner_name
-            facts.add_evidence("owner", verdict.owner_name, source=line.host, url=line.link, snippet=line.text)
+            if not self.is_about_another_business(line, facts, trade):
+                facts.owner_name = verdict.owner_name
+                facts.add_evidence("owner", verdict.owner_name, source=line.host, url=line.link, snippet=line.text)
 
     @staticmethod
     def _emails_in(results: list[SearchResultLine]) -> list[tuple[str, int]]:
@@ -1110,8 +1214,11 @@ class CandidateVerifier:
 
         A directory writes each business's number beside its address: an email nearest another number is that
         number's owner's, unless it spells the business's name (its manager's other number, a namesake: a person
-        decides). A third party's page that does not place the business (its phone, its town, a postal code of its
-        département) leaves the email unproven, whatever its words: a namesake elsewhere carries the same.
+        decides). A page about another business at another street (« Auto Exemple, Route des Ateliers 8 » for a
+        garage of the Route de la Bourgeoisie) gives that business's email. A third party's page that does not place
+        the business (its phone, its town, a postal code of its département) leaves the email unproven, whatever its
+        words: a namesake elsewhere carries the same. An email spelling the business's name, written beside its own
+        number on a page naming it, is published by the business itself.
 
         Args:
             facts: The candidate, completed in place.
@@ -1125,8 +1232,12 @@ class CandidateVerifier:
         is_beside_another_phone = PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone)
         if is_beside_another_phone and not CandidateVerifier.email_carries_name(email, facts, trade):
             return
+        if not is_own_text and CandidateVerifier.is_about_another_business(line, facts, trade):
+            return
         doubt: str | None = None
-        if not is_own_text and is_beside_another_phone:
+        if CandidateVerifier.is_published_beside_its_phone(email, line, facts, trade):
+            proof = EmailProofLevel.PUBLISHED
+        elif not is_own_text and is_beside_another_phone:
             doubt = "email_beside_another_phone"
         elif not is_own_text and not PlaceOfContact.shows_place_of(line.text, facts, department):
             doubt = "email_unplaced"
@@ -1134,6 +1245,52 @@ class CandidateVerifier:
             proof = EmailProofLevel.GUESSED
         if facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text) and doubt is not None:
             facts.add_evidence(doubt, email, source=line.host, url=line.link)
+
+    @classmethod
+    def is_about_another_business(cls, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile) -> bool:
+        """
+        Whether a result is another business's entry: its title does not name the business, its words write another
+        street than the business's (« AutoCentre Exemple SA, Rue des Gorges 2 » for a garage of the Rue du Moulin)
+        and never its number.
+
+        Args:
+            line: A result of one of the business's searches.
+            facts: The business, with its street address.
+            trade: Profile of the searched trade.
+
+        Returns:
+            True when the result names another business living at another address.
+        """
+        return (
+            not cls.names_business(line.title, facts, trade)
+            and not cls.shows_phone_of(line.text, facts)
+            and PlaceOfContact.shows_another_street(line.text, facts)
+        )
+
+    @classmethod
+    def is_published_beside_its_phone(
+        cls, email: str, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile
+    ) -> bool:
+        """
+        Whether an email spelling the business's name is written beside its own number, on a page naming it.
+
+        « Jules Exemple • Tél. 078 … • E-mail: jex.exemple@… » in a local bulletin: the same name and the same
+        mobile as its listing make the address its own, wherever the page places it.
+
+        Args:
+            email: An address read in the result.
+            line: The result.
+            facts: The business, with its phone.
+            trade: Profile of the searched trade.
+
+        Returns:
+            True when the number nearest the address is the business's and the page and the address both name it.
+        """
+        return (
+            PlaceOfContact.is_beside_own_phone(line.text, email, facts.phone)
+            and cls.names_business(line.text, facts, trade)
+            and cls.email_carries_name(email, facts, trade)
+        )
 
     @classmethod
     def email_carries_name(cls, email: str, facts: CandidateFacts, trade: TradeProfile) -> bool:

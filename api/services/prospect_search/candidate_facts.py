@@ -181,6 +181,11 @@ class CandidateFacts:
         return self.origin == CandidateOrigin.GOOGLE_LOCAL.value and not self.address and self.city is None
 
     @property
+    def activity_of_another_trade(self) -> dict[str, str] | None:
+        """The activity of another trade the registry files the company of the business's exact name under (« 52.2A »)."""
+        return next((line for line in self.evidence if line.get("fact") == "registered_activity"), None)
+
+    @property
     def registered_association(self) -> str | None:
         """The association the registry files the business as, when it is one (« Ass sportive Exemple »)."""
         return next((line["value"] for line in self.evidence if line.get("fact") == "association"), None)
