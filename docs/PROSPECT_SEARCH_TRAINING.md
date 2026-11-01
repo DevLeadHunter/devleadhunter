@@ -646,8 +646,9 @@ avec le moteur corrigé, pour mesurer l'« après » sur une recherche neuve.
 
 ### Résultat
 
-Moteur corrigé le 1er novembre (`ef9627cc`, `ed91e02e`), puis le lot rejoué hors ligne : chaque candidat repart des
-preuves que sa vérification a enregistrées, sans nouvelle recherche Google. Le registre des entreprises, la liste
+Moteur corrigé le 1er novembre (`ef9627cc`, `ed91e02e`) et en prod à 2 h 23, juste après la fin de la n° 19 : la
+n° 20 a repris au redémarrage, les n° 21 et 22 partent avec ce moteur. Le lot a été rejoué hors ligne : chaque
+candidat repart des preuves que sa vérification a enregistrées, sans nouvelle recherche Google. Le registre des entreprises, la liste
 des communes, les pages d'accueil et le courrier des domaines sont relus pour de vrai. Les trois sites déclarés ont
 été relus en direct (trois vérifications, deux cartes locales). Hors ligne, le nom d'une page Facebook trouvée par
 une recherche est lu dans son adresse (« /p/La-Taverne-dOdin-… ») ; le moteur lit le titre que Google lui donne.

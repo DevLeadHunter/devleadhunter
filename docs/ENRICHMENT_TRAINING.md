@@ -372,3 +372,19 @@ entreprises et preuves de la recherche.
 
 - Photos : 3 prospects sous 3 photos (Medina 0, Ticheur 0, Le Petit Élec 2) : leurs sites prendront des
   images de secours de la template ; rien de faux.
+
+### Résultat
+
+Enrichissement corrigé le 1er novembre (`06b469e9`). Aucun prospect n'a été réenrichi ni aucun site
+régénéré : la recherche corrigée dans le registre a été rejouée en lecture seule sur les prospects n° 394 à 408.
+
+| Règle | Avant | Après, sur les 15 |
+|---|---|---|
+| Une enseigne faite des initiales du dirigeant inscrit (prénoms puis nom, ou nom puis prénom) relie la société au prospect, quand elle déclare le métier : une autre activité aux mêmes initiales ne relie rien | KR Électricité Générale et LDBM Élec : patron vide | les deux trouvent leur gérant (confiance 0,95, « enseigne aux initiales de son dirigeant ») ; LT Services et BM Elec, déjà justes, portent la même mention |
+| Un prospect sans adresse dont le registre a identifié l'entreprise (patron validé) prend la commune et le code postal de son siège, jamais sa rue ; la commune est écrite comme dans la liste officielle (« Pont-du-Château », pas « PONT-DU-CHATEAU ») | 7 sans adresse, la ville cherchée pour commune | 4 placés au prochain enrichissement : Medina Paysage (24380 Sanilhac), Jardin Authentique (63430 Pont-du-Château), Le Petit Élec (79230 Brûlain), KR Électricité Générale (54510 Tomblaine). Oh Joli Jardin, Vulcan'Paysage et Bost Électricité restent sans adresse : le registre ne les trouve pas à leur nom |
+| `enrich_cli.py` réessaie l'enregistrement toutes les 10 secondes, 5 minutes au plus, sur une erreur passagère (5xx, coupure), comme `prospect_search_cli.py` ; un refus (4xx) n'est pas réessayé | Alex'Élec : « persist_failed » sur un 502 | enregistré une fois l'API redémarrée |
+
+- Une adresse publique, avec sa rue, n'est jamais remplacée par le siège : LDBM Élec garde la sienne.
+- La recherche applique la même règle depuis sa manche 13 : une fiche sans adresse prend la commune de la seule
+  société ouverte de son nom exact (voir `docs/PROSPECT_SEARCH_TRAINING.md`). Les communes y sont maintenant
+  écrites comme dans la liste officielle, elles aussi.
