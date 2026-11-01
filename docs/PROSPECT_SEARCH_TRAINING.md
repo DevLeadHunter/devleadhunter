@@ -809,3 +809,32 @@ annuaires), 57 mauvais métier, 39 sites, 22 hors de Suisse. En Suisse romande, 
 - N° 21 (garages France, 2 demandés) : 3 gardés à Narbonne, tous bons (Ghossain Auto, Technic Auto, Yes Auto).
   Technic Auto validé (n° 443, le 17ᵉ garage français), les deux autres laissés en réserve.
 - Envoyé à la session de corrections le 1er novembre vers 4 h 30 et 6 h.
+
+### Résultat
+
+Moteur corrigé le 1er novembre (`d4151782`). Aucune recherche relancée en prod, aucun candidat touché : chaque cas a
+été rejoué en lecture seule depuis sa seule fiche Google (vérification, recherche de contact, registres), Bright
+Data, le juge, les registres et les sites lus pour de vrai.
+
+| Règle | Avant | Après |
+|---|---|---|
+| Une page Facebook trouvée par recherche doit partager un mot propre du nom qui ne soit pas un nombre : un numéro de département (« 66 »), le métier ou la ville ne suffisent pas | Coupe Feuilles : la page « … Le Jardinier 66 » d'un autre jardinier, et son email | aucune page ni email : écarté, sans contact. Au balayage, M.A.S ELEC 30 perd aussi la page « BC Elec » |
+| Une page dont le titre ne nomme pas l'entreprise, qui écrit une autre rue que la sienne et jamais son numéro, est celle d'une autre entreprise : ni son email ni son patron ne sont pris | Le Mechanic Moderne, Garage Bonito : l'email de l'autre garage, « à confirmer » ; Bonito avait aussi pour patron celui de l'autre garage | ni email ni patron : Bonito mis de côté (portable seul), Le Mechanic Moderne sans contact |
+| Un email écrit depuis le domaine du site en ligne d'une autre affaire (un mot du métier et un nom qui n'est pas le sien : `viviane-auto.ch`) est oublié ; le domaine d'un groupe (« groupe-….ch », sans mot du métier) reste « à vérifier » | MML Automobiles : « à confirmer » | email oublié (« viviane-auto.ch est le site en ligne d'une autre entreprise ») : écarté, sans contact |
+| Stop+Go est un réseau : son nom (« stop+go »), son site `stopgo.ch` et ses sous-domaines, le nom du panneau Google | Garage Autotec : « à confirmer, site déclaré pas retrouvé » | écarté : réseau |
+| Une page du site d'une marque (`garage.toyota.ch/…`, `kia.fr/…`) qui nomme le garage dans sa ville en fait un concessionnaire de la marque | Willemin : gardé | écarté : « Agent ou concessionnaire Toyota » (rejoué sur les résultats Google du 1er novembre) |
+| Un email qui porte le nom, écrit à côté du propre numéro de l'entreprise sur une page qui la nomme, est publié par elle : preuve « a » | le paysagiste du Landeron (c6212) : preuve « c » | preuve « a » ; au balayage, 4 emails passent de « b » à « a » (Aubane Paysage, Jardins Grégory, C-velec, Garage Autotec), aucun candidat ne change de place |
+| La seule société ouverte au nom exact, inscrite dans l'activité d'un autre métier, laisse le prospect « à confirmer » ; les codes de l'ancienne nomenclature (« 50.2Z » garage, « 45.3A » électricien, « 01.4A » paysagiste) comptent pour le métier | Au Jardin De L'economie : gardé | « à confirmer » : « Le registre inscrit « AU JARDIN DE L'ECONOMIE » sous une autre activité (52.2A) » |
+| Quand aucun site n'est connu et que la fiche n'a pas dit « pas de site », la vérification lit la page d'accueil des domaines qui épellent le nom (`espaces-verts-peyret.fr`, puis `.com`, avec et sans tirets) : c'est son site si la page nomme l'entreprise et montre son numéro ou sa ville | Espaces Verts Peyret : gardé sans site | écarté : a déjà un site (`espaces-verts-peyret.fr`) |
+| Une page d'hébergeur « Bienvenue sur … » ou une page vide est une page d'attente (`placeholder`), plus un site mort | `garage2s.ch`, `paratte-carrosserie.ch` : site mort ; `flojardinier.com` : en ligne | page d'attente pour les trois : jamais « a un site », jamais « votre site ne répond plus » |
+
+- Peyret, la cause : la page de résultats locaux qui contenait sa fiche (Perpignan, 3ᵉ page, 3 h 13) a été lue par
+  le repli JSON de Bright Data, qui ne donne aucun bouton « Site Web » (« 20 fiches Google lues, 0 sans site déclaré,
+  20 à vérifier »). La recherche de son nom n'a montré que des annuaires, et le panneau Google, qui porte le site,
+  n'est pas toujours là. Le 1er novembre, le panneau le donnait ; la lecture du domaine à son nom le trouve sans lui.
+- Balayage hors ligne des 74 candidats avec email des n° 18 et 20 (gardés, à confirmer, mis de côté, refusés à la
+  main) : aucun gardé ne perd son email ni sa page.
+- Non écrit : la catégorie « Concessionnaire automobile » seule (un garage qui vend aussi des voitures reste dans le
+  métier) ; d'autres réseaux suisses que Stop+Go, faute de cas.
+- Hors de la liste envoyée, laissé : l'adresse de fiche à la mairie (debrenne paysagiste) et l'état Zefix lu dès la
+  recherche (c6212).

@@ -465,3 +465,15 @@ Lot : les prospects n° 425 à 443, validés à la main dans la manche 15 de la 
 - Photos : 8 Suisses sur 11 ont 0 à 4 photos (Google Maps suisse en montre peu) ; leurs sites prendront des images
   de secours de la template.
 - Envoyé à la session de corrections le 1er novembre vers 5 h, avec la recette de l'extrait cantonal.
+
+### Résultat
+
+- Écrit le 1er novembre (`d4151782`) : un prénom qui signe au moins deux réponses du propriétaire aux avis, point
+  final compris (« Jules. »), et que l'enseigne ou l'adresse mail écrivent aussi, est validé seul, sans nom de
+  famille ; écrit nulle part ailleurs, il reste une proposition. La cause : la lecture des signatures refusait un
+  nom suivi d'un point, et une signature seule n'était jamais qu'une proposition.
+- Rejoué en lecture seule sur les réponses de Jardins Grégory (n° 437) : le prénom de l'enseigne, signé dans 2
+  réponses sur 3, est validé (« … dans 2 réponses du propriétaire aux avis Google, et le nom de l'entreprise »).
+  Aucun prospect réenrichi.
+- Les autres écarts de cette manche (extrait cantonal, YP Services, Cano François, nom d'usage) ne faisaient pas
+  partie de la liste envoyée : laissés.
