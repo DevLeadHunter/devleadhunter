@@ -699,3 +699,29 @@ Règles non écrites :
   (nettoyage), Les jardins d'Odin en 46.62Z. Seule la forme d'association compte.
 - Un département écrit dans l'email ne vaut pas refus : ce peut être une année de naissance ou un département
   voisin ; le candidat reste « à confirmer ».
+
+## Manche 14 — Martinique, les trois métiers, vague 5 (1er novembre, nuit)
+
+Recherche de l'app n° 19 (7 par métier, canal « email », note ≥ 4,0, sans les registres, mode « Je valide »),
+la première entière sur le moteur corrigé de la manche 12. 1 007 requêtes : garages 7 sur 7, paysagistes 6 sur
+7, électriciens 6 sur 7. 60 fiches n'avaient qu'un portable : en Martinique, l'artisan se joint surtout par
+téléphone.
+
+### Vérité terrain (20 candidats avec email : 19 gardés, 1 à confirmer)
+
+- **16 validés** (n° 409 à 424) : garages JN.Performance Motors, Garage Cratère, Garage Clio, Top Car
+  Martinique ; paysagistes Green Corner Karayi'b, À Votre Service Martinique (site Strikingly gratuit = mini-site,
+  comme un Wix), Chris Services, Elo Green Services, Green Garden, Bel Jaden Matinik ; électriciens Seveur
+  Services, J.B Élec, Lamtra Services, Lisima Électricité, L.GELEC Entreprise, Tout Faire Habitat (site
+  `toutfairehabitat.com` mort : 302 vers un HTTPS qui ne répond pas, 404 en HTTP).
+- **Précision des gardés : 16 bons sur 19 (84 %)**, contre 39-44 % sur la recherche n° 18 avant les corrections.
+- **4 refusés** :
+
+| Candidat | Place donnée par l'app | Vérité | Règle à écrire |
+|---|---|---|---|
+| Garage Casimir Cadignan (Saint-Esprit) | gardé (site déclaré sur Google = sa page Facebook) | site en ligne `garageccadignan.fr` (« votre garagiste qualifié situé à Saint-Esprit ») ; ses pages « contact » et « mentions légales » sortent quand on cherche son email | quand l'email du candidat apparaît sur un domaine qui porte son nom (pages contact, mentions légales), ce domaine est son site, même si la fiche déclare une page Facebook |
+| Garage Automobile VSP (Fort-de-France) | gardé | email `aixamautomobille@outlook.fr` : concessionnaire Aixam (voitures sans permis) | une marque dans la partie locale de l'email révèle un concessionnaire de marque, comme une marque en tête du nom |
+| Flash Car (Ducos) | gardé | l'email est celui de « Garage Flash Auto Carrosserie » au Marin, une autre affaire dans une autre commune | couvert par la règle du lieu de la manche 13 ; à vérifier sur ce cas |
+| entretien d'espace vert et nettoyage haute pression (Rivière-Pilote) | à confirmer | nom générique, ni téléphone ni avis | rien à changer : le doute était juste |
+
+- Erreur de ma part, rattrapée : Tout Faire Habitat d'abord refusé pour son site, qui est mort ; repris.

@@ -388,3 +388,12 @@ régénéré : la recherche corrigée dans le registre a été rejouée en lectu
 - La recherche applique la même règle depuis sa manche 13 : une fiche sans adresse prend la commune de la seule
   société ouverte de son nom exact (voir `docs/PROSPECT_SEARCH_TRAINING.md`). Les communes y sont maintenant
   écrites comme dans la liste officielle, elles aussi.
+
+### Ajouts du 1er novembre, nuit (Claude, campagne)
+
+- Les prospects déjà enrichis ne bénéficient pas seuls des nouvelles règles : patron posé à la main d'après le
+  registre pour KR Électricité Générale (Rachid Khalfi, n° 404) et LDBM Élec (Ludovic Martinez, n° 408).
+- **Écart nouveau, Alex'Élec (n° 403)** : patron laissé vide alors que son nom est dans le titre de sa propre
+  fiche Google (« Alex'Elec Alexandre Fraudeau ») ; absent du registre des Deux-Sèvres (seules des homonymes
+  sans rapport). Posé à la main : Alexandre Fraudeau. Règle à écrire : un prénom et un nom complets dans le
+  titre de la fiche du pro, après l'enseigne, sont une proposition de patron publiée par le pro lui-même.
