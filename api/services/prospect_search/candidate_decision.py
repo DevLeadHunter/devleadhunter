@@ -99,7 +99,9 @@ class CandidateDecision:
                 ),
             )
         has_untraced_website = (
-            facts.has_website_button is True and facts.website is None and not facts.is_facebook_page_the_listed_website
+            facts.has_website_button is True
+            and (facts.website is None or facts.is_website_guessed_from_email_domain)
+            and not facts.is_facebook_page_the_listed_website
         )
         if criteria.only_without_website and has_untraced_website:
             return CandidateVerdict(

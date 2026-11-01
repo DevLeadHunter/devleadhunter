@@ -24,9 +24,15 @@ from enums.website_status import WebsiteStatus
 from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
+from scrappers.google_result_link import GoogleResultLink
 from services.decision_maker.normalize import company_similarity, company_tokens, fold
 from services.prospect_search.business_name import COMMON_NAME_WORDS, NAME_LINK_WORDS, BusinessName
-from services.prospect_search.candidate_facts import BRAND_OUTLET_EVIDENCE_PREFIX, CandidateFacts
+from services.prospect_search.candidate_facts import (
+    BRAND_OUTLET_EVIDENCE_PREFIX,
+    EMAIL_DOMAIN_SUBJECT,
+    PRIVACY_PROXIED_DOMAIN_SUBJECT,
+    CandidateFacts,
+)
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.name_in_address import NameInAddress
@@ -89,8 +95,6 @@ _DISTINCTIVE_TOKEN_MIN_CHARS: int = 5
 _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
-_EMAIL_DOMAIN_SUBJECT: str = "Le domaine de son email"
-_PRIVACY_PROXIED_DOMAIN_SUBJECT: str = "Le domaine masqué par un service d'anonymat"
 
 _COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 # Directories, marketplaces and network sites missing from the shared blocklist. A garage's page on
@@ -452,7 +456,7 @@ class CandidateVerifier:
         """The organic results of a parsed search page, as lines the rules and the judge read."""
         lines: list[SearchResultLine] = []
         for result in page.get("organic") or []:
-            link = str(result.get("link") or "")
+            link = GoogleResultLink.address_of(result)
             if not link.startswith("http"):
                 continue
             lines.append(
@@ -726,7 +730,7 @@ class CandidateVerifier:
         if facts.email is None:
             return
         await cls._consider_business_domain(
-            facts, facts.email.rsplit("@", 1)[-1], trade, subject=_EMAIL_DOMAIN_SUBJECT, notes_unnamed_site=True
+            facts, facts.email.rsplit("@", 1)[-1], trade, subject=EMAIL_DOMAIN_SUBJECT, notes_unnamed_site=True
         )
 
     @classmethod
@@ -743,7 +747,7 @@ class CandidateVerifier:
         """
         for domain in facts.privacy_proxied_domains:
             await cls._consider_business_domain(
-                facts, domain, trade, subject=_PRIVACY_PROXIED_DOMAIN_SUBJECT, notes_unnamed_site=False
+                facts, domain, trade, subject=PRIVACY_PROXIED_DOMAIN_SUBJECT, notes_unnamed_site=False
             )
 
     @staticmethod

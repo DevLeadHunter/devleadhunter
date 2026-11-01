@@ -18,6 +18,10 @@ _MAINLAND_LANDLINE_LEADS: tuple[str, ...] = ("+331", "+332", "+333", "+334", "+3
 BRAND_OUTLET_EVIDENCE_PREFIX: str = "marque "
 # Where the Google listing's own website is read: its « Site Web » button, its panel.
 _LISTING_WEBSITE_SOURCES: tuple[str, ...] = ("Bouton « Site Web » de la fiche Google", "Fiche Google")
+# How the evidence names a domain the business writes from: a website read there is guessed, Google never gave it.
+EMAIL_DOMAIN_SUBJECT: str = "Le domaine de son email"
+PRIVACY_PROXIED_DOMAIN_SUBJECT: str = "Le domaine masqué par un service d'anonymat"
+_EMAIL_DOMAIN_SUBJECTS: tuple[str, ...] = (EMAIL_DOMAIN_SUBJECT, PRIVACY_PROXIED_DOMAIN_SUBJECT)
 
 
 @dataclass
@@ -134,6 +138,21 @@ class CandidateFacts:
         return any(
             line.get("fact") == "facebook" and line.get("source") in _LISTING_WEBSITE_SOURCES for line in self.evidence
         )
+
+    @property
+    def is_website_guessed_from_email_domain(self) -> bool:
+        """
+        Whether the known website is only the front page of the domain the business writes from.
+
+        Google never tied that page to the business: a parked « exemple.fr » does not stand for the website its
+        listing declares, which may be another address (« exemple-automobiles.fr »).
+        """
+        sources = [
+            line.get("source", "")
+            for line in self.evidence
+            if line.get("fact") == "website" and line.get("value") == self.website
+        ]
+        return bool(sources) and all(source.startswith(_EMAIL_DOMAIN_SUBJECTS) for source in sources)
 
     @property
     def privacy_proxied_domains(self) -> list[str]:

@@ -292,6 +292,24 @@ def test_a_french_manager_is_the_head_and_a_quebec_one_is_not() -> None:
     assert _owners([profile], quebec) == []
 
 
+def test_a_result_google_hides_behind_its_redirect_is_credited_to_the_site_it_shows() -> None:
+    """Google's « /goto » link hides the profile's address: the proof names the site written under the title."""
+    profile = {
+        **_result(
+            "Luc Exemple - Gérant | Exemple Services Extérieurs",
+            "Luc Exemple · Gérant | Exemple Services Extérieurs | Jardinier Paysagiste à Pau",
+            link="https://www.google.com/goto?url=CAESexemple",
+        ),
+        "display_link": "https://fr.linkedin.com › in › exemple",
+    }
+    context = ResolutionContext(company_name="Exemple Services Extérieurs", city="Pau", country="FR")
+
+    [candidate] = OwnerMentions.candidates_in([profile], context)
+
+    assert candidate.provenance is not None
+    assert candidate.provenance.endswith("(fr.linkedin.com)")
+
+
 def test_a_presentation_opening_with_a_person_and_a_trade_names_the_owner() -> None:
     """The business presents itself as « Luc Exemple - Paysagiste indépendant »: Luc Exemple runs it."""
     context = ResolutionContext(

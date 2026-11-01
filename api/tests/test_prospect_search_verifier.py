@@ -859,21 +859,30 @@ def test_initials_alone_or_a_word_the_business_does_not_carry_do_not_make_its_do
     assert facts.website is None
 
 
-def test_a_parked_domain_named_after_the_business_leaves_it_without_a_working_website(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("has_website_button", "expected_status"), [(None, CandidateStatus.KEPT), (True, CandidateStatus.TO_CONFIRM)]
+)
+def test_a_parked_domain_named_after_the_business_is_neither_a_website_nor_the_one_its_listing_declares(
+    monkeypatch: pytest.MonkeyPatch, has_website_button: bool | None, expected_status: CandidateStatus
 ) -> None:
+    """
+    A parked email domain leaves the business without a working website; the website its Google listing declares
+    may sit at another address (Welington Automobiles writes from a parked « welington.fr » and runs
+    « welingtonautomobiles.fr »).
+    """
     facts = _facts(
-        name="Welington Automobiles",
+        name="Wilmore Automobiles",
         city="Montluçon",
         country="FR",
         phone="04 00 00 00 32",
-        email="contact@welington.fr",
+        email="contact@wilmore.fr",
         email_proof_level=EmailProofLevel.DIRECTORY.value,
+        has_website_button=has_website_button,
         is_verified=True,
     )
     _serve_front_page(
         monkeypatch,
-        "https://welington.fr",
+        "https://wilmore.fr",
         '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script>'
         "</head></html>",
     )
@@ -887,7 +896,30 @@ def test_a_parked_domain_named_after_the_business_leaves_it_without_a_working_we
     verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
 
     assert facts.website_status == WebsiteStatus.DEAD.value
-    assert verdict.status == CandidateStatus.KEPT
+    assert verdict.status == expected_status
+
+
+def test_the_business_s_own_site_google_hides_behind_its_redirect_is_its_website() -> None:
+    """Search n° 17: the result giving Welington Automobiles' email was its own site, behind a « /goto » link."""
+    facts = _facts(name="Welington Automobiles", city="Montluçon", country="FR", phone="04 00 00 00 32")
+    page = {
+        "organic": [
+            {
+                **_result(
+                    "https://www.google.com/goto?url=CAEShAEB6zswFa15c_X0UKzJbxn7VHnYWp2tKcWgjAoOtcVo66UDknDMUTdhIlgc",
+                    "Acheter véhicule occasion multimarque petit budget",
+                    "03100 Montluçon. Contacts. Mail : contact@welington.fr. Téléphone : 04 00 00 00 32.",
+                ),
+                "display_link": "https://welingtonautomobiles.fr › vehicules",
+            }
+        ]
+    }
+
+    _verify(facts, page, trade=_GARAGE)
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website == "https://welingtonautomobiles.fr/"
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.HAS_WEBSITE)
 
 
 @pytest.mark.parametrize(
