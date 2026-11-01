@@ -384,7 +384,7 @@ class Settings(BaseSettings):
         description="BrightData API bearer token for Web Unlocker and SERP requests",
     )
     brightdata_zone: str = Field(
-        default="mcp_unlocker",
+        default="devleadhunter_unlocker",
         alias="BRIGHTDATA_ZONE",
         description="BrightData zone name used for Web Unlocker requests",
     )

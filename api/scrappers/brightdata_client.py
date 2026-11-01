@@ -85,16 +85,16 @@ class BrightDataClient:
         """Load the Bright Data zone name from settings, falling back to the env.
 
         Returns:
-            The zone name, defaulting to ``"mcp_unlocker"``.
+            The zone name, defaulting to ``"devleadhunter_unlocker"``.
         """
         try:
             from core.config import settings
 
-            return settings.brightdata_zone or "mcp_unlocker"
+            return settings.brightdata_zone or "devleadhunter_unlocker"
         except Exception:
             import os
 
-            return os.environ.get("BRIGHTDATA_ZONE", "mcp_unlocker")
+            return os.environ.get("BRIGHTDATA_ZONE", "devleadhunter_unlocker")
 
     async def fetch(self, url: str, *, zone: str | None = None) -> str:
         """Fetch *url* through the Web Unlocker and return the raw HTML.
