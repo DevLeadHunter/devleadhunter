@@ -115,6 +115,62 @@ def test_an_independent_garage_s_listing_sets_nothing_aside(
     assert offline_enrichment == []
 
 
+def test_a_presentation_saying_approved_by_a_brand_sets_the_garage_aside(
+    db: Session, offline_enrichment: list[tuple[int, str]]
+) -> None:
+    prospect = _garage(db, "Garage Exemple")
+    description = "Le Garage Exemple est un atelier de réparation et d'entretien automobile, agrée Renault."
+
+    _enrich(db, prospect, EnrichmentData(place_title="Garage Exemple", description=description, rating=4.8))
+
+    assert offline_enrichment == [
+        (prospect.id, "Sa présentation le dit agent ou réparateur agréé Renault : le patron ne décide pas seul.")
+    ]
+
+
+def test_a_network_s_sign_on_the_photos_sets_the_garage_aside(
+    db: Session, offline_enrichment: list[tuple[int, str]]
+) -> None:
+    prospect = _garage(db, "Garage Exemple")
+    labels = {
+        "https://exemple.invalid/1.jpg": {"description": "Mécanicien inspectant l'avant d'une voiture blanche."},
+        "https://exemple.invalid/2.jpg": {
+            "description": "Panneau promotionnel avec logo AD Garage Expert, coordonnées et horaires d'ouverture."
+        },
+    }
+
+    EnrichmentService.set_aside_network_on_photos(db, prospect.id, labels)
+
+    assert offline_enrichment == [
+        (
+            prospect.id,
+            "Ses photos montrent l'enseigne d'un réseau ou d'une marque (« Panneau promotionnel avec logo AD Garage "
+            "Expert, coordonnées et horaires d'ouverture ») : le patron ne décide pas seul.",
+        )
+    ]
+
+
+def test_a_product_on_the_photos_sets_nothing_aside_even_a_network_s(
+    db: Session, offline_enrichment: list[tuple[int, str]]
+) -> None:
+    prospect = _garage(db, "Garage Exemple")
+    captions = (
+        "Batterie Bosch neuve posée sur l'établi de l'atelier.",
+        "Calculateur Bosch EDC17 ouvert sur le banc de diagnostic.",
+        "Bidons d'huile Total Quartz alignés sur une étagère.",
+        "Boîte de plaquettes de frein Eurorepar posée sur l'établi.",
+        "Bidon d'huile Motrio 5W30 avec son logo bien visible.",
+        "Renault Clio blanche stationnée devant le garage.",
+    )
+    labels = {
+        f"https://exemple.invalid/{index}.jpg": {"description": caption} for index, caption in enumerate(captions)
+    }
+
+    EnrichmentService.set_aside_network_on_photos(db, prospect.id, labels)
+
+    assert offline_enrichment == []
+
+
 def test_the_known_facebook_page_of_the_garage_reaches_its_social_links(
     db: Session, offline_enrichment: list[tuple[int, str]]
 ) -> None:

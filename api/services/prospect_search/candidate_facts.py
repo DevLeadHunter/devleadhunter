@@ -4,15 +4,18 @@ Candidate facts — what a search knows about one business while it works on it.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from enums.prospect_search import CandidateOrigin, EmailProofLevel
 from enums.website_status import WebsiteStatus
 from services.country_profiles import CountryProfiles
+from services.decision_maker.normalize import fold
 from services.french_overseas import FrenchOverseas, OverseasDepartment
 from services.sms.phone_normalizer import PhoneNumberPlans, is_number_of_country, to_e164
 
 _SNIPPET_MAX_CHARS: int = 240
+_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 _MAINLAND_LANDLINE_LEADS: tuple[str, ...] = ("+331", "+332", "+333", "+334", "+335")
 # The chain evidence of a brand's agent or dealer reads « marque Peugeot ».
 BRAND_OUTLET_EVIDENCE_PREFIX: str = "marque "
@@ -63,6 +66,20 @@ class CandidateFacts:
     def town(self) -> str:
         """Town of the business, or the searched town when the listing gave none."""
         return self.city or self.searched_city or ""
+
+    def is_town_named_in(self, text: str) -> bool:
+        """
+        Whether a text names the business's town, however its words are joined (« Saint Paul les Dax » for
+        « Saint-Paul-lès-Dax »).
+
+        Args:
+            text: A page, a result's text, an address.
+
+        Returns:
+            True when the town's words follow one another in the text.
+        """
+        town_words = _WORD_SEPARATORS_RE.sub(" ", fold(self.town)).strip()
+        return bool(town_words) and f" {town_words} " in f" {_WORD_SEPARATORS_RE.sub(' ', fold(text))} "
 
     @property
     def is_swiss_directory_unanswered(self) -> bool:

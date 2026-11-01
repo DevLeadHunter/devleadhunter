@@ -307,7 +307,7 @@ class EnrichmentService:
                         data.description, business_name=prospect.name, city=prospect.city
                     )
                 self._apply_data(record, data)
-                self._set_aside_network_outlet(db, prospect, record.place_title)
+                self._set_aside_network_outlet(db, prospect, record.place_title, record.description)
                 # A Facebook page on the Maps listing (as the "website" link or a social link) is not a
                 # real website — capture it as the prospect's facebook_url so a later complementary
                 # Facebook enrichment can recover a second contact email (e.g. contact@…).
@@ -462,9 +462,12 @@ class EnrichmentService:
             record.social_links = {**(record.social_links or {}), "facebook": page}
 
     @staticmethod
-    def _set_aside_network_outlet(db: Session, prospect: ProspectDB, place_title: str | None) -> None:
+    def _set_aside_network_outlet(
+        db: Session, prospect: ProspectDB, place_title: str | None, description: str | None = None
+    ) -> None:
         """
-        Set aside a business whose Google listing names a network or the brand it sells (« Garage Exemple - Motrio »).
+        Set aside a business whose Google listing names a network or the brand it sells (« Garage Exemple - Motrio »),
+        or whose presentation says it is a brand's agent or approved repairer (« atelier … agréé Renault »).
 
         The same networks and brands as the prospect search's: the owner of such an outlet does not decide alone
         on a website.
@@ -473,21 +476,64 @@ class EnrichmentService:
             db: Active database session.
             prospect: The business being enriched.
             place_title: The title of its Google listing, as the enrichment read it.
+            description: Its presentation, as the enrichment read it.
         """
         from services.prospect_search.network_outlets import NetworkOutlets
         from services.prospect_search.trade_catalog import TradeCatalog
         from services.prospect_service import prospect_service
 
-        title = (place_title or "").strip()
-        if not title or prospect.is_dismissed:
+        if prospect.is_dismissed:
             return
-        brand = TradeCatalog.resolve(prospect.category or "").brand_outlet_of(title, None)
-        if brand is None and not NetworkOutlets.names_network(title):
+        trade = TradeCatalog.resolve(prospect.category or "")
+        title = (place_title or "").strip()
+        if title and (trade.brand_outlet_of(title, None) is not None or NetworkOutlets.names_network(title)):
+            reason = (
+                f"Sa fiche Google « {title} » est celle d'un réseau ou d'une marque : le patron ne décide pas seul."
+            )
+        else:
+            brand = trade.brand_dealt_in_text(description or "")
+            if brand is None:
+                return
+            reason = f"Sa présentation le dit agent ou réparateur agréé {brand} : le patron ne décide pas seul."
+        prospect_service.dismiss(db, prospect.id, reason=reason, dismissed_by_user_id=None)
+
+    @staticmethod
+    def set_aside_network_on_photos(db: Session, prospect_id: int, labels: dict[str, Any]) -> None:
+        """
+        Set aside a business whose photos show a network's or a brand's sign (« enseigne 'Top Garage' », « panneau
+        avec logo AD Garage Expert », « Agence Renault »), as the vision labels describe them.
+
+        A product never counts, even of a network (« batterie Bosch », « plaquettes de frein Eurorepar »).
+
+        Args:
+            db: Active database session.
+            prospect_id: The business whose photos were labelled.
+            labels: Its photo labels, by photo address, each with the caption the vision model wrote.
+        """
+        from services.prospect_search.network_outlets import NetworkOutlets
+        from services.prospect_search.trade_catalog import TradeCatalog
+        from services.prospect_service import prospect_service
+
+        prospect = db.get(ProspectDB, prospect_id)
+        if prospect is None or prospect.is_dismissed:
+            return
+        trade = TradeCatalog.resolve(prospect.category or "")
+        captions = [str(label.get("description") or "") for label in labels.values() if isinstance(label, dict)]
+        caption = next(
+            (
+                caption
+                for caption in captions
+                if NetworkOutlets.shows_network_sign(caption) or trade.brand_dealt_in_text(caption) is not None
+            ),
+            None,
+        )
+        if caption is None:
             return
         prospect_service.dismiss(
             db,
             prospect.id,
-            reason=f"Sa fiche Google « {title} » est celle d'un réseau ou d'une marque : le patron ne décide pas seul.",
+            reason=f"Ses photos montrent l'enseigne d'un réseau ou d'une marque (« {caption.rstrip('.')} ») : le "
+            "patron ne décide pas seul.",
             dismissed_by_user_id=None,
         )
 

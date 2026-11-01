@@ -21,8 +21,17 @@ _NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 _LEADING_DEALER_WORDS: frozenset[str] = frozenset(
     {"garage", "garages", "agence", "agent", "concession", "concessionnaire", "ets", "etablissements", "sarl", "sas"}
 )
-# Words naming a brand's outlet wherever they stand (« Garage Exemple Agent Renault »).
-_DEALER_WORDS: tuple[str, ...] = ("agent", "concession", "concessionnaire", "distributeur", "reparateur agree")
+# Words naming a brand's outlet wherever they stand (« Garage Exemple Agent Renault », « Agence Renault »).
+_DEALER_WORDS: tuple[str, ...] = (
+    "agent",
+    "agence",
+    "concession",
+    "concessionnaire",
+    "distributeur",
+    "reparateur agree",
+)
+# A brand's approval read in a text (« atelier … agréé Renault »), besides the dealer words.
+_APPROVED_WORD: str = "agree"
 _DEALER_CATEGORY_WORD: str = "concessionnaire"
 _SHORT_BRAND_MAX_CHARS: int = 3
 # A brand opening a word of an email address (« aixamautomobile ») must be long enough not to open a name by chance.
@@ -161,6 +170,26 @@ class TradeProfile:
                 for segment in segments
             )
             if is_named:
+                return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
+        return None
+
+    def brand_dealt_in_text(self, text: str) -> str | None:
+        """
+        The brand a text says the business is the agent, the dealer or the approved repairer of (« Garage Exemple Agent
+        Renault », « atelier de réparation … agréé Renault », « Concessionnaire Peugeot »).
+
+        Only the brand right after such a word counts: a description listing the makes it repairs (« Peugeot,
+        Renault, toutes marques ») names no dealer.
+
+        Args:
+            text: A description, a directory's title, a photo's caption.
+
+        Returns:
+            The brand, written for a reader (« Renault »), or None.
+        """
+        words = f" {_NAME_WORD_SEPARATORS_RE.sub(' ', fold(text)).strip()} "
+        for brand in self.brand_names:
+            if any(f" {word} {brand} " in words for word in (*_DEALER_WORDS, _APPROVED_WORD)):
                 return brand.upper() if len(brand) <= _SHORT_BRAND_MAX_CHARS else brand.title()
         return None
 

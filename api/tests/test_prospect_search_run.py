@@ -57,6 +57,7 @@ from schemas.prospect_search import (
     ProspectSearchDetail,
     RefusedCandidateDecision,
 )
+from scrappers.brightdata_client import BrightDataAccountError, BrightDataClient
 from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_website_button import google_website_button
 from services.auth_service import require_auth
@@ -2090,3 +2091,39 @@ def test_a_brand_dealer_listing_is_discarded_without_any_search(
     assert (dealer.status, dealer.reject_reason) == (CandidateStatus.REJECTED.value, CandidateRejectReason.CHAIN.value)
     assert dealer.reject_detail == "Agent ou concessionnaire Peugeot : le patron ne décide pas seul."
     assert not any("Peugeot" in query for query in runner._client.queries)  # type: ignore[attr-defined]
+
+
+class _RefusedAccountClient(_CannedSearchClient):
+    """Bright Data refusing the account itself: every page it is asked for is refused."""
+
+    async def google_local_html(self, query: str, *, country: str = "FR", start: int = 0) -> str | None:
+        self.request_count += 1
+        raise BrightDataAccountError("client_10020 : Account is suspended")
+
+
+def test_a_bright_data_account_refused_stops_the_search_saying_so(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every Google page came back empty for hours: the search stops at the first refusal, with Bright Data's reason."""
+    monkeypatch.setattr(runner_module, "BrightDataClient", _RefusedAccountClient)
+    search_id = _create_search(db)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    search = db.get(ProspectSearch, search_id)
+
+    assert search is not None
+    assert (search.status, search.error_message) == (
+        ProspectSearchStatus.FAILED.value,
+        "Bright Data : client_10020 : Account is suspended",
+    )
+    assert any("Réactivez le compte Bright Data" in line["message"] for line in search.journal)
+
+
+def test_bright_data_s_refusal_of_the_account_is_read_in_its_headers() -> None:
+    """The account's refusal comes with a 200 and an empty body: only the headers tell it from an empty page."""
+    refused = {"x-brd-err-code": "client_10020", "x-brd-err-msg": "Account is suspended"}
+
+    assert BrightDataClient.account_refusal(refused) == "client_10020 : Account is suspended"
+    assert BrightDataClient.account_refusal({"x-brd-err-code": "target_40001"}) is None
+    assert BrightDataClient.account_refusal({}) is None

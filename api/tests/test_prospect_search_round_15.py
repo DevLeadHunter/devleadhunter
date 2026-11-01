@@ -168,7 +168,9 @@ def test_a_stop_and_go_partner_is_a_network_outlet() -> None:
     assert NetworkOutlets.names_network("Garage Exemple Sàrl | stop+go | Garage automobiles à Exempleville")
     assert NetworkOutlets.is_network_page("http://www.exemple.stopgo.ch/")
     CandidateVerifier(_OnePageClient(None), _ScriptedJudge())._read_knowledge_panel(  # type: ignore[arg-type]
-        facts, {"name": "Garage Exemple Sàrl | stop+go | Garage automobiles à Exempleville", "phone": "032 000 00 13"}
+        facts,
+        {"name": "Garage Exemple Sàrl | stop+go | Garage automobiles à Exempleville", "phone": "032 000 00 13"},
+        _GARAGE,
     )
     assert facts.is_chain
 

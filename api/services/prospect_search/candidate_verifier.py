@@ -11,11 +11,12 @@ judge. Every fact kept carries the page it was read on.
 from __future__ import annotations
 
 import difflib
+import html
 import json
 import logging
 import re
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urldefrag, urljoin, urlparse
 
 import httpx
 
@@ -105,6 +106,10 @@ _PHONE_DIGITS_COMPARED: int = 9
 _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
+_LINK_RE: re.Pattern[str] = re.compile(
+    r"<a\b[^>]*?\bhref=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>", re.IGNORECASE | re.DOTALL
+)
+_CONTACT_WORD: str = "contact"
 # A name of one word is anybody's domain; a listing's tagline is nobody's.
 _NAMED_DOMAIN_MIN_WORDS: int = 2
 _NAMED_DOMAIN_MAX_WORDS: int = 4
@@ -250,7 +255,7 @@ class CandidateVerifier:
                 proof_url=facts.google_maps_url or f"https://{domain_in_name.group(1).lower()}/",
             )
 
-        self._read_knowledge_panel(facts, page.get("knowledge"))
+        self._read_knowledge_panel(facts, page.get("knowledge"), trade)
         results = self.result_lines(page)
         has_unsettled_results = self._read_results(facts, results, trade)
         self._read_swiss_directory_extracts(facts, results, trade)
@@ -515,14 +520,10 @@ class CandidateVerifier:
         """Words of the business name that tell it from another of the same trade and town."""
         return {token for token in cls.own_name_words(facts, trade) if len(token) >= 4}
 
-    @staticmethod
-    def own_name_words(facts: CandidateFacts, trade: TradeProfile) -> set[str]:
+    @classmethod
+    def own_name_words(cls, facts: CandidateFacts, trade: TradeProfile) -> set[str]:
         """Words of the business name that belong to it alone: no linking word, trade word, common word or town."""
-        trade_words = {
-            token
-            for alias in (*trade.aliases, *trade.name_abbreviations, trade.label)
-            for token in company_tokens(alias)
-        }
+        trade_words = cls._trade_words(trade)
         town_words = company_tokens(facts.town)
         return {
             token
@@ -531,6 +532,15 @@ class CandidateVerifier:
             and token not in COMMON_NAME_WORDS
             and token not in trade_words
             and token not in town_words
+        }
+
+    @staticmethod
+    def _trade_words(trade: TradeProfile) -> set[str]:
+        """Words a business name says its trade with (« garage », « paysagiste »)."""
+        return {
+            token
+            for alias in (*trade.aliases, *trade.name_abbreviations, trade.label)
+            for token in company_tokens(alias)
         }
 
     @classmethod
@@ -572,9 +582,8 @@ class CandidateVerifier:
         ):
             return False
         text = fold(line.text)
-        is_in_town = bool(facts.town) and fold(facts.town) in text
         trade_words = (*trade.category_keywords, *trade.aliases)
-        return is_in_town or any(fold(word) in text for word in trade_words)
+        return facts.is_town_named_in(line.text) or any(fold(word) in text for word in trade_words)
 
     @staticmethod
     def _swaps_the_trade(title: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
@@ -615,10 +624,11 @@ class CandidateVerifier:
         path_segments = [segment for segment in urlparse(link).path.split("/") if segment]
         return carries_name or not path_segments
 
-    def _read_knowledge_panel(self, facts: CandidateFacts, panel: Any) -> None:
+    def _read_knowledge_panel(self, facts: CandidateFacts, panel: Any, trade: TradeProfile) -> None:
         """
-        Take the phone, address, rating, website and status of Google's panel when it is this business, and the network
-        its full name carries (« Garage Exemple | stop+go | … »).
+        Take the phone, address, rating, website and status of Google's panel when it is this business, the network
+        its full name carries (« Garage Exemple | stop+go | … ») and the brand its presentation says it is approved
+        by (« atelier … agréé Renault »).
         """
         if not isinstance(panel, dict):
             return
@@ -630,7 +640,7 @@ class CandidateVerifier:
         panel_name = BusinessName.clean(str(panel.get("name") or ""))
         has_same_name = company_similarity(panel_name, facts.name) >= _SAME_BUSINESS_SIMILARITY
         panel_address = str(panel.get("address") or "")
-        is_in_same_town = bool(facts.town) and fold(facts.town) in fold(panel_address)
+        is_in_same_town = facts.is_town_named_in(panel_address)
         is_listing_itself = facts.origin == CandidateOrigin.GOOGLE_LOCAL.value and has_same_name
         if not (has_same_phone or is_listing_itself or (has_same_name and is_in_same_town)):
             is_placed_in_another_town = bool(panel_address) and bool(facts.town) and not is_in_same_town
@@ -673,11 +683,18 @@ class CandidateVerifier:
         if NetworkOutlets.names_network(full_panel_name):
             facts.is_chain = True
             facts.add_evidence("chain", full_panel_name, source="Fiche Google", url=maps_link or None)
+        dealt_brand = trade.brand_dealt_in_text(str(panel.get("merchant_description") or ""))
+        if dealt_brand is not None and facts.outlet_brand is None:
+            facts.is_chain = True
+            facts.add_evidence(
+                "chain", f"{BRAND_OUTLET_EVIDENCE_PREFIX}{dealt_brand}", source="Présentation de sa fiche Google"
+            )
 
     def _read_results(self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile) -> bool:
         """
         Sort the results by rule: Facebook page, registry number, own website, a page of its network's or its brand's
-        site naming it in its town (« garage.toyota.ch/exemple-develier »).
+        site naming it in its town (« garage.toyota.ch/exemple-develier »), a directory's title calling it a brand's
+        agent (« Garage Exemple Agent Renault »).
 
         Returns:
             Whether results naming the business remain on hosts the rules do not know.
@@ -697,7 +714,7 @@ class CandidateVerifier:
                     facts.facebook_url = facebook_page
                     facts.add_evidence("facebook", facebook_page, source="Recherche Google", url=line.link)
                 continue
-            is_in_town = bool(facts.town) and fold(facts.town) in fold(line.text)
+            is_in_town = facts.is_town_named_in(line.text)
             is_named_there = is_in_town and self.names_business(line.title, facts, trade)
             if NetworkOutlets.is_network_page(line.link) and is_named_there:
                 facts.is_chain = True
@@ -712,11 +729,23 @@ class CandidateVerifier:
                     url=line.link,
                     snippet=line.text,
                 )
+            dealt_brand = (
+                trade.brand_dealt_in_text(line.title) if self.names_business(line.title, facts, trade) else None
+            )
+            if dealt_brand is not None and facts.outlet_brand is None:
+                facts.is_chain = True
+                facts.add_evidence(
+                    "chain", f"{BRAND_OUTLET_EVIDENCE_PREFIX}{dealt_brand}", source=line.host, url=line.link
+                )
             if self.is_known_third_party(line.link, line.host):
                 continue
             is_about_business = self.names_business(line.text, facts, trade)
             is_showing_its_contact = self.shows_contact_of(line.text, facts)
-            if self._is_host_named_after(line.host, distinctive) and (is_about_business or is_showing_its_contact):
+            is_host_spelling_its_name = NameInAddress.domain_names_business(line.host, facts)
+            is_own_host = self._is_host_named_after(line.host, distinctive) or (
+                is_host_spelling_its_name and (is_in_town or is_showing_its_contact)
+            )
+            if is_own_host and (is_about_business or is_showing_its_contact):
                 self.consider_website(facts, line.link, source="Recherche Google", proof_url=line.link)
             elif is_about_business:
                 has_unsettled_results = True
@@ -730,7 +759,8 @@ class CandidateVerifier:
         Take as the business's website a domain carrying its name whose page shows its phone or its email.
 
         Its contact page or legal notice publishes them (« garageexemple.fr/contact »), even when its Google listing
-        declares only a Facebook page.
+        declares only a Facebook page. A domain spelling its whole name beside a trade word counts even when its own
+        word is short (« exemauto.fr » for Garage Exem'Auto).
 
         Args:
             facts: The candidate, completed in place.
@@ -740,7 +770,8 @@ class CandidateVerifier:
         """
         if cls.is_known_third_party(line.link, line.host) or not cls.shows_contact_of(line.text, facts):
             return
-        if cls._is_host_named_after(line.host, cls.distinctive_tokens(facts, trade)):
+        is_host_named_after = cls._is_host_named_after(line.host, cls.distinctive_tokens(facts, trade))
+        if is_host_named_after or NameInAddress.domain_names_business(line.host, facts):
             site = urlparse(line.link)
             cls.consider_website(facts, f"{site.scheme}://{site.netloc}/", source=source, proof_url=line.link)
 
@@ -963,7 +994,8 @@ class CandidateVerifier:
 
         Google's results for the name may show only directories, and a page of local results read from the parsed JSON
         carries no « Site Web » button. A front page there is the business's website when it names the business and
-        shows its number or its town: a namesake's site elsewhere does neither.
+        shows its number or its town, there or on the page its menu calls « Contact », where a small site often writes
+        them alone: a namesake's site elsewhere does neither.
 
         Args:
             facts: The candidate, completed in place.
@@ -974,10 +1006,15 @@ class CandidateVerifier:
             if front_page is None:
                 continue
             page_url, page_text = front_page
-            shows_its_town = bool(facts.town) and fold(facts.town) in fold(page_text)
-            if not cls.names_business(page_text, facts, trade) or not (
-                cls.shows_contact_of(page_text, facts) or shows_its_town
-            ):
+            if not cls.names_business(page_text, facts, trade):
+                continue
+            shows_its_contact_or_town = cls.shows_contact_of(page_text, facts) or facts.is_town_named_in(page_text)
+            if not shows_its_contact_or_town:
+                contact_text = await cls._contact_page_text(page_url, page_text)
+                shows_its_contact_or_town = cls.shows_contact_of(contact_text, facts) or facts.is_town_named_in(
+                    contact_text
+                )
+            if not shows_its_contact_or_town:
                 continue
             status = await website_liveness_service.check_website_status(page_url)
             facts.website = page_url
@@ -988,7 +1025,8 @@ class CandidateVerifier:
     @classmethod
     def domains_named_after(cls, facts: CandidateFacts, trade: TradeProfile) -> list[str]:
         """
-        The domains a business would register under its name, its country's first (« espaces-verts-exemple.fr »).
+        The domains a business would register under its name, its country's first (« espaces-verts-exemple.fr »), with
+        and without the trade word its name opens with (« exemauto.fr » for Garage Exem'Auto).
 
         A name without a word of its own (« Garage du Centre »), a single word or a listing's long tagline gives none.
 
@@ -1002,9 +1040,13 @@ class CandidateVerifier:
         if not {word for word in cls.own_name_words(facts, trade) if not word.isdigit()}:
             return []
         words = re.findall(r"[a-z0-9]+", fold(BusinessName.without_legal_form(facts.name)))
-        if not _NAMED_DOMAIN_MIN_WORDS <= len(words) <= _NAMED_DOMAIN_MAX_WORDS:
-            return []
-        labels = dict.fromkeys(("-".join(words), "".join(words)))
+        spellings = [words, words[1:]] if words and words[0] in cls._trade_words(trade) else [words]
+        labels = dict.fromkeys(
+            label
+            for spelling in spellings
+            if _NAMED_DOMAIN_MIN_WORDS <= len(spelling) <= _NAMED_DOMAIN_MAX_WORDS
+            for label in ("-".join(spelling), "".join(spelling))
+        )
         return [
             f"{label}.{suffix}" for suffix in _NAMED_DOMAIN_SUFFIXES.get(facts.country, ("com",)) for label in labels
         ]
@@ -1118,6 +1160,38 @@ class CandidateVerifier:
                     return None
                 return str(response.url), response.text[:_OWN_DOMAIN_READ_CHARS]
         return None
+
+    @staticmethod
+    async def _contact_page_text(page_url: str, page_text: str) -> str:
+        """
+        The first characters of the page a site's front page links as its « Contact », on the same site.
+
+        Args:
+            page_url: The front page's final address.
+            page_text: The front page's first characters.
+
+        Returns:
+            The contact page's first characters, or an empty text when the site links none or it does not answer.
+        """
+        site_host = (urlparse(page_url).hostname or "").removeprefix("www.")
+        for match in _LINK_RE.finditer(page_text):
+            link = urldefrag(urljoin(page_url, html.unescape(match.group(1)))).url
+            label = re.sub(r"<[^>]+>", " ", match.group(2))
+            is_same_site = (urlparse(link).hostname or "").removeprefix("www.") == site_host
+            is_contact_link = _CONTACT_WORD in fold(f"{link} {label}")
+            if not is_same_site or not is_contact_link or link.rstrip("/") == page_url.rstrip("/"):
+                continue
+            async with httpx.AsyncClient(
+                timeout=_OWN_DOMAIN_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers=website_liveness_service.REQUEST_HEADERS,
+            ) as http:
+                try:
+                    response = await http.get(link)
+                except httpx.HTTPError:
+                    return ""
+            return response.text[:_OWN_DOMAIN_READ_CHARS] if response.status_code == 200 else ""
+        return ""
 
     def _apply_verdict(
         self, facts: CandidateFacts, verdict: JudgeVerdict | None, results: list[SearchResultLine], trade: TradeProfile

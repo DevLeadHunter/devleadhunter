@@ -80,6 +80,23 @@ _NETWORK_HOSTS: tuple[str, ...] = (
 )
 # Parts of a Facebook page's address that are no name: its kind of address, its number.
 _FACEBOOK_ADDRESS_WORDS: frozenset[str] = frozenset({"pages", "p", "people", "profile.php"})
+# Words a photo's caption describes a sign with: a network named beside one is the garage's sign, not a product's brand.
+_SIGN_WORDS: frozenset[str] = frozenset(
+    {
+        "enseigne",
+        "enseignes",
+        "panneau",
+        "panneaux",
+        "facade",
+        "facades",
+        "devanture",
+        "banniere",
+        "pancarte",
+        "totem",
+        "nomme",
+        "nommee",
+    }
+)
 _NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 
 
@@ -99,6 +116,23 @@ class NetworkOutlets:
         """
         name_words = f" {_NAME_WORD_SEPARATORS_RE.sub(' ', fold(name)).strip()} "
         return any(f" {network} " in name_words for network in _NETWORK_NAMES)
+
+    @classmethod
+    def shows_network_sign(cls, caption: str) -> bool:
+        """
+        Whether a photo's caption describes a network's sign (« façade avec enseigne 'Top Garage' »).
+
+        A network sells parts under its name too: « plaquettes de frein Eurorepar » or « bidon d'huile Motrio » show
+        no sign.
+
+        Args:
+            caption: The caption a vision model wrote for a photo of the business.
+
+        Returns:
+            True when the caption names a network beside a sign word (« enseigne », « panneau », « façade »…).
+        """
+        caption_words = set(_NAME_WORD_SEPARATORS_RE.split(fold(caption)))
+        return bool(caption_words & _SIGN_WORDS) and cls.names_network(caption)
 
     @staticmethod
     def is_network_page(url: str) -> bool:

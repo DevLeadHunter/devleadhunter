@@ -41,7 +41,7 @@ from enums.prospect_search import (
 )
 from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
-from scrappers.brightdata_client import BrightDataClient
+from scrappers.brightdata_client import BrightDataAccountError, BrightDataClient
 from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_local_results import GoogleLocalResultsParser, LocalListing
 from scrappers.google_website_button import google_website_button
@@ -133,9 +133,21 @@ class ProspectSearchRunner:
         self._stored_judge_call_count: int = 0
 
     async def run(self) -> None:
-        """Run the search; an unexpected error ends it as failed, with what was found kept."""
+        """
+        Run the search; an unexpected error ends it as failed, with what was found kept.
+
+        Bright Data refusing the account (suspended, unpaid) ends it at once, saying so: every page would come back
+        empty, and the search would read « no result » everywhere.
+        """
         try:
             await self._run()
+        except BrightDataAccountError as exc:
+            logger.error("Prospect search %s stopped, Bright Data refuses the account: %s", self._search_id, exc)
+            self._log(
+                f"Bright Data refuse les requêtes du compte ({exc}) : la recherche s'arrête. Réactivez le compte "
+                "Bright Data, puis relancez-la. Ce qui a été trouvé est conservé."
+            )
+            self._flush(status=ProspectSearchStatus.FAILED, error_message=f"Bright Data : {exc}"[:500])
         except Exception as exc:
             logger.error("Prospect search %s failed: %s", self._search_id, exc, exc_info=True)
             self._log("La recherche s'est arrêtée sur une erreur. Ce qui a été trouvé est conservé.")
@@ -605,6 +617,8 @@ class ProspectSearchRunner:
                     await swiss_registry.read_closing(facts)
                     await french_registry.read_closing(facts)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
+            except BrightDataAccountError:
+                raise
             except Exception as exc:
                 logger.warning("Prospect search %s: candidate %s failed: %s", self._search_id, candidate_id, exc)
                 verdict = CandidateVerdict(
