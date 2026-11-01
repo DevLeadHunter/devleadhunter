@@ -973,6 +973,30 @@ def _clean_review_text(raw: Any) -> str:
     return text
 
 
+# A five-star rating does not make a review praise: « … je suis un peu déçue car il ne répond plus aux messages ».
+_COMPLAINT_RE = re.compile(
+    r"\bd[ée][çc]u(?:e|s|es)?\b|\bd[ée]ception\b|\bne r[ée]pond (?:plus|pas|jamais)\b|\baucune r[ée]ponse\b"
+    r"|\bsans r[ée]ponse\b|\bjamais rappel|\b[àa] [ée]viter\b|\barnaque|\bescro(?:c|querie)|\bfuyez\b"
+    r"|\bne (?:le |la |les |vous )?recommande pas\b|\bme tourner vers un autre\b|\b[àa] regrets?\b",
+    re.IGNORECASE,
+)
+_NOT_DISAPPOINTED_RE = re.compile(r"\b(?:pas|jamais|aucunement)\s+(?:été\s+)?d[ée][çc]u(?:e|s|es)?\b", re.IGNORECASE)
+
+
+def is_complaint_review(text: Any) -> bool:
+    """
+    Whether a review complains, whatever its stars: the site and the about text show praise only.
+
+    Args:
+        text: The review's text.
+
+    Returns:
+        True when the text voices a disappointment (« déçue », « ne répond plus », « à éviter »…); « pas déçu »,
+        « vous ne serez pas déçus » read as praise.
+    """
+    return bool(_COMPLAINT_RE.search(_NOT_DISAPPOINTED_RE.sub("", str(text or ""))))
+
+
 _SPECIALTY_RE = re.compile(r"sp[ée]cialit[ée]s?\s*:\s*(.+)", re.IGNORECASE)
 _GLUED_LABEL_RE = re.compile(r"\s+[A-ZÀ-Ý][\wÀ-ÿ]*\s*:")
 
@@ -1061,7 +1085,7 @@ def map_prospect_and_enrichment(
         # can't be trusted as positive — both are dropped. (The enrichment record keeps every
         # review; this curation happens only for the generated site.)
         rating_value = review.get("rating")
-        if not isinstance(rating_value, (int, float)) or rating_value < 4:
+        if not isinstance(rating_value, (int, float)) or rating_value < 4 or is_complaint_review(text):
             continue
         author = str(review.get("author", "")).strip() or "Client"
         # Drop duplicate reviews at generation time. Scrapers can capture the same review twice, and

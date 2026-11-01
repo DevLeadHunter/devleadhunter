@@ -73,6 +73,13 @@ def test_a_text_too_long_is_cut_at_a_comma_and_never_on_a_dangling_word() -> Non
     assert clean_copy("Création de jardins — sur mesure ! 🌿", 80) == "Création de jardins, sur mesure."
 
 
+def test_markdown_emphasis_never_reaches_the_site() -> None:
+    assert clean_copy("Je suis Maxime et je tiens **Les Jardins de Tistou** à Perpignan.", 200) == (
+        "Je suis Maxime et je tiens Les Jardins de Tistou à Perpignan."
+    )
+    assert clean_copy("Taille de *haies* et __tonte__", 80, is_sentence=False) == "Taille de haies et tonte"
+
+
 def test_a_title_is_cut_without_a_full_stop() -> None:
     title = clean_copy(
         "Jardin en pente aménagé avec des jeunes plants alignés, des arbustes et des fleurs", 80, is_sentence=False
