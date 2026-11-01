@@ -833,10 +833,15 @@ _WRITTEN_TEXT_KEYS: tuple[str, ...] = (
     "heroBadge",
     "heroTitle",
     "subtitle",
+    "ctaQuoteLabel",
     "about",
+    "aboutHeading",
+    "servicesHeading",
     "servicesLead",
     "ctaTitle",
     "ctaLead",
+    "contactHeading",
+    "contactLead",
 )
 
 
@@ -852,11 +857,13 @@ def apply_section_overrides(
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
     realizations with its own photos and what they show, ``images`` the template's other photos
     (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
-    ``heroTitle`` and ``subtitle`` the title and the sentence under it, ``servicesLead`` the paragraph under
-    the services title, ``steps`` the « Notre méthode » steps, ``ctaTitle`` and ``ctaLead`` the banner above
-    the contact, ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the
-    « Pourquoi nous choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a
-    « services à la personne » provider. A template that never shows one of them just ignores its key.
+    ``heroTitle`` and ``subtitle`` the title and the sentence under it, ``ctaQuoteLabel`` the quote button,
+    ``aboutHeading`` the « À propos » title, ``servicesHeading`` and ``servicesLead`` the services title and the
+    paragraph under it, ``steps`` the « Notre méthode » steps, ``ctaTitle`` and ``ctaLead`` the banner above
+    the contact, ``contactHeading`` and ``contactLead`` the contact title and the paragraph under it,
+    ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the « Pourquoi nous
+    choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la
+    personne » provider. A template that never shows one of them just ignores its key.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
     """
@@ -908,9 +915,12 @@ _OVERRIDE_SECTIONS: dict[str, str] = {
     "heroBadge": "hero",
     "heroTitle": "hero",
     "subtitle": "hero",
+    "ctaQuoteLabel": "hero",
     "heroPoints": "hero",
     "trustItems": "trust",
     "about": "about",
+    "aboutHeading": "about",
+    "servicesHeading": "services",
     "servicesLead": "services",
     "services": "services",
     "strengths": "strengths",
@@ -920,6 +930,8 @@ _OVERRIDE_SECTIONS: dict[str, str] = {
     "taxCredit": "taxCredit",
     "ctaTitle": "contact",
     "ctaLead": "contact",
+    "contactHeading": "contact",
+    "contactLead": "contact",
 }
 
 

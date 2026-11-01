@@ -156,10 +156,15 @@ class DemoSiteUpdateRequest(BaseModel):
     # Written over the template's texts, kept across regenerations; ``""`` or ``[]`` goes back to the generated ones.
     hero_title: str | None = Field(default=None, max_length=90)
     hero_subtitle: str | None = Field(default=None, max_length=220)
+    cta_quote_label: str | None = Field(default=None, max_length=60)
+    services_heading: str | None = Field(default=None, max_length=90)
     services_lead: str | None = Field(default=None, max_length=300)
+    about_heading: str | None = Field(default=None, max_length=90)
     steps: list[DemoSiteMethodStep] | None = Field(default=None, max_length=6)
     cta_title: str | None = Field(default=None, max_length=90)
     cta_lead: str | None = Field(default=None, max_length=300)
+    contact_heading: str | None = Field(default=None, max_length=90)
+    contact_lead: str | None = Field(default=None, max_length=300)
 
 
 class DemoSiteServiceCardsConfig(BaseModel):

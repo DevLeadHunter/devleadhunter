@@ -1,7 +1,7 @@
 """
-The title, the sentence under it, the services lead, the contact banner and the « Notre méthode » steps written for a
-business are site overrides: they win over the template's texts, survive regenerations, follow the client's CMS edits,
-and an empty value goes back to the generated ones.
+The title, the sentence under it, the quote button, the section titles and leads, the contact banner and the « Notre
+méthode » steps written for a business are site overrides: they win over the template's texts, survive regenerations,
+follow the client's CMS edits, and an empty value goes back to the generated ones.
 """
 
 from __future__ import annotations
@@ -41,9 +41,14 @@ _STEPS = [
 _WRITTEN_TEXTS: dict[str, Any] = {
     "heroTitle": _FENCE_TITLE,
     "subtitle": "Poseur de clôtures à Bavilliers : grillage rigide, panneaux occultants et portails.",
+    "ctaQuoteLabel": "Demander un devis",
+    "servicesHeading": "Vos clôtures, de la vente à la pose",
     "servicesLead": "De la clôture de jardin au portail, un seul poseur du devis à la dernière vis.",
+    "aboutHeading": "Un poseur de clôtures à Bavilliers",
     "ctaTitle": "Un projet de clôture ?",
     "ctaLead": "Décrivez votre terrain, nous revenons vers vous avec un devis gratuit.",
+    "contactHeading": "Votre clôture, parlons-en",
+    "contactLead": "Appelez-nous ou laissez vos coordonnées : nous vous rappelons pour en parler.",
     "steps": _STEPS,
 }
 
@@ -159,10 +164,15 @@ def test_the_written_texts_are_saved_and_an_empty_value_removes_them(
         json={
             "hero_title": f"  {_FENCE_TITLE} ",
             "hero_subtitle": _WRITTEN_TEXTS["subtitle"],
+            "cta_quote_label": _WRITTEN_TEXTS["ctaQuoteLabel"],
+            "services_heading": _WRITTEN_TEXTS["servicesHeading"],
             "services_lead": _WRITTEN_TEXTS["servicesLead"],
+            "about_heading": _WRITTEN_TEXTS["aboutHeading"],
             "steps": [*_STEPS, {"title": " ", "description": "Sans titre."}],
             "cta_title": _WRITTEN_TEXTS["ctaTitle"],
             "cta_lead": _WRITTEN_TEXTS["ctaLead"],
+            "contact_heading": _WRITTEN_TEXTS["contactHeading"],
+            "contact_lead": f" {_WRITTEN_TEXTS['contactLead']} ",
         },
     )
 
@@ -171,7 +181,15 @@ def test_the_written_texts_are_saved_and_an_empty_value_removes_them(
     assert site.section_overrides == {"about": "Poseur de clôtures à Bavilliers.", **_WRITTEN_TEXTS}
 
     removed = client.patch(
-        f"{demo_sites_router.prefix}/{site.id}", json={"hero_title": "", "cta_lead": " ", "steps": []}
+        f"{demo_sites_router.prefix}/{site.id}",
+        json={
+            "hero_title": "",
+            "cta_quote_label": "",
+            "about_heading": " ",
+            "cta_lead": " ",
+            "contact_heading": "",
+            "steps": [],
+        },
     )
 
     assert removed.status_code == 200
@@ -179,8 +197,10 @@ def test_the_written_texts_are_saved_and_an_empty_value_removes_them(
     assert site.section_overrides == {
         "about": "Poseur de clôtures à Bavilliers.",
         "subtitle": _WRITTEN_TEXTS["subtitle"],
+        "servicesHeading": _WRITTEN_TEXTS["servicesHeading"],
         "servicesLead": _WRITTEN_TEXTS["servicesLead"],
         "ctaTitle": _WRITTEN_TEXTS["ctaTitle"],
+        "contactLead": _WRITTEN_TEXTS["contactLead"],
     }
 
 
@@ -189,11 +209,13 @@ def test_a_text_or_a_list_of_steps_over_its_limit_is_refused(db: Session, site_r
     client = _client(db)
 
     too_long_title = client.patch(f"{demo_sites_router.prefix}/{site.id}", json={"hero_title": "x" * 91})
+    too_long_button = client.patch(f"{demo_sites_router.prefix}/{site.id}", json={"cta_quote_label": "x" * 61})
     too_many_steps = client.patch(
         f"{demo_sites_router.prefix}/{site.id}", json={"steps": [{"title": f"Étape {index}"} for index in range(7)]}
     )
 
     assert too_long_title.status_code == 422
+    assert too_long_button.status_code == 422
     assert too_many_steps.status_code == 422
     db.refresh(site)
     assert site.section_overrides == {"about": "Poseur de clôtures à Bavilliers."}

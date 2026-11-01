@@ -623,10 +623,15 @@ class DemoSiteService:
         tax_credit: dict | None = None,
         hero_title: str | None = None,
         hero_subtitle: str | None = None,
+        cta_quote_label: str | None = None,
+        services_heading: str | None = None,
         services_lead: str | None = None,
+        about_heading: str | None = None,
         steps: list[dict] | None = None,
         cta_title: str | None = None,
         cta_lead: str | None = None,
+        contact_heading: str | None = None,
+        contact_lead: str | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -637,10 +642,12 @@ class DemoSiteService:
         ``hero_points``, ``trust_items``, ``faq``, ``strengths`` and ``steps`` replace the facts under the title, the
         trust markers, the questions, the « Pourquoi nous choisir » strengths and the « Notre méthode » steps
         (``[]`` goes back to the generated ones). ``about_text`` replaces the « À propos » text, ``hero_title`` and
-        ``hero_subtitle`` the title and the sentence under it (over ``description``), ``services_lead`` the
-        paragraph under the services title, ``cta_title`` and ``cta_lead`` the banner above the contact (``""`` goes
-        back to the generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the
-        template's), ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
+        ``hero_subtitle`` the title and the sentence under it (over ``description``), ``cta_quote_label`` the quote
+        button, ``services_heading`` and ``services_lead`` the services title and the paragraph under it,
+        ``about_heading`` the « À propos » title, ``cta_title`` and ``cta_lead`` the banner above the contact,
+        ``contact_heading`` and ``contact_lead`` the contact title and the paragraph under it (``""`` goes back to the
+        generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the template's),
+        ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -670,10 +677,15 @@ class DemoSiteService:
             or tax_credit is not None
             or hero_title is not None
             or hero_subtitle is not None
+            or cta_quote_label is not None
+            or services_heading is not None
             or services_lead is not None
+            or about_heading is not None
             or steps is not None
             or cta_title is not None
             or cta_lead is not None
+            or contact_heading is not None
+            or contact_lead is not None
         ):
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
@@ -694,6 +706,8 @@ class DemoSiteService:
                 self._store_written_text(overrides, "heroTitle", hero_title)
             if hero_subtitle is not None:
                 self._store_written_text(overrides, "subtitle", hero_subtitle)
+            if cta_quote_label is not None:
+                self._store_written_text(overrides, "ctaQuoteLabel", cta_quote_label)
             if hero_points is not None:
                 self._store_written_section(overrides, "heroPoints", clean_hero_points(hero_points))
             if trust_items is not None:
@@ -706,12 +720,20 @@ class DemoSiteService:
                 self._store_written_section(overrides, "steps", clean_step_items(steps))
             if about_text is not None:
                 self._store_written_text(overrides, "about", about_text)
+            if about_heading is not None:
+                self._store_written_text(overrides, "aboutHeading", about_heading)
+            if services_heading is not None:
+                self._store_written_text(overrides, "servicesHeading", services_heading)
             if services_lead is not None:
                 self._store_written_text(overrides, "servicesLead", services_lead)
             if cta_title is not None:
                 self._store_written_text(overrides, "ctaTitle", cta_title)
             if cta_lead is not None:
                 self._store_written_text(overrides, "ctaLead", cta_lead)
+            if contact_heading is not None:
+                self._store_written_text(overrides, "contactHeading", contact_heading)
+            if contact_lead is not None:
+                self._store_written_text(overrides, "contactLead", contact_lead)
             if portfolio is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
                 items = clean_portfolio_items(portfolio, allowed_images=pool)
