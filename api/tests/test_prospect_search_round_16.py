@@ -158,24 +158,48 @@ def test_a_brand_counts_only_after_agent_agence_concessionnaire_or_agree(text: s
 
 
 def test_a_directory_title_calling_the_garage_a_brand_s_agent_makes_it_the_brand_s_outlet() -> None:
-    """The directories list « Garage Exemple Agent Renault », a garage Google names « GARAGE EXEMPLE »."""
-    facts = _facts("GARAGE EXEMPLE", "Exempleville")
+    """Its Google page, another garage first: two directories call it « … Agent Renault » behind Google links."""
+    facts = _facts(
+        "GARAGE EXEMPLE", "Exempleville", phone="04 00 00 00 01", google_category="Concessionnaire automobile"
+    )
     results = [
         {
-            "link": "https://www.pagesjaunes.fr/pros/00000001",
-            "title": "Garage Exemple Agent Renault - Exempleville",
-            "description": "Garage Exemple, 1 rue de l'Exemple 00000 Exempleville. Entretien, réparation.",
-        },
-        {
-            "link": "https://www.pagesjaunes.fr/pros/00000002",
+            "link": "https://www.google.com/goto?url=CAESeQHrOzAVtemoin",
+            "source": "Pages Jaunes",
+            "display_link": "https://www.pagesjaunes.fr › pros",
             "title": "Garage Témoin Agent Peugeot - Exempleville",
             "description": "Garage Témoin, 2 rue de l'Exemple 00000 Exempleville.",
+        },
+        {
+            "link": "https://www.allogarage.fr/garages/details-garage-GARAGE-EXEMPLE-SARL-0001.html",
+            "title": "GARAGE EXEMPLE SARL - Exempleville",
+            "description": "GARAGE EXEMPLE SARL : 42 Rue de l'Exemple , 00000 Exempleville - Tél: 04 00 00 00 01 - "
+            "agréé Renault, Dacia - Horaires d'ouverture...",
+        },
+        {
+            "link": "https://www.google.com/goto?url=CAESYwHrOzAVexemple",
+            "source": "Pages Jaunes",
+            "display_link": "https://www.pagesjaunes.fr › pros",
+            "title": "Garage Exemple Agent Renault à Exempleville",
+            "description": "Quelle est l'adresse de Garage Exemple Agent Renault ? Garage Exemple Agent Renault est situé "
+            "au 38 rue de l'Exemple 00000 Exempleville.",
+        },
+        {
+            "link": "https://www.google.com/goto?url=CAESbAHrOzAVexemple",
+            "source": "Mappy",
+            "display_link": "https://fr.mappy.com › poi",
+            "title": "Garage Exemple Agent Renault - Garage automobile, 38 r ...",
+            "description": "Découvrez Garage Exemple Agent Renault (38 r de l'Exemple, 00000 Exempleville) avec toutes les "
+            "photos du quartier, le plan d'accès, les avis et",
         },
     ]
 
     _verify(facts, results)
     verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
 
+    assert [(line["value"], line["source"]) for line in facts.evidence if line["fact"] == "chain"] == [
+        ("marque Renault", "pagesjaunes.fr")
+    ]
     assert (verdict.status, verdict.detail) == (
         CandidateStatus.REJECTED,
         "Agent ou concessionnaire Renault : le patron ne décide pas seul.",
