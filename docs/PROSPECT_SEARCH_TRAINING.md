@@ -836,5 +836,16 @@ Data, le juge, les registres et les sites lus pour de vrai.
   main) : aucun gardé ne perd son email ni sa page.
 - Non écrit : la catégorie « Concessionnaire automobile » seule (un garage qui vend aussi des voitures reste dans le
   métier) ; d'autres réseaux suisses que Stop+Go, faute de cas.
-- Hors de la liste envoyée, laissé : l'adresse de fiche à la mairie (debrenne paysagiste) et l'état Zefix lu dès la
-  recherche (c6212).
+- Hors de la liste envoyée au départ, écrit ensuite (`d7dec829`) :
+  - le numéro CHE que la recherche a lu désigne la société, où qu'elle siège : radiée depuis moins de trois ans ou
+    en liquidation, le candidat est écarté dès la recherche, comme « Société cessée » en France. Rejoué : le
+    paysagiste du Landeron (c6212), inscrit à Cornaux et radié en février 2025, est écarté (« Société radiée selon
+    Registre du commerce (Zefix) ») ;
+  - sans numéro, une société du même nom, à part un mot de métier (« Garage Exemple » pour « Exemple »), compte à
+    son siège ou au code postal de son adresse inscrite : une commune fusionnée garde son code postal ;
+  - une fiche à l'adresse de la mairie (« Hôtel de ville », « mairie »), sans entreprise de son nom inscrite dans le
+    département, est « à confirmer » : une commune de rattachement, pas un atelier. Rejoué : debrenne paysagiste
+    (c6728) passe « à confirmer ». Un commerce de la « rue de l'Hôtel de Ville » a sa société au registre : il n'est
+    pas touché.
+- Non écrit : une seconde vérification dans la ville du registre quand elle diffère de celle de la fiche (une
+  requête payante de plus ; la radiation suffit à écarter c6212, dont le site se trouve en cherchant à Cornaux).

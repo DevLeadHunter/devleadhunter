@@ -475,5 +475,16 @@ Lot : les prospects n° 425 à 443, validés à la main dans la manche 15 de la 
 - Rejoué en lecture seule sur les réponses de Jardins Grégory (n° 437) : le prénom de l'enseigne, signé dans 2
   réponses sur 3, est validé (« … dans 2 réponses du propriétaire aux avis Google, et le nom de l'entreprise »).
   Aucun prospect réenrichi.
-- Les autres écarts de cette manche (extrait cantonal, YP Services, Cano François, nom d'usage) ne faisaient pas
-  partie de la liste envoyée : laissés.
+- Les autres écarts de cette manche, reçus ensuite, sont écrits (`d7dec829`) et rejoués en lecture seule sur
+  les registres (aucun prospect réenrichi) :
+
+| Règle | Rejoué |
+|---|---|
+| Quand la FOSC ne nomme personne, l'extrait du registre cantonal donne les personnes inscrites (Vaud, Genève, Fribourg, Neuchâtel : le même logiciel ; le catalogue pose un jeton anti-falsification, l'extrait est demandé avec lui, avec les en-têtes `Origin` et `Referer`, sans lesquels Fribourg répond 403) | Rapin Telecom-Électricité (n° 434) : l'associé gérant ; Garage R. Marques (n° 429) : le titulaire ; J.-C. Berger SA (n° 435) : le président du conseil, seul dirigeant au sens de l'app (l'autre administrateur de la famille y est secrétaire, avec signature individuelle lui aussi) |
+| Le registre suisse est aussi cherché sans le mot de métier que Google ajoute, la société validée par l'adresse | Garage YP services (n° 426) : la société de la même adresse, et son associé gérant par la FOSC |
+| Une commune fusionnée se compare par le code postal de l'adresse inscrite, pas par le nom du siège | le garage de Domdidier (n° 425), inscrit à Belmont-Broye : trouvé, radié le 2 octobre 2026, donc écarté |
+| Le nom d'usage que le registre français écrit entre parenthèses après le nom de naissance est celui du patron | Les Jardins de Tistou (n° 438) : le nom d'usage, sans le second nom de naissance |
+
+- Non lus : l'extrait du Valais et du Jura (`chregister.ch`, un autre logiciel).
+- J.-C. Berger SA : la pose à la main (le nom sans prénom) reste : l'app ne touche jamais un contact posé à la main.
+  Si une famille de signataires doit rester en proposition, c'est une règle de plus.
