@@ -90,6 +90,16 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="L'annuaire suisse n'a pas répondu : l'astérisque « pas de publicité » n'a pas été lu.",
             )
+        register_successor = facts.register_successor
+        if register_successor is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Le registre du commerce donne « {register_successor.get('snippet')} », et "
+                    f"« {register_successor['value']} » est inscrite à {facts.town} : à vérifier, "
+                    "l'atelier continue peut-être sous ce nom."
+                ),
+            )
         if facts.has_email_on_another_site and facts.email is not None:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM,

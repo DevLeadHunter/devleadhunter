@@ -206,7 +206,8 @@ class SwissRegisterPeople:
         Jules », « Garage Exemple - Modèle Exemple Jules »), or with the first name first and no separator
         (« Garage du Lac Jules Modèle »). Its first name must be one the list of given names knows: « Exemple,
         dos Santos Modèle » holds a last name only — unless the name says « titulaire » before it (« Exemple -
-        titulaire Modèle Jules »). Without a separator, the name is only a proposal.
+        titulaire Modèle Jules »). Without a separator, the name is only a proposal. The owner may as well open
+        the name before the comma, first name first (« Jules Modèle, Garage du Lac »).
 
         Args:
             firm_name: The name of a sole proprietorship in the register.
@@ -216,26 +217,8 @@ class SwissRegisterPeople:
         """
         parts = _OWNER_IN_FIRM_NAME_SEPARATOR_RE.split(firm_name.strip())
         if len(parts) > 1:
-            words = parts[-1].split()
-            is_named_owner = bool(words) and fold(words[0]) in _OWNER_ROLES
-            words = words[1:] if is_named_owner else words
-            name_words = [word for word in words if word not in _NAME_PARTICLES]
-            is_person = (
-                len(name_words) >= _MIN_OWNER_NAME_WORDS
-                and len(words) <= _MAX_OWNER_NAME_WORDS
-                and _LAST_NAME_START_RE.match(" ".join(words))
-            )
-            if not is_person or not all(word[:1].isupper() or word in _NAME_PARTICLES for word in words):
-                return None
-            last_name, first_name, is_cut_sure = SwissRegisterPeople._split_name_without_comma(words)
-            if not is_named_owner and not GivenNames.is_common_given_name(first_name.split()[0]):
-                return None
-            return RegisteredPerson(
-                first_name=title_case_name(first_name),
-                last_name=title_case_name(last_name) or last_name,
-                roles=("titulaire",),
-                is_name_certain=is_cut_sure,
-            )
+            owner_closing_name = SwissRegisterPeople._owner_closing_firm_name(parts[-1])
+            return owner_closing_name or SwissRegisterPeople._owner_opening_firm_name(parts[0])
         words = firm_name.split()
         if (
             len(words) < 3
@@ -248,6 +231,51 @@ class SwissRegisterPeople:
             last_name=title_case_name(words[-1]) or words[-1],
             roles=("titulaire",),
             is_name_certain=False,
+        )
+
+    @staticmethod
+    def _owner_closing_firm_name(part: str) -> RegisteredPerson | None:
+        """The owner closing a firm name, last name first (« Modèle Jules », « titulaire Modèle Jules »)."""
+        words = part.split()
+        is_named_owner = bool(words) and fold(words[0]) in _OWNER_ROLES
+        words = words[1:] if is_named_owner else words
+        name_words = [word for word in words if word not in _NAME_PARTICLES]
+        is_person = (
+            len(name_words) >= _MIN_OWNER_NAME_WORDS
+            and len(words) <= _MAX_OWNER_NAME_WORDS
+            and _LAST_NAME_START_RE.match(" ".join(words))
+        )
+        if not is_person or not all(word[:1].isupper() or word in _NAME_PARTICLES for word in words):
+            return None
+        last_name, first_name, is_cut_sure = SwissRegisterPeople._split_name_without_comma(words)
+        if not is_named_owner and not GivenNames.is_common_given_name(first_name.split()[0]):
+            return None
+        return RegisteredPerson(
+            first_name=title_case_name(first_name),
+            last_name=title_case_name(last_name) or last_name,
+            roles=("titulaire",),
+            is_name_certain=is_cut_sure,
+        )
+
+    @staticmethod
+    def _owner_opening_firm_name(part: str) -> RegisteredPerson | None:
+        """
+        The owner a firm name's first part names, first name first (« Jules Modèle » before « , Garage du Lac »).
+
+        Sure only when it holds a first name and a last name, nothing more.
+        """
+        words = part.split()
+        is_capitalised = all(word[:1].isupper() or word in _NAME_PARTICLES for word in words)
+        if not _MIN_OWNER_NAME_WORDS <= len(words) <= _MAX_OWNER_NAME_WORDS or not is_capitalised:
+            return None
+        if not GivenNames.is_common_given_name(words[0]) or GivenNames.is_common_given_name(words[-1]):
+            return None
+        last_name = " ".join(words[1:])
+        return RegisteredPerson(
+            first_name=title_case_name(words[0]),
+            last_name=title_case_name(last_name) or last_name,
+            roles=("titulaire",),
+            is_name_certain=len(words) == _MIN_OWNER_NAME_WORDS,
         )
 
     @staticmethod

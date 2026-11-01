@@ -208,6 +208,11 @@ class CandidateFacts:
         return next((line for line in self.evidence if line.get("fact") == "registered_activity"), None)
 
     @property
+    def register_successor(self) -> dict[str, str] | None:
+        """The active firm the register seats at the business's place while the firm holding its name closes."""
+        return next((line for line in self.evidence if line.get("fact") == "register_successor"), None)
+
+    @property
     def registered_association(self) -> str | None:
         """The association the registry files the business as, when it is one (« Ass sportive Exemple »)."""
         return next((line["value"] for line in self.evidence if line.get("fact") == "association"), None)

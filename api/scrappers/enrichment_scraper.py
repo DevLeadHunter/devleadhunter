@@ -546,6 +546,7 @@ class PhotoTraits:
     flat_colour_share: float
     colour_count: int
     look_hash: int
+    is_placeholder_avatar: bool = False
 
 
 @dataclass(frozen=True)
@@ -563,6 +564,13 @@ _GRAPHIC_MAX_COLOURS: int = 170
 _LOGO_MIN_FLAT_COLOUR_SHARE: float = 0.2
 _LOGO_MIN_SQUARENESS: float = 0.8
 _LOGO_LOOK_DISTANCE: int = 10
+_TRAITS_SIDE_PX: int = 64
+_PLACEHOLDER_MIN_SQUARENESS: float = 0.98
+_PLACEHOLDER_MIN_TWO_COLOUR_SHARE: float = 0.85
+_PLACEHOLDER_MAX_SHAPES: int = 2
+_PLACEHOLDER_MIN_SHAPE_PIXELS: int = 20
+_NEAR_WHITE_LEVEL: int = 14
+_NEAR_BLACK_LEVEL: int = 1
 _SAME_PHOTO_LOOK_DISTANCE: int = 4
 
 
@@ -627,8 +635,8 @@ def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
 class GalleryCuration:
     """Keeps the photos that can illustrate a site: no logo, flyer, blur or blank banner, no visual duplicate."""
 
-    @staticmethod
-    def traits_of(image_bytes: bytes) -> PhotoTraits | None:
+    @classmethod
+    def traits_of(cls, image_bytes: bytes) -> PhotoTraits | None:
         """
         Read what a photo looks like, or ``None`` when the bytes are not an image.
 
@@ -636,7 +644,8 @@ class GalleryCuration:
             image_bytes: The downloaded image.
 
         Returns:
-            Its size, contrast, flat-colour share, colour count (over 16 levels a channel) and look hash.
+            Its size, contrast, flat-colour share, colour count (over 16 levels a channel), look hash, and
+            whether it is the picture Facebook draws for a page without one.
         """
         try:
             from collections import Counter
@@ -650,30 +659,101 @@ class GalleryCuration:
         look_hash = _average_hash(image_bytes)
         if look_hash is None:
             return None
-        pixels = image.resize((64, 64)).tobytes()
-        colours = Counter(
+        pixels = image.resize((_TRAITS_SIDE_PX, _TRAITS_SIDE_PX)).tobytes()
+        cells = [
             (pixels[index] // 16, pixels[index + 1] // 16, pixels[index + 2] // 16)
             for index in range(0, len(pixels), 3)
-        )
+        ]
+        colours = Counter(cells)
         return PhotoTraits(
             width=image.width,
             height=image.height,
             contrast=ImageStat.Stat(image.convert("L")).stddev[0],
-            flat_colour_share=colours.most_common(1)[0][1] / (64 * 64),
+            flat_colour_share=colours.most_common(1)[0][1] / len(cells),
             colour_count=len(colours),
             look_hash=look_hash,
+            is_placeholder_avatar=cls.is_placeholder_avatar(image.width, image.height, cells),
         )
+
+    @classmethod
+    def is_placeholder_avatar(cls, width: int, height: int, cells: list[tuple[int, int, int]]) -> bool:
+        """
+        Whether an image is the picture Facebook draws for a page without one (pure — testable).
+
+        A square of one flat colour, neither white nor black, holding one shape of a second colour, two at most:
+        the page's initial (a dark blue « G » on light blue, an accented « É ») or the white bust on grey.
+
+        Args:
+            width: The image's width.
+            height: The image's height.
+            cells: Its colours on a square grid, 16 levels a channel, row by row.
+
+        Returns:
+            True for the placeholder; a logo spelling a name has more shapes, and usually a white background.
+        """
+        from collections import Counter
+
+        squareness = min(width, height) / max(width, height, 1)
+        two_most_common = Counter(cells).most_common(2)
+        if squareness < _PLACEHOLDER_MIN_SQUARENESS or len(two_most_common) < 2:
+            return False
+        (background, background_cells), (_, shape_cells) = two_most_common
+        is_white_or_black = all(level >= _NEAR_WHITE_LEVEL for level in background) or all(
+            level <= _NEAR_BLACK_LEVEL for level in background
+        )
+        if is_white_or_black or (background_cells + shape_cells) / len(cells) < _PLACEHOLDER_MIN_TWO_COLOUR_SHARE:
+            return False
+        side = round(len(cells) ** 0.5)
+        shapes = cls.shape_sizes([cell != background for cell in cells], side)
+        return 1 <= sum(1 for size in shapes if size >= _PLACEHOLDER_MIN_SHAPE_PIXELS) <= _PLACEHOLDER_MAX_SHAPES
+
+    @staticmethod
+    def shape_sizes(mask: list[bool], side: int) -> list[int]:
+        """
+        The sizes of the shapes a square mask draws, two cells belonging together when they touch by a side.
+
+        Args:
+            mask: The cells of the shapes, row by row.
+            side: The grid's side.
+
+        Returns:
+            One size per shape, in cells.
+        """
+        seen = [False] * len(mask)
+        sizes: list[int] = []
+        for start, is_shape in enumerate(mask):
+            if not is_shape or seen[start]:
+                continue
+            seen[start] = True
+            stack, size = [start], 0
+            while stack:
+                row, column = divmod(stack.pop(), side)
+                size += 1
+                for next_row, next_column in (
+                    (row - 1, column),
+                    (row + 1, column),
+                    (row, column - 1),
+                    (row, column + 1),
+                ):
+                    neighbour = next_row * side + next_column
+                    if 0 <= next_row < side and 0 <= next_column < side and mask[neighbour] and not seen[neighbour]:
+                        seen[neighbour] = True
+                        stack.append(neighbour)
+            sizes.append(size)
+        return sizes
 
     @staticmethod
     def unfit_reason(traits: PhotoTraits) -> str | None:
         """
         Why a photo cannot illustrate a site, or ``None`` when it can.
 
-        Too small under 400 px on its longest side (a Facebook cover kept at 320 px is a blur), blank
-        under a grey-level spread of 12, a graphic when one flat colour covers 60 % of it in 170 colours
-        or fewer — a logo or a flyer (measured 7 Oct 2026: logos 66-88 % in 42-161 colours, real photos
-        5-13 % in 178-374 colours).
+        Facebook's placeholder for a page without a picture is nothing; too small under 400 px on its longest
+        side (a Facebook cover kept at 320 px is a blur), blank under a grey-level spread of 12, a graphic when
+        one flat colour covers 60 % of it in 170 colours or fewer — a logo or a flyer (measured 7 Oct 2026:
+        logos 66-88 % in 42-161 colours, real photos 5-13 % in 178-374 colours).
         """
+        if traits.is_placeholder_avatar:
+            return "placeholder avatar"
         if max(traits.width, traits.height) < _MIN_PHOTO_SIDE_PX:
             return "too small"
         if traits.contrast < _MIN_PHOTO_CONTRAST:
@@ -766,8 +846,8 @@ class GalleryCuration:
             return CuratedGallery(photos=list(urls), logo_url=logo_url)
 
         logo_traits = traits.pop() if logo_url else None
-        if logo_traits is not None and cls.is_photo(logo_traits):
-            logger.info("Enrichment: a photo is no logo: %s", (logo_url or "")[:80])
+        if logo_traits is not None and (cls.is_photo(logo_traits) or logo_traits.is_placeholder_avatar):
+            logger.info("Enrichment: a photo or Facebook's placeholder is no logo: %s", (logo_url or "")[:80])
             logo_url, logo_traits = None, None
         kept: list[str] = []
         kept_look_hashes: list[int] = []

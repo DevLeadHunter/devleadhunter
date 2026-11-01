@@ -50,6 +50,7 @@ _OTHER_ADDRESS_RE: re.Pattern[str] = re.compile(
     r"(?:Autre adresse|Weitere Adresse|Altro indirizzo)\s*:\s*[^.;]*?\b(\d{4})\s+([^.,;]+)", re.IGNORECASE
 )
 _INITIALS_TOKEN_RE: re.Pattern[str] = re.compile(r"^[A-Z]{2,3}$")
+_FIRM_NAME_PART_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+[-–]\s+")
 # The cantonal excerpts of Vaud, Geneva, Fribourg and Neuchâtel (« …/extract?companyOfsUid=CHE-… »), and their request.
 _EXCERPT_PATH: str = "/extract"
 _XSRF_COOKIE: str = "XSRF-TOKEN"
@@ -104,6 +105,8 @@ class SwissRegistry:
             name=facts.name, town=facts.town, uid=uid, postal_code=self.postal_code_of(facts.address)
         )
         if firm is None:
+            if uid is None:
+                await self._read_closed_firm_holding_name(facts)
             return
         if firm.status == _ACTIVE_STATUS:
             if not facts.registry_number and firm.uid:
@@ -114,6 +117,41 @@ class SwissRegistry:
         if closing is not None:
             facts.is_closed = True
             facts.add_evidence("closed", closing, source=_REGISTER_SOURCE)
+
+    async def _read_closed_firm_holding_name(self, facts: CandidateFacts) -> None:
+        """
+        Take a closed firm whose name holds the business's whole name, at its place, as the business's firm.
+
+        The register adds its owner's name to a sole proprietorship (« CENTRE AUTO EXEMPLE MODELE » for
+        « CENTRE AUTO EXEMPLE »): in liquidation or struck off lately there, it closes the business — unless an
+        active firm of the business's words sits at its place (« EXEMPLE SWISS SA », founded next door the month
+        the old one went bankrupt), when the business may go on under it and a person checks.
+
+        Args:
+            facts: The candidate, completed in place.
+        """
+        if not BusinessName.distinctive_stems(facts.name):
+            return
+        postal_code = self.postal_code_of(facts.address)
+        name_words = self._words(self.register_name(facts.name))
+        closed_holders = [
+            firm
+            for firm in await self.firms_named(self.name_inside(facts.name), max_entries=_MAX_FIRMS_PER_WORD)
+            if self.closing_words(firm) is not None
+            and name_words <= self._words(_LIQUIDATION_SUFFIX_RE.sub("", firm.name))
+        ]
+        holder = next(iter(await self._firms_at_place(closed_holders, town=facts.town, postal_code=postal_code)), None)
+        closing = self.closing_words(holder) if holder is not None else None
+        if holder is None or closing is None:
+            return
+        successor = await self.firm_by_words_and_address(name=facts.name, town=facts.town, postal_code=postal_code)
+        if successor is not None:
+            facts.add_evidence(
+                "register_successor", successor.name, source=_REGISTER_SOURCE, snippet=f"{holder.name}, {closing}"
+            )
+            return
+        facts.is_closed = True
+        facts.add_evidence("closed", closing, source=_REGISTER_SOURCE, snippet=holder.name)
 
     @staticmethod
     def postal_code_of(address: str | None) -> str | None:
@@ -173,7 +211,9 @@ class SwissRegistry:
         the new commune (« Belmont-Broye » for Domdidier): a firm of the name whose registered address has the
         business's postal code is it. A business works in a village while its firm sits in the commune (« Le
         Châble », seat « Val de Bagnes »): with ``allow_unique_name``, the only active firm of that name in
-        Switzerland is it too.
+        Switzerland is it too. The register finds a firm by the start of its name: one naming its owner first
+        (« Jules Modèle, Garage du Lac ») is searched with the name inside it when no firm starting with the name
+        sits there.
 
         Args:
             name: The business name.
@@ -191,15 +231,33 @@ class SwissRegistry:
             named = [
                 firm for firm in await self.firms_named(self.register_name(name)) if self.is_named_like(firm.name, name)
             ]
-            firms = [firm for firm in named if town and fold(firm.seat) == fold(town)]
-            if not firms and postal_code:
-                firms = [
-                    firm for firm in named[:_MAX_ADDRESSES_READ] if (await self.address_of(firm))[0] == postal_code
+            firms = await self._firms_at_place(named, town=town, postal_code=postal_code)
+            if not firms:
+                named_inside = [
+                    firm
+                    for firm in await self.firms_named(self.name_inside(name), max_entries=_MAX_FIRMS_PER_WORD)
+                    if self.is_named_like(firm.name, name) and firm not in named
                 ]
+                named = [*named, *named_inside]
+                firms = await self._firms_at_place(named_inside, town=town, postal_code=postal_code)
             active_named = [firm for firm in named if firm.status == _ACTIVE_STATUS]
             if not firms and allow_unique_name and len(active_named) == 1:
                 firms = active_named
         return next((firm for firm in firms if firm.status == _ACTIVE_STATUS), firms[0] if firms else None)
+
+    async def _firms_at_place(
+        self, firms: list[SwissRegisterFirm], *, town: str | None, postal_code: str | None
+    ) -> list[SwissRegisterFirm]:
+        """The firms seated in the business's town, else those whose registered address has its postal code."""
+        at_seat = [firm for firm in firms if town and fold(firm.seat) == fold(town)]
+        if at_seat or not postal_code:
+            return at_seat
+        return [firm for firm in firms[:_MAX_ADDRESSES_READ] if (await self.address_of(firm))[0] == postal_code]
+
+    @classmethod
+    def name_inside(cls, name: str) -> str:
+        """The register's query for firms holding a business name anywhere in theirs (« *Garage du Lac »)."""
+        return f"*{cls.register_name(name)}"
 
     @classmethod
     def is_named_like(cls, firm_name: str, name: str) -> bool:
@@ -207,7 +265,8 @@ class SwissRegistry:
         Whether a firm bears a business's name: the same letters, legal form, civility and « en liquidation » aside,
         or one name holding all the other's words, the same distinctive ones and a trade word more (« Garage Exemple
         Jules » for « Exemple Jules »). « Exemple Carrosserie » does not bear « Exemple Auto », a garage of the same
-        family.
+        family. A sole proprietorship sets its owner beside its name, before or after a comma (« Jules Modèle,
+        Garage du Lac », « Garage du Lac, Modèle »): one part bearing the name is enough.
 
         Args:
             firm_name: The firm's name in the register.
@@ -216,6 +275,12 @@ class SwissRegistry:
         Returns:
             True when the firm bears the name.
         """
+        parts = [part for part in _FIRM_NAME_PART_SEPARATOR_RE.split(firm_name) if part.strip()]
+        return any(cls._bears_name(part, name) for part in dict.fromkeys([firm_name, *parts]))
+
+    @classmethod
+    def _bears_name(cls, firm_name: str, name: str) -> bool:
+        """Whether a firm's name, or one of its parts, bears a business's name (see :meth:`is_named_like`)."""
         if cls._compact(firm_name) == cls._compact(name):
             return True
         firm_name = cls.register_name(_LIQUIDATION_SUFFIX_RE.sub("", firm_name))
