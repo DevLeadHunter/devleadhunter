@@ -295,6 +295,28 @@ class NameInAddress:
                 return EmailPersonMismatch(f"{person.first_name} {person.last_name}", named_person, named_by)
         return None
 
+    @classmethod
+    def foreign_name_words(cls, email: str, facts: CandidateFacts) -> list[str]:
+        """
+        The names an email's words hold beyond the business's own, its trade and its town (« franzen » in
+        « garagefranzen@ » for a Garage de la Gare).
+
+        Args:
+            email: The business's email.
+            facts: The business: its name and town.
+
+        Returns:
+            The folded names, four letters at least, in their order.
+        """
+        own_words = frozenset(word for word in cls.own_words(facts) if len(word) >= _OWN_WORD_MIN_CHARS)
+        vocabulary = _ACTIVITY_WORDS | _FILLER_WORDS | cls._town_words(facts) | own_words
+        return [
+            run
+            for segment in cls._segments(email.rpartition("@")[0])
+            for run in cls._unexplained_runs(segment, vocabulary)
+            if len(run) >= _NAME_MIN_CHARS
+        ]
+
     @staticmethod
     def _people_named_for(facts: CandidateFacts) -> list[tuple[str, str]]:
         """Who the registry, a page the search read and the listing's name say runs the business, and who says it."""

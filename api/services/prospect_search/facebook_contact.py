@@ -23,6 +23,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Candi
 from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
+from services.prospect_search.candidate_registers import CandidateRegisters
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import EmailDomainCheck
@@ -115,6 +116,8 @@ class FacebookContactRecorder:
         CandidateVerifier.mark_brand_named_in_email(facts, trade)
 
         verdict = CandidateDecision.decide(facts, trade, criteria)
+        if await CandidateRegisters.read_if_proposed(facts, verdict):
+            verdict = CandidateDecision.decide(facts, trade, criteria)
         with SessionLocal() as db:
             row = db.get(ProspectSearchCandidate, candidate_id)
             if row is None or row.status != CandidateStatus.NEEDS_BROWSER.value:

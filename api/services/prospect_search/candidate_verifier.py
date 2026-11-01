@@ -1297,7 +1297,8 @@ class CandidateVerifier:
         garage of the Route de la Bourgeoisie) gives that business's email. A third party's page that does not place
         the business (its phone, its town, a postal code of its département) leaves the email unproven, whatever its
         words: a namesake elsewhere carries the same. An email spelling the business's name, written beside its own
-        number on a page naming it, is published by the business itself.
+        number on a page naming it, is published by the business itself. The site's own address, read on its page
+        about the business, is never the business's (see :meth:`is_publisher_address`).
 
         Args:
             facts: The candidate, completed in place.
@@ -1308,6 +1309,8 @@ class CandidateVerifier:
             department: The business's French département, when known.
             is_own_text: Whether the result is the business's own page or site.
         """
+        if not is_own_text and CandidateVerifier.is_publisher_address(email, line, facts, trade):
+            return
         is_beside_another_phone = PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone)
         if is_beside_another_phone and not CandidateVerifier.email_carries_name(email, facts, trade):
             return
@@ -1324,6 +1327,37 @@ class CandidateVerifier:
             proof = EmailProofLevel.GUESSED
         if facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text) and doubt is not None:
             facts.add_evidence(doubt, email, source=line.host, url=line.link)
+
+    @classmethod
+    def is_publisher_address(
+        cls, email: str, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile
+    ) -> bool:
+        """
+        Whether an email is the address of the site a result comes from: its domain is the result's, a site that is
+        neither the business's website nor named after it (« Email us: info@trouve-garage.ch » in the footer of
+        a garage directory's page about the business).
+
+        Args:
+            email: The address read.
+            line: The result it was read in.
+            facts: The business, with its website when known.
+            trade: Profile of the searched trade.
+
+        Returns:
+            True when the address is the site's own.
+        """
+        email_domain = email.rpartition("@")[2].lower()
+        host = line.host
+        is_same_site = bool(email_domain) and (
+            host == email_domain or host.endswith(f".{email_domain}") or email_domain.endswith(f".{host}")
+        )
+        if not is_same_site:
+            return False
+        own_host = (urlparse(facts.website or "").hostname or "").lower().removeprefix("www.")
+        is_named_after_business = NameInAddress.domain_names_business(host, facts) or cls._is_host_named_after(
+            host, cls.distinctive_tokens(facts, trade)
+        )
+        return host != own_host and not is_named_after_business
 
     @classmethod
     def is_about_another_business(cls, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile) -> bool:

@@ -19,10 +19,12 @@ from urllib.parse import urlparse
 import httpx
 
 from services.country_profiles import CountryProfiles
+from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import fold, town_key
 from services.decision_maker.swiss_register_people import RegisteredPerson, SwissRegisterPeople
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
+from services.prospect_search.name_in_address import NameInAddress
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +154,41 @@ class SwissRegistry:
             return
         facts.is_closed = True
         facts.add_evidence("closed", closing, source=_REGISTER_SOURCE, snippet=holder.name)
+
+    async def note_email_firm_elsewhere(self, facts: CandidateFacts) -> None:
+        """
+        Note where the register seats the firm a Swiss business's email names, when it is not the business's place.
+
+        « garageexemple@ » read on a page a search found, for a « Garage de la Gare » of one town: the register has
+        « Garage de la Gare Jules Exemple S.A. » eighty kilometres away and no Exemple firm in the business's town,
+        so the page and its email are a namesake's. A first name says nothing: many firms bear it.
+
+        Args:
+            facts: The candidate, completed in place.
+        """
+        if facts.country != "CH" or facts.email is None or facts.contact_elsewhere is not None:
+            return
+        postal_code = self.postal_code_of(facts.address)
+        for word in NameInAddress.foreign_name_words(facts.email, facts)[:_MAX_SEARCHED_WORDS]:
+            if GivenNames.is_common_given_name(word):
+                continue
+            holders = [
+                firm
+                for firm in await self.firms_named(word, max_entries=_MAX_FIRMS_PER_WORD)
+                if word in self._words(firm.name)
+            ]
+            if not holders or await self._firms_at_place(holders, town=facts.town, postal_code=postal_code):
+                continue
+            namesake = next(
+                (firm for firm in holders if self.shares_words(firm.name, facts.name, town=facts.town)), None
+            )
+            if namesake is not None:
+                facts.add_evidence(
+                    "contact_elsewhere",
+                    f"{namesake.seat}, où le registre inscrit « {namesake.name} »",
+                    source="Son email",
+                )
+                return
 
     @staticmethod
     def postal_code_of(address: str | None) -> str | None:

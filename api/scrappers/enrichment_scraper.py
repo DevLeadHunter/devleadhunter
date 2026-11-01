@@ -166,7 +166,8 @@ _EXTRACT_JS = r"""
             if (/=s\d{1,2}-/.test(src) || /=w\d{1,2}-/.test(src)) return;
             // normalize the size param to ONE large variant so the same photo — served here as a small
             // panel <img> and in the grid as a background-image thumb — collapses to an identical URL.
-            src = /=[\w-]+$/.test(src) ? src.replace(/=[\w-]+$/, '=s1600') : (src + '=s1600');
+            // A 360° photo's size block holds decimals (« -ya174.09999- »): kept after « =s1600 », it answers 400.
+            src = /=[\w.-]+$/.test(src) ? src.replace(/=[\w.-]+$/, '=s1600') : (src + '=s1600');
             if (!seen.has(src)) { seen.add(src); out.photos.push(src); }
         });
         out.photos = out.photos.slice(0, 20);
@@ -382,7 +383,7 @@ _GRID_PHOTOS_JS = r"""
 (() => {
     const urls = [];
     const seen = new Set();
-    const norm = (u) => /=[\w-]+$/.test(u) ? u.replace(/=[\w-]+$/, '=s1600') : (u + '=s1600');
+    const norm = (u) => /=[\w.-]+$/.test(u) ? u.replace(/=[\w.-]+$/, '=s1600') : (u + '=s1600');
     const grab = (bg) => {
         if (!bg || bg === 'none') return '';
         const m = bg.match(/url\((['"]?)(.*?)\1\)/);
@@ -572,6 +573,7 @@ _PLACEHOLDER_MIN_SHAPE_PIXELS: int = 20
 _NEAR_WHITE_LEVEL: int = 14
 _NEAR_BLACK_LEVEL: int = 1
 _SAME_PHOTO_LOOK_DISTANCE: int = 4
+_GONE_IMAGE_STATUSES: frozenset[int] = frozenset({400, 404, 410})
 
 
 def _hamming_distance(left: int, right: int) -> int:
@@ -799,10 +801,11 @@ class GalleryCuration:
         Keep the photos of a gallery that can illustrate a site, in their order, and settle its logo.
 
         Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
-        the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. On
-        any download/decode failure the URL is kept (never silently dropped). A logo that is in fact a
-        photo (a Facebook profile picture of the shop front) is no logo; without a logo, the first square
-        graphic of the gallery is (a listing whose only image is its logo).
+        the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. An
+        address the server answers as wrong or gone is dropped (some Google gallery addresses answer 400 for
+        good); on any other download/decode failure the URL is kept (never silently dropped). A logo that is
+        in fact a photo (a Facebook profile picture of the shop front) is no logo; without a logo, the first
+        square graphic of the gallery is (a listing whose only image is its logo).
 
         The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
         DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
@@ -823,6 +826,7 @@ class GalleryCuration:
         import httpx
 
         semaphore = asyncio.Semaphore(8)
+        gone_urls: set[str] = set()
 
         async def _traits_of(client: httpx.AsyncClient, url: str) -> PhotoTraits | None:
             if url.startswith("data:"):
@@ -835,6 +839,8 @@ class GalleryCuration:
                     response = await client.get(url)
                 except Exception:
                     return None
+                if response.status_code in _GONE_IMAGE_STATUSES:
+                    gone_urls.add(url)
                 return cls.traits_of(response.content) if response.status_code == 200 else None
 
         try:
@@ -849,9 +855,15 @@ class GalleryCuration:
         if logo_traits is not None and (cls.is_photo(logo_traits) or logo_traits.is_placeholder_avatar):
             logger.info("Enrichment: a photo or Facebook's placeholder is no logo: %s", (logo_url or "")[:80])
             logo_url, logo_traits = None, None
+        if logo_url in gone_urls:
+            logger.info("Enrichment: no image at the logo's address: %s", (logo_url or "")[:80])
+            logo_url = None
         kept: list[str] = []
         kept_look_hashes: list[int] = []
         for url, photo in zip(urls, traits):
+            if url in gone_urls:
+                logger.info("Enrichment: photo left out of the gallery (no image at its address): %s", url[:80])
+                continue
             if photo is None:
                 kept.append(url)
                 continue

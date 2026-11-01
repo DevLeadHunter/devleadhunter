@@ -53,16 +53,15 @@ from services.prospect_search.candidate_decision import CandidateDecision, Candi
 from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
+from services.prospect_search.candidate_registers import CandidateRegisters
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.facebook_contact import FacebookContactRead, facebook_contact_recorder
 from services.prospect_search.facebook_page_results import FacebookPageResults
-from services.prospect_search.french_registry import french_registry
 from services.prospect_search.registry_sources import RegistryCompany, rbq_registry, rge_registry
 from services.prospect_search.search_judge import search_judge
 from services.prospect_search.search_zones import SearchZones
-from services.prospect_search.swiss_registry import swiss_registry
 from services.prospect_search.trade_catalog import TradeCatalog, TradeProfile
 from services.sms.phone_normalizer import format_phone_in_national_form
 
@@ -83,11 +82,6 @@ _WEBSITE_LISTING_BUDGET_SHARE: float = 0.7
 _WAITING_CANDIDATE_WEIGHT: float = 0.5
 # Bright Data can go silent for minutes: the last try of a trade's unanswered candidates waits this long.
 _DEFERRED_RETRY_PAUSE_SECONDS: float = 60.0
-_PROPOSED_STATUSES: tuple[CandidateStatus, ...] = (
-    CandidateStatus.KEPT,
-    CandidateStatus.SET_ASIDE,
-    CandidateStatus.TO_CONFIRM,
-)
 
 
 @dataclass
@@ -613,9 +607,7 @@ class ProspectSearchRunner:
                 elif not is_final_rejection and facts.is_verified:
                     await self._contact_finder.find(facts, profile)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
-                if verdict.status in _PROPOSED_STATUSES:
-                    await swiss_registry.read_closing(facts)
-                    await french_registry.read_closing(facts)
+                if await CandidateRegisters.read_if_proposed(facts, verdict):
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
             except BrightDataAccountError:
                 raise

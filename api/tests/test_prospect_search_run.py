@@ -72,6 +72,7 @@ from services.prospect_search.runner import ProspectSearchRunner
 from services.prospect_search.search_judge import search_judge
 from services.prospect_search.service import ProspectSearchError, ProspectSearchService, prospect_search_service
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
+from services.prospect_search.swiss_registry import SwissRegisterFirm, swiss_registry
 from services.prospect_service import prospect_service
 from services.website_liveness_service import website_liveness_service
 
@@ -620,6 +621,34 @@ def test_a_swiss_number_read_on_a_facebook_page_is_looked_up_for_its_asterisk(
     )
 
     assert verdict is not None and verdict.reject_reason == CandidateRejectReason.NO_ADVERTISING
+
+
+def test_an_email_read_on_a_facebook_page_naming_a_firm_registered_elsewhere_is_left_to_confirm(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    """A page a Facebook search found gives « jardinstemoin@ »: the register seats the Temoin firm elsewhere."""
+
+    async def firms_named(name: str, *, max_entries: int = 10) -> list[SwissRegisterFirm]:
+        namesake = SwissRegisterFirm(
+            name="Jardins de la Gare Jules Temoin Sàrl", seat="Autreville", status="EXISTIEREND", uid="CHE-000.000.009"
+        )
+        return [namesake] if name.lower() == "temoin" else []
+
+    monkeypatch.setattr(swiss_registry, "firms_named", firms_named)
+    search_id = _create_search(db)
+    waiting = _store_candidate(
+        db, search_id, "Jardins de la Gare", CandidateStatus.NEEDS_BROWSER, phone="079 000 00 31"
+    )
+
+    verdict = asyncio.run(
+        facebook_contact_recorder.record(
+            waiting.id, FacebookContactRead(is_readable=True, emails=["jardinstemoin@gmail.com"], phone=None)
+        )
+    )
+
+    assert verdict is not None and verdict.status == CandidateStatus.TO_CONFIRM
+    assert verdict.detail is not None
+    assert "Autreville, où le registre inscrit « Jardins de la Gare Jules Temoin Sàrl »" in verdict.detail
 
 
 def test_a_facebook_email_on_the_business_s_own_domain_reveals_its_website(canned_world: None, db: Session) -> None:
