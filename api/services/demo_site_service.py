@@ -1732,7 +1732,8 @@ class DemoSiteService:
             The site, with its space when it had none.
 
         Raises:
-            ValueError: When the site has no content, or Storyblok refuses (its daily limit included).
+            ValueError: When the site has no content.
+            StoryblokProvisionError: When Storyblok refuses the space (its daily limit included) or its seeding fails.
         """
         if site.storyblok_space_id or not storyblok_service.is_configured:
             return site

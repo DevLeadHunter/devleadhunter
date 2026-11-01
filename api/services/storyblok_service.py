@@ -59,7 +59,7 @@ class StoryblokProvisionResult:
 
 
 class StoryblokProvisionError(Exception):
-    """Raised when Storyblok provisioning fails after the space was created."""
+    """Raised when Storyblok provisioning fails: the space was refused (no ``space_id``) or created but not seeded."""
 
     def __init__(
         self,
@@ -870,7 +870,9 @@ class StoryblokService:
             try:
                 space_resp.raise_for_status()
             except httpx.HTTPStatusError as exc:
-                raise ValueError(self._storyblok_error_message(exc)) from exc
+                # A refused space (the daily limit's 429 included) leaves the site live from its content: the
+                # missing-space pass creates the space later.
+                raise StoryblokProvisionError(self._storyblok_error_message(exc), content_json=content_json) from exc
 
             space_data: dict[str, Any] = space_resp.json()["space"]
             space_id: int = int(space_data["id"])

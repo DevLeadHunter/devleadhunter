@@ -849,3 +849,28 @@ Data, le juge, les registres et les sites lus pour de vrai.
     pas touché.
 - Non écrit : une seconde vérification dans la ville du registre quand elle diffère de celle de la fiche (une
   requête payante de plus ; la radiation suffit à écarter c6212, dont le site se trouve en cherchant à Cornaux).
+
+## Manche 16 — les réseaux vus sur les photos des sites, vague 5 (1er novembre, matin)
+
+Pas une recherche : la revue des sites générés pour les 29 garages validés, par une planche-contact de leurs photos
+d'en-tête et « à propos », puis les légendes que l'enrichissement écrit pour chaque photo (`photo_labels`). Elle a
+fait écarter **7 garages validés** que ni la recherche ni l'enrichissement n'avaient vus.
+
+| Prospect | Ce qui l'a trahi | Vérité | Règle à écrire |
+|---|---|---|---|
+| GARAGE CS AUTO (n° 377, Châtellerault) | photo d'en-tête : le visuel 3D « PRECISIUM Garage Automobiles Services » | réseau Precisium | ajouter Precisium aux réseaux |
+| MJV AUTOMOBILES (n° 379) | légende de photo : « Panneau promotionnel avec logo AD Garage Expert… » | réseau AD | un nom de réseau lu sur une enseigne ou un panneau du garage (pas sur un produit) écarte, ou signale « réseau ? » |
+| GARAGE NORVILLE (n° 381, Montluçon) | enseigne RENAULT sur la photo ; « Garage Norville Agent Renault » dans tous les annuaires | agent Renault | « agent / agréé / concessionnaire <marque> » dans un titre d'annuaire, la description ou la catégorie fait un réseau de marque |
+| Garage SELECTION AUTO CHOLET (n° 386) | façade « TOP GARAGE » et « G Groupauto » ; 5 légendes « Top Garage » | réseau Top Garage (Groupauto) | ajouter Top Garage et Groupauto aux réseaux |
+| Auto Expert (n° 388, Illzach) | enseigne EUROREPAR ; fiche eurorepar.fr « réseau Euro Repar Car Service » | réseau Eurorepar | ajouter Eurorepar aux réseaux |
+| GARAGE SERV'AUTO (n° 390, Saint-Paul-lès-Dax) | un résultat Bing : `servauto.fr` | site en ligne (WordPress, © 2026), même adresse et même téléphone sur sa page contact | « Serv'Auto » doit reconnaître le domaine `servauto` : normaliser apostrophes et tirets dans le contrôle du domaine propre |
+| Garage Jean-Baptiste (n° 445, Saint-Pierre, Martinique) | sa propre description : « agréé Renault » | réparateur agréé de la marque | règle « agent / agréé » ci-dessus |
+
+- Les légendes ne suffisent pas toujours seules : une marque de produit (« batterie Bosch », « calculateur Bosch
+  EDC17 », « huile Total Quartz ») ne fait pas un réseau.
+- Remplacés : Ghossain Auto (n° 446) et Yes Auto (n° 447), les deux réserves de la n° 21 ; recherche n° 24 (6
+  garages France) mise en file, en pause avec les autres depuis la suspension de Bright Data (voir
+  `~/.claude/skills/devleadhunter/reference/wave-5-plan.md`).
+- Envoyé à la session de corrections le 1er novembre vers 6 h 20.
+- Leçon de méthode : la planche-contact des photos d'un lot de garages coûte dix minutes et voit ce que les textes
+  cachent. La faire avant de compter un garage, pas après avoir généré son site.
