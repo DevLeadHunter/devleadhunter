@@ -34,6 +34,7 @@ from api.v1.routes.prospect_searches import record_facebook_contact as record_fa
 from api.v1.routes.prospect_searches import router as prospect_searches_router
 from core.config import settings
 from core.database import Base, get_db
+from core.operator_api import OperatorApi
 from enums.prospect_search import (
     CandidateOrigin,
     CandidateRejectReason,
@@ -1888,7 +1889,7 @@ def test_a_refused_request_is_not_tried_again() -> None:
     request = httpx.Request("POST", "https://api.example/prospect-searches/7/candidates/1/facebook-contact")
     refusal = httpx.HTTPStatusError("refused", request=request, response=httpx.Response(422, request=request))
 
-    assert ProspectSearchCli.is_transient_api_error(refusal) is False
+    assert OperatorApi.is_transient_error(refusal) is False
 
 
 def _directory_page(name: str, phone: str, email: str) -> dict[str, Any]:

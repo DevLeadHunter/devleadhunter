@@ -62,6 +62,10 @@ _CIVILITY_BEFORE_LAST_NAME_RE = re.compile(
     r"\b(?i:m\.|mr\.?|monsieur|mme|madame)\s+([A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)?)\b"
 )
 _ENSEIGNE_IN_NAME_RE = re.compile(r"\(([^)]+)\)")
+# Initials a trade name is made of (« KR », « LDBM », « A.E »): two to five capitals, dotted or not.
+_NAME_INITIALS_RE = re.compile(r"(?<![\w.])((?:[A-Z]\.?){2,5})(?!\w)")
+# The words of a registered head's names whose first letters make his initials (« Paul-Henry » gives P and H).
+_INITIALS_WORD_RE = re.compile(r"[a-z]+")
 _NUMBERED_STREET_RE = re.compile(r"^\s*(?P<number>\d{1,4})\s*(?:bis|ter|[a-z](?=[\s,]))?[\s,]+(?P<street>[^,\d]{3,60})")
 _STREET_ABBREVIATIONS: dict[str, str] = {
     "av": "avenue",
@@ -556,6 +560,10 @@ class RegistreGouvStrategy:
             geo_confirmed = city_ok or is_in_department
             base = 0.5 + 0.25 * similarity + (0.15 if city_ok else 0.0)
             found = self._candidates_of(result, base=base, geo_confirmed=geo_confirmed)
+            head_initials = self.head_initials_spelled(result, context)
+            if head_initials is not None:
+                note = f", enseigne aux initiales de son dirigeant ({head_initials})"
+                found = [replace(candidate, provenance=candidate.provenance + note) for candidate in found]
             if anchored:
                 found = [self._anchored(candidate) for candidate in found]
             candidates.extend(found)
@@ -673,6 +681,7 @@ class RegistreGouvStrategy:
                 "siren": result.get("siren"),
                 "nom_complet": result.get("nom_complet"),
                 "siege_postal_code": str((result.get("siege") or {}).get("code_postal") or "") or None,
+                "siege_commune": str((result.get("siege") or {}).get("libelle_commune") or "") or None,
                 # Declared main activity (NAF) — the activity guard compares it to
                 # the prospect's trade to catch a same-town homonym in another line
                 # of work (« Mayer Paysagiste » → a cleaning company).
@@ -711,11 +720,56 @@ class RegistreGouvStrategy:
             for business_name in business_names
             for trade_name in RegistreGouvStrategy._trade_names(result)
         )
+        is_named_with_its_head_initials = RegistreGouvStrategy.head_initials_spelled(result, context) is not None
         return max(
             legal_similarity,
-            1.0 if is_trading_under_the_name else 0.0,
+            1.0 if is_trading_under_the_name or is_named_with_its_head_initials else 0.0,
             RegistreGouvStrategy._trade_free_similarity(result, context),
         )
+
+    @staticmethod
+    def head_initials_spelled(result: dict[str, Any], context: ResolutionContext) -> str | None:
+        """
+        The initials of a company's registered head that the business name is made of, in either order.
+
+        An independent tradesman often trades under his initials: « EK Électricité Générale » is Karim Exemple's
+        (Exemple Karim), « LMJE Élec » Luc Marc Jean Exemple's. The company must declare the trade's activity:
+        initials alone are shared by every homonym of another trade.
+
+        Args:
+            result: A registry company.
+            context: The business looked for.
+
+        Returns:
+            The initials (« KR »), or None when the name spells none of its heads' initials.
+        """
+        from services.prospect_search.business_name import BusinessName
+        from services.trade_normalizer import TradeNormalizer
+
+        name = BusinessName.without_legal_form(context.company_name or "")
+        name_initials = {initials.replace(".", "") for initials in _NAME_INITIALS_RE.findall(name)}
+        trade = TradeNormalizer.normalize(context.trade)
+        if not name_initials or activity_consistency(trade, RegistreGouvStrategy._activity_of(result)) is not True:
+            return None
+        for head in result.get("dirigeants") or []:
+            if (head.get("type_dirigeant") or "personne physique") != "personne physique":
+                continue
+            first_names = _INITIALS_WORD_RE.findall(fold(str(head.get("prenoms") or "")))
+            last_names = _INITIALS_WORD_RE.findall(fold(_ENSEIGNE_IN_NAME_RE.sub(" ", str(head.get("nom") or ""))))
+            if not first_names or not last_names:
+                continue
+            first_initials = "".join(word[0] for word in first_names)
+            last_initials = "".join(word[0] for word in last_names)
+            orders = {
+                first_initials + last_initials,
+                first_initials[0] + last_initials,
+                last_initials + first_initials,
+                last_initials + first_initials[0],
+            }
+            spelled = name_initials & {initials.upper() for initials in orders}
+            if spelled:
+                return min(spelled)
+        return None
 
     @staticmethod
     def _trade_names(result: dict[str, Any]) -> list[str]:

@@ -34,6 +34,8 @@ from services.country_profiles import DEFAULT_COUNTRY_CODE
 
 _HTTP_TIMEOUT = 180.0
 _MAX_PASSES_PER_PROSPECT = 2
+_API_RETRY_WAIT_SECONDS = 10.0
+_API_RETRY_MAXIMUM_WAITS = 30
 
 
 async def _list_prospects(api: OperatorApi) -> list[dict[str, object]]:
@@ -115,9 +117,21 @@ def _is_worth_persisting(data: EnrichmentData) -> bool:
 
 
 async def _persist(api: OperatorApi, prospect_id: int, data: EnrichmentData) -> dict[str, object]:
-    """Post the scraped data to the API for persistence; return the resulting enrichment record."""
-    response = await api.post(f"/prospects/{prospect_id}/enrichment/run", json=asdict(data))
-    response.raise_for_status()
+    """Post the scraped data to the API for persistence; return the resulting enrichment record.
+
+    A deployment restarting the API answers 502 for a minute: the post is tried again, as the search tool does,
+    instead of losing a scrape that took a browser minute.
+    """
+    for waits in range(_API_RETRY_MAXIMUM_WAITS + 1):
+        try:
+            response = await api.post(f"/prospects/{prospect_id}/enrichment/run", json=asdict(data))
+            response.raise_for_status()
+            break
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if not OperatorApi.is_transient_error(exc) or waits == _API_RETRY_MAXIMUM_WAITS:
+                raise
+            print(f"  the API does not answer ({exc}): new try in a moment…", file=sys.stderr, flush=True)
+            await asyncio.sleep(_API_RETRY_WAIT_SECONDS)
     record = response.json()
     return record if isinstance(record, dict) else {}
 

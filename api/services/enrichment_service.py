@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
@@ -28,6 +29,7 @@ from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrich
 from scrappers.google_scraper import GoogleScraper
 from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
+from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
 from services.photo_labeling_service import photo_labeling_service
@@ -49,6 +51,7 @@ from services.website_liveness_service import website_liveness_service
 logger = logging.getLogger(__name__)
 
 _MIN_SPECIFIC_NAME_WORDS: int = 2
+_FRENCH_POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"\d{5}")
 
 # Registre/Pappers are shared rate-limited APIs — a scraping job must not fire dozens of lookups at once.
 _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
@@ -591,6 +594,7 @@ class EnrichmentService:
 
             if status_to_apply == NameResolution.AUTO and candidate is not None:
                 self._store_trusted_contact(record, candidate)
+                await self._place_at_registered_seat(prospect, candidate)
             elif status_to_apply == NameResolution.PROPOSED and candidate is not None:
                 self._store_proposed_contact(record, candidate)
             else:
@@ -815,6 +819,30 @@ class EnrichmentService:
         """
         postal_match = CountryProfiles.get("CH").postal_code_regex.search(prospect.address or "")
         return postal_match.group(1) if postal_match else record.place_postal_code
+
+    @staticmethod
+    async def _place_at_registered_seat(prospect: ProspectDB, candidate: NameCandidate) -> None:
+        """
+        Give a prospect without a public address the commune and postal code of the company the registry identified.
+
+        A tradesman serving an area shows no address on Google, and the search left the town it searched: the
+        registered seat tells the commune (« 63430 Pont-du-Château », not Clermont-Ferrand). Its street, often the
+        owner's home, never reaches the public site.
+
+        Args:
+            prospect: The prospect, completed in place.
+            candidate: The head the registry gave, with its company's seat.
+        """
+        postal_code = str(candidate.raw.get("siege_postal_code") or "")
+        registry_commune = str(candidate.raw.get("siege_commune") or "")
+        if (
+            (prospect.address or "").strip()
+            or not _FRENCH_POSTAL_CODE_RE.fullmatch(postal_code)
+            or not registry_commune
+        ):
+            return
+        prospect.city = await FrenchDepartments.commune_name(registry_commune)
+        prospect.address = f"{postal_code} {prospect.city}"
 
     @staticmethod
     def _store_trusted_contact(record: ProspectEnrichment, candidate: NameCandidate) -> None:

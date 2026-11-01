@@ -45,7 +45,6 @@ _FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled", "faile
 _REPORTED_STATUSES: tuple[str, ...] = ("kept", "set_aside", "to_confirm")
 _CHANNELS: tuple[str, ...] = ("email", "sms", "email_and_sms")
 _VALIDATION_MODES: tuple[str, ...] = ("manual", "automatic")
-_API_TRANSIENT_STATUSES: frozenset[int] = frozenset({500, 502, 503, 504})
 _API_RETRY_WAIT_SECONDS: float = 10.0
 _API_RETRY_MAXIMUM_WAITS: int = 30
 
@@ -121,7 +120,7 @@ class ProspectSearchCli:
                     return detail
                 read_count = await self._read_waiting_pages(search_id) if self._reads_facebook_pages else 0
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-                if not self.is_transient_api_error(exc) or failed_polls >= _API_RETRY_MAXIMUM_WAITS:
+                if not OperatorApi.is_transient_error(exc) or failed_polls >= _API_RETRY_MAXIMUM_WAITS:
                     raise
                 failed_polls += 1
                 print(f"  the API does not answer ({exc}): new try in a moment…", file=sys.stderr, flush=True)
@@ -132,13 +131,6 @@ class ProspectSearchCli:
                 # Nothing left this machine can read: the search stays as it is for the desktop app.
                 return detail
             await asyncio.sleep(_POLL_SECONDS)
-
-    @staticmethod
-    def is_transient_api_error(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
-        """Whether an API error is passing (a deployment restarting it, a database that times out), worth a new try."""
-        if isinstance(exc, httpx.RequestError):
-            return True
-        return exc.response.status_code in _API_TRANSIENT_STATUSES
 
     async def _detail(self, search_id: int) -> dict[str, Any]:
         """The search with its journal and candidates."""

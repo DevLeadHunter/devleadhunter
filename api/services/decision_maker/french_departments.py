@@ -9,6 +9,7 @@ town is looked up in the official list of communes (geo.api.gouv.fr).
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, ClassVar
 
 import httpx
@@ -22,6 +23,9 @@ _TIMEOUT_SECONDS: float = 8.0
 _MAX_COMMUNES: int = 10
 _OVERSEAS_PREFIX: str = "97"
 _CORSICA_PREFIX: str = "20"
+_COMMUNE_LINK_WORDS: frozenset[str] = frozenset(
+    {"de", "du", "des", "la", "le", "les", "sur", "sous", "en", "et", "aux"}
+)
 
 
 class FrenchDepartments:
@@ -98,6 +102,40 @@ class FrenchDepartments:
         is_town = any(town_key(str(commune.get("nom") or "")) == key for commune in communes)
         cls._is_town_by_word[key] = is_town
         return is_town
+
+    @classmethod
+    async def commune_name(cls, registry_commune: str) -> str:
+        """
+        A commune's name as the official list spells it (« PONT-DU-CHATEAU » gives « Pont-du-Château »).
+
+        The registry writes communes in capitals, without accents; a name the list does not find is only made
+        readable (« Pont-du-Chateau »).
+
+        Args:
+            registry_commune: The commune as the registry writes it.
+
+        Returns:
+            The commune's spelling.
+        """
+        key = town_key(registry_commune)
+        communes = await cls._communes_named(registry_commune) or []
+        spelled = next(
+            (
+                str(commune["nom"])
+                for commune in communes
+                if commune.get("nom") and town_key(str(commune["nom"])) == key
+            ),
+            None,
+        )
+        return spelled or cls.readable_commune(registry_commune)
+
+    @staticmethod
+    def readable_commune(registry_commune: str) -> str:
+        """A commune the registry writes in capitals, made readable (« PONT-DU-CHATEAU » gives « Pont-du-Chateau »)."""
+        words = re.split(r"([\s-])", registry_commune.strip().lower())
+        return "".join(
+            word if word in _COMMUNE_LINK_WORDS and index > 0 else word.capitalize() for index, word in enumerate(words)
+        )
 
     @staticmethod
     async def _communes_named(town: str) -> list[dict[str, Any]] | None:

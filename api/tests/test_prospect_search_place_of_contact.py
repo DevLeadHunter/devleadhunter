@@ -388,7 +388,7 @@ def test_the_registry_gives_a_listing_without_address_the_commune_of_the_company
         },
     ]
 
-    FrenchRegistry.place_listing_without_address(facts, named)
+    asyncio.run(FrenchRegistry.place_listing_without_address(facts, named))
     verdict = CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY)
 
     assert (facts.address, facts.city) == ("51350 Cormontreuil", "Cormontreuil")

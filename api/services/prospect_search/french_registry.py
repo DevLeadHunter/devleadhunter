@@ -14,6 +14,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import unquote
 
+from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.normalize import company_tokens, fold, town_key
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -32,9 +33,6 @@ _ASSOCIATION_LEGAL_FORM_PREFIX: str = "92"
 _ASSOCIATION_NAME_WORD_MIN_CHARS: int = 3
 _CLUB_WORDS: frozenset[str] = frozenset(
     {"association", "asso", "club", "sportif", "sportive", "amicale", "comite", "federation"}
-)
-_COMMUNE_LINK_WORDS: frozenset[str] = frozenset(
-    {"de", "du", "des", "la", "le", "les", "sur", "sous", "en", "et", "aux"}
 )
 
 
@@ -56,8 +54,6 @@ class FrenchRegistry:
         """
         if facts.country != "FR" or facts.is_closed or not facts.name:
             return
-        from services.decision_maker.french_departments import FrenchDepartments
-
         postal_code = self.postal_code_of(facts.address)
         department = FrenchDepartments.of_postal_code(postal_code) or await FrenchDepartments.of_town(facts.town)
         if not department:
@@ -71,14 +67,14 @@ class FrenchRegistry:
                     named.setdefault(str(company.get("siren") or len(named)), company)
             if any(self.is_at_place(company, facts, postal_code=postal_code) for company in named.values()):
                 break
-        self.place_listing_without_address(facts, list(named.values()))
+        await self.place_listing_without_address(facts, list(named.values()))
         self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
         self.complete_address(facts, list(named.values()))
         self.note_association(facts, list(found.values()))
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
 
     @classmethod
-    def place_listing_without_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+    async def place_listing_without_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
         """
         Give a listing without address nor town the commune of the one open company of its exact name in its département.
 
@@ -104,7 +100,7 @@ class FrenchRegistry:
         commune = str(siege.get("libelle_commune") or "").strip()
         if not _POSTAL_CODE_RE.fullmatch(postal_code) or not commune:
             return
-        facts.city = cls._readable_commune(commune)
+        facts.city = await FrenchDepartments.commune_name(commune)
         facts.address = f"{postal_code} {facts.city}"
         facts.add_evidence("address", facts.address, source=_REGISTER_SOURCE)
 
@@ -161,14 +157,6 @@ class FrenchRegistry:
         own_words = company_tokens(BusinessName.without_legal_form(facts.name))
         return bool(own_words) and any(
             company_tokens(BusinessName.without_legal_form(name)) == own_words for name in names if name
-        )
-
-    @staticmethod
-    def _readable_commune(registry_commune: str) -> str:
-        """A commune as the registry writes it, in capitals, made readable (« PONT-DU-CHATEAU » → « Pont-du-Chateau »)."""
-        words = re.split(r"([\s-])", registry_commune.lower())
-        return "".join(
-            word if word in _COMMUNE_LINK_WORDS and index > 0 else word.capitalize() for index, word in enumerate(words)
         )
 
     @classmethod
@@ -256,7 +244,6 @@ class FrenchRegistry:
         (« Garage Exemple Auto 46 » as « Exemple Auto 46 »), then without the communes it names (« Exemple-Auto
         Pau-Lescar » as « Exemple Auto »).
         """
-        from services.decision_maker.french_departments import FrenchDepartments
         from services.decision_maker.strategies import TradeName
 
         name = BusinessName.without_legal_form(facts.name)
