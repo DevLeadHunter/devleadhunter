@@ -267,7 +267,6 @@ def build_site_content(
         enrichment=enrichment,
         about_default=_SITE_ABOUT_DEFAULT,
     )
-    enr = enrichment or {}
     site["services"] = fixed_trade_services(MECHANIC_SERVICES)
     site["faq"] = MECHANIC_FAQ
     site["strengths"] = [dict(strength) for strength in _DEFAULT_STRENGTHS]
@@ -278,17 +277,14 @@ def build_site_content(
     # Per-service image: a distinct default per card (no "% length" repeat within the 6-card grid).
     for index, service in enumerate(site["services"]):
         service["image"] = _DEFAULT_SERVICE_IMAGES[index % len(_DEFAULT_SERVICE_IMAGES)]
-    photos_raw = enr.get("photos")
-    photos: list[str] = (
-        [url.strip() for url in photos_raw if isinstance(url, str) and url.strip()]
-        if isinstance(photos_raw, list)
-        else []
-    )
-    # Layer fallbacks: faqImage → gallery[0], aboutSecondary → gallery[1] (photos[2] and [3] after hero/about).
-    if len(photos) >= 4:
-        site["images"] = {"aboutSecondary": photos[3], "faqImage": photos[2]}
-    elif len(photos) == 3:
-        site["images"] = {"aboutSecondary": photos[2], "faqImage": photos[2]}
+    displayed_photos: list[str] = [
+        url for url in (site["heroImage"], site["aboutImage"], *(photo["url"] for photo in site["gallery"])) if url
+    ]
+    # Layer fallbacks: faqImage → gallery[0], aboutSecondary → gallery[1] (displayed photos [2] and [3]).
+    if len(displayed_photos) >= 4:
+        site["images"] = {"aboutSecondary": displayed_photos[3], "faqImage": displayed_photos[2]}
+    elif len(displayed_photos) == 3:
+        site["images"] = {"aboutSecondary": displayed_photos[2], "faqImage": displayed_photos[2]}
     else:
         site["images"] = {"aboutSecondary": _DEFAULT_ABOUT_SECONDARY, "faqImage": _DEFAULT_FAQ_IMAGE}
     return site
