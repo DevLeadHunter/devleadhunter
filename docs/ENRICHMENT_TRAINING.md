@@ -348,3 +348,27 @@ avait enregistré pour les garages n° 373 à 391 (lecture seule), le site de DA
   Welington Automobiles (prospect n° 392, écarté depuis), qu'on croyait sans site : son email est sur
   `welington.fr`, un domaine parqué. La recherche l'avait manqué parce que Google cachait l'adresse du
   résultat derrière sa redirection ; voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
+
+## Manche 5 — 15 paysagistes et électriciens français de la vague 5 (1er novembre, nuit)
+
+Lot : les prospects n° 394 à 408 (7 paysagistes, 8 électriciens), validés à la main dans la manche 13 de la
+recherche, enrichis par `enrich_cli.py` avec le moteur corrigé de la manche 4. Contrôle : registre des
+entreprises et preuves de la recherche.
+
+### Ce qui marche
+
+- La page Facebook connue rejoint les réseaux sociaux pour les 14 qui en ont une (correction de la manche 4).
+- Patron validé seul par le registre pour 9 sur 14, tous conformes. Bost Électricité : son ancien site
+  `electricitebost.com` est noté « mort », l'accroche « votre site ne répond plus » est disponible.
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| KR Électricité Générale (n° 404) | patron laissé vide | au registre : Rachid Khalfi, entrepreneur individuel ; « KR » = ses initiales | une enseigne faite des initiales du gérant inscrit (KR = Khalfi Rachid) relie le registre au prospect |
+| LDBM Élec (n° 408) | patron laissé vide | au registre : Ludovic Diego Barthélemy Martinez ; « LDBM » = ses initiales | idem |
+| Medina Paysage, Oh Joli Jardin, Vulcan'Paysage, Jardin Authentique, Bost Électricité, Le Petit Élec, KR Électricité (7 sur 14) | adresse vide, ville = la ville cherchée | artisans sans adresse publique (zone desservie sur Google) ; le registre donne leur siège (Jardin Authentique : 63430 Pont-du-Château, pas Clermont-Ferrand ; Medina : 24380 ; KR : 54510) | quand la fiche n'a pas d'adresse et que le registre identifie l'entreprise, sa commune et son code postal viennent du siège inscrit |
+| Alex'Élec (n° 403) | « persist_failed » : l'API répondait 502 pendant un déploiement | rien n'a été enregistré | `enrich_cli.py` réessaie l'enregistrement sur une erreur passagère (5xx), comme `prospect_search_cli.py` |
+
+- Photos : 3 prospects sous 3 photos (Medina 0, Ticheur 0, Le Petit Élec 2) : leurs sites prendront des
+  images de secours de la template ; rien de faux.
