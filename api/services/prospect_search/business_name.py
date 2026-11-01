@@ -230,6 +230,24 @@ class BusinessName:
         return bool(business_stems) and {_stem(word) for word in cls._name_words(cls.clean(name))} == business_stems
 
     @classmethod
+    def is_within_name(cls, name: str, business_name: str) -> bool:
+        """
+        Whether every word of a name is a word of the business's name, legal form, accents and plurals aside.
+
+        « EXEMPLEAUTO21 » is within « Garage des Tilleuls exempleauto21 »; « EXEMPLE ELAGAGE » is not within « A Votre
+        Service Exemple », whose one word it shares.
+
+        Args:
+            name: A registry company's name, or one of its trade names.
+            business_name: The prospect's business name.
+
+        Returns:
+            True when the business's name holds the whole name.
+        """
+        words = {_stem(word) for word in cls._name_words(cls.clean(name))}
+        return bool(words) and words <= {_stem(word) for word in cls._name_words(business_name)}
+
+    @classmethod
     def _words_beside_trade(cls, name: str) -> set[str]:
         """The stems of a name's words without its legal form and its trade words."""
         return {_stem(word) for word in cls._name_words(name) if not TradeCatalog.is_trade_word(word)}
