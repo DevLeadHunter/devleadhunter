@@ -397,7 +397,8 @@ régénéré : la recherche corrigée dans le registre a été rejouée en lectu
   fiche Google (« Alex'Elec Alexandre Fraudeau ») ; absent du registre des Deux-Sèvres (seules des homonymes
   sans rapport). Posé à la main : Alexandre Fraudeau. Règle à écrire : un prénom et un nom complets dans le
   titre de la fiche du pro, après l'enseigne, sont une proposition de patron publiée par le pro lui-même.
-- Écrit le 1er novembre (`f2f4d321`) : un prénom connu puis un nom, qui ferment le titre de la fiche après une
-  enseigne qui n'est pas elle-même un prénom, sont une proposition de patron, jamais un patron validé seul. Le
-  titre d'Alex'Élec propose son patron. « Jean Pierre Exemple » ne propose rien, car il nomme une seule personne.
-  Un titre dont un avis appelle ce prénom « M. … » ne propose rien non plus : c'est alors un nom de famille.
+- Écrit le 1er novembre (`f2f4d321`, `e2dd5200`) : un prénom connu puis un nom, qui ferment le titre de la
+  fiche après une enseigne qui lui est propre, sont une proposition de patron, jamais un patron validé seul. Le
+  titre d'Alex'Élec propose son patron. Ne proposent rien : « Garage Jules Exemple », où seul un mot de métier
+  précède le nom (une entreprise au nom d'une personne, peut-être partie) ; « Jean Pierre Exemple », qui nomme
+  une seule personne ; un titre dont un avis appelle ce prénom « M. … », car c'est alors un nom de famille.
