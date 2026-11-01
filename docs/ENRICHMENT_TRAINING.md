@@ -402,3 +402,34 @@ régénéré : la recherche corrigée dans le registre a été rejouée en lectu
   titre d'Alex'Élec propose son patron. Ne proposent rien : « Garage Jules Exemple », où seul un mot de métier
   précède le nom (une entreprise au nom d'une personne, peut-être partie) ; « Jean Pierre Exemple », qui nomme
   une seule personne ; un titre dont un avis appelle ce prénom « M. … », car c'est alors un nom de famille.
+- **Écart nouveau, À Votre Service Martinique (n° 414)** : patron validé seul (« registre_gouv », statut auto),
+  pris dans MARTINIQUE ÉLAGAGE, une société d'un autre nom que le seul mot « martinique » avait trouvée parmi les
+  paysagistes de l'île ; ni le site ni la page Facebook du prospect ne la citent. Effacé à la main.
+- Écrit le 1er novembre (`0329c28a`) : une société du registre qui ne porte pas le nom de l'enseigne (aucun de
+  ses noms n'est contenu en entier dans l'enseigne, aucun ne porte tous les mots qui la distinguent) ne donne
+  jamais un patron validé seul.
+  - Trouvée par un mot de l'enseigne, elle ne donne rien, sauf si un indice la relie à l'entreprise : un
+    établissement ouvert du métier à son adresse exacte, ou son nom ou celui de son dirigeant écrit en entier par
+    l'entreprise (présentation, réponses aux avis, adresse mail). Son dirigeant est alors proposé (0,6).
+  - Trouvée par l'adresse exacte (recherche par numéro et rue, manche 3 de `docs/DECISION_MAKER_TRAINING.md`), son
+    dirigeant n'est plus que proposé.
+  - Le patron que nomment l'adresse mail ou les avis (« M. … ») et que le registre inscrit dans le métier reste
+    validé seul, même quand l'adresse proposait la même société.
+  - Le registre ne donne aucun numéro de téléphone : l'indice « même téléphone » n'est pas écrit.
+- Rejeu en lecture seule, registre interrogé en direct, sur les 98 prospects français que ces deux recherches
+  peuvent toucher (aucun réenrichi) :
+
+| Prospect | Avant (registre seul) | Après |
+|---|---|---|
+| À Votre Service Martinique (n° 414) | gérant de MARTINIQUE ÉLAGAGE, validé seul | personne |
+| Bel Jaden Matinik (n° 418) | gérant de MATINIK ESPACES VERTS, trouvé par « matinik » (la Martinique en créole), validé seul ; en prod, ses deux emails l'ont fait retomber en proposition | personne |
+| Barber shop by Emrah (n° 188) | patron d'une autre société, trouvée par « emrah », validé seul, alors que les avis disent qui tient le salon | personne |
+| Street Coiffure (n° 37), Système D jardin (n° 236) | validés seuls par l'adresse | toujours validés seuls : l'adresse mail ou les avis nomment la même personne |
+| Barbier d'Antan (n° 14), Garage German Legend's (n° 45), Garage LP services (n° 306), L'Élégance Barber (n° 40) | validés seuls par l'adresse | proposés |
+
+- Coût : pour Barbier d'Antan, German Legend's et LP services, la main avait posé le même patron que la recherche
+  par adresse. Celle-ci avait vu juste ; la règle (« même adresse » donne au plus une proposition) les fait
+  confirmer à la main. Pour lui rendre sa validation seule, il suffit de ne plus passer par `_proposed` dans
+  `RegistreGouvStrategy._search_by_address`.
+- Vu en passant, non corrigé : l'adresse « bel.jaden@… » de Bel Jaden Matinik est lue comme une personne
+  (« Jaden Bel »), parce que le nom de l'entreprise répète ses deux mots ; un nouvel enrichissement la proposerait.
