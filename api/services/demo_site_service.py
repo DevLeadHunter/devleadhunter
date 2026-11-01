@@ -2075,14 +2075,16 @@ class DemoSiteService:
         revived for a J+30 relance shows exactly what the prospect first saw, without depending on a
         Storyblok space that expiry has since deleted, or a Google link that has rotted. The sections written
         for the business (``section_overrides``, laid over the content when the site is served) move with it,
-        since they hold the photos a client uploaded from the CMS. Best-effort: a download/upload failure
-        keeps the original URL, and this never commits (the caller does).
+        since they hold the photos a client uploaded from the CMS. A space's copy of a template's default image
+        gets back the template's own address instead (the same bytes, often too heavy to copy). Best-effort: a
+        download/upload failure keeps the original URL, and this never commits (the caller does).
 
         Args:
             demo_site: The demo whose stored content images are moved to R2.
 
         Returns:
-            The number of image URLs moved to R2 (0 when nothing was fragile or R2 is unconfigured).
+            The number of image URLs swapped, for R2 or a template's own address (0 when nothing was fragile or R2 is
+            unconfigured).
         """
         prospect_id: int | None = getattr(demo_site, "prospect_id", None)
         content = demo_site.content_json
@@ -2113,6 +2115,9 @@ class DemoSiteService:
         semaphore = asyncio.Semaphore(_CONTENT_IMAGE_REHOST_CONCURRENCY)
 
         async def _rehost(url: str) -> tuple[str, str]:
+            template_default_source = storyblok_service.template_default_source(url)
+            if template_default_source is not None:
+                return url, template_default_source
             async with semaphore:
                 return url, await prospect_photo_storage.rehost_remote_image(prospect_id, url)
 

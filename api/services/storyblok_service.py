@@ -470,10 +470,25 @@ class StoryblokService:
         host: str = urlparse(url).netloc.lower()
         if host in {_STOCK_PHOTO_HOST, urlparse(settings.demo_host_base_url).netloc.lower()}:
             return True
-        stock_urls: frozenset[str] = default_image_urls()
-        if url in stock_urls:
-            return True
-        return storyblok_asset_stem(url) in {storyblok_asset_key(stock_url) for stock_url in stock_urls}
+        return url in default_image_urls() or self.template_default_source(url) is not None
+
+    @staticmethod
+    def template_default_source(url: str) -> str | None:
+        """
+        The template's own address of the default image an asset was uploaded from, by the name the push gave it.
+
+        The Verdure hero copied into a space is « …/a086cb6054ad505274e3.jpg », the name a push gives the copy of
+        « …/images/verdure/image-import-27.jpg » (see ``storyblok_asset_key``): the same bytes, at an address that
+        lives on when the space is deleted.
+
+        Args:
+            url: An image's address.
+
+        Returns:
+            The default image's own address, or None for any other image.
+        """
+        stem: str = storyblok_asset_stem(url)
+        return next((source for source in default_image_urls() if storyblok_asset_key(source) == stem), None)
 
     async def _list_space_assets(self, client: httpx.AsyncClient, space_id: int) -> dict[str, dict[str, Any]]:
         """Map each already-uploaded asset's filename stem to ``{id, filename}`` so a re-publish reuses it.
