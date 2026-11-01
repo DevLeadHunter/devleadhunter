@@ -117,6 +117,16 @@ class CandidateDecision:
                     f"endroit ({place_elsewhere['value']}) que {facts.town} : à vérifier, ce peut être un homonyme."
                 ),
             )
+        email_person_mismatch = NameInAddress.email_person_mismatch(facts.email, facts) if facts.email else None
+        if email_person_mismatch is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Son email ({facts.email}) porte le nom de {email_person_mismatch.email_person}, mais "
+                    f"{email_person_mismatch.named_by} nomme {email_person_mismatch.named_person} : à vérifier, ce "
+                    "n'est peut-être pas son adresse."
+                ),
+            )
         is_page_without_phone = (
             facts.origin == CandidateOrigin.FACEBOOK_SEARCH.value and facts.is_facebook_page_read and not facts.phone
         )

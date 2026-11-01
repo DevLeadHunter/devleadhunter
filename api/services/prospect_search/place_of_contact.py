@@ -58,6 +58,11 @@ _DEPARTMENTS_BY_PLACE_WORD: dict[str, frozenset[str]] = {
     "roussillon": frozenset({"66"}),
     "bretagne": frozenset({"22", "29", "35", "44", "56"}),
     "breizh": frozenset({"22", "29", "35", "44", "56"}),
+    "bzh": frozenset({"22", "29", "35", "44", "56"}),
+    "paysdelaloire": frozenset({"44", "49", "53", "72", "85"}),
+    "pdl": frozenset({"44", "49", "53", "72", "85"}),
+    "centrevaldeloire": frozenset({"18", "28", "36", "37", "41", "45"}),
+    "cvl": frozenset({"18", "28", "36", "37", "41", "45"}),
     "normandie": frozenset({"14", "27", "50", "61", "76"}),
     "alsace": frozenset({"67", "68"}),
     "lorraine": frozenset({"54", "55", "57", "88"}),
@@ -67,14 +72,21 @@ _DEPARTMENTS_BY_PLACE_WORD: dict[str, frozenset[str]] = {
     "paca": frozenset({"04", "05", "06", "13", "83", "84"}),
     "cotedazur": frozenset({"06", "83"}),
     "auvergne": frozenset({"03", "15", "43", "63"}),
+    "auvergnerhonealpes": frozenset({"01", "03", "07", "15", "26", "38", "42", "43", "63", "69", "73", "74"}),
+    "aura": frozenset({"01", "03", "07", "15", "26", "38", "42", "43", "63", "69", "73", "74"}),
+    "ara": frozenset({"01", "03", "07", "15", "26", "38", "42", "43", "63", "69", "73", "74"}),
     "aquitaine": frozenset({"16", "17", "19", "23", "24", "33", "40", "47", "64", "79", "86", "87"}),
     "limousin": frozenset({"19", "23", "87"}),
     "poitou": frozenset({"16", "17", "79", "86"}),
     "charente": frozenset({"16", "17"}),
     "bourgogne": frozenset({"21", "58", "71", "89"}),
     "franchecomte": frozenset({"25", "39", "70", "90"}),
+    "bfc": frozenset({"21", "25", "39", "58", "70", "71", "89", "90"}),
     "picardie": frozenset({"02", "60", "80"}),
+    "nordpasdecalais": frozenset({"59", "62"}),
+    "npdc": frozenset({"59", "62"}),
     "hautsdefrance": frozenset({"02", "59", "60", "62", "80"}),
+    "hdf": frozenset({"02", "59", "60", "62", "80"}),
     "iledefrance": frozenset({"75", "77", "78", "91", "92", "93", "94", "95"}),
     "idf": frozenset({"75", "77", "78", "91", "92", "93", "94", "95"}),
     "savoie": frozenset({"73", "74"}),
@@ -89,6 +101,7 @@ _DEPARTMENTS_BY_PLACE_WORD: dict[str, frozenset[str]] = {
 }
 # A place word this short only counts as a whole part of the address, or as its ending (« flashelecidf »).
 _SHORT_PLACE_WORD_MAX_CHARS: int = 5
+_PLACE_WORDS_ENDING_FIRST_NAMES: frozenset[str] = frozenset({"ara", "aura"})
 _FACEBOOK_PAGE_PREFIXES: frozenset[str] = frozenset({"p", "pages", "people"})
 _EMAIL_SOURCE: str = "Son email"
 _EMAIL_PAGE_SOURCE: str = "La page Facebook de son email"
@@ -281,9 +294,12 @@ class PlaceOfContact:
         """
         The place an address part names when it is not the business's département.
 
-        A postal code, a département number written alone (« rg.elec.89 »), a region or a neighbouring country
-        (« lejardindeden.occitanie », « flashelecidf », « jselectricitebelux ») count; a number of one digit, or of
-        four (a year), says nothing.
+        A postal code, a département number written alone (« rg.elec.89 »), a region, its abbreviation or a
+        neighbouring country (« lejardindeden.occitanie », « flashelecidf », « elecbzh »,
+        « jselectricitebelux ») count; a number of one digit, or of four (a year), says nothing. An abbreviation
+        ending a first name counts only alone (« ara.elec », never « clara »), and a region of two names counts
+        as the one holding the business (« languedocroussillon » for the Hérault, though Roussillon is the
+        Pyrénées-Orientales).
 
         Args:
             address_part: The words before an email's « @ », or the name in a Facebook page's address.
@@ -304,16 +320,19 @@ class PlaceOfContact:
             if run_department is not None and run_department != department:
                 return run
         segments = [segment for segment in _ADDRESS_SEPARATORS_RE.split(re.sub(r"\d+", " ", folded)) if segment]
-        compact = "".join(segments)
-        for word, departments in _DEPARTMENTS_BY_PLACE_WORD.items():
-            is_named = (
-                any(segment == word or segment.endswith(word) for segment in segments)
-                if len(word) <= _SHORT_PLACE_WORD_MAX_CHARS
-                else word in compact
-            )
-            if is_named and department not in departments:
-                return word
-        return None
+        named_words = [word for word in _DEPARTMENTS_BY_PLACE_WORD if cls._names_place_word(word, segments)]
+        if any(department in _DEPARTMENTS_BY_PLACE_WORD[word] for word in named_words):
+            return None
+        return max(named_words, key=len, default=None)
+
+    @staticmethod
+    def _names_place_word(word: str, segments: list[str]) -> bool:
+        """Whether an address's words name a place word: a short one alone or ending a word, a long one anywhere."""
+        if word in _PLACE_WORDS_ENDING_FIRST_NAMES:
+            return word in segments
+        if len(word) <= _SHORT_PLACE_WORD_MAX_CHARS:
+            return any(segment == word or segment.endswith(word) for segment in segments)
+        return word in "".join(segments)
 
     @classmethod
     async def note_contact_elsewhere(cls, facts: CandidateFacts) -> None:

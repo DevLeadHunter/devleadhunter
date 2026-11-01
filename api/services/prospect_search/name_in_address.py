@@ -12,6 +12,7 @@ whose it is, what is left is a name.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from scrappers.email_candidate_scoring import ROLE_LOCAL_PARTS, email_candidate_scorer
 from services.decision_maker.normalize import fold
@@ -183,6 +184,18 @@ _NAME_MIN_CHARS: int = 4
 _STANDALONE_NAME_MIN_CHARS: int = 5
 # A word of the business's own name, found inside an address, must have three letters at least.
 _OWN_WORD_MIN_CHARS: int = 3
+_NAMED_PEOPLE_SOURCE_REGISTER: str = "le registre des entreprises"
+_NAMED_PEOPLE_SOURCE_PAGE: str = "une page lue par la recherche"
+_NAMED_PEOPLE_SOURCE_LISTING: str = "le nom de sa fiche Google"
+
+
+@dataclass(frozen=True)
+class EmailPersonMismatch:
+    """The person an email is named after, and the one a record of the business names instead."""
+
+    email_person: str
+    named_person: str
+    named_by: str
 
 
 class NameInAddress:
@@ -249,6 +262,64 @@ class NameInAddress:
             True when the domain is another business's.
         """
         return cls._spells_another_business(email_candidate_scorer.registrable_label(domain), facts)
+
+    @classmethod
+    def email_person_mismatch(cls, email: str, facts: CandidateFacts) -> EmailPersonMismatch | None:
+        """
+        A person the business's records name, whose name the person its email is named after does not bear.
+
+        « temoin.jules@ », read on a page a search found, is a namesake's address when the registry writes Jules
+        Exemple at the head of the business's company; the owner a page names and the person the listing's name
+        spells count too. An address naming no person, or a person bearing one of their names, says nothing.
+
+        Args:
+            email: The business's email.
+            facts: The business: its name, its owner and the heads the registry writes.
+
+        Returns:
+            Both people and who names the second one, or None.
+        """
+        from services.decision_maker.email_owner import PersonInEmail
+
+        person = PersonInEmail.person_of(email, facts.name)
+        if person is None:
+            return None
+        email_last_name = "".join(cls._words(person.last_name))
+        for named_person, named_by in cls._people_named_for(facts):
+            named_words = cls._words(named_person)
+            bears_a_named_word = any(
+                word == email_last_name or (len(word) >= _OWN_WORD_MIN_CHARS and word in email_last_name)
+                for word in named_words
+            )
+            if named_words and not bears_a_named_word:
+                return EmailPersonMismatch(f"{person.first_name} {person.last_name}", named_person, named_by)
+        return None
+
+    @staticmethod
+    def _people_named_for(facts: CandidateFacts) -> list[tuple[str, str]]:
+        """Who the registry, a page the search read and the listing's name say runs the business, and who says it."""
+        from services.decision_maker.strategies import BusinessNameOwnerStrategy
+        from services.decision_maker.types import ResolutionContext
+
+        people = [
+            (str(line["value"]), _NAMED_PEOPLE_SOURCE_REGISTER)
+            for line in facts.evidence
+            if line.get("fact") == "registered_head" and line.get("value")
+        ]
+        if facts.owner_name:
+            owner_line = next(
+                (
+                    line
+                    for line in facts.evidence
+                    if line.get("fact") == "owner" and line.get("value") == facts.owner_name
+                ),
+                {},
+            )
+            people.append((facts.owner_name, str(owner_line.get("source") or _NAMED_PEOPLE_SOURCE_PAGE)))
+        for candidate in BusinessNameOwnerStrategy().candidates_of(ResolutionContext(company_name=facts.name)):
+            if candidate.first and candidate.last:
+                people.append((f"{candidate.first} {candidate.last}", _NAMED_PEOPLE_SOURCE_LISTING))
+        return people
 
     @classmethod
     def _spells_another_business(cls, address_part: str, facts: CandidateFacts) -> bool:

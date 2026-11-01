@@ -25,6 +25,7 @@ _CEASED_STATE: str = "C"
 _ACTIVE_STATE: str = "A"
 _POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"\b(\d{5})\b")
 _BRACKETS_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
+_BRACKETED_NAME_RE: re.Pattern[str] = re.compile(r"\(([^)]*)\)")
 _RECENT_CLOSING: timedelta = timedelta(days=3 * 365)
 _REGISTER_SOURCE: str = "Registre des entreprises (INSEE)"
 # The legal forms of associations start with 92 (« 9220 » : association déclarée).
@@ -70,6 +71,7 @@ class FrenchRegistry:
                 break
         await self.place_listing_without_address(facts, list(named.values()))
         self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
+        self.note_registered_heads(facts, list(named.values()))
         self.complete_address(facts, list(named.values()))
         self.note_association(facts, list(found.values()))
         self.note_registered_activity(facts, list(named.values()))
@@ -271,6 +273,51 @@ class FrenchRegistry:
         if len(sirens) == 1:
             facts.registry_number = sirens.pop()
             facts.add_evidence("registry", facts.registry_number, source=_REGISTER_SOURCE)
+
+    @classmethod
+    def note_registered_heads(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note the people the registry writes at the head of the company the business's number designates.
+
+        The decision compares them with the person its email is named after: « temoin.jules@ », read on a page a
+        search found, is a namesake's address when the registry writes Jules Exemple at the head of the business.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        siren = (facts.registry_number or "")[:9]
+        company = next((company for company in named if siren and str(company.get("siren") or "") == siren), None)
+        if company is None:
+            return
+        noted = {line.get("value") for line in facts.evidence if line.get("fact") == "registered_head"}
+        for head in company.get("dirigeants") or []:
+            person = cls.person_of_head(head)
+            if person is not None and person not in noted:
+                noted.add(person)
+                facts.add_evidence(
+                    "registered_head", person, source=_REGISTER_SOURCE, snippet=str(company.get("nom_complet") or "")
+                )
+
+    @staticmethod
+    def person_of_head(head: dict[str, Any]) -> str | None:
+        """
+        A person the registry writes at a company's head, as a reader writes them (pure — testable).
+
+        « EXEMPLE (TEMOIN) » « MARIE CLAIRE » is « Marie Exemple (Temoin) », the name of use kept for comparison;
+        a company, a liquidator or a hidden name gives None.
+        """
+        from services.decision_maker.normalize import title_case_name
+
+        registered_name = str(head.get("nom") or "")
+        last_name = title_case_name(registered_name)
+        first_name = title_case_name(str(head.get("prenoms") or "").strip().split(" ")[0])
+        is_liquidator = "liquidat" in fold(str(head.get("qualite") or ""))
+        if not last_name or not first_name or is_liquidator or "diffusible" in fold(registered_name):
+            return None
+        name_of_use = title_case_name(" ".join(_BRACKETED_NAME_RE.findall(registered_name)))
+        has_other_name_of_use = name_of_use is not None and fold(name_of_use) != fold(last_name)
+        return f"{first_name} {last_name}" + (f" ({name_of_use})" if has_other_name_of_use else "")
 
     async def _read_closing_of(
         self, facts: CandidateFacts, named: list[dict[str, Any]], *, department: str, postal_code: str | None

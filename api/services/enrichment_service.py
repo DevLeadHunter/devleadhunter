@@ -30,7 +30,7 @@ from scrappers.google_scraper import GoogleScraper
 from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
 from services.decision_maker.french_departments import FrenchDepartments
-from services.decision_maker.types import NameCandidate, NameResolution
+from services.decision_maker.types import NameCandidate, NameResolution, SearchedOwner
 from services.enrichment_content import EnrichmentContentMapper
 from services.photo_labeling_service import photo_labeling_service
 from services.professional_license_service import professional_license_service
@@ -589,7 +589,12 @@ class EnrichmentService:
             # The full cascade reads FRENCH registries (SIRENE, Pappers): elsewhere it could only find a French homonym.
             resolver = decision_maker_resolver if country == "FR" else public_text_resolver
             resolution = await resolver.resolve(
-                context_from_prospect(prospect, record, registry_number=registry_number)
+                context_from_prospect(
+                    prospect,
+                    record,
+                    registry_number=registry_number,
+                    searched_owner=self._searched_owner(db, prospect),
+                )
             )
             record.name_candidates = [candidate.to_persistable() for candidate in resolution.candidates]
 
@@ -730,6 +735,33 @@ class EnrichmentService:
             .order_by(ProspectSearchCandidate.id.desc())
             .limit(1)
         ).scalar_one_or_none()
+
+    @staticmethod
+    def _searched_owner(db: Session, prospect: ProspectDB) -> SearchedOwner | None:
+        """The person the prospect search read running the business, with the page it read them on, when it read one."""
+        from models.prospect_search_candidate import ProspectSearchCandidate
+
+        found = db.execute(
+            select(ProspectSearchCandidate.owner_name, ProspectSearchCandidate.evidence)
+            .where(
+                ProspectSearchCandidate.prospect_id == prospect.id,
+                ProspectSearchCandidate.owner_name.is_not(None),
+            )
+            .order_by(ProspectSearchCandidate.id.desc())
+            .limit(1)
+        ).one_or_none()
+        if found is None:
+            return None
+        owner_name, evidence = found
+        owner_line = next(
+            (
+                line
+                for line in reversed(evidence or [])
+                if isinstance(line, dict) and line.get("fact") == "owner" and line.get("value") == owner_name
+            ),
+            {},
+        )
+        return SearchedOwner(name=owner_name, source=owner_line.get("source"), url=owner_line.get("url"))
 
     async def _read_swiss_register(
         self, db: Session, prospect: ProspectDB, record: ProspectEnrichment, *, uid: str | None

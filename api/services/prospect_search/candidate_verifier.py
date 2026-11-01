@@ -572,6 +572,9 @@ class CandidateVerifier:
         name puts another word in place of the business's trade (« La Taverne d'Odin » for
         « Les Jardins d'Odin ») is another business's, and so is a page placed elsewhere
         without the business's phone (« … | Le Marin Martinique » for a garage of Ducos).
+        A listing without address must find its town or its number on the page: the trade
+        alone fits every namesake of the trade (« Jardins Exemple » of Lyon for a listing
+        searched from Metz).
         """
         if not cls.names_business(line.title, facts, trade) or cls._swaps_the_trade(line.title, facts, trade):
             return False
@@ -581,6 +584,8 @@ class CandidateVerifier:
             line.link, facts, trade
         ):
             return False
+        if facts.is_placed_by_the_search_only:
+            return facts.is_town_named_in(line.text) or cls.shows_contact_of(line.text, facts)
         text = fold(line.text)
         trade_words = (*trade.category_keywords, *trade.aliases)
         return facts.is_town_named_in(line.text) or any(fold(word) in text for word in trade_words)
