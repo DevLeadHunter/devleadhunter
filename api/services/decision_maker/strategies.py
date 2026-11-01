@@ -1252,8 +1252,9 @@ class BusinessNameOwnerStrategy:
         The owner whose first name and last name close the listing's title, after the trade name: a proposal.
 
         A tradesman often signs his listing (« Max'Elec Marc Exemple »): a known first name then a name word, after
-        a trade name that is not itself a first name (« Jean Pierre Exemple » names one person, not a business). A
-        customer calling the first word « M. Martin » makes it a last name: the title then tells nothing.
+        a trade name of its own that is not itself a first name. « Garage Jules Exemple » is a business named after
+        a person, who may have left; « Jean Pierre Exemple » names one person. A customer calling the first word
+        « M. Martin » makes it a last name: the title then tells nothing.
 
         Args:
             context: The business looked for.
@@ -1273,6 +1274,7 @@ class BusinessNameOwnerStrategy:
             self._is_name_word(first)
             and self._is_name_word(last)
             and GivenNames.is_given_name(first)
+            and any(self._is_name_word(word) for word in trade_name)
             and not all(GivenNames.is_given_name(word) for word in trade_name)
             and not is_called_by_last_name
         )
