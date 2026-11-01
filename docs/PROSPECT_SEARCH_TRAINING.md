@@ -656,7 +656,7 @@ Critères de la n° 18 : email, note ≥ 4,0.
 
 | Écart | Cas | Règle écrite | Après |
 |---|---|---|---|
-| Un autre numéro écrit à côté de l'email | DAM'ÉLEC, greentouch, Rg Élec, Aurelec (liste des entreprises de Beaumont), Flash Élec 24, Green Concepts | dans un résultat qui montre des numéros, l'email appartient au numéro écrit le plus près : si ce n'est pas celui du candidat, l'email n'est pas pris, même quand le juge le lui donne | email écarté : mis de côté (portable) ou écarté faute de contact |
+| Un autre numéro écrit à côté de l'email | DAM'ÉLEC, greentouch, Rg Élec, Aurelec (liste des entreprises de Beaumont), Flash Élec 24, Green Concepts | dans un résultat qui montre des numéros, l'email appartient au numéro écrit le plus près. Si ce n'est pas celui du candidat, l'email n'est pas pris, même quand le juge le lui donne ; s'il porte le nom de l'entreprise, il est gardé en preuve « c » avec la raison (règle affinée en manche 14 : l'autre numéro peut être celui de son responsable) | à confirmer (DAM'ÉLEC, greentouch, Rg Élec, Flash Élec 24) ou écarté faute de contact (Aurelec, Green Concepts) |
 | Page dans une autre écriture | les candidats n° 4981 et 4998 (pages coréennes, dont l'une montre un numéro aux mêmes chiffres que le sien) | un résultat écrit surtout en coréen, cyrillique, arabe… ne donne jamais d'email | email écarté |
 | Page qui ne situe pas l'entreprise | Élagage Pierrot (« Pierrot Elagage, La Crau, FR »), le paysagiste n° 4796 (fiche infobel « à Le Tronquay ») | l'email lu sur la page d'un tiers qui ne montre ni le numéro du candidat, ni sa commune, ni un code postal de son département vaut au plus « c » : « La page qui donne son email (…) ne dit pas où il est : à vérifier, ce peut être un homonyme. » | à confirmer |
 | Lieu écrit dans l'email ou une page | Ogelec (`29`), Les Jardins d'Eden (`occitanie`), JS Électricité (page `…belux`), Asser (page `Asser84700`) ; Rg Élec (`89`) et Flash Élec 24 (`idf`) sont déjà écartés par le numéro | un numéro de département, un code postal, une région ou un pays voisin écrit avant le « @ », dans l'adresse de la page Facebook qui a donné l'email ou dans celle du candidat, et qui n'est pas son département, le laisse « à confirmer » avec le lieu lu | à confirmer |
@@ -671,7 +671,7 @@ Critères de la n° 18 : email, note ≥ 4,0.
 |---|---|---|---|---|
 | Avant, la recherche | 36 (15, 42 %) | 0 | 12 | 0 |
 | Avant, l'ancien moteur rejoué sur les mêmes preuves | 38 (15, 39 %) | 0 | 10 | 0 |
-| Après, rejeu hors ligne | 14 (10, 71 %) | 5 | 19 | 10 |
+| Après, rejeu hors ligne (règles de la manche 14 comprises) | 14 (10, 71 %) | 2 | 23 | 9 |
 
 - Gardés à tort après : 4. Nancy Élec et C-velec ont un site déclaré en ligne que le rejeu hors ligne ne voit
   pas : la recherche lit le bouton « Site Web » ou le panneau, comme pour les trois sites relus en direct (5 bons
@@ -725,3 +725,35 @@ téléphone.
 | entretien d'espace vert et nettoyage haute pression (Rivière-Pilote) | à confirmer | nom générique, ni téléphone ni avis | rien à changer : le doute était juste |
 
 - Erreur de ma part, rattrapée : Tout Faire Habitat d'abord refusé pour son site, qui est mort ; repris.
+
+### Résultat
+
+Moteur corrigé le 1er novembre (`f2f4d321`), puis le lot rejoué hors ligne, chaque cas contrôlé en direct. Il a
+fallu quatre recherches Google pour le garage de Saint-Esprit et une pour Flash Car.
+
+| Écart | Règle écrite | Après |
+|---|---|---|
+| Garage de Saint-Esprit (n° 5484) : site `garageccadignan.fr` non vu | une page d'un domaine qui porte un mot distinctif du nom de l'entreprise, et qui montre son numéro ou son email, est son site, même quand la fiche déclare une page Facebook. La règle joue dans la vérification, la recherche par le numéro et la recherche de l'email. Lors de la n° 19, les résultats de la vérification étaient en partie cachés derrière la redirection de Google, lue depuis la manche 12 | écarté, a un site : la vérification rejouée en direct trouve `https://www.garageccadignan.fr/`, en ligne |
+| Garage Automobile VSP : `aixamautomobille@…` | une marque automobile qui ouvre un mot de l'email (« aixamautomobile ») ou qui en est un mot entier (« garage.kia ») fait un concessionnaire, comme une marque en tête du nom. Ne comptent pas les marques au nom de mot courant (Mini) ou de prénom (Mercedes) | écarté : « Agent ou concessionnaire Aixam » |
+| Flash Car (Ducos) : email de « Garage Flash Auto Carrosserie », au Marin | une page Facebook trouvée par une recherche n'est pas la sienne quand elle nomme une autre commune du département d'outre-mer, ou en métropole un code postal d'un autre département, sans montrer son numéro. La règle de la manche 13 ne comparait que les départements : toute la Martinique est en 972 | refusé en direct : la recherche Facebook titre « Garage Flash Auto Carrosserie \| Le Marin Martinique ». Le rejeu hors ligne le garde, ce titre n'étant pas enregistré |
+
+| Lot de 20 avec email | Gardés (dont bons) | À confirmer | Écartés |
+|---|---|---|---|
+| Avant, la recherche | 19 (16, 84 %) | 1 | 0 |
+| Après, rejeu hors ligne | 15 (14, 93 %) | 3 | 2 |
+| Après, la page Facebook de Flash Car lue en direct | 14 (14, 100 %) | 3 | 3 |
+
+- Bons laissés « à confirmer » : 2 sur 16. L'email d'Elo Green Services porte `971` (Guadeloupe) pour une
+  entreprise inscrite à Fort-de-France : c'est le prix de la règle du lieu, une vérification à la main. Bèl Jaden
+  Matinik n'a pas d'adresse sur sa fiche, et la page qui donne son email (une liste d'ateliers) ne la situe pas.
+- Règle affinée en route. Un email écrit à côté d'un autre numéro que celui du candidat n'est plus jeté quand il
+  porte le nom de l'entreprise : sur la page de Bèl Jaden, l'autre numéro est celui de son responsable. Il est
+  gardé en preuve « c », « à confirmer » avec la raison, et reste jeté quand il ne porte pas ce nom (Aurelec). Sur
+  la n° 18, le rejeu donne les mêmes gardés, 2 mis de côté et 23 à confirmer au lieu de 5 et 19 (manche 13).
+- À vérifier à la main : une page « Top Garage Ducos » cite Flash Car à la même adresse (zone de la Petite
+  Cocotte). Il pourrait être un garage du réseau Top Garage.
+
+Règle non écrite : chercher l'email lui-même sur Google. Google ignore l'adresse exacte et renvoie des pages sans
+rapport : le forum d'Orange pour une adresse `…@orange.fr`, des « Flash Auto » de toute la France. Une règle tirée
+de ces résultats placerait des homonymes au hasard. Le site du garage de Saint-Esprit vient de la recherche par son
+nom.
