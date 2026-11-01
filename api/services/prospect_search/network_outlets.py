@@ -73,6 +73,8 @@ _NETWORK_HOSTS: tuple[str, ...] = (
     "peugeot.fr",
     "citroen.fr",
     "dacia.fr",
+    "ppf.fr",
+    "preservationdupatrimoine.fr",
 )
 # Parts of a Facebook page's address that are no name: its kind of address, its number.
 _FACEBOOK_ADDRESS_WORDS: frozenset[str] = frozenset({"pages", "p", "people", "profile.php"})

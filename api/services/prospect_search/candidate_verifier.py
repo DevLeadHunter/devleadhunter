@@ -25,6 +25,7 @@ from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
 from scrappers.google_result_link import GoogleResultLink
+from scrappers.google_scraper import GoogleScraper
 from services.decision_maker.normalize import company_similarity, company_tokens, fold
 from services.prospect_search.business_name import COMMON_NAME_WORDS, NAME_LINK_WORDS, BusinessName
 from services.prospect_search.candidate_facts import (
@@ -37,6 +38,7 @@ from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.name_in_address import NameInAddress
 from services.prospect_search.network_outlets import NetworkOutlets
+from services.prospect_search.place_of_contact import PlaceOfContact
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.swiss_directory import (
     SwissDirectory,
@@ -69,6 +71,12 @@ _NO_ADVERTISING_NOTICE_RE: re.Pattern[str] = re.compile(
     r"|blocco pubblicita|no advertising)"
 )
 _HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"(\d+)\s?[a-z]?$", re.IGNORECASE)
+# What follows a Facebook page's name in a result's title (« Exemple Paysage | Facebook », « … - Accueil »).
+_PAGE_TITLE_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s+[|·–—-]\s+")
+# A word a page's name adds must be a word, not initials, to make another business.
+_ADDED_WORD_MIN_CHARS: int = 4
+# What the town reader answers for an address it cannot place.
+_UNKNOWN_TOWN: str = "Inconnue"
 _ENTRY_HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"/tel/[^/?]+/[a-z0-9-]*?-(\d+)[a-z]?/")
 _LISTED_WEBSITE_RE: re.Pattern[str] = re.compile(
     r"(?:site web|site internet|website|webseite)\s*:\s*((?:https?://|www\.)[^\s;,]+)", re.IGNORECASE
@@ -248,7 +256,8 @@ class CandidateVerifier:
                 results=results,
             )
         self._apply_verdict(facts, verdict, results, trade)
-        self._keep_snippet_emails(facts, snippet_emails, results, verdict, trade)
+        department = await PlaceOfContact.department_of(facts)
+        self._keep_snippet_emails(facts, snippet_emails, results, verdict, trade, department=department)
         if (facts.phone, facts.address) != contact_before_search:
             directory_entry = await self._find_swiss_directory_entry(facts, trade) or directory_entry
         self._read_swiss_directory_entry(facts, directory_entry, trade)
@@ -511,9 +520,11 @@ class CandidateVerifier:
         Whether a Facebook result is this business's page, not a namesake's.
 
         A business named after its owner shares its name with strangers' personal
-        profiles: the result must also place it in the town or in the trade.
+        profiles: the result must also place it in the town or in the trade. A page whose
+        name puts another word in place of the business's trade (« La Taverne d'Odin » for
+        « Les Jardins d'Odin ») is another business's.
         """
-        if not cls.names_business(line.title, facts, trade):
+        if not cls.names_business(line.title, facts, trade) or cls._swaps_the_trade(line.title, facts, trade):
             return False
         if not FacebookPageResults.is_page_root(line.link) and not cls._page_address_names_business(
             line.link, facts, trade
@@ -523,6 +534,19 @@ class CandidateVerifier:
         is_in_town = bool(facts.town) and fold(facts.town) in text
         trade_words = (*trade.category_keywords, *trade.aliases)
         return is_in_town or any(fold(word) in text for word in trade_words)
+
+    @staticmethod
+    def _swaps_the_trade(title: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
+        """
+        Whether a page's name drops the trade the business's name says and adds a word of its own.
+
+        « La Taverne d'Odin » keeps « Odin » but says « taverne » where « Les Jardins d'Odin » says « jardins ».
+        """
+        page_name = _PAGE_TITLE_SEPARATOR_RE.split(title, maxsplit=1)[0]
+        if not trade.names_trade(facts.name) or trade.names_trade(page_name):
+            return False
+        known_words = company_tokens(facts.name) | company_tokens(facts.town) | NAME_LINK_WORDS | COMMON_NAME_WORDS
+        return any(len(word) >= _ADDED_WORD_MIN_CHARS and word not in known_words for word in company_tokens(page_name))
 
     @classmethod
     def _page_address_names_business(cls, link: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
@@ -576,6 +600,11 @@ class CandidateVerifier:
             facts.name = panel_name or facts.name
         facts.phone = facts.phone or panel_phone
         facts.address = facts.address or panel_address or None
+        if facts.city is None and panel_address:
+            # A listing without a place took the searched town; the panel's address tells the real one.
+            panel_town = GoogleScraper.extract_city(panel_address, facts.country)
+            is_town_read = panel_town not in ("", _UNKNOWN_TOWN, panel_address)
+            facts.city = panel_town if is_town_read else None
         if isinstance(panel.get("rating"), int | float):
             facts.google_rating = float(panel["rating"])
         if isinstance(panel.get("reviews_cnt"), int | float):
@@ -953,7 +982,7 @@ class CandidateVerifier:
         """Every email written in the results, with the index of its result."""
         found: list[tuple[str, int]] = []
         for index, line in enumerate(results):
-            if CandidateVerifier.is_group_discussion(line.link):
+            if CandidateVerifier.is_group_discussion(line.link) or PlaceOfContact.is_in_foreign_script(line.text):
                 continue
             for match in _EMAIL_RE.finditer(email_candidate_scorer.without_glued_labels(line.text)):
                 found.append((validation_service.ascii_email(match.group(0).lower().rstrip(".")), index))
@@ -966,6 +995,8 @@ class CandidateVerifier:
         results: list[SearchResultLine],
         verdict: JudgeVerdict | None,
         trade: TradeProfile,
+        *,
+        department: str | None,
     ) -> None:
         """Keep the emails the results give to this business, graded by how well the result proves it."""
         judged = {
@@ -973,6 +1004,7 @@ class CandidateVerifier:
             for entry in (verdict.emails if verdict else [])
         }
         distinctive = self.distinctive_tokens(facts, trade)
+        own_host = (urlparse(facts.website or "").hostname or "").lower().removeprefix("www.")
         for email, index in snippet_emails:
             line = results[index]
             if not validation_service.is_valid_email(email):
@@ -996,7 +1028,41 @@ class CandidateVerifier:
             )
             if not is_own_page:
                 proof = self.grade_email_by_its_words(email, proof, facts)
-            facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text)
+            is_own_text = is_own_page or (bool(own_host) and line.host == own_host)
+            self.offer_email_read_in(facts, email, proof, line, department=department, is_own_text=is_own_text)
+
+    @staticmethod
+    def offer_email_read_in(
+        facts: CandidateFacts,
+        email: str,
+        proof: EmailProofLevel,
+        line: SearchResultLine,
+        *,
+        department: str | None,
+        is_own_text: bool,
+    ) -> None:
+        """
+        Offer an email read in a result, unless the result gives it to another business.
+
+        A directory writes each business's number beside its address: an email nearest another number is that
+        number's owner's. A third party's page that does not place the business (its phone, its town, a postal code of
+        its département) leaves the email unproven, whatever its words: a namesake elsewhere carries the same.
+
+        Args:
+            facts: The candidate, completed in place.
+            email: The address read.
+            proof: How well the result proves the address is the business's.
+            line: The result it was read in.
+            department: The business's French département, when known.
+            is_own_text: Whether the result is the business's own page or site.
+        """
+        if PlaceOfContact.is_beside_another_phone(line.text, email, facts.phone):
+            return
+        is_unplaced = not is_own_text and not PlaceOfContact.shows_place_of(line.text, facts, department)
+        if is_unplaced:
+            proof = EmailProofLevel.GUESSED
+        if facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text) and is_unplaced:
+            facts.add_evidence("email_unplaced", email, source=line.host, url=line.link)
 
     @staticmethod
     def grade_email_by_its_words(email: str, proof: EmailProofLevel, facts: CandidateFacts) -> EmailProofLevel:

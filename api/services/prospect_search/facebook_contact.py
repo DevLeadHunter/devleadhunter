@@ -27,6 +27,7 @@ from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import EmailDomainCheck
 from services.prospect_search.network_outlets import NetworkOutlets
+from services.prospect_search.place_of_contact import PlaceOfContact
 from services.prospect_search.swiss_directory import SwissDirectoryUnavailableError, swiss_directory
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.validation_service import validation_service
@@ -110,6 +111,7 @@ class FacebookContactRecorder:
             await self._read_directory_asterisk(facts)
         await self._domain_check.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
+        await PlaceOfContact.note_contact_elsewhere(facts)
 
         verdict = CandidateDecision.decide(facts, trade, criteria)
         with SessionLocal() as db:

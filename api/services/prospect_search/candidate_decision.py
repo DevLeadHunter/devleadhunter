@@ -108,6 +108,15 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.",
             )
+        place_elsewhere = facts.contact_elsewhere
+        if place_elsewhere is not None and facts.email is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"{place_elsewhere['source']} ({place_elsewhere.get('url') or facts.email}) désigne un autre "
+                    f"endroit ({place_elsewhere['value']}) que {facts.town} : à vérifier, ce peut être un homonyme."
+                ),
+            )
         is_page_without_phone = (
             facts.origin == CandidateOrigin.FACEBOOK_SEARCH.value and facts.is_facebook_page_read and not facts.phone
         )
@@ -123,6 +132,11 @@ class CandidateDecision:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM,
                 detail="Page Facebook dont le nom ne dit pas le métier : à vérifier (association, groupe, agence…).",
+            )
+        if facts.is_placed_by_the_search_only and (has_proven_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=f"Sa fiche Google ne donne pas d'adresse : rien ne montre qu'il est à {facts.town}, à vérifier.",
             )
         if cls._meets_channel(criteria.channel, has_email=has_proven_email, has_mobile=has_mobile):
             return CandidateVerdict(CandidateStatus.KEPT)
@@ -154,6 +168,8 @@ class CandidateDecision:
         """Why an email without a frank proof is left to the user: it may even name another business."""
         if facts.email is not None and NameInAddress.email_names_another_business(facts.email, facts):
             return f"Son email ({facts.email}) porte le nom d'une autre affaire : à vérifier."
+        if facts.is_email_unplaced:
+            return f"La page qui donne son email ({facts.email}) ne dit pas où il est : à vérifier, ce peut être un homonyme."
         return "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir."
 
     @staticmethod
@@ -196,6 +212,15 @@ class CandidateDecision:
             )
         if facts.is_chain or NetworkOutlets.facebook_page_names_network(facts.facebook_url):
             return cls._rejected(CandidateRejectReason.CHAIN, cls._chain_detail(facts))
+        if facts.registered_association is not None:
+            return cls._rejected(
+                CandidateRejectReason.WRONG_TRADE,
+                f"Inscrit au registre comme association ({facts.registered_association}) : pas une entreprise.",
+            )
+        if trade.names_another_trade(facts.name):
+            return cls._rejected(
+                CandidateRejectReason.WRONG_TRADE, f"Son nom dit un autre métier que celui cherché : « {facts.name} »."
+            )
         if not facts.matches_trade or not trade.accepts_category(facts.google_category):
             category = facts.google_category or "autre activité"
             return cls._rejected(

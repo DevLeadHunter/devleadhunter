@@ -2025,6 +2025,7 @@ def test_a_facebook_read_giving_the_email_of_another_listing_leaves_one_listing_
     )
     garage.google_reviews_count, body_shop.google_reviews_count = 152, 26
     garage.phone_is_mobile = body_shop.phone_is_mobile = False
+    garage.trade = body_shop.trade = "garage"
     body_shop.facebook_url = "https://www.facebook.com/100000000000001"
     db.commit()
 

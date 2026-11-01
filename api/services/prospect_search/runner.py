@@ -470,7 +470,9 @@ class ProspectSearchRunner:
                 CandidateVerifier.mark_network_outlet(facts, profile, listing_name=listing.name)
                 early_verdict: CandidateVerdict | None = None
                 is_elsewhere = facts.is_abroad or facts.is_outside_region
-                is_ruled_out = facts.is_closed or is_elsewhere or facts.is_chain
+                is_ruled_out = (
+                    facts.is_closed or is_elsewhere or facts.is_chain or profile.names_another_trade(facts.name)
+                )
                 if is_ruled_out or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)

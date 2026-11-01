@@ -24,6 +24,37 @@ _LEADING_DEALER_WORDS: frozenset[str] = frozenset(
 _DEALER_WORDS: tuple[str, ...] = ("agent", "concession", "concessionnaire", "distributeur", "reparateur agree")
 _DEALER_CATEGORY_WORD: str = "concessionnaire"
 _SHORT_BRAND_MAX_CHARS: int = 3
+# Crafts a business name may say (« La petite Maçonnerie », « Exemple Chauffagiste »): the craft, seldom the
+# craftsman, whose word is often a family name (« Barbier », « Couvreur »).
+_CRAFT_NAME_WORDS: frozenset[str] = frozenset(
+    {
+        "maconnerie",
+        "plomberie",
+        "chauffage",
+        "chauffagiste",
+        "electricite",
+        "menuiserie",
+        "ebenisterie",
+        "toiture",
+        "couverture",
+        "zinguerie",
+        "charpente",
+        "carrelage",
+        "peinture",
+        "platrerie",
+        "serrurerie",
+        "vitrerie",
+        "carrosserie",
+        "mecanique",
+        "garage",
+        "coiffure",
+        "restaurant",
+        "boulangerie",
+        "boucherie",
+        "pizzeria",
+        "traiteur",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -47,6 +78,22 @@ class TradeProfile:
         """Whether a business name says the trade (« Rochat Électricité », « Jardins du Lac »)."""
         folded_name = fold(name)
         return any(fold(word) in folded_name for word in (*self.aliases, *self.category_keywords))
+
+    def names_another_trade(self, name: str) -> bool:
+        """
+        Whether a business name says another trade and not this one (« La petite Maçonnerie » for a landscaper).
+
+        A name saying both trades (« Électricité Chauffage Exemple ») is this trade's.
+
+        Args:
+            name: The business name, as the listing writes it.
+
+        Returns:
+            True when one of its words names another trade and none names this one.
+        """
+        own_words = {fold(word) for word in self.aliases}
+        name_words = set(_NAME_WORD_SEPARATORS_RE.split(fold(name)))
+        return bool(name_words & (_CRAFT_NAME_WORDS - own_words)) and not self.names_trade(name)
 
     def brand_outlet_of(self, name: str, google_category: str | None) -> str | None:
         """
@@ -146,7 +193,7 @@ _PROFILES: tuple[TradeProfile, ...] = (
         key="electricien",
         label="Électricien",
         prospect_category="électricien",
-        aliases=("electricien", "electriciens", "electricite", "electricite generale"),
+        aliases=("electricien", "electriciens", "electricite", "electricite generale", "elec"),
         search_terms={_DEFAULT_COUNTRY: ("électricien",), "CA": ("électricien", "entrepreneur électricien")},
         category_keywords=("electri", "domotique", "eclairage"),
         excluded_category_keywords=(

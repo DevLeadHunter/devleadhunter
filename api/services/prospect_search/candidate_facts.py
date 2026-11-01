@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from enums.prospect_search import EmailProofLevel
+from enums.prospect_search import CandidateOrigin, EmailProofLevel
 from enums.website_status import WebsiteStatus
 from services.country_profiles import CountryProfiles
 from services.french_overseas import FrenchOverseas, OverseasDepartment
@@ -153,6 +153,28 @@ class CandidateFacts:
             if line.get("fact") == "website" and line.get("value") == self.website
         ]
         return bool(sources) and all(source.startswith(_EMAIL_DOMAIN_SUBJECTS) for source in sources)
+
+    @property
+    def contact_elsewhere(self) -> dict[str, str] | None:
+        """The other place than the business's that its email or its Facebook page names (« 89 », « occitanie »)."""
+        return next((line for line in self.evidence if line.get("fact") == "contact_elsewhere"), None)
+
+    @property
+    def is_email_unplaced(self) -> bool:
+        """Whether the email was read on a third party's page that does not say where the business is."""
+        return self.email is not None and any(
+            line.get("fact") == "email_unplaced" and line.get("value") == self.email for line in self.evidence
+        )
+
+    @property
+    def is_placed_by_the_search_only(self) -> bool:
+        """Whether a Google listing gave neither address nor town: its town is only the one searched."""
+        return self.origin == CandidateOrigin.GOOGLE_LOCAL.value and not self.address and self.city is None
+
+    @property
+    def registered_association(self) -> str | None:
+        """The association the registry files the business as, when it is one (« Ass sportive Exemple »)."""
+        return next((line["value"] for line in self.evidence if line.get("fact") == "association"), None)
 
     @property
     def privacy_proxied_domains(self) -> list[str]:
