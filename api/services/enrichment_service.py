@@ -692,10 +692,12 @@ class EnrichmentService:
         Read the federal register for a Swiss prospect: a closed company is set aside, its head is the contact.
 
         A firm in liquidation or struck off lately goes to the « Écartés » tab with the reason (a landscaper
-        ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
-        from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
-        role, the firm was matched away from its seat, or the publication leaves the first name unsure and the
-        business's own reviews, email, initials or name do not settle it. A firm filed under another name is
+        ceased trading two months before the campaign, 7 Oct 2026); a firm of a merged commune is found by its
+        postal code. Otherwise the person running it, read from its FOSC publications (from its canton's
+        register excerpt for a firm older than the online gazette), becomes the trusted contact — or a proposal
+        when two people share the role, the firm was matched away from its seat, or the publication leaves the
+        first name unsure and the business's own reviews, email, initials or name do not settle it. A firm filed
+        under another name is
         found by its words at the business's address, only to name the head; a sole proprietorship that
         published nothing names its owner in its own name. The firm of a company number that now trades under
         another name (sold, turned into a property company) names nobody.
@@ -711,7 +713,10 @@ class EnrichmentService:
         from services.prospect_search.swiss_registry import swiss_registry
 
         try:
-            firm = await swiss_registry.firm_of(name=prospect.name, town=prospect.city, uid=uid)
+            postal_code = self._swiss_postal_code(prospect, record)
+            firm = await swiss_registry.firm_of(
+                name=prospect.name, town=prospect.city, uid=uid, postal_code=postal_code
+            )
             closing = swiss_registry.closing_words(firm) if firm is not None else None
             if closing is not None and not prospect.is_dismissed:
                 from services.prospect_service import prospect_service
@@ -727,13 +732,13 @@ class EnrichmentService:
                 return
             is_firm_matched_exactly = firm is not None
             firm = firm or await swiss_registry.firm_of(
-                name=prospect.name, town=prospect.city, uid=uid, allow_unique_name=True
+                name=prospect.name, town=prospect.city, uid=uid, postal_code=postal_code, allow_unique_name=True
             )
             if firm is not None and not swiss_registry.shares_words(firm.name, prospect.name or "", town=prospect.city):
                 return
             if firm is None:
                 firm = await swiss_registry.firm_by_words_and_address(
-                    name=prospect.name or "", town=prospect.city, postal_code=self._swiss_postal_code(prospect, record)
+                    name=prospect.name or "", town=prospect.city, postal_code=postal_code
                 )
                 is_firm_matched_exactly = firm is not None
             if firm is None or swiss_registry.closing_words(firm) is not None:
@@ -746,6 +751,11 @@ class EnrichmentService:
             leads = SwissRegisterPeople.lead_people(
                 SwissRegisterPeople.registered_people(await swiss_registry.publications(firm))
             )
+            register_label = "Registre du commerce (Zefix)"
+            if not leads:
+                excerpt_leads = SwissRegisterPeople.lead_people(await swiss_registry.excerpt_people(firm))
+                if excerpt_leads:
+                    leads, register_label = excerpt_leads, "Extrait du registre du commerce cantonal"
             if not leads and firm.is_sole_proprietorship:
                 owner = SwissRegisterPeople.owner_in_firm_name(firm.name)
                 leads = [owner] if owner is not None else []
@@ -762,7 +772,7 @@ class EnrichmentService:
                 primary=True,
                 geo_confirmed=is_firm_matched_exactly,
                 evidence_group="registry",
-                provenance=f"Registre du commerce (Zefix) : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
+                provenance=f"{register_label} : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
             )
             is_name_certain = lead.is_name_certain or SwissRegisterPeople.is_name_confirmed(
                 lead,

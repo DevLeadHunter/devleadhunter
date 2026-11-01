@@ -14,10 +14,13 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from itertools import pairwise
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
+from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import fold, town_key
+from services.decision_maker.swiss_register_people import RegisteredPerson, SwissRegisterPeople
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 
@@ -47,6 +50,18 @@ _OTHER_ADDRESS_RE: re.Pattern[str] = re.compile(
     r"(?:Autre adresse|Weitere Adresse|Altro indirizzo)\s*:\s*[^.;]*?\b(\d{4})\s+([^.,;]+)", re.IGNORECASE
 )
 _INITIALS_TOKEN_RE: re.Pattern[str] = re.compile(r"^[A-Z]{2,3}$")
+# The cantonal excerpts of Vaud, Geneva, Fribourg and Neuchâtel (« …/extract?companyOfsUid=CHE-… »), and their request.
+_EXCERPT_PATH: str = "/extract"
+_XSRF_COOKIE: str = "XSRF-TOKEN"
+_EXCERPT_REQUEST: dict[str, Any] = {
+    "rcentId": None,
+    "lng": "FR",
+    "rad": True,
+    "companyOfrcId13": None,
+    "extraitTravail": False,
+    "admOrderDirection": "ASC",
+    "order": None,
+}
 
 
 @dataclass(frozen=True)
@@ -74,30 +89,37 @@ class SwissRegistry:
         """
         Take the register's « en liquidation » or recent « radiée » as the closing of a Swiss company.
 
-        Only a firm of the same name, legal form and civility aside, at the same seat counts; an
-        active one of that name and seat clears the business, and gives its company number when
-        it has none.
+        The firm of the company number the search read is the business, wherever it sits (« Exemple Jardinier »
+        filed at Cornaux for a listing of Le Landeron); without a number, only a firm of its name (legal form,
+        civility and trade words aside) at its seat or at its postal code counts (a commune merged into another
+        keeps its postal code). An active one clears the business, and gives its company number when it has none.
 
         Args:
             facts: The candidate, completed in place.
         """
-        if facts.country != "CH" or facts.is_closed or not facts.town:
+        uid = facts.registry_number if _UID_RE.match(facts.registry_number or "") else None
+        if facts.country != "CH" or facts.is_closed or not (uid or facts.town):
             return
-        firms = [
-            firm
-            for firm in await self.firms_named(self.register_name(facts.name))
-            if self.is_same_firm(firm, name=facts.name, town=facts.town)
-        ]
-        active = next((firm for firm in firms if firm.status == _ACTIVE_STATUS), None)
-        if active is not None:
-            if not facts.registry_number and active.uid:
-                facts.registry_number = active.uid
-                facts.add_evidence("registry", active.uid, source=_REGISTER_SOURCE)
+        firm = await self.firm_of(
+            name=facts.name, town=facts.town, uid=uid, postal_code=self.postal_code_of(facts.address)
+        )
+        if firm is None:
             return
-        closing = next((words for firm in firms if (words := self.closing_words(firm)) is not None), None)
+        if firm.status == _ACTIVE_STATUS:
+            if not facts.registry_number and firm.uid:
+                facts.registry_number = firm.uid
+                facts.add_evidence("registry", firm.uid, source=_REGISTER_SOURCE)
+            return
+        closing = self.closing_words(firm)
         if closing is not None:
             facts.is_closed = True
             facts.add_evidence("closed", closing, source=_REGISTER_SOURCE)
+
+    @staticmethod
+    def postal_code_of(address: str | None) -> str | None:
+        """The four-digit postal code a Swiss address writes (« Rte Exemple 5, 1564 Domdidier »), if any."""
+        postal_match = CountryProfiles.get("CH").postal_code_regex.search(address or "")
+        return postal_match.group(1) if postal_match else None
 
     async def firms_named(self, name: str, *, max_entries: int = _MAX_FIRMS) -> list[SwissRegisterFirm]:
         """
@@ -135,18 +157,29 @@ class SwissRegistry:
         ]
 
     async def firm_of(
-        self, *, name: str, town: str | None, uid: str | None = None, allow_unique_name: bool = False
+        self,
+        *,
+        name: str,
+        town: str | None,
+        uid: str | None = None,
+        postal_code: str | None = None,
+        allow_unique_name: bool = False,
     ) -> SwissRegisterFirm | None:
         """
         The register's firm for a business: the one of its company number, else the one of its name at its seat.
 
-        A business works in a village while its firm sits in the commune (« Le Châble », seat « Val de
-        Bagnes »): with ``allow_unique_name``, the only active firm of that name in Switzerland is it too.
+        The name is the business's, legal form and civility aside, or its words beside a trade word the register
+        adds (« Garage Exemple Jules » for « Exemple Jules »). A commune merged into another files its firms under
+        the new commune (« Belmont-Broye » for Domdidier): a firm of the name whose registered address has the
+        business's postal code is it. A business works in a village while its firm sits in the commune (« Le
+        Châble », seat « Val de Bagnes »): with ``allow_unique_name``, the only active firm of that name in
+        Switzerland is it too.
 
         Args:
             name: The business name.
             town: The business's town, the seat a name match must share.
             uid: Its company number (« CHE-123.456.789 ») when the search read one.
+            postal_code: The business's postal code, the registered address of a firm sitting elsewhere must share.
             allow_unique_name: Whether the single active firm of the name counts away from the seat.
 
         Returns:
@@ -156,15 +189,49 @@ class SwissRegistry:
             firms = [firm for firm in await self.firms_named(uid) if firm.uid == uid]
         else:
             named = [
-                firm
-                for firm in await self.firms_named(self.register_name(name))
-                if self._compact(firm.name) == self._compact(name)
+                firm for firm in await self.firms_named(self.register_name(name)) if self.is_named_like(firm.name, name)
             ]
             firms = [firm for firm in named if town and fold(firm.seat) == fold(town)]
+            if not firms and postal_code:
+                firms = [
+                    firm for firm in named[:_MAX_ADDRESSES_READ] if (await self.address_of(firm))[0] == postal_code
+                ]
             active_named = [firm for firm in named if firm.status == _ACTIVE_STATUS]
             if not firms and allow_unique_name and len(active_named) == 1:
                 firms = active_named
         return next((firm for firm in firms if firm.status == _ACTIVE_STATUS), firms[0] if firms else None)
+
+    @classmethod
+    def is_named_like(cls, firm_name: str, name: str) -> bool:
+        """
+        Whether a firm bears a business's name: the same letters, legal form, civility and « en liquidation » aside,
+        or one name holding all the other's words, the same distinctive ones and a trade word more (« Garage Exemple
+        Jules » for « Exemple Jules »). « Exemple Carrosserie » does not bear « Exemple Auto », a garage of the same
+        family.
+
+        Args:
+            firm_name: The firm's name in the register.
+            name: The business name.
+
+        Returns:
+            True when the firm bears the name.
+        """
+        if cls._compact(firm_name) == cls._compact(name):
+            return True
+        firm_name = cls.register_name(_LIQUIDATION_SUFFIX_RE.sub("", firm_name))
+        name = cls.register_name(name)
+        firm_words, words = cls._words(firm_name), cls._words(name)
+        distinctive = BusinessName.distinctive_stems(name)
+        return (
+            (firm_words <= words or words <= firm_words)
+            and bool(distinctive)
+            and BusinessName.distinctive_stems(firm_name) == distinctive
+        )
+
+    @staticmethod
+    def _words(name: str) -> set[str]:
+        """The folded words of a name."""
+        return set(re.findall(r"[a-z0-9]+", fold(name)))
 
     async def firm_by_words_and_address(
         self, *, name: str, town: str | None, postal_code: str | None
@@ -174,7 +241,9 @@ class SwissRegistry:
 
         The register spells a name its own way: the owner's name added (« Exemple Mécanique Modèle » for
         « EXEMPLE MÉCANIQUE »), accents and plurals changed, initials glued to the next word (« Garage EXauto » for
-        « Garage EX Auto »). The name, its glued spellings, then each of its distinctive words, is searched; a firm
+        « Garage EX Auto »), the trade word Google adds left out (« JX Services Sàrl » for « Garage JX services »).
+        The name, the name without its trade words, its glued spellings, then each of its distinctive words, is
+        searched; a firm
         counts when all the words of the shorter name are in the other one and one of its addresses (the
         registered one, or another its publications give, where a workshop away from the seat is) has the
         business's postal code or town, the firms sharing the most words read first. It only names the head: an
@@ -191,7 +260,16 @@ class SwissRegistry:
         if not town and not postal_code:
             return None
         named: dict[str, SwissRegisterFirm] = {}
-        queries = [self.register_name(name), *self._glued_spellings(name), *self._searched_words(name, town)]
+        queries = dict.fromkeys(
+            query
+            for query in (
+                self.register_name(name),
+                self._trade_free_name(name),
+                *self._glued_spellings(name),
+                *self._searched_words(name, town),
+            )
+            if query
+        )
         for query in queries:
             for firm in await self.firms_named(query, max_entries=_MAX_FIRMS_PER_WORD):
                 if firm.status == _ACTIVE_STATUS and firm.uid and self.shares_words(firm.name, name, town=town):
@@ -246,6 +324,14 @@ class SwissRegistry:
         words = sorted(BusinessName.distinctive_words(name, town=town), key=lambda word: (-len(word), word))
         return [word for word in words if len(word) >= 3][:_MAX_SEARCHED_WORDS]
 
+    @classmethod
+    def _trade_free_name(cls, name: str) -> str:
+        """A name without its trade words, the way the register may file it (« JX services » for « Garage JX services »)."""
+        from services.prospect_search.trade_catalog import TradeCatalog
+
+        words = cls.register_name(name).split()
+        return " ".join(word for word in words if not TradeCatalog.is_trade_word(fold(word)))
+
     @staticmethod
     def _glued_spellings(name: str) -> list[str]:
         """The name with its initials glued to the next word, the way the register may file it (« EXauto »)."""
@@ -280,6 +366,52 @@ class SwissRegistry:
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}", published_on):
                 publications.append((date.fromisoformat(published_on), str(publication.get("message") or "")))
         return publications
+
+    async def excerpt_people(self, firm: SwissRegisterFirm) -> list[RegisteredPerson]:
+        """
+        The people a firm's cantonal register excerpt lists today, for a firm whose FOSC publications name nobody.
+
+        Zefix links each firm to its canton's excerpt. Vaud, Geneva, Fribourg and Neuchâtel run the same software:
+        its catalog sets an anti-forgery cookie, then the excerpt is asked with that token, as the excerpt's own page
+        does. Valais and Jura run another one, not read.
+
+        Args:
+            firm: A firm the register listed.
+
+        Returns:
+            The active people; empty when the canton's software is another or does not answer.
+        """
+        from services.website_liveness_service import website_liveness_service
+
+        excerpt_url = str((await self._detail(firm)).get("cantonalExcerptWeb") or "")
+        if _EXCERPT_PATH not in excerpt_url or not firm.uid:
+            return []
+        base = excerpt_url.split(_EXCERPT_PATH, 1)[0]
+        page = urlparse(excerpt_url)
+        request = {**_EXCERPT_REQUEST, "companyOfsUid": firm.uid}
+        try:
+            async with httpx.AsyncClient(
+                timeout=_TIMEOUT_SECONDS, follow_redirects=True, headers=website_liveness_service.REQUEST_HEADERS
+            ) as http:
+                await http.get(excerpt_url)
+                await http.get(f"{base}/api/public/catalog/configuration")
+                response = await http.post(
+                    f"{base}/api/public/hrcexcerpts/",
+                    json=request,
+                    headers={
+                        "X-XSRF-TOKEN": http.cookies.get(_XSRF_COOKIE) or "",
+                        "Origin": f"{page.scheme}://{page.netloc}",
+                        "Referer": excerpt_url,
+                    },
+                )
+        except httpx.HTTPError as exc:
+            logger.warning("Cantonal excerpt of %s failed: %s", firm.name, exc)
+            return []
+        if response.status_code != 200:
+            return []
+        payload = response.json()
+        excerpt = payload[0] if isinstance(payload, list) and payload else payload
+        return SwissRegisterPeople.excerpt_people(excerpt.get("adms") or []) if isinstance(excerpt, dict) else []
 
     async def address_of(self, firm: SwissRegisterFirm) -> tuple[str | None, str | None]:
         """
@@ -336,11 +468,6 @@ class SwissRegistry:
     def register_name(name: str) -> str:
         """The words the register files a business under: no legal form, no civility (« Mr. »)."""
         return BusinessName.without_legal_form(_HONORIFIC_RE.sub("", name))
-
-    @classmethod
-    def is_same_firm(cls, firm: SwissRegisterFirm, *, name: str, town: str) -> bool:
-        """Whether a register firm is the business: the same name, legal form and civility aside, at the same seat."""
-        return fold(firm.seat) == fold(town) and cls._compact(firm.name) == cls._compact(name)
 
     @staticmethod
     def closing_words(firm: SwissRegisterFirm) -> str | None:

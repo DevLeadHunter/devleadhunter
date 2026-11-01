@@ -155,3 +155,117 @@ def test_initials_glued_to_the_next_word_are_the_same_name(monkeypatch: pytest.M
 
     assert found == firm
     assert "EXAuto" in asked_names
+
+
+def test_the_firm_of_the_number_the_search_read_closes_the_business_wherever_it_sits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Jules Exemple, listed at Le Landeron: the number the search read is « Exemple Jules Jardinier-Paysagiste »,
+    seated at Cornaux and struck off last year."""
+    struck_off_on = datetime.now(UTC).date() - timedelta(days=260)
+    asked_names = _register_listing(
+        monkeypatch,
+        SwissRegisterFirm(
+            "Exemple Jules Jardinier-Paysagiste", "Cornaux", "GELOESCHT", "CHE-000.000.010", struck_off_on
+        ),
+    )
+    facts = _facts(name="Jules Exemple", city="Le Landeron", registry_number="CHE-000.000.010")
+
+    asyncio.run(swiss_registry.read_closing(facts))
+    verdict = CandidateDecision.decide(facts, _ELECTRICIAN, _EMAIL_ONLY)
+
+    assert asked_names == ["CHE-000.000.010"]
+    assert verdict.detail == "Société radiée selon Registre du commerce (Zefix)."
+
+
+def test_a_firm_of_a_merged_commune_is_found_by_its_postal_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Exemple Jules », Domdidier: the register files « Garage Exemple Jules » under Belmont-Broye, the commune
+    Domdidier merged into, at the same postal code; it was struck off a month ago."""
+    struck_off_on = datetime.now(UTC).date() - timedelta(days=30)
+    _register_listing(
+        monkeypatch,
+        SwissRegisterFirm(
+            "Garage Exemple Jules", "Belmont-Broye", "GELOESCHT", "CHE-000.000.011", struck_off_on, register_id=11
+        ),
+    )
+
+    async def registered_address(firm: SwissRegisterFirm) -> tuple[str, str]:
+        return "1564", "Domdidier"
+
+    monkeypatch.setattr(swiss_registry, "address_of", registered_address)
+    facts = _facts(name="Exemple Jules", city="Domdidier", address="Vy-d'Exemple 8, 1564 Domdidier")
+
+    asyncio.run(swiss_registry.read_closing(facts))
+
+    assert facts.is_closed is True
+
+
+def test_a_family_firm_of_another_trade_is_not_the_business(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Exemple Carrosserie Sàrl », struck off at Sion, is not « Exemple Auto », the family's garage."""
+    struck_off_on = datetime.now(UTC).date() - timedelta(days=30)
+    _register_listing(
+        monkeypatch,
+        SwissRegisterFirm("Exemple Carrosserie Sàrl", "Sion", "GELOESCHT", "CHE-000.000.012", struck_off_on),
+    )
+    facts = _facts(name="Exemple Auto", city="Sion")
+
+    asyncio.run(swiss_registry.read_closing(facts))
+
+    assert facts.is_closed is False
+
+
+def test_the_register_is_searched_without_the_trade_word_google_adds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """« Garage JX services Sàrl » on Google is « JX Services Sàrl » in the register, at the same postal code."""
+    firm = SwissRegisterFirm(
+        name="JX Services Sàrl", seat="Grimisuat", status="EXISTIEREND", uid="CHE-000.000.013", register_id=13
+    )
+    asked_names = _register_listing(monkeypatch, firm)
+
+    async def registered_addresses(firm: SwissRegisterFirm) -> list[tuple[str, str]]:
+        return [("1971", "Grimisuat")]
+
+    monkeypatch.setattr(swiss_registry, "addresses_of", registered_addresses)
+
+    found = asyncio.run(
+        swiss_registry.firm_by_words_and_address(name="Garage JX services Sàrl", town="Grimisuat", postal_code="1971")
+    )
+
+    assert found == firm
+    assert "JX services" in asked_names
+
+
+def test_the_cantonal_excerpt_is_asked_with_the_token_its_catalog_sets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The excerpt's software answers only a request carrying the anti-forgery token its catalog set as a cookie."""
+    import httpx
+
+    from services.prospect_search import swiss_registry as registry_module
+
+    asked: list[tuple[str, str | None]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked.append((request.method, request.headers.get("x-xsrf-token")))
+        if request.url.path.endswith("/api/public/catalog/configuration"):
+            return httpx.Response(200, json={}, headers={"Set-Cookie": "XSRF-TOKEN=jeton; Path=/pub/1"})
+        if request.url.path.endswith("/api/public/hrcexcerpts/"):
+            if request.headers.get("x-xsrf-token") != "jeton":
+                return httpx.Response(403)
+            person = {"codeEtat": "A", "pers": "Exemple Jules, de Bex, à Bex", "fonction": "titulaire "}
+            return httpx.Response(200, json=[{"adms": [person]}])
+        return httpx.Response(200, text="<html></html>")
+
+    real_client = httpx.AsyncClient
+
+    def client_on_fake_web(**options: object) -> httpx.AsyncClient:
+        return real_client(transport=httpx.MockTransport(answer), **options)  # type: ignore[arg-type]
+
+    async def firm_page(firm: SwissRegisterFirm) -> dict[str, object]:
+        return {"cantonalExcerptWeb": "https://registre.exemple.ch/pub/1/extract?lang=FR&companyOfsUid=CHE-000.000.014"}
+
+    monkeypatch.setattr(registry_module.httpx, "AsyncClient", client_on_fake_web)
+    monkeypatch.setattr(swiss_registry, "_detail", firm_page)
+    firm = SwissRegisterFirm("Exemple Jules", "Bex", "EXISTIEREND", "CHE-000.000.014", register_id=14)
+
+    people = asyncio.run(swiss_registry.excerpt_people(firm))
+
+    assert [(person.first_name, person.last_name) for person in people] == [("Jules", "Exemple")]
+    assert asked == [("GET", None), ("GET", None), ("POST", "jeton")]

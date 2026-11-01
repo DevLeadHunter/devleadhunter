@@ -288,3 +288,26 @@ def test_a_namesake_s_site_elsewhere_is_never_taken_for_the_business_s(monkeypat
     asyncio.run(CandidateVerifier.consider_domains_named_after_business(facts, _LANDSCAPER))
 
     assert facts.website is None
+
+
+def test_a_listing_at_the_town_hall_without_a_company_of_its_name_waits_for_a_check() -> None:
+    """« exemple paysagiste », 2 Pass. de l'Hôtel de ville: no company of its name in the département, the town hall
+    of a travelling tree trimmer's commune. A garage of the Rue de l'Hôtel de Ville has its company."""
+    facts = _facts(
+        "exemple paysagiste",
+        "Mulhouse",
+        trade="paysagiste",
+        country="FR",
+        address="2 Pass. de l'Hôtel de ville, 68100 Mulhouse",
+        email="exemple.paysage@exemple.fr",
+        email_proof_level=EmailProofLevel.PUBLISHED.value,
+    )
+    shop = _facts("Garage Exemple", "Mulhouse", country="FR", address="12 Rue de l'Hôtel de Ville, 68100 Mulhouse")
+
+    FrenchRegistry.note_town_hall_address(facts, [])
+    FrenchRegistry.note_town_hall_address(shop, [{"nom_complet": "GARAGE EXEMPLE"}])
+    verdict = CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY)
+
+    assert verdict.status == CandidateStatus.TO_CONFIRM
+    assert (verdict.detail or "").startswith("Sa fiche Google donne l'adresse de la mairie")
+    assert not shop.is_addressed_at_town_hall

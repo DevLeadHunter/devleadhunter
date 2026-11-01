@@ -34,6 +34,7 @@ _ASSOCIATION_NAME_WORD_MIN_CHARS: int = 3
 _CLUB_WORDS: frozenset[str] = frozenset(
     {"association", "asso", "club", "sportif", "sportive", "amicale", "comite", "federation"}
 )
+_TOWN_HALL_RE: re.Pattern[str] = re.compile(r"\b(?:mairie|hotel de ville|hotel-de-ville)\b")
 
 
 class FrenchRegistry:
@@ -72,6 +73,7 @@ class FrenchRegistry:
         self.complete_address(facts, list(named.values()))
         self.note_association(facts, list(found.values()))
         self.note_registered_activity(facts, list(named.values()))
+        self.note_town_hall_address(facts, list(named.values()))
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
 
     @classmethod
@@ -178,6 +180,24 @@ class FrenchRegistry:
             source=_REGISTER_SOURCE,
             snippet=str(company.get("nom_complet") or ""),
         )
+
+    @staticmethod
+    def note_town_hall_address(facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note a listing addressed at the town hall, for a business no company of its name is registered for in its
+        département.
+
+        A travelling tradesperson (a tree trimmer) gives the town hall of the commune they are attached to (« 2 Pass.
+        de l'Hôtel de ville »): the listing places no workshop, a person checks it. A shop of the town hall's street
+        has a company of its name in the département.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business in its département.
+        """
+        if named or not _TOWN_HALL_RE.search(fold(facts.address or "")):
+            return
+        facts.add_evidence("town_hall_address", facts.address or "", source="Fiche Google")
 
     @staticmethod
     def _carries_exact_name(company: dict[str, Any], facts: CandidateFacts) -> bool:

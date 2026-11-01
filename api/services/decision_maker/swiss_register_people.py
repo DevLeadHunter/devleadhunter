@@ -6,7 +6,8 @@ Zefix gives no person list, only the FOSC publications of each firm. Since about
 individuelle »; older ones « Titulaire: Exemple Paul, de … » or « Administration: Exemple Paul, de …,
 à …, président, Modèle Anne, de …, à …, lesquels signent individuellement », and « Exemple Paul n'est
 plus directeur ». Read in date order, entries and departures give the people registered today, and
-their roles say who runs the business.
+their roles say who runs the business. A firm older than the online gazette published nothing there:
+its canton's register excerpt lists its people, one line each.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import html
 import re
 from dataclasses import dataclass, replace
 from datetime import date
+from typing import Any
 
 from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import fold, title_case_name
@@ -119,6 +121,9 @@ _MANAGER_ROLES: tuple[str, ...] = (
     "geschäftsführerin",
 )
 _DIRECTOR_ROLES: tuple[str, ...] = ("directeur", "directrice", "direktor", "direktorin")
+# A cantonal excerpt marks each person line active (« A ») or struck off (« R »); its lines read like a list of entries.
+_ACTIVE_EXCERPT_STATE: str = "A"
+_EXCERPT_HEADING: str = "personne(s) inscrite(s)"
 
 
 @dataclass(frozen=True)
@@ -287,6 +292,31 @@ class SwissRegisterPeople:
             return True
         business_words = {fold(word) for word in re.findall(r"[\w'’-]+", business_name)}
         return fold(last_words[-1]) in business_words
+
+    @classmethod
+    def excerpt_people(cls, entries: list[dict[str, Any]]) -> list[RegisteredPerson]:
+        """
+        The people a cantonal register excerpt lists today, for a firm whose FOSC publications name nobody.
+
+        Each line gives the person as an older publication does (« Exemple Paul, de Lausanne, à Morges ») and the
+        role apart (« associé gérant »); a struck-off line (state « R ») is a former one.
+
+        Args:
+            entries: The excerpt's people lines (``adms``): state (``codeEtat``), person (``pers``), role
+                (``fonction``).
+
+        Returns:
+            The active people, a company (an auditor) left out.
+        """
+        people: list[RegisteredPerson] = []
+        for entry in entries:
+            if str(entry.get("codeEtat") or "") != _ACTIVE_EXCERPT_STATE:
+                continue
+            parts = (str(entry.get("pers") or "").strip(), str(entry.get("fonction") or "").strip())
+            person = cls._person(", ".join(part for part in parts if part), heading=_EXCERPT_HEADING)
+            if person is not None:
+                people.append(person)
+        return people
 
     @staticmethod
     def lead_people(people: list[RegisteredPerson]) -> list[RegisteredPerson]:

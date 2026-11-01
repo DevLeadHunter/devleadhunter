@@ -138,6 +138,14 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail=f"Sa fiche Google ne donne pas d'adresse : rien ne montre qu'il est à {facts.town}, à vérifier.",
             )
+        if facts.is_addressed_at_town_hall and (has_proven_email or has_guessed_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    "Sa fiche Google donne l'adresse de la mairie et aucune entreprise de son nom n'est inscrite dans "
+                    "le département : une commune de rattachement, pas un atelier ? À vérifier."
+                ),
+            )
         registered_activity = facts.activity_of_another_trade
         if registered_activity is not None and (has_proven_email or has_guessed_email or has_mobile):
             return CandidateVerdict(

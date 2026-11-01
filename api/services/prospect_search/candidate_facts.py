@@ -181,6 +181,11 @@ class CandidateFacts:
         return self.origin == CandidateOrigin.GOOGLE_LOCAL.value and not self.address and self.city is None
 
     @property
+    def is_addressed_at_town_hall(self) -> bool:
+        """Whether the listing gives a town hall's address while no company of the business's name is registered nearby."""
+        return any(line.get("fact") == "town_hall_address" for line in self.evidence)
+
+    @property
     def activity_of_another_trade(self) -> dict[str, str] | None:
         """The activity of another trade the registry files the company of the business's exact name under (« 52.2A »)."""
         return next((line for line in self.evidence if line.get("fact") == "registered_activity"), None)

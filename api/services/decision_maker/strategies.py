@@ -722,6 +722,22 @@ class RegistreGouvStrategy:
         is_civil_company = str(result.get("nature_juridique") or "").startswith(_CIVIL_COMPANY_LEGAL_CATEGORY)
         return is_civil_company or cls._activity_of(result).startswith(_REAL_ESTATE_ACTIVITY)
 
+    @staticmethod
+    def last_name_of(head: dict[str, Any]) -> str | None:
+        """
+        The last name a registered head goes by: the name of use the registry writes in brackets after the birth
+        name (« EXEMPLE MODELE (EXEMPLE) » is Jules Exemple), else the name itself (pure — testable).
+
+        Args:
+            head: A head of a registry company (``nom``, ``prenoms``).
+
+        Returns:
+            The last name, title-cased; None when the registry gives none.
+        """
+        name = str(head.get("nom") or "")
+        name_of_use = _ENSEIGNE_IN_NAME_RE.search(name)
+        return title_case_name(name_of_use.group(1) if name_of_use else name)
+
     def _candidates_of(self, result: dict[str, Any], *, base: float, geo_confirmed: bool) -> list[NameCandidate]:
         """The person a registry company names: the EI holder, its sole dirigeant, else its gérant/président."""
         dirigeants = [
@@ -736,7 +752,7 @@ class RegistreGouvStrategy:
             first, last = split_registry_full_name(str(result.get("nom_complet") or ""))
             if dirigeants:
                 first = title_case_name(dirigeants[0].get("prenoms")) or first
-                last = title_case_name(dirigeants[0].get("nom")) or last
+                last = self.last_name_of(dirigeants[0]) or last
             if first or last:
                 return [self._candidate(first, last, min(0.95, base + 0.25), result, geo_confirmed)]
             return []
@@ -746,7 +762,7 @@ class RegistreGouvStrategy:
             return [
                 self._candidate(
                     title_case_name(d.get("prenoms")),
-                    title_case_name(d.get("nom")),
+                    self.last_name_of(d),
                     min(0.9, base + 0.1),
                     result,
                     geo_confirmed,
@@ -767,7 +783,7 @@ class RegistreGouvStrategy:
         return [
             self._candidate(
                 title_case_name(lead.get("prenoms")),
-                title_case_name(lead.get("nom")),
+                self.last_name_of(lead),
                 min(0.75, base),
                 result,
                 geo_confirmed,

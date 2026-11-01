@@ -735,3 +735,20 @@ def test_the_fallback_sources_are_asked_only_when_the_cascade_finds_nobody() -> 
     assert asked_when_found == 2
     assert trusted.candidate is not None and trusted.candidate.first == "Jules"
     assert asked[asked_when_found:] == ["registry"]
+
+
+def test_the_name_of_use_the_registry_writes_in_brackets_is_the_head_s_last_name() -> None:
+    """« EXEMPLE MODELE (EXEMPLE) »: Jules goes by Exemple, the name of use the registry gives in brackets."""
+    company = _registry_company(
+        "JULES EXEMPLE MODELE (EXEMPLE) (LES JARDINS DE JULES)",
+        siege={"code_postal": "21000", "libelle_commune": "DIJON", "activite_principale": "81.30Z"},
+        dirigeants=[{"nom": "EXEMPLE MODELE (EXEMPLE)", "prenoms": "JULES", "type_dirigeant": "personne physique"}],
+    )
+    context = ResolutionContext(
+        company_name="Les Jardins de Jules", city="Dijon", postal_code="21000", trade="paysagiste"
+    )
+
+    [candidate] = RegistreGouvStrategy().parse_results([company], context, department="21")
+
+    assert (candidate.first, candidate.last) == ("Jules", "Exemple")
+    assert RegistreGouvStrategy.last_name_of({"nom": "MODELE"}) == "Modele"
