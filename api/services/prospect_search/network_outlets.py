@@ -50,6 +50,10 @@ _NETWORK_NAMES: tuple[str, ...] = (
     "mondial pare brise",
     "stop go",
 )
+# Networks written in everyday words, which count only quoted as a name: « un garage nommé 'le GARAGE' » (the Swiss
+# network of independent garages), never « stationnée devant le garage ».
+_QUOTED_NETWORK_NAMES: frozenset[str] = frozenset({"le garage"})
+_QUOTED_TEXT_RE: re.Pattern[str] = re.compile(r"['\"«“‘]\s*([^'\"«»“”‘’]{2,40}?)\s*['\"»”’]")
 # Sites where a network or a brand gives each outlet its own page (« www.motrio.fr/shop/… »).
 _NETWORK_HOSTS: tuple[str, ...] = (
     "ad.fr",
@@ -106,16 +110,22 @@ class NetworkOutlets:
     @staticmethod
     def names_network(name: str) -> bool:
         """
-        Whether a name carries, as whole words, the name of a network (« Garage Exemple - Motrio »).
+        Whether a name carries, as whole words, the name of a network (« Garage Exemple - Motrio »), or quotes the
+        name of one written in everyday words (« garage nommé 'le GARAGE' »).
 
         Args:
-            name: A business name, a listing's title or a page's name.
+            name: A business name, a listing's title, a page's name or a photo's caption.
 
         Returns:
             True when one of the networks is written in it.
         """
         name_words = f" {_NAME_WORD_SEPARATORS_RE.sub(' ', fold(name)).strip()} "
-        return any(f" {network} " in name_words for network in _NETWORK_NAMES)
+        if any(f" {network} " in name_words for network in _NETWORK_NAMES):
+            return True
+        quoted = (
+            " ".join(_NAME_WORD_SEPARATORS_RE.sub(" ", fold(text)).split()) for text in _QUOTED_TEXT_RE.findall(name)
+        )
+        return any(text in _QUOTED_NETWORK_NAMES for text in quoted)
 
     @classmethod
     def shows_network_sign(cls, caption: str) -> bool:

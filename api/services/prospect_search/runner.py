@@ -64,6 +64,7 @@ from services.prospect_search.search_judge import search_judge
 from services.prospect_search.search_zones import SearchZones
 from services.prospect_search.trade_catalog import TradeCatalog, TradeProfile
 from services.sms.phone_normalizer import format_phone_in_national_form
+from services.swiss_localities import SwissLocalities, swiss_localities
 
 logger = logging.getLogger(__name__)
 
@@ -368,12 +369,27 @@ class ProspectSearchRunner:
         start = page * _LISTINGS_PER_PAGE
         html = await self._client.google_local_html(query, country=country, start=start)
         listings = GoogleLocalResultsParser.parse_html(html, country=country) if html else []
-        if listings:
-            return listings
-        parsed = await self._client.google_parsed(query, country=country, start=start, local=True)
-        if parsed is None:
-            return None
-        return GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
+        if not listings:
+            parsed = await self._client.google_parsed(query, country=country, start=start, local=True)
+            if parsed is None:
+                return None
+            listings = GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
+        if country == "CH":
+            await self._mend_bare_article_towns(listings)
+        return listings
+
+    @staticmethod
+    async def _mend_bare_article_towns(listings: list[LocalListing]) -> None:
+        """
+        Give a Swiss listing whose town reads as a bare article (« 2999 Le ») the locality of its postal code, and
+        rebuild its address; a postal code telling no single locality leaves it without a town, never « Le ».
+        """
+        for listing in listings:
+            if not SwissLocalities.is_bare_article(listing.locality):
+                continue
+            locality, address = await swiss_localities.mended_town_and_address(listing.address or "")
+            listing.locality = locality
+            listing.address = address if locality else listing.address
 
     @staticmethod
     def _search_label(state: _RunState) -> str:

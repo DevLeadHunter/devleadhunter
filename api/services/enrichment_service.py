@@ -774,7 +774,8 @@ class EnrichmentService:
         postal code. Otherwise the person running it, read from its FOSC publications (from its canton's
         register excerpt for a firm older than the online gazette), becomes the trusted contact — or a proposal
         when two people share the role, the firm was matched away from its seat, or the publication leaves the
-        first name unsure and the business's own reviews, email, initials or name do not settle it. A firm filed
+        first name unsure and the business's own reviews, email, initials or name do not settle it. Partners of
+        one family sharing the role give their family name alone, so the greeting stays « Bonjour ». A firm filed
         under another name is
         found by its words at the business's address, only to name the head; a sole proprietorship that
         published nothing names its owner in its own name. The firm of a company number that now trades under
@@ -840,11 +841,12 @@ class EnrichmentService:
             if not leads:
                 return
             lead = leads[0]
-            usual_first_name = (lead.first_name or "").split(" ")[0] or None
+            family_name = SwissRegisterPeople.family_name_of(leads)
+            usual_first_name = None if family_name else (lead.first_name or "").split(" ")[0] or None
             candidate = NameCandidate(
                 first=usual_first_name,
-                last=lead.last_name,
-                gender=infer_gender(usual_first_name),
+                last=family_name or lead.last_name,
+                gender=infer_gender(usual_first_name) if usual_first_name else None,
                 source="registre_ch",
                 confidence=0.9,
                 primary=True,
@@ -852,15 +854,20 @@ class EnrichmentService:
                 evidence_group="registry",
                 provenance=f"{register_label} : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
             )
-            is_name_certain = lead.is_name_certain or SwissRegisterPeople.is_name_confirmed(
-                lead,
-                business_name=prospect.name or "",
-                emails=[email for email in (prospect.emails or [prospect.email]) if email],
-                review_texts=[
-                    str(review.get("text") or "") for review in record.reviews or [] if isinstance(review, dict)
-                ],
+            is_name_certain = (
+                family_name is not None
+                or lead.is_name_certain
+                or SwissRegisterPeople.is_name_confirmed(
+                    lead,
+                    business_name=prospect.name or "",
+                    emails=[email for email in (prospect.emails or [prospect.email]) if email],
+                    review_texts=[
+                        str(review.get("text") or "") for review in record.reviews or [] if isinstance(review, dict)
+                    ],
+                )
             )
-            if len(leads) == 1 and is_name_certain and is_firm_matched_exactly:
+            is_one_contact = len(leads) == 1 or family_name is not None
+            if is_one_contact and is_name_certain and is_firm_matched_exactly:
                 self._store_trusted_contact(record, candidate)
             else:
                 self._store_proposed_contact(record, candidate)

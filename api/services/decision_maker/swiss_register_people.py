@@ -58,12 +58,21 @@ _ROLE_HEADINGS: frozenset[str] = frozenset(
         "associés-gérants",
         "associé gérant",
         "associé-gérant",
+        "associés",
+        "associé",
         "gérants",
         "gérant",
         "gérance",
         "administrateur unique",
     }
 )
+_PARTNER_HEADINGS: frozenset[str] = frozenset({"associés", "associé"})
+_WITHOUT_SIGNATURE_RE: re.Pattern[str] = re.compile(r"\b(?:sans\s+signature|ohne\s+unterschrift)\b", re.IGNORECASE)
+_SIGNATURE_GRANTED_RE: re.Pattern[str] = re.compile(
+    r"signature\s+(?:individuelle|collective\s+à\s+deux)\s+(?:a\s+été|est)\s+conférée\s+à\s+", re.IGNORECASE
+)
+_GRANTED_PEOPLE_SEPARATOR_RE: re.Pattern[str] = re.compile(r",?\s+et\s+à\s+")
+_SIGNATURE_GRANTED_HEADING: str = "signature conférée"
 _HEADING_RE: re.Pattern[str] = re.compile(
     r"(?<![\w-])("
     + "|".join(
@@ -121,6 +130,7 @@ _MANAGER_ROLES: tuple[str, ...] = (
     "geschäftsführerin",
 )
 _DIRECTOR_ROLES: tuple[str, ...] = ("directeur", "directrice", "direktor", "direktorin")
+_PARTNER_ROLES: tuple[str, ...] = ("associé", "associée", "gesellschafter", "gesellschafterin")
 # A cantonal excerpt marks each person line active (« A ») or struck off (« R »); its lines read like a list of entries.
 _ACTIVE_EXCERPT_STATE: str = "A"
 _EXCERPT_HEADING: str = "personne(s) inscrite(s)"
@@ -141,11 +151,21 @@ class RegisteredPerson:
 
     @property
     def rank(self) -> int:
-        """How much the person runs the business: 4 owner, 3 chair, 2 manager, 1 director, 0 otherwise (a vice-chair too)."""
+        """
+        How much the person runs the business: 4 owner, 3 chair, 2 manager, 1 director or partner who signs, 0
+        otherwise (a vice-chair too, a partner « sans signature »).
+        """
         roles = " ".join(fold(role) for role in self.roles)
         if "vice" in roles:
             return 0
-        for rank, vocabulary in ((4, _OWNER_ROLES), (3, _CHAIR_ROLES), (2, _MANAGER_ROLES), (1, _DIRECTOR_ROLES)):
+        ranked_roles = (
+            (4, _OWNER_ROLES),
+            (3, _CHAIR_ROLES),
+            (2, _MANAGER_ROLES),
+            (1, _DIRECTOR_ROLES),
+            (1, _PARTNER_ROLES),
+        )
+        for rank, vocabulary in ranked_roles:
             if any(fold(role) in roles for role in vocabulary):
                 return rank
         return 0
@@ -353,6 +373,20 @@ class SwissRegisterPeople:
         return [person for person in people if top and person.rank == top]
 
     @staticmethod
+    def family_name_of(people: list[RegisteredPerson]) -> str | None:
+        """
+        The last name the several people running a business share (« Exemple » for Jules and Paul Exemple).
+
+        Args:
+            people: The people holding the highest running role.
+
+        Returns:
+            Their family name, or ``None`` for a single person or people of different families.
+        """
+        last_names = {fold(person.last_name) for person in people}
+        return people[0].last_name if len(people) > 1 and len(last_names) == 1 else None
+
+    @staticmethod
     def _plain_text(text: str) -> str:
         """A publication as plain text, its tags gone and its UTF-8 accents read as Latin-1 (« SÃ rl ») repaired."""
         plain = _LATIN1_READ_UTF8_RE.sub(
@@ -375,21 +409,30 @@ class SwissRegisterPeople:
 
         People follow one another with a semicolon, or in the older lists with a comma before the next
         « Nom Prénom, … »; a heading may carry the signature (« Associé-gérant avec signature
-        individuelle: … »).
+        individuelle: … »). A sentence granting a signature names its people without a heading (« Signature
+        individuelle a été conférée à Modèle Jules, de …, à …, directeur. »).
         """
         sections: list[tuple[str, list[str]]] = []
         matches = list(_HEADING_RE.finditer(text))
         for index, match in enumerate(matches):
             body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
             body = cls._first_sentence(text[match.end() : body_end])
-            entries = [
-                person.strip(" .")
-                for entry in body.split(";")
-                for person in _NEXT_PERSON_RE.split(entry)
-                if person.strip(" .")
-            ]
-            sections.append((match.group(1).lower(), entries))
+            sections.append((match.group(1).lower(), cls._entries(body)))
+        for match in _SIGNATURE_GRANTED_RE.finditer(text):
+            body = cls._first_sentence(text[match.end() :])
+            entries = [entry for part in _GRANTED_PEOPLE_SEPARATOR_RE.split(body) for entry in cls._entries(part)]
+            sections.append((_SIGNATURE_GRANTED_HEADING, entries))
         return sections
+
+    @staticmethod
+    def _entries(body: str) -> list[str]:
+        """The people of a section's text, one entry each."""
+        return [
+            person.strip(" .")
+            for entry in body.split(";")
+            for person in _NEXT_PERSON_RE.split(entry)
+            if person.strip(" .")
+        ]
 
     @staticmethod
     def _first_sentence(text: str) -> str:
@@ -460,7 +503,8 @@ class SwissRegisterPeople:
             for part in details
             if not (_ORIGIN_RE.match(part) or _DOMICILE_RE.match(part) or _NOT_A_ROLE_RE.search(part))
         )
-        if heading in _ROLE_HEADINGS:
+        is_partner_without_signature = heading in _PARTNER_HEADINGS and bool(_WITHOUT_SIGNATURE_RE.search(entry))
+        if heading in _ROLE_HEADINGS and not is_partner_without_signature:
             roles = (heading, *roles)
         return RegisteredPerson(
             first_name=title_case_name(first_name),
