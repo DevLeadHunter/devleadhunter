@@ -757,3 +757,55 @@ Règle non écrite : chercher l'email lui-même sur Google. Google ignore l'adre
 rapport : le forum d'Orange pour une adresse `…@orange.fr`, des « Flash Auto » de toute la France. Une règle tirée
 de ces résultats placerait des homonymes au hasard. Le site du garage de Saint-Esprit vient de la recherche par son
 nom.
+
+## Manche 15 — Suisse, les trois métiers (n° 20), et la suite France (n° 18 et 21), vague 5 (1er novembre, nuit)
+
+Recherche de l'app n° 20 (17 par métier, canal « email », note ≥ 4,0, avec les registres, mode « Je valide »), la
+première suisse sur le moteur corrigé. 729 requêtes, arrêtée sur la limite de 12 communes par métier (relancée) :
+garages 7 gardés et 8 à confirmer, paysagistes 2 et 5, électriciens 2 et 0. Écartés : 155 « déjà écartés par une
+recherche précédente » (sites et refus de publicité vus en octobre), 103 refus de publicité (astérisque des
+annuaires), 57 mauvais métier, 39 sites, 22 hors de Suisse. En Suisse romande, presque tous les paysagistes et
+électriciens ont un site ou refusent la publicité.
+
+### Vérité terrain de la n° 20 (19 candidats avec email : 9 gardés, 10 à confirmer)
+
+- **13 validés** (n° 425 à 435, 440, 441) : garages Cano François, YP Services, Garage 2S (site = page d'hébergeur
+  « Bienvenue sur … »), Paratte Carrosserie (idem), Centre-auto, Garage R. Marques, Garage Gambin (site mort) ;
+  paysagistes LML Jardin, Shuti Arcenciel Arrosage, Flo Jardinier (titulaire inscrit à Renens, domaine
+  `flojardinier.com` vide), Francis Caron ; électriciens Rapin Telecom-Électricité, J.-C. Berger SA.
+- Écartés ensuite : Francis Caron par l'app à la création (radié au registre, et un site en ligne), Cano François
+  à l'enrichissement (radié d'office le 02.10.2026, voir `docs/ENRICHMENT_TRAINING.md`, manche 6).
+- **Précision des gardés : 7 bons sur 9 (78 %)** : Willemin refusé, Cano François radié.
+- À confirmer : 4 bons sur 10 (Centre-auto, Garage Gambin, Shuti Arcenciel Arrosage, Flo Jardinier).
+
+| Candidat | Place donnée par l'app | Vérité | Règle à écrire |
+|---|---|---|---|
+| MML Automobiles (Chavornay) | à confirmer | email de Viviane Auto, autre affaire de la commune, avec son site | quand la page ou le domaine qui porte l'email nomme une autre entreprise (autre nom, autre adresse), ce n'est pas son email : écarté |
+| Le Mechanic Moderne (Moutier) | à confirmer | email d'ACM Auto Centre Moutier SA, site en ligne | idem |
+| Garage Bonito (Vétroz) | à confirmer | email pris sur la page autopro.ch d'Auto Caetano (autre adresse de Vétroz, site `auto-caetano.ch`) | idem |
+| Garage Autotec (La Neuveville) | à confirmer, « site déclaré pas retrouvé » | site de fiche `autotec.stopgo.ch` : réseau Stop+Go | un sous-domaine du site d'un réseau fait un membre du réseau, comme AD, Motrio, Bosch |
+| Garage St Christophe Willemin SA (Develier) | gardé | concession Toyota : catégorie « Concessionnaire automobile », domaines `willemin.ch` et `garage.toyota.ch` | la catégorie « concessionnaire » et un domaine de marque font une concession |
+| Cédric Arn (Le Landeron) | à confirmer | email `cedriconair@…` que rien ne situe, 2 avis | rien à changer : le doute était juste |
+| Francis Caron (Le Landeron) | à confirmer, preuve « c » | l'extrait qui porte l'email porte aussi le même portable que la fiche (preuve « a ») ; mais radié au registre, et un site trouvé par la ville du registre (Cornaux) | lire l'état du numéro Zefix dès la recherche, comme « société cessée » en France |
+
+- Erreurs de ma part : Francis Caron et Flo Jardinier d'abord refusés. Flo Jardinier repris à juste titre ;
+  Francis Caron repris à tort, l'app l'a écarté.
+
+### Suite de la n° 18 (Arles, Perpignan, Chambéry, Mulhouse) et n° 21 (garages, Narbonne)
+
+- La n° 18 s'arrête sur son budget (1 597 requêtes) à 13 paysagistes et 9 électriciens validés : relancée pour
+  les électriciens surtout. La n° 22 (mêmes métiers) a été annulée, en double.
+- **5 validés** : Aubane Paysage (n° 436), Jardins Grégory (n° 437), Les Jardins de Tistou (n° 438), Hibiscus
+  Garden (n° 439), Daguier Multiservices (n° 442).
+- **4 refusés** :
+
+| Candidat | Place donnée par l'app | Vérité | Règle à écrire |
+|---|---|---|---|
+| Coupe Feuilles Jardinier Perpignan 66 | à confirmer | l'email vient de la page Facebook « Nicolas Le Jardinier 66 », un autre jardinier (site `nicolas-le-jardinier-66.fr`, 49 avis) ; la fiche est celle de Nicolas Levavasseur (@coupefeuilles, Alénya) | une page Facebook trouvée par recherche doit partager les mots distinctifs du nom (« Coupe Feuilles »), jamais seulement le métier, la ville ou le numéro de département |
+| Au Jardin De L'economie (Perpignan) | gardé | registre au même nom en 52.2A (fruits et légumes, 1991) ; la fiche Google du nom dit « Primeur » | une société du même nom dans une activité sans rapport donne au mieux « à confirmer » |
+| Espaces Verts Peyret (Canet-en-Roussillon) | gardé | sa fiche déclare `espaces-verts-peyret.com`, qui mène à `espaces-verts-peyret.fr`, en ligne | à comprendre : pourquoi le site de la fiche n'a pas été lu ni vu par la vérification |
+| debrenne paysagiste (Mulhouse) | gardé | adresse de fiche « 2 passage de l'Hôtel de Ville » (la mairie), aucune entreprise à ce nom dans le Haut-Rhin, la famille inscrite ailleurs avec « rattachement mairie » | une adresse de fiche à la mairie est une commune de rattachement, pas un atelier : « à confirmer » |
+
+- N° 21 (garages France, 2 demandés) : 3 gardés à Narbonne, tous bons (Ghossain Auto, Technic Auto, Yes Auto).
+  Technic Auto validé (n° 443, le 17ᵉ garage français), les deux autres laissés en réserve.
+- Envoyé à la session de corrections le 1er novembre vers 4 h 30 et 6 h.

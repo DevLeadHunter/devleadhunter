@@ -433,3 +433,35 @@ régénéré : la recherche corrigée dans le registre a été rejouée en lectu
   `RegistreGouvStrategy._search_by_address`.
 - Vu en passant, non corrigé : l'adresse « bel.jaden@… » de Bel Jaden Matinik est lue comme une personne
   (« Jaden Bel »), parce que le nom de l'entreprise répète ses deux mots ; un nouvel enrichissement la proposerait.
+
+## Manche 6 — les 13 suisses et 6 français de plus de la vague 5 (1er novembre, matin)
+
+Lot : les prospects n° 425 à 443, validés à la main dans la manche 15 de la recherche, enrichis par
+`enrich_cli.py`. Contrôle : Zefix (détail et publications FOSC), extraits cantonaux, registre français.
+
+### Ce qui marche
+
+- Suisse : patron trouvé seul par Zefix pour 5 sur 11 (Garage 2S, Paratte Carrosserie, Garage Gambin, LML
+  Jardin, Shuti Arcenciel Arrosage), tous conformes. Flo Jardinier (n° 441) : Florim Iseni, titulaire inscrit.
+- Francis Caron (n° 440), que j'avais repris à tort dans la recherche : écarté seul à la création du prospect,
+  « Entreprise radiée au registre du commerce (Zefix) ». Juste : radié, et un site en ligne
+  (`caron-francis-jardinier-paysagiste.ch`).
+- France : patron validé seul par le registre pour Aubane Paysage (Christophe Maroto), Les Jardins de Tistou
+  (Maxime Berjaud Milot) et Hibiscus Garden (Chemsdine Mehadji).
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| Rapin Telecom-Électricité Sàrl (n° 434), J.-C. Berger SA (n° 435), Garage R. Marques (n° 429) | patron vide : la société est trouvée, mais Zefix ne donne aucune publication FOSC (`shabPub` vide, sociétés anciennes) | l'extrait cantonal liste les personnes inscrites : Claude Rapin (associé gérant) ; Pierre Berger (président) et Jean-Claude Berger (secrétaire) ; Rafael Gomes Marques dos Reis (titulaire) | lire l'extrait cantonal quand la FOSC ne nomme personne. VD, GE, FR et NE ont le même logiciel (`<base>/api/public/hrcexcerpts/`, cookie `XSRF-TOKEN`, liste `adms`), testé sur VD ; VS et JU passent par `chregister.ch/cr-portal`, pas encore testé |
+| Garage YP services Sàrl (n° 426) | patron vide : la recherche Zefix par le nom Google ne trouve rien | « YP Services Sàrl », même adresse (Chemin de Ruchili 5, Grimisuat) ; FOSC du 16.11.2018 : Yann Pillonel, associé et gérant | relancer la recherche sans le mot de métier (« Garage ») et valider par la rue et le numéro |
+| Cano François (n° 425) | patron vide, prospect gardé | « Garage Cano François », siège Belmont-Broye (commune fusionnée qui comprend Domdidier), même adresse ; radié d'office le 02.10.2026 (art. 934a CO) | ajouter le mot de métier au nom cherché, comparer l'adresse plutôt que la ville ; une radiation récente écarte le prospect |
+| Jardins Grégory (n° 437) | patron vide (registre muet) | 2 réponses sur 3 aux avis signées « Grégory. », enseigne et adresse mail à ce prénom | un prénom qui signe les réponses du propriétaire et figure dans l'enseigne ou l'adresse mail est un prénom validé, sans nom |
+| Les Jardins de Tistou (n° 438) | « Maxime Berjaud Milot » | registre : « MAXIME BERJAUD MILOT (BERJAUD) » ; le nom entre parenthèses est le nom d'usage | prendre le nom d'usage quand le registre en donne un (« Maxime Berjaud ») |
+
+- Posés à la main (manuel) : Yann Pillonel (n° 426), Claude Rapin (n° 434), Rafael Gomes Marques dos Reis
+  (n° 429), « Berger » sans prénom (n° 435, deux Berger au conseil ; le `PATCH` ignore la civilité, la salutation
+  reste neutre), Grégory (n° 437). Cano François (n° 425) écarté à la main.
+- Photos : 8 Suisses sur 11 ont 0 à 4 photos (Google Maps suisse en montre peu) ; leurs sites prendront des images
+  de secours de la template.
+- Envoyé à la session de corrections le 1er novembre vers 5 h, avec la recette de l'extrait cantonal.
