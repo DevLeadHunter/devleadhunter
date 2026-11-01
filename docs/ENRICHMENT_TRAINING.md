@@ -343,3 +343,7 @@ avait enregistré pour les garages n° 373 à 391 (lecture seule), le site de DA
 - Garage Norville (absence de fiche Google à l'enrichissement) : corrigé côté recherche, qui complète
   maintenant une adresse sans code postal par le registre (« 38 Rue Denis Papin, 03100 Montluçon ») ; voir
   `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
+- En prod, le 1er novembre au matin, le contrôle du site a trouvé `welingtonautomobiles.fr` en ligne pour
+  Welington Automobiles (prospect n° 392, écarté depuis), qu'on croyait sans site : son email est sur
+  `welington.fr`, un domaine parqué. La recherche l'avait manqué parce que Google cachait l'adresse du
+  résultat derrière sa redirection ; voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.

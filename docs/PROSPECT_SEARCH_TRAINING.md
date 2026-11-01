@@ -512,7 +512,7 @@ tous les autres.
 |---|---|---|---|
 | SARL Lucens Automobiles | gardé | écarté, a un site (`lucensautomobiles.fr`) | le domaine porte son nom (« lucens » + « automobiles ») : un domaine à son nom qui répond derrière un contrôle anti-robots est son site ; l'email d'un candidat déjà complet est relu avant de le garder |
 | AG Automobiles | à confirmer | écarté, a un site (`ag-garage.fr`) | initiales + mot du métier dans le domaine |
-| Welington Automobiles | à confirmer | mis de côté, email sans portable (gardé avec « email » seul) | `welington.fr` porte son nom, mais c'est un domaine parqué : un domaine parqué est un site mort, pas un site |
+| Welington Automobiles | à confirmer | rejeu hors ligne : mis de côté, email sans portable (gardé avec « email » seul), **à tort** ; depuis la correction du 1er novembre : écarté, a un site (`welingtonautomobiles.fr`) | `welington.fr`, le domaine de son email, est parqué : un site mort, pas son site. Son vrai site était dans les résultats de la n° 17, derrière la redirection de Google (`google.com/goto?url=…`) : l'adresse écrite sous le titre est maintenant lue (voir plus bas) |
 | Abj Auto | à confirmer | écarté, ni email ni portable | `abjautorepair.net@domainsbyproxy.com` n'est jamais un email ; le domaine révélé, `abjautorepair.net`, a été lu : il n'existe plus |
 | Carrosserie CS Auto | mis de côté | écarté, « même entreprise que GARAGE CS AUTO, une fiche mieux renseignée » | même email, et même SIREN lu au registre ; GARAGE CS AUTO (152 avis contre 26) reste proposé |
 | Peugeot - Dax Auto | à confirmer | écarté avant toute recherche, « agent ou concessionnaire Peugeot » | marque en tête du nom |
@@ -540,22 +540,36 @@ ligne les laisse mis de côté. MJV Automobiles (email de la gérante) reste mis
 |---|---|---|---|---|
 | Avant | 5, dont 1 faux | 29 | 7 | 0 |
 | Après, rejeu hors ligne (email et portable) | 4 | 23 | 3 | 11 |
-| Après, avec les preuves non enregistrées (GLD, Verge, Martinez, DAC) | 4 | 19 | 4 | 14 |
+| Après, avec les preuves non enregistrées (GLD, Verge, Martinez, DAC, Welington) | 4 | 18 | 4 | 15 |
 | Après, rejeu hors ligne (email seul, réglage de la vague 5) | 27 | 0 | 3 | 11 |
 
-- Placés à tort : 7 → 0. « À confirmer » que l'app pouvait trancher : 4 → 0. Restent à confirmer les trois
-  emails au nom d'une autre affaire, avec cette raison écrite, et DAC.
-- Les 23 proposés : les 18 bons qui restent, Welington (bon, voir plus bas) et 4 garages d'Aurillac que le
-  contrôle n'avait pas classés (Garage Laur Sebastien, B&P Auto-services, Garage du Viaduc, Garage Ams).
+- Placés à tort : 7 → 0. « À confirmer » que l'app pouvait trancher : 4 → 0. Le rejeu hors ligne plaçait
+  Welington à tort (mis de côté, alors qu'il a un site) : l'adresse de son site manquait aux preuves
+  enregistrées. Avec la correction du 1er novembre, il est écarté. Restent à confirmer les trois emails au
+  nom d'une autre affaire, avec cette raison écrite, et DAC.
+- Les 23 proposés du rejeu hors ligne : les 18 bons qui restent, Welington (à tort, voir plus bas) et
+  4 garages d'Aurillac que le contrôle n'avait pas classés (Garage Laur Sebastien, B&P Auto-services, Garage
+  du Viaduc, Garage Ams).
 - Coût : 105 fiches sur 296 de la n° 17 sont des réseaux ou des marques par leur nom, leur catégorie ou leur
   page Facebook. Elles sont maintenant écartées dès la lecture de la fiche Google, sans vérification ; 16
   d'entre elles avaient été proposées et 11 avaient coûté une recherche de contact complète.
 
 Corrections de la vérité terrain (contrôle en direct pendant le rejeu) :
 
-- **Welington Automobiles n'a pas de site** : `welington.fr` ne sert que la page de parking de GoDaddy
-  (redirection vers `/lander`, serveurs `domaincontrol.com`), seul son courrier fonctionne (Outlook). C'est
-  un bon prospect, refusé à tort à la main : à reprendre.
+- **Welington Automobiles a un site**, `welingtonautomobiles.fr` (« Spécialiste vente voitures occasion
+  Montluçon », en ligne). Le contrôle du site à l'enrichissement l'a trouvé le 1er novembre au matin
+  (prospect n° 392, écarté depuis). `welington.fr`, le domaine de son email, n'est qu'un domaine parqué chez
+  GoDaddy (seul son courrier fonctionne) : le refus à la main était juste, pour une autre raison. La n° 17
+  avait pourtant vu ce site : le résultat Google qui lui a donné son email venait de
+  `welingtonautomobiles.fr`, mais Google en cachait l'adresse derrière sa redirection
+  (`google.com/goto?url=…`), et le moteur a lu une page de google.com. 33 preuves de la n° 17 (25 emails,
+  8 patrons) viennent de résultats ainsi cachés. Leurs redirections, suivies le 1er novembre, mènent au site
+  de l'entreprise pour cinq d'entre elles : Welington, Lucens et DAC, que la recherche n'avait pas vus, et
+  deux garages déjà écartés pour un site trouvé ailleurs. Elles mènent aussi à des pages Facebook : celle
+  de Garage Bel Air, et une page Motrio pour GLD. Corrigé le 1er novembre (`d20db841`) : l'adresse que
+  Google écrit sous le titre (`https://welingtonautomobiles.fr › vehicules`) donne le site du résultat. Une
+  page morte du domaine de l'email ne tient plus lieu du site que déclare la fiche Google : le candidat
+  reste « à confirmer ».
 - **Abj Auto n'a plus de site** : `abjautorepair.net` n'existe plus (aucun DNS, adresse libre selon le
   RDAP). Il reste écarté, mais faute d'email, pas pour un site.
 - **Tourlan Et Fils (validé, prospect n° 389) est douteux** : il partage son email `ggetourlan@wanadoo.fr`
@@ -565,6 +579,11 @@ Corrections de la vérité terrain (contrôle en direct pendant le rejeu) :
   vérification, son email n'est donc jamais lu.
 
 Règles non écrites, par risque de faux positifs :
+
+- Une page Facebook cachée derrière la redirection de Google reste non lue (Garage Bel Air, prospect
+  n° 387). Sous le titre, seul le site est sûr (`facebook.com`) : la suite est un fil d'Ariane, pas
+  l'adresse de la page (`welingtonautomobiles.fr › vehicules` pour `/414/vehicules/?marque=834`). La lire
+  demanderait de suivre la redirection, une requête de plus par résultat.
 
 - « Garage Expert » seul n'est pas un réseau : l'enseigne d'AD est « Garage AD Expert », et toutes les
   fiches AD de la manche portent « AD ». Le mot aurait écarté « Garage Expert 68 » (Mulhouse), sans doute
