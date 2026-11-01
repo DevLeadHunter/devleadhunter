@@ -97,6 +97,13 @@ class DemoSiteStrength(BaseModel):
     description: str = Field(default="", max_length=240)
 
 
+class DemoSiteMethodStep(BaseModel):
+    """One step of the « Notre méthode » section: what happens, and what it means for the client."""
+
+    title: str = Field(..., min_length=1, max_length=60)
+    description: str = Field(default="", max_length=240)
+
+
 class DemoSiteTaxCredit(BaseModel):
     """The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it."""
 
@@ -146,6 +153,13 @@ class DemoSiteUpdateRequest(BaseModel):
     # « Crédit d'impôt » section (stored in ``section_overrides["taxCredit"]``, kept across regenerations);
     # an empty heading removes it.
     tax_credit: DemoSiteTaxCredit | None = None
+    # Written over the template's texts, kept across regenerations; ``""`` or ``[]`` goes back to the generated ones.
+    hero_title: str | None = Field(default=None, max_length=90)
+    hero_subtitle: str | None = Field(default=None, max_length=220)
+    services_lead: str | None = Field(default=None, max_length=300)
+    steps: list[DemoSiteMethodStep] | None = Field(default=None, max_length=6)
+    cta_title: str | None = Field(default=None, max_length=90)
+    cta_lead: str | None = Field(default=None, max_length=300)
 
 
 class DemoSiteServiceCardsConfig(BaseModel):

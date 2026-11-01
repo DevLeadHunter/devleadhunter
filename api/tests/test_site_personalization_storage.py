@@ -82,3 +82,16 @@ def test_a_hero_sentence_typed_at_creation_is_kept_unless_the_personalisation_is
 
     DemoSiteService._apply_personalization(site, _personalization(), ["a", "b"], replace_description=True)
     assert site.description == "Paysagiste à Gland : taille de haies, pose de clôtures."
+
+
+def test_only_a_redone_personalisation_replaces_a_sentence_written_under_the_title() -> None:
+    site = SimpleNamespace(
+        section_overrides={"subtitle": "Ma phrase écrite"}, description="Ma phrase", image_order=None
+    )
+
+    DemoSiteService._apply_personalization(site, _personalization(), ["a", "b"], replace_description=False)
+    assert site.section_overrides["subtitle"] == "Ma phrase écrite"
+
+    DemoSiteService._apply_personalization(site, _personalization(), ["a", "b"], replace_description=True)
+    assert site.description == "Paysagiste à Gland : taille de haies, pose de clôtures."
+    assert "subtitle" not in site.section_overrides

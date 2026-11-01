@@ -70,6 +70,7 @@ from services.templates.site_content import (
     clean_hero_points,
     clean_portfolio_items,
     clean_service_cards,
+    clean_step_items,
     clean_strength_items,
     clean_tax_credit,
     clean_trust_items,
@@ -620,6 +621,12 @@ class DemoSiteService:
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
         tax_credit: dict | None = None,
+        hero_title: str | None = None,
+        hero_subtitle: str | None = None,
+        services_lead: str | None = None,
+        steps: list[dict] | None = None,
+        cta_title: str | None = None,
+        cta_lead: str | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -627,11 +634,13 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
-        ``hero_points``, ``trust_items``, ``faq`` and ``strengths`` replace the facts under the title, the trust
-        markers, the questions and the « Pourquoi nous choisir » strengths (``[]`` goes back to the generated ones).
-        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
-        the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
-        « crédit d'impôt » section (an empty heading removes it).
+        ``hero_points``, ``trust_items``, ``faq``, ``strengths`` and ``steps`` replace the facts under the title, the
+        trust markers, the questions, the « Pourquoi nous choisir » strengths and the « Notre méthode » steps
+        (``[]`` goes back to the generated ones). ``about_text`` replaces the « À propos » text, ``hero_title`` and
+        ``hero_subtitle`` the title and the sentence under it (over ``description``), ``services_lead`` the
+        paragraph under the services title, ``cta_title`` and ``cta_lead`` the banner above the contact (``""`` goes
+        back to the generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the
+        template's), ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -659,6 +668,12 @@ class DemoSiteService:
             or about_text is not None
             or portfolio is not None
             or tax_credit is not None
+            or hero_title is not None
+            or hero_subtitle is not None
+            or services_lead is not None
+            or steps is not None
+            or cta_title is not None
+            or cta_lead is not None
         ):
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
@@ -674,11 +689,11 @@ class DemoSiteService:
                 else:
                     overrides.pop("images", None)
             if hero_badge is not None:
-                badge = hero_badge.strip()
-                if badge:
-                    overrides["heroBadge"] = badge
-                else:
-                    overrides.pop("heroBadge", None)
+                self._store_written_text(overrides, "heroBadge", hero_badge)
+            if hero_title is not None:
+                self._store_written_text(overrides, "heroTitle", hero_title)
+            if hero_subtitle is not None:
+                self._store_written_text(overrides, "subtitle", hero_subtitle)
             if hero_points is not None:
                 self._store_written_section(overrides, "heroPoints", clean_hero_points(hero_points))
             if trust_items is not None:
@@ -687,12 +702,16 @@ class DemoSiteService:
                 self._store_written_section(overrides, "faq", clean_faq_items(faq))
             if strengths is not None:
                 self._store_written_section(overrides, "strengths", clean_strength_items(strengths))
+            if steps is not None:
+                self._store_written_section(overrides, "steps", clean_step_items(steps))
             if about_text is not None:
-                about = about_text.strip()
-                if about:
-                    overrides["about"] = about
-                else:
-                    overrides.pop("about", None)
+                self._store_written_text(overrides, "about", about_text)
+            if services_lead is not None:
+                self._store_written_text(overrides, "servicesLead", services_lead)
+            if cta_title is not None:
+                self._store_written_text(overrides, "ctaTitle", cta_title)
+            if cta_lead is not None:
+                self._store_written_text(overrides, "ctaLead", cta_lead)
             if portfolio is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
                 items = clean_portfolio_items(portfolio, allowed_images=pool)
@@ -750,6 +769,22 @@ class DemoSiteService:
             overrides[section_key] = written_items
         else:
             overrides.pop(section_key, None)
+
+    @staticmethod
+    def _store_written_text(overrides: dict, text_key: str, written_text: str) -> None:
+        """
+        Keep a text written for the business in the site overrides, or drop it when it came back blank.
+
+        Args:
+            overrides: The site's section overrides, updated in place.
+            text_key: The ``SiteContent`` key of the text (``heroTitle``, ``about``…).
+            written_text: The text; blank to go back to the generated one.
+        """
+        text = written_text.strip()
+        if text:
+            overrides[text_key] = text
+        else:
+            overrides.pop(text_key, None)
 
     @staticmethod
     def get_tax_credit(demo_site: DemoSite) -> dict | None:
@@ -996,12 +1031,13 @@ class DemoSiteService:
         if personalization.section_images:
             existing_images = overrides.get("images") if isinstance(overrides.get("images"), dict) else {}
             overrides["images"] = {**existing_images, **personalization.section_images}
+        if personalization.hero_sentence and (replace_description or not demo_site.description):
+            demo_site.description = personalization.hero_sentence
+            overrides.pop("subtitle", None)
         overrides["personalization"] = {"source": "auto", "at": datetime.now(UTC).isoformat()}
         demo_site.section_overrides = overrides
         demo_site.image_order = personalization.photo_order if personalization.photo_order != pool else None
         demo_site.image_pool_snapshot = list(pool)
-        if personalization.hero_sentence and (replace_description or not demo_site.description):
-            demo_site.description = personalization.hero_sentence
 
     async def _personalize_at_creation(self, db: Session, demo_site: DemoSite, enrichment: dict | None) -> dict | None:
         """

@@ -63,6 +63,10 @@ MAX_FAQ_ANSWER_CHARS = 600
 MAX_STRENGTHS = 6
 MAX_STRENGTH_TITLE_CHARS = 60
 MAX_STRENGTH_DESCRIPTION_CHARS = 240
+# The steps of the « Notre méthode » section (``DemoSite.section_overrides["steps"]``): shape limits.
+MAX_STEPS = 6
+MAX_STEP_TITLE_CHARS = 60
+MAX_STEP_DESCRIPTION_CHARS = 240
 # The tax credit section (``DemoSite.section_overrides["taxCredit"]``): shape limits.
 MAX_TAX_CREDIT_HEADING_CHARS = 120
 MAX_TAX_CREDIT_LEAD_CHARS = 600
@@ -621,12 +625,17 @@ def clean_faq_items(items: Any) -> list[dict[str, str]]:
     return cleaned[:MAX_FAQ_ITEMS]
 
 
-def clean_strength_items(items: Any) -> list[dict[str, str]]:
+def _clean_titled_items(
+    items: Any, *, max_items: int, max_title_chars: int, max_description_chars: int
+) -> list[dict[str, str]]:
     """
-    Validate the strengths written for a site into titled entries of the « Pourquoi nous choisir » section.
+    Validate titled entries (``{"title", "description"}``) written for a site: an entry without a title is dropped.
 
     Args:
         items: Raw entries (API payload or stored override).
+        max_items: Hard cap on the number of entries kept.
+        max_title_chars: Length cap of a title.
+        max_description_chars: Length cap of a description.
 
     Returns:
         The entries holding a title, trimmed and capped, in order.
@@ -637,12 +646,48 @@ def clean_strength_items(items: Any) -> list[dict[str, str]]:
     for item in items:
         if not isinstance(item, dict):
             continue
-        title = _single_line(item.get("title"), MAX_STRENGTH_TITLE_CHARS)
+        title = _single_line(item.get("title"), max_title_chars)
         if title:
             cleaned.append(
-                {"title": title, "description": _single_line(item.get("description"), MAX_STRENGTH_DESCRIPTION_CHARS)}
+                {"title": title, "description": _single_line(item.get("description"), max_description_chars)}
             )
-    return cleaned[:MAX_STRENGTHS]
+    return cleaned[:max_items]
+
+
+def clean_strength_items(items: Any) -> list[dict[str, str]]:
+    """
+    Validate the strengths written for a site into titled entries of the « Pourquoi nous choisir » section.
+
+    Args:
+        items: Raw entries (API payload or stored override).
+
+    Returns:
+        The entries holding a title, trimmed and capped, in order.
+    """
+    return _clean_titled_items(
+        items,
+        max_items=MAX_STRENGTHS,
+        max_title_chars=MAX_STRENGTH_TITLE_CHARS,
+        max_description_chars=MAX_STRENGTH_DESCRIPTION_CHARS,
+    )
+
+
+def clean_step_items(items: Any) -> list[dict[str, str]]:
+    """
+    Validate the steps written for a site into titled entries of the « Notre méthode » section.
+
+    Args:
+        items: Raw entries (API payload or stored override).
+
+    Returns:
+        The entries holding a title, trimmed and capped, in order.
+    """
+    return _clean_titled_items(
+        items,
+        max_items=MAX_STEPS,
+        max_title_chars=MAX_STEP_TITLE_CHARS,
+        max_description_chars=MAX_STEP_DESCRIPTION_CHARS,
+    )
 
 
 def clean_tax_credit(raw: Any) -> dict[str, Any]:
@@ -784,6 +829,17 @@ def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str,
         card["image"] = candidates.pop(0)
 
 
+_WRITTEN_TEXT_KEYS: tuple[str, ...] = (
+    "heroBadge",
+    "heroTitle",
+    "subtitle",
+    "about",
+    "servicesLead",
+    "ctaTitle",
+    "ctaLead",
+)
+
+
 def apply_section_overrides(
     site_content: dict[str, Any],
     overrides: Any,
@@ -796,9 +852,11 @@ def apply_section_overrides(
     ``about`` replaces the « À propos » text with the one written for this business, ``portfolio`` the
     realizations with its own photos and what they show, ``images`` the template's other photos
     (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
-    ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the « Pourquoi nous
-    choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la
-    personne » provider.
+    ``heroTitle`` and ``subtitle`` the title and the sentence under it, ``servicesLead`` the paragraph under
+    the services title, ``steps`` the « Notre méthode » steps, ``ctaTitle`` and ``ctaLead`` the banner above
+    the contact, ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the
+    « Pourquoi nous choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a
+    « services à la personne » provider. A template that never shows one of them just ignores its key.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
     """
@@ -817,18 +875,19 @@ def apply_section_overrides(
                 merged[key] = url.strip()
         if merged:
             site_content["images"] = merged
-    badge = overrides.get("heroBadge")
-    if isinstance(badge, str) and badge.strip():
-        site_content["heroBadge"] = badge.strip()
+    for text_key in _WRITTEN_TEXT_KEYS:
+        text = overrides.get(text_key)
+        if isinstance(text, str) and text.strip():
+            site_content[text_key] = text.strip()
     points = clean_hero_points(overrides.get("heroPoints"))
     if points:
         site_content["heroPoints"] = points
     trust_items = clean_trust_items(overrides.get("trustItems"))
     if trust_items:
         site_content["trustItems"] = trust_items
-    about = overrides.get("about")
-    if isinstance(about, str) and about.strip():
-        site_content["about"] = about.strip()
+    steps = clean_step_items(overrides.get("steps"))
+    if steps:
+        site_content["steps"] = steps
     portfolio = clean_portfolio_items(overrides.get("portfolio"))
     if portfolio:
         site_content["portfolio"] = portfolio
@@ -847,20 +906,26 @@ def apply_section_overrides(
 # The sections written for a business that its client can edit in the CMS: override key → the section carrying it.
 _OVERRIDE_SECTIONS: dict[str, str] = {
     "heroBadge": "hero",
+    "heroTitle": "hero",
+    "subtitle": "hero",
     "heroPoints": "hero",
     "trustItems": "trust",
     "about": "about",
+    "servicesLead": "services",
     "services": "services",
     "strengths": "strengths",
+    "steps": "method",
     "faq": "faq",
     "portfolio": "portfolio",
     "taxCredit": "taxCredit",
+    "ctaTitle": "contact",
+    "ctaLead": "contact",
 }
 
 
 def _published_override_value(key: str, published: dict[str, Any], stored: Any) -> Any:
     """Read one section written for the business back from the flattened published story, cleaned like an edit."""
-    if key in ("heroBadge", "about"):
+    if key in _WRITTEN_TEXT_KEYS:
         return _clean_str(published.get(key))
     if key == "heroPoints":
         return clean_hero_points(published.get("heroPoints"))
@@ -870,6 +935,8 @@ def _published_override_value(key: str, published: dict[str, Any], stored: Any) 
         return clean_service_cards(published.get("services"))
     if key == "strengths":
         return clean_strength_items(published.get("strengths"))
+    if key == "steps":
+        return clean_step_items(published.get("steps"))
     if key == "faq":
         return clean_faq_items(published.get("faq"))
     if key == "portfolio":
