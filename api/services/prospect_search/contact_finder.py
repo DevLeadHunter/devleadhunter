@@ -257,7 +257,7 @@ class ContactFinder:
                 continue
             CandidateVerifier.take_site_showing_contact(facts, line, trade, source="Recherche de son email")
             if self._is_about_business(line, facts, trade):
-                CandidateVerifier.read_privacy_proxy_addresses(facts, line)
+                CandidateVerifier.read_site_revealing_addresses(facts, line)
         candidates = [
             (email, index)
             for index, line in enumerate(results)
@@ -374,7 +374,7 @@ class ContactFinder:
             ) and not validation_service.is_social_url(line.link)
             if not (is_directory_page or CandidateVerifier.names_business(line.title, facts, trade)):
                 continue
-            CandidateVerifier.read_privacy_proxy_addresses(facts, line)
+            CandidateVerifier.read_site_revealing_addresses(facts, line)
             emails = self._usable_emails(line.text, facts)
             if len(emails) == 1:
                 CandidateVerifier.offer_email_read_in(

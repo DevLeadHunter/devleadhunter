@@ -104,30 +104,38 @@ class FrenchDepartments:
         return is_town
 
     @classmethod
-    async def commune_name(cls, registry_commune: str) -> str:
+    async def commune_name(cls, registry_commune: str, *, postal_code: str | None = None) -> str:
         """
         A commune's name as the official list spells it (« PONT-DU-CHATEAU » gives « Pont-du-Château »).
 
-        The registry writes communes in capitals, without accents; a name the list does not find is only made
-        readable (« Pont-du-Chateau »).
+        The registry writes communes in capitals, without accents nor always hyphens; the communes of its postal code
+        are read first when it gives one (« TROUVILLE SUR MER » at 14360 is « Trouville-sur-Mer »). A name the list
+        does not find is only made readable (« Pont-du-Chateau »).
 
         Args:
             registry_commune: The commune as the registry writes it.
+            postal_code: Its postal code, when the registry gives one.
 
         Returns:
             The commune's spelling.
         """
         key = town_key(registry_commune)
-        communes = await cls._communes_named(registry_commune) or []
-        spelled = next(
+        spelled = cls._spelling_among(await cls._communes_of_postal_code(postal_code), key) if postal_code else None
+        if spelled is None:
+            spelled = cls._spelling_among(await cls._communes_named(registry_commune), key)
+        return spelled or cls.readable_commune(registry_commune)
+
+    @staticmethod
+    def _spelling_among(communes: list[dict[str, Any]] | None, key: str) -> str | None:
+        """The official name of the commune of the list whose comparison key is *key*."""
+        return next(
             (
                 str(commune["nom"])
-                for commune in communes
+                for commune in communes or []
                 if commune.get("nom") and town_key(str(commune["nom"])) == key
             ),
             None,
         )
-        return spelled or cls.readable_commune(registry_commune)
 
     @staticmethod
     def readable_commune(registry_commune: str) -> str:
@@ -140,14 +148,25 @@ class FrenchDepartments:
     @staticmethod
     async def _communes_named(town: str) -> list[dict[str, Any]] | None:
         """The communes the official list finds for a name, or None when it does not answer."""
-        params: dict[str, str | int] = {"nom": town, "fields": "nom,codeDepartement", "limit": _MAX_COMMUNES}
+        return await FrenchDepartments._communes_where(
+            {"nom": town, "fields": "nom,codeDepartement", "limit": _MAX_COMMUNES}
+        )
+
+    @staticmethod
+    async def _communes_of_postal_code(postal_code: str) -> list[dict[str, Any]] | None:
+        """The communes the official list gives a postal code, or None when it does not answer."""
+        return await FrenchDepartments._communes_where({"codePostal": postal_code, "fields": "nom,codeDepartement"})
+
+    @staticmethod
+    async def _communes_where(params: dict[str, str | int]) -> list[dict[str, Any]] | None:
+        """The communes the official list answers a query with, or None when it does not answer."""
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
                 response = await client.get(_COMMUNES_URL, params=params)
                 response.raise_for_status()
                 communes = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            logger.info("Commune lookup of %r failed: %s", town, exc)
+            logger.info("Commune lookup %s failed: %s", params, exc)
             return None
         if not isinstance(communes, list):
             return None

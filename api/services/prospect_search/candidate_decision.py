@@ -118,6 +118,16 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.",
             )
+        technical_address = facts.website_technical_address
+        is_reachable = has_proven_email or has_guessed_email or has_mobile
+        if criteria.only_without_website and technical_address is not None and facts.website is None and is_reachable:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"{technical_address['source']} lui donne {technical_address['value']}, l'adresse technique d'un "
+                    "site : il a sans doute un site, qui n'a pas été retrouvé : à vérifier."
+                ),
+            )
         place_elsewhere = facts.contact_elsewhere
         if place_elsewhere is not None and facts.email is not None:
             return CandidateVerdict(

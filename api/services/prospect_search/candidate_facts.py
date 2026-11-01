@@ -218,6 +218,11 @@ class CandidateFacts:
         return next((line["value"] for line in self.evidence if line.get("fact") == "association"), None)
 
     @property
+    def website_technical_address(self) -> dict[str, str] | None:
+        """The site service's address a page gave the business (« aa@sentry.wixpress.com »): it has a site somewhere."""
+        return next((line for line in self.evidence if line.get("fact") == "website_technical_address"), None)
+
+    @property
     def privacy_proxied_domains(self) -> list[str]:
         """The domains a privacy service's address revealed for the business (« exemple.fr@domainsbyproxy.com »)."""
         return [line["value"] for line in self.evidence if line.get("fact") == "privacy_proxied_domain"]

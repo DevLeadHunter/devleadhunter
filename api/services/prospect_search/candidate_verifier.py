@@ -930,10 +930,25 @@ class CandidateVerifier:
             return
         facts.add_evidence("privacy_proxied_domain", domain, source=line.host, url=line.link, snippet=line.text)
 
-    @classmethod
-    def read_privacy_proxy_addresses(cls, facts: CandidateFacts, line: SearchResultLine) -> None:
+    @staticmethod
+    def note_website_technical_address(facts: CandidateFacts, email: str, line: SearchResultLine) -> None:
         """
-        Record the domains every privacy service's address of a result stands for.
+        Record a site service's address a result gives the business (« aa@sentry.wixpress.com »): the page copied it
+        from the business's own site, so the business has one.
+
+        Args:
+            facts: The candidate, completed in place.
+            email: The site service's address.
+            line: The result showing it, already known to be about the business.
+        """
+        if facts.website_technical_address is None:
+            facts.add_evidence("website_technical_address", email, source=line.host, url=line.link, snippet=line.text)
+
+    @classmethod
+    def read_site_revealing_addresses(cls, facts: CandidateFacts, line: SearchResultLine) -> None:
+        """
+        Record what the addresses of a result reveal of the business's site: the domain a privacy service's address
+        stands for, the site a site service's address was copied from.
 
         Args:
             facts: The candidate, completed in place.
@@ -943,6 +958,8 @@ class CandidateVerifier:
             email = match.group(0).lower().rstrip(".")
             if email_candidate_scorer.is_privacy_proxy_address(email):
                 cls.note_privacy_proxied_domain(facts, email, line)
+            elif email_candidate_scorer.is_website_technical_address(email):
+                cls.note_website_technical_address(facts, email, line)
 
     @classmethod
     async def _consider_business_domain(
@@ -1271,6 +1288,9 @@ class CandidateVerifier:
                 continue
             if email_candidate_scorer.is_privacy_proxy_address(email):
                 self.note_privacy_proxied_domain(facts, email, line)
+                continue
+            if email_candidate_scorer.is_website_technical_address(email):
+                self.note_website_technical_address(facts, email, line)
                 continue
             if email_candidate_scorer.belongs_to_an_institution(email, city=facts.town):
                 continue

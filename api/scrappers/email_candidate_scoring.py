@@ -90,7 +90,7 @@ BLOCKED_DOMAINS: frozenset[str] = frozenset(
         "test.com",
         "domain.com",
         "yoursite.com",
-        "sentry.io",
+        "mysite.com",
         "google.com",
         "gstatic.com",
         "googleapis.com",
@@ -256,7 +256,30 @@ BLOCKED_LOCAL_PREFIXES: tuple[str, ...] = (
     "mairie",
 )
 
-BLOCKED_LOCAL_PARTS: frozenset[str] = frozenset({"dpo", "rgpd", "privacy", "abuse", "postmaster", "webmaster"})
+BLOCKED_LOCAL_PARTS: frozenset[str] = frozenset(
+    {"dpo", "rgpd", "privacy", "abuse", "postmaster", "webmaster", "example", "exemple"}
+)
+
+WEBSITE_TECHNICAL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "sentry.io",
+        "wix.com",
+        "wixpress.com",
+        "wixsite.com",
+        "squarespace.com",
+        "jimdo.com",
+        "jimdosite.com",
+        "weebly.com",
+        "webnode.com",
+        "webnode.fr",
+        "e-monsite.com",
+        "wordpress.com",
+        "shopify.com",
+        "myshopify.com",
+        "site-solocal.com",
+        "solocal.com",
+    }
+)
 
 # Services hiding a domain's owner write their own address in its public record (« exemple.fr@domainsbyproxy.com »):
 # a company data page copying that record shows an address nobody reads.
@@ -397,6 +420,23 @@ class EmailCandidateScorer:
         return cls._is_blocked_domain(host.lower().removeprefix("www."))
 
     @staticmethod
+    def is_website_technical_address(email: str) -> bool:
+        """
+        Whether *email* is written from a site builder's or a site service's own domain, never a business's mailbox.
+
+        A Wix site's code carries the address its error reports go to (« …@sentry.wixpress.com »): a directory that
+        read the site copies it as the business's email.
+
+        Args:
+            email: Any address.
+
+        Returns:
+            True for an address of these domains or of their subdomains.
+        """
+        labels = email.strip().lower().rpartition("@")[2].split(".")
+        return any(".".join(labels[index:]) in WEBSITE_TECHNICAL_DOMAINS for index in range(len(labels) - 1))
+
+    @staticmethod
     def is_privacy_proxy_address(email: str) -> bool:
         """Whether *email* is the address a privacy service writes in a domain's public record instead of its owner's."""
         domain = email.strip().lower().rpartition("@")[2]
@@ -426,6 +466,8 @@ class EmailCandidateScorer:
         if any(local.startswith(prefix) for prefix in BLOCKED_LOCAL_PREFIXES) or local in BLOCKED_LOCAL_PARTS:
             return True
         if self._is_blocked_domain(domain) or self.is_privacy_proxy_address(email):
+            return True
+        if self.is_website_technical_address(email):
             return True
         if any(chunk in domain for chunk in BLOCKED_DOMAIN_SUBSTRINGS):
             return True
