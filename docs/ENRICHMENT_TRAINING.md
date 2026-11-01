@@ -338,8 +338,9 @@ avait enregistré pour les garages n° 373 à 391 (lecture seule), le site de DA
   (SIREN 323 789 370) inscrit une autre personne. La règle joue donc aussi entre deux personnes du registre,
   sauf quand le nom retenu vient de la société liée au garage par son numéro.
 - Garage Aurillac Électro Diesel : un site Wix gratuit reste un mini-site, le prospect est gardé (décision
-  du 1er novembre, voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12) : il redevient un bon prospect de
-  réserve.
+  du 1er novembre, voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12). Validé ensuite (n° 393), il a été
+  écarté dès son enrichissement par la règle du titre : sa fiche s'appelle « Garage Aurillac Electro Diesel
+  - Bosch Car Service ».
 - Garage Norville (absence de fiche Google à l'enrichissement) : corrigé côté recherche, qui complète
   maintenant une adresse sans code postal par le registre (« 38 Rue Denis Papin, 03100 Montluçon ») ; voir
   `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
