@@ -415,6 +415,52 @@ def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
     site["trustItems"] = result
 
 
+_ROUND_THE_CLOCK_RE = re.compile(
+    r"7\s*j(?:ours)?\s*(?:/|sur)\s*7|24\s*h(?:eures)?\s*(?:/|sur)\s*24|\burgences?\b", re.IGNORECASE
+)
+_LOCAL_TRUST_ITEM: dict[str, str] = {"value": "Local", "label": "Artisan de proximité"}
+_CALL_US_ANSWER: str = "Appelez-nous : nous vous disons quand nous pouvons passer."
+_DAYS_IN_A_WEEK: int = 7
+
+
+def drop_unbacked_emergency_claims(site: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
+    """
+    Take a template's « 7j/7 » and emergency promises off a site whose data never makes them.
+
+    A business that closes on a day of its Google hours (or whose hours are unknown) and never speaks of
+    emergencies, in its description or its reviews, gets no « Dépannage 7j/7 » marker and no « nous intervenons
+    7j/7 » answer: its owner would read a promise he never made. The marker becomes a local one and the answer
+    tells to call. Mutates ``site`` in place.
+
+    Args:
+        site: The flat SiteContent being built (its ``trustItems`` and ``faq`` are replaced).
+        enrichment: Scraped enrichment dict, or None.
+    """
+    enr = enrichment or {}
+    reviews = [str(review.get("text") or "") for review in enr.get("reviews") or [] if isinstance(review, dict)]
+    open_days = {
+        str(row.get("day", "")).lower()
+        for row in site.get("openingHours") or []
+        if isinstance(row, dict) and "ferm" not in str(row.get("hours", "")).lower()
+    }
+    if len(open_days) >= _DAYS_IN_A_WEEK or _ROUND_THE_CLOCK_RE.search(
+        " ".join([str(enr.get("description") or ""), *reviews])
+    ):
+        return
+    site["trustItems"] = [
+        dict(_LOCAL_TRUST_ITEM)
+        if isinstance(item, dict) and _ROUND_THE_CLOCK_RE.search(f"{item.get('value', '')} {item.get('label', '')}")
+        else item
+        for item in site.get("trustItems") or []
+    ]
+    site["faq"] = [
+        {**item, "answer": _CALL_US_ANSWER}
+        if isinstance(item, dict) and _ROUND_THE_CLOCK_RE.search(str(item.get("answer", "")))
+        else item
+        for item in site.get("faq") or []
+    ]
+
+
 _PRICE_SUFFIX_RE = re.compile(r"\s*[—–\-]\s*\d+(?:[.,]\d+)?\s*€\s*$")
 
 

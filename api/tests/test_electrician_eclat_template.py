@@ -70,6 +70,25 @@ def test_rating_slot_shows_the_real_rating_or_a_neutral_claim() -> None:
     assert "4,9/5" not in [value for value, _ in without_rating]
 
 
+def test_no_seven_day_emergency_promise_without_the_data_for_it() -> None:
+    """« 7j/7 » stays only for a business open every day or that speaks of emergencies itself."""
+    weekdays = ["lundi", "mardi", "mercredi", "jeudi", "vendredi"]
+    closed_weekend = {
+        "opening_hours": [{"day": day, "hours": "09:00–18:00"} for day in weekdays]
+        + [{"day": "samedi", "hours": "Fermé"}, {"day": "dimanche", "hours": "Fermé"}]
+    }
+    site = _site(enrichment=closed_weekend)
+    assert ("Local", "Artisan de proximité") in [(item["value"], item["label"]) for item in site["trustItems"]]
+    assert not any("7j/7" in f"{item['value']} {item['label']}" for item in site["trustItems"])
+    assert not any("7j/7" in item["answer"] for item in site["faq"])
+    assert "7j/7" not in str(_site()["trustItems"])
+
+    every_day = {"opening_hours": [{"day": day, "hours": "08:00–20:00"} for day in [*weekdays, "samedi", "dimanche"]]}
+    assert any(item["value"] == "7j/7" for item in _site(enrichment=every_day)["trustItems"])
+    said_by_a_client = {**closed_weekend, "reviews": [{"text": "Venu en urgence un dimanche soir", "rating": 5}]}
+    assert any(item["value"] == "7j/7" for item in _site(enrichment=said_by_a_client)["trustItems"])
+
+
 def test_small_hero_photo_is_left_to_the_layer_when_the_prospect_has_gallery_photos() -> None:
     """With gallery photos no stock photo is seeded: the layer shows the first gallery photo, whatever its order."""
     photos = [f"https://cdn.example.fr/chantier-{index}.jpg" for index in range(4)]
@@ -116,7 +135,8 @@ def test_generations_do_not_share_mutable_defaults() -> None:
     first["steps"][0]["title"] = "Modifié"
     second = _site()
     assert "Ajout" not in second["heroPoints"]
-    assert second["faq"][0]["answer"] == electrician_eclat.ECLAT_FAQ[0]["answer"]
+    assert second["faq"][0]["answer"] != "Modifié"
+    assert "Modifié" not in str(electrician_eclat.ECLAT_FAQ)
     assert second["steps"][0]["title"] == "Premier contact"
 
 
