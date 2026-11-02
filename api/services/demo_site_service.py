@@ -68,14 +68,19 @@ from services.templates.site_content import (
     apply_section_overrides,
     clean_faq_items,
     clean_hero_points,
+    clean_hidden_reviews,
     clean_portfolio_items,
     clean_service_cards,
+    clean_step_items,
     clean_strength_items,
     clean_tax_credit,
     clean_trust_items,
     from_storyblok_site_content,
+    hides_prospect_photos,
     is_complaint_review,
+    keep_former_defaults,
     overrides_from_published_story,
+    template_default_source,
     usable_site_photos,
 )
 from services.trade_normalizer import TradeNormalizer
@@ -366,20 +371,38 @@ class DemoSiteService:
         """Build Storyblok content JSON from the demo site record."""
         return self._build_content_for_site_with_theme(db, demo_site, theme=None)
 
+    def _enrichment_with_site_photos(self, db: Session, demo_site: DemoSite) -> dict | None:
+        """
+        The prospect's enrichment with the photos its site shows, in the order the shared mapping places them.
+
+        A user-curated placement overrides the scraped order, photos added to the prospect since the last save
+        appended to the gallery; a site whose operator hides the prospect's photos shows none.
+
+        Args:
+            db: Active database session.
+            demo_site: The demo site.
+
+        Returns:
+            The enrichment with its ``photos`` in site order, or None when the site has none.
+        """
+        enrichment = self._enrichment_dict_for_site(db, demo_site)
+        if not isinstance(enrichment, dict):
+            return enrichment
+        if hides_prospect_photos(demo_site.section_overrides):
+            return {**enrichment, "photos": []}
+        if isinstance(demo_site.image_order, list) and demo_site.image_order:
+            pool: list[str] = usable_site_photos(enrichment)
+            return {
+                **enrichment,
+                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
+            }
+        return enrichment
+
     def _build_content_for_site_with_theme(
         self, db: Session, demo_site: DemoSite, theme: dict[str, str] | None = None
     ) -> dict:
         """Build Storyblok content JSON from the demo site record (with enrichment)."""
-        enrichment = self._enrichment_dict_for_site(db, demo_site)
-        # A user-curated photo placement overrides the scraped order: fold it into the photo pool so
-        # the shared mapping ([0]→hero, [1]→about, [2:]→gallery) produces the arrangement they chose,
-        # with photos added to the prospect since the last save appended to the gallery.
-        if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
-            pool: list[str] = usable_site_photos(enrichment)
-            enrichment = {
-                **enrichment,
-                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
-            }
+        enrichment = self._enrichment_with_site_photos(db, demo_site)
         palette = (
             theme
             or self._theme_from_content(demo_site.content_json)
@@ -406,18 +429,18 @@ class DemoSiteService:
     def content_json_for_public(self, db: Session, demo_site: DemoSite) -> dict:
         """
         Published demo payload with operator overrides layered on stored ``content_json``, and the prospect's
-        country, which a Storyblok round trip drops and the template needs to word its own labels.
+        country, which a Storyblok round trip drops and the template needs to word its own labels. A delivered
+        site keeps its template's former default texts wherever its content stays empty.
         """
         content: dict = dict(demo_site.content_json) if isinstance(demo_site.content_json, dict) else {}
         content["country"] = CountryProfiles.get(self._prospect_country_for_site(db, demo_site)).code
-        enrichment = self._enrichment_dict_for_site(db, demo_site)
-        if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
-            pool: list[str] = usable_site_photos(enrichment)
-            enrichment = {
-                **enrichment,
-                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
-            }
-        return apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        enrichment = self._enrichment_with_site_photos(db, demo_site)
+        content = apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        if demo_site.status == DemoSiteStatus.DELIVERED.value:
+            keep_former_defaults(
+                content, template_registry.delivered_site_former_defaults(demo_site.template_id), content["country"]
+            )
+        return content
 
     @staticmethod
     def hero_line(demo_site: DemoSite) -> str:
@@ -620,6 +643,19 @@ class DemoSiteService:
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
         tax_credit: dict | None = None,
+        hero_title: str | None = None,
+        hero_subtitle: str | None = None,
+        cta_quote_label: str | None = None,
+        services_heading: str | None = None,
+        services_lead: str | None = None,
+        about_heading: str | None = None,
+        steps: list[dict] | None = None,
+        cta_title: str | None = None,
+        cta_lead: str | None = None,
+        contact_heading: str | None = None,
+        contact_lead: str | None = None,
+        hidden_reviews: list[str] | None = None,
+        hide_prospect_photos: bool | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -627,11 +663,17 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
-        ``hero_points``, ``trust_items``, ``faq`` and ``strengths`` replace the facts under the title, the trust
-        markers, the questions and the « Pourquoi nous choisir » strengths (``[]`` goes back to the generated ones).
-        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
-        the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
-        « crédit d'impôt » section (an empty heading removes it).
+        ``hero_points``, ``trust_items``, ``faq``, ``strengths`` and ``steps`` replace the facts under the title, the
+        trust markers, the questions, the « Pourquoi nous choisir » strengths and the « Notre méthode » steps
+        (``[]`` goes back to the generated ones). ``about_text`` replaces the « À propos » text, ``hero_title`` and
+        ``hero_subtitle`` the title and the sentence under it (over ``description``), ``cta_quote_label`` the quote
+        button, ``services_heading`` and ``services_lead`` the services title and the paragraph under it,
+        ``about_heading`` the « À propos » title, ``cta_title`` and ``cta_lead`` the banner above the contact,
+        ``contact_heading`` and ``contact_lead`` the contact title and the paragraph under it (``""`` goes back to the
+        generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the template's),
+        ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
+        ``hidden_reviews`` takes the reviews with these texts off the site (``[]`` shows them all again) and
+        ``hide_prospect_photos`` shows the template's photos instead of the prospect's (``False`` shows his again).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -659,6 +701,19 @@ class DemoSiteService:
             or about_text is not None
             or portfolio is not None
             or tax_credit is not None
+            or hero_title is not None
+            or hero_subtitle is not None
+            or cta_quote_label is not None
+            or services_heading is not None
+            or services_lead is not None
+            or about_heading is not None
+            or steps is not None
+            or cta_title is not None
+            or cta_lead is not None
+            or contact_heading is not None
+            or contact_lead is not None
+            or hidden_reviews is not None
+            or hide_prospect_photos is not None
         ):
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
@@ -674,11 +729,13 @@ class DemoSiteService:
                 else:
                     overrides.pop("images", None)
             if hero_badge is not None:
-                badge = hero_badge.strip()
-                if badge:
-                    overrides["heroBadge"] = badge
-                else:
-                    overrides.pop("heroBadge", None)
+                self._store_written_text(overrides, "heroBadge", hero_badge)
+            if hero_title is not None:
+                self._store_written_text(overrides, "heroTitle", hero_title)
+            if hero_subtitle is not None:
+                self._store_written_text(overrides, "subtitle", hero_subtitle)
+            if cta_quote_label is not None:
+                self._store_written_text(overrides, "ctaQuoteLabel", cta_quote_label)
             if hero_points is not None:
                 self._store_written_section(overrides, "heroPoints", clean_hero_points(hero_points))
             if trust_items is not None:
@@ -687,12 +744,34 @@ class DemoSiteService:
                 self._store_written_section(overrides, "faq", clean_faq_items(faq))
             if strengths is not None:
                 self._store_written_section(overrides, "strengths", clean_strength_items(strengths))
+            if steps is not None:
+                self._store_written_section(overrides, "steps", clean_step_items(steps))
             if about_text is not None:
-                about = about_text.strip()
-                if about:
-                    overrides["about"] = about
+                self._store_written_text(overrides, "about", about_text)
+            if about_heading is not None:
+                self._store_written_text(overrides, "aboutHeading", about_heading)
+            if services_heading is not None:
+                self._store_written_text(overrides, "servicesHeading", services_heading)
+            if services_lead is not None:
+                self._store_written_text(overrides, "servicesLead", services_lead)
+            if cta_title is not None:
+                self._store_written_text(overrides, "ctaTitle", cta_title)
+            if cta_lead is not None:
+                self._store_written_text(overrides, "ctaLead", cta_lead)
+            if contact_heading is not None:
+                self._store_written_text(overrides, "contactHeading", contact_heading)
+            if contact_lead is not None:
+                self._store_written_text(overrides, "contactLead", contact_lead)
+            if hidden_reviews is not None:
+                hidden_review_texts = clean_hidden_reviews(hidden_reviews)
+                if hidden_review_texts:
+                    overrides["hiddenReviews"] = hidden_review_texts
                 else:
-                    overrides.pop("about", None)
+                    overrides.pop("hiddenReviews", None)
+            if hide_prospect_photos:
+                overrides["hideProspectPhotos"] = True
+            elif hide_prospect_photos is not None:
+                overrides.pop("hideProspectPhotos", None)
             if portfolio is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
                 items = clean_portfolio_items(portfolio, allowed_images=pool)
@@ -750,6 +829,22 @@ class DemoSiteService:
             overrides[section_key] = written_items
         else:
             overrides.pop(section_key, None)
+
+    @staticmethod
+    def _store_written_text(overrides: dict, text_key: str, written_text: str) -> None:
+        """
+        Keep a text written for the business in the site overrides, or drop it when it came back blank.
+
+        Args:
+            overrides: The site's section overrides, updated in place.
+            text_key: The ``SiteContent`` key of the text (``heroTitle``, ``about``…).
+            written_text: The text; blank to go back to the generated one.
+        """
+        text = written_text.strip()
+        if text:
+            overrides[text_key] = text
+        else:
+            overrides.pop(text_key, None)
 
     @staticmethod
     def get_tax_credit(demo_site: DemoSite) -> dict | None:
@@ -996,12 +1091,13 @@ class DemoSiteService:
         if personalization.section_images:
             existing_images = overrides.get("images") if isinstance(overrides.get("images"), dict) else {}
             overrides["images"] = {**existing_images, **personalization.section_images}
+        if personalization.hero_sentence and (replace_description or not demo_site.description):
+            demo_site.description = personalization.hero_sentence
+            overrides.pop("subtitle", None)
         overrides["personalization"] = {"source": "auto", "at": datetime.now(UTC).isoformat()}
         demo_site.section_overrides = overrides
         demo_site.image_order = personalization.photo_order if personalization.photo_order != pool else None
         demo_site.image_pool_snapshot = list(pool)
-        if personalization.hero_sentence and (replace_description or not demo_site.description):
-            demo_site.description = personalization.hero_sentence
 
     async def _personalize_at_creation(self, db: Session, demo_site: DemoSite, enrichment: dict | None) -> dict | None:
         """
@@ -2115,9 +2211,9 @@ class DemoSiteService:
         semaphore = asyncio.Semaphore(_CONTENT_IMAGE_REHOST_CONCURRENCY)
 
         async def _rehost(url: str) -> tuple[str, str]:
-            template_default_source = storyblok_service.template_default_source(url)
-            if template_default_source is not None:
-                return url, template_default_source
+            default_source = template_default_source(url)
+            if default_source is not None:
+                return url, default_source
             async with semaphore:
                 return url, await prospect_photo_storage.rehost_remote_image(prospect_id, url)
 

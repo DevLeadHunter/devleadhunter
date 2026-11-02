@@ -49,13 +49,13 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 | `plumber-signature` | Plombier | **v1.4.0** | La plus riche (11 sections) |
 | `plumber-atelier` | Plombier | **v1.5.0** | DA typographique « fiche d'intervention » |
 | `plumber-cuivre` | Plombier | **v1.4.0** | DA bleu eau « Source » |
-| `electrician-eclat` | Électricien | **v1.0.2** | Claire et sobre : boutons bleu nuit, couleur du logo en touches (`palette.primary`), aucun texte sur photo ; titre, méthode et bannière éditables via `SECTION_FIELDS` ; proposée avant Lumen |
+| `electrician-eclat` | Électricien | **v1.1.0** | Claire et sobre : boutons bleu nuit, couleur du logo en touches (`palette.primary`), aucun texte sur photo ; titre, méthode et bannière éditables via `SECTION_FIELDS` ; aucune promesse écrite en dur, galerie masquée sans photo du prospect, photo de repli des cartes choisie d'après leur titre ; proposée avant Lumen |
 | `electrician-lumen` | Électricien | **v1.4.0** | GSAP embarqué dans SES deps |
-| `mechanic-pitlane` | Mécanicien / garagiste | **v1.5.2** | DA asphalt / racing red (AutoWorks), one-page vendable ; « Pourquoi nous choisir » éditable (`strengths`), jusqu'à 9 prestations |
+| `mechanic-pitlane` | Mécanicien / garagiste | **v1.6.0** | DA asphalt / racing red (AutoWorks), one-page vendable ; « Pourquoi nous choisir » éditable (`strengths`), jusqu'à 9 prestations ; titre, chapeau des prestations, étapes et titre du formulaire de rendez-vous écrits pour l'entreprise (`heroTitle`, `servicesLead`, `steps`, `ctaTitle` / `ctaLead`), tous éditables via `SECTION_FIELDS` sauf les étapes |
 | `dental` | Dentiste / cabinet dentaire | **v1.3.0** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
 | `food` | Food truck / street food | **v1.2.0** | DA crème & vert forêt, primary thémable, Unsplash fallbacks, favicon logo |
 | `barber` | Barbier / coiffeur homme | **v1.3.0** | DA crème & charcoal (Barlow + Work Sans), one-page, favicon logo, fallbacks Unsplash |
-| `landscaper-verdure` | Paysagiste | **v1.7.0** | DA verte « Verdure », section avis, vrais chiffres, méthode ; champs Storyblok propres via `SECTION_FIELDS` |
+| `landscaper-verdure` | Paysagiste | **v1.10.0** | DA verte « Verdure », section avis, vrais chiffres, méthode ; champs Storyblok propres via `SECTION_FIELDS` ; coches de l'« À propos » = `strengths` (masquées sans), réalisations du prospect seulement (section masquée sinon), aucune promesse en dur (gratuit, délai, assurance) ; un site livré garde à la lecture les anciens défauts (coches, titre du contact, phrase des étapes `stepsLead`) tant que son contenu ne les remplit pas (`DELIVERED_SITE_FORMER_DEFAULTS`) |
 
 Contrat `@devleadhunter/website-content` : **v1.11.0** (licence professionnelle `professionalLicenseLabel` / `professionalLicenseNumber` + `professionalLicenseLine()`, rendue en pied de page par les 11 templates).
 
@@ -166,6 +166,8 @@ TS `storyblokSiteContentToSiteContent.ts`). Le webhook est enregistré par space
 (`section_overrides` : prestations, FAQ, à propos, atouts, repères, photos uniques…) sont réappliquées
 par-dessus la story : le webhook y reprend d'abord ce que le client a publié
 (`overrides_from_published_story`, depuis le 27/10/2026), sinon sa modification ne s'afficherait pas.
+Les avis masqués par l'opérateur (`hiddenReviews`) et le choix de ne montrer aucune photo du prospect
+(`hideProspectPhotos`) y vivent aussi : le webhook ne les touche pas.
 Une photo que nous avons envoyée garde son adresse R2 : sa copie dans la médiathèque porte
 `storyblok_asset_key` de cette adresse. Seule une photo envoyée par le client remplace la nôtre, et
 `persist_content_images_to_r2` la recopie sur R2 avec le reste avant que l'expiration supprime l'espace.

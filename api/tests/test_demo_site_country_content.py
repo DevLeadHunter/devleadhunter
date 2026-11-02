@@ -31,6 +31,7 @@ def _site(**overrides: object) -> SimpleNamespace:
         "business_name": "Paysagement Tremblay",
         "slug": "paysagement-tremblay",
         "template_id": "landscaper-verdure",
+        "status": "active",
         "phone": "5145550199",
         "email": "info@tremblay.ca",
         "city": "Laval",

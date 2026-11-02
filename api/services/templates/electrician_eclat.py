@@ -21,7 +21,6 @@ from typing import Any
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
     apply_real_trust_stats,
-    drop_unbacked_emergency_claims,
     fixed_trade_services,
     map_prospect_and_enrichment,
     to_storyblok_site_content,
@@ -112,21 +111,18 @@ SECTION_FIELDS: dict[str, list[str]] = {
     ],
 }
 
-_SITE_ABOUT_DEFAULT: str = (
-    "Électricien qualifié à votre service pour vos dépannages, installations et mises aux "
-    "normes. Travail conforme, soigné et sécurisé, avec un diagnostic clair et un prix juste."
-)
+_SITE_ABOUT_DEFAULT: str = "Électricien pour vos dépannages, vos installations et vos mises aux normes."
 
 # Service grid and FAQ — EXACT mirror of the layer defaults
 # (devleadhunter-template-electrician-eclat app/content/eclatDefaults.ts).
 ECLAT_SERVICES: list[dict[str, str]] = [
     {
         "title": "Dépannage électrique",
-        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides.",
+        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service.",
     },
     {
         "title": "Mise aux normes",
-        "description": "Remise à niveau complète de votre installation, aux normes en vigueur, attestation à l'appui.",
+        "description": "Remise à niveau de votre installation selon les normes en vigueur.",
     },
     {
         "title": "Tableau électrique",
@@ -137,68 +133,66 @@ ECLAT_SERVICES: list[dict[str, str]] = [
         "description": "Neuf ou rénovation : réseau complet, prises, points lumineux.",
     },
     {
-        "title": "Éclairage et domotique",
-        "description": "Éclairage intérieur et extérieur, interrupteurs connectés, domotique.",
+        "title": "Éclairage",
+        "description": "Éclairage intérieur et extérieur, points lumineux et interrupteurs.",
     },
-    {"title": "Borne de recharge", "description": "Installation de bornes de recharge pour véhicule électrique."},
+    {
+        "title": "Prises et circuits",
+        "description": "Ajout de prises et de circuits dédiés : four, plaques de cuisson, chauffe-eau.",
+    },
 ]
 
 ECLAT_FAQ: list[dict[str, str]] = [
     {
-        "question": "Intervenez-vous en urgence ?",
-        "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7.",
+        "question": "Comment demander un devis ?",
+        "answer": "Par téléphone ou avec le formulaire de contact : décrivez les travaux et l'adresse du chantier.",
     },
     {
-        "question": "Le devis est-il gratuit ?",
-        "answer": "Le devis est gratuit et sans engagement, remis avant les travaux.",
-    },
-    {
-        "question": "Délivrez-vous une attestation de conformité ?",
-        "answer": "Oui, chaque installation neuve ou mise aux normes est livrée avec son attestation.",
-    },
-    {
-        "question": "Quelles zones couvrez-vous ?",
+        "question": "Dans quel secteur intervenez-vous ?",
         "answer": (
-            "Nous intervenons dans notre commune et celles des alentours. Un doute sur la vôtre ? Appelez-nous."
+            "Le secteur d'intervention est indiqué dans la partie contact. Un doute sur votre commune ? "
+            "Le plus simple est d'appeler."
         ),
     },
     {
-        "question": "Vos travaux sont-ils garantis ?",
-        "answer": "Oui, nos installations sont conformes et couvertes par notre assurance professionnelle.",
+        "question": "Que préparer avant d'appeler ?",
+        "answer": (
+            "Le type de travaux, l'adresse et vos disponibilités. Une photo de l'installation aide aussi à "
+            "préparer le devis."
+        ),
     },
 ]
 
 # Editorial copy pre-filled into the CMS so the client sees (and edits) his real texts — EXACT mirror
-# of the layer defaults. The "avis" trust slot is a placeholder: ``apply_real_trust_stats`` swaps in
-# the real Google rating when one exists, and a neutral "Devis gratuit" claim otherwise.
+# of the layer defaults, none of them promising a price, a delay or a guarantee. The "avis" trust slot is
+# a placeholder: ``apply_real_trust_stats`` swaps in the real Google rating, or drops it without one.
 _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "heroBadge": "Artisan électricien",
-    "heroPoints": ["Devis gratuit", "Intervention rapide", "Travail garanti"],
+    "heroPoints": [],
     "ctaQuoteLabel": "Demander un devis",
     "trustItems": [
-        {"value": "7j/7", "label": "Dépannage et urgences"},
         {"value": "4,9/5", "label": "Avis clients"},
-        {"value": "Travail garanti", "label": "Interventions assurées"},
-        {"value": "100% conforme", "label": "Installations aux normes"},
+        {"value": "Local", "label": "Artisan de proximité"},
+        {"value": "Devis", "label": "Sur demande"},
     ],
     "servicesHeading": "Tout ce qu'il faut pour une installation sûre",
     "servicesLead": "Du simple dépannage à la rénovation complète de votre installation électrique.",
-    "aboutHeading": "Un travail soigné, du devis au dernier test",
+    "aboutHeading": "Qui intervient chez vous",
     "stepsHeading": "Comment se passe une intervention",
-    "galleryHeading": "Nos chantiers récents",
+    "galleryHeading": "Quelques chantiers en photos",
     "reviewsHeading": "Ce que disent nos clients",
     "faqHeading": "Questions fréquentes",
     "ctaTitle": "Une panne ou un projet ?",
-    "ctaLead": "Décrivez votre besoin, vous recevez une réponse rapide et un devis gratuit.",
+    "ctaLead": "Décrivez votre besoin par téléphone ou avec le formulaire ci-dessous.",
     "contactHeading": "Parlons de votre projet",
-    "contactLead": "Par téléphone, par e-mail ou avec le formulaire : réponse rapide et devis gratuit.",
+    "contactLead": "Par téléphone, par e-mail ou avec le formulaire.",
 }
 
 _DEFAULT_STEPS: list[dict[str, str]] = [
     {"title": "Premier contact", "description": "Vous décrivez votre besoin par téléphone ou par message."},
-    {"title": "Visite et devis", "description": "Passage sur place, puis devis gratuit et détaillé."},
-    {"title": "Travaux", "description": "Réalisés à la date convenue, chantier laissé propre."},
-    {"title": "Contrôle final", "description": "Chaque circuit est testé et expliqué avant le départ."},
+    {"title": "Visite et devis", "description": "Passage sur place si besoin, puis devis détaillé."},
+    {"title": "Travaux", "description": "Réalisés à la date convenue ensemble."},
+    {"title": "Contrôle final", "description": "L'installation est vérifiée avant le départ."},
 ]
 
 
@@ -215,7 +209,7 @@ _DEFAULT_SERVICE_IMAGES: list[str] = [
     _unsplash_photo("photo-1544724569-5f546fd6f2b5", 900),
     _unsplash_photo("photo-1665242043190-0ef29390d289", 900),
     _unsplash_photo("photo-1782457696919-08e1aa4f7427", 900),
-    _unsplash_photo("photo-1653665674648-7cc7fa657547", 900),
+    _unsplash_photo("photo-1508920291026-c344bbfca1ab", 900),
 ]
 _DEFAULT_HERO_SECONDARY: str = _unsplash_photo("photo-1682345262055-8f95f3c513ea", 900)
 _DEFAULT_CTA_BACKGROUND: str = _unsplash_photo("photo-1547393947-a6a221f74e59", 1400)
@@ -233,12 +227,9 @@ def default_subtitle(area: str) -> str:
         area: Service area / city label.
 
     Returns:
-        The subtitle, in two short sentences.
+        The subtitle, the template's default services where the business works.
     """
-    return (
-        "Dépannage, mise aux normes, rénovation et borne de recharge. "
-        f"Un travail propre, sécurisé et garanti {_place_phrase(area)}."
-    )
+    return f"Dépannage, mise aux normes, tableau électrique, installation et rénovation {_place_phrase(area)}."
 
 
 def _hero_title(city: str | None) -> str:
@@ -251,8 +242,8 @@ def _hero_title(city: str | None) -> str:
         The title, without a city when none is known.
     """
     if not city:
-        return "Votre électricien de confiance"
-    title = f"Votre électricien de confiance à {city}"
+        return "Votre électricien"
+    title = f"Votre électricien à {city}"
     title = re.sub(r"\bà Le (?=[A-ZÀ-Ý])", "au ", title)
     return re.sub(r"\bà Les (?=[A-ZÀ-Ý])", "aux ", title)
 
@@ -298,8 +289,7 @@ def build_site_content(
     site["heroPoints"] = list(_EDITORIAL_DEFAULTS["heroPoints"])
     site["heroTitle"] = _hero_title(city)
     site["steps"] = [dict(step) for step in _DEFAULT_STEPS]
-    apply_real_trust_stats(site, enrichment)
-    drop_unbacked_emergency_claims(site, enrichment)
+    apply_real_trust_stats(site, enrichment, unrated_trust_item=None)
     site["images"] = {"ctaBackground": _DEFAULT_CTA_BACKGROUND}
     # The small photo over the hero is left empty when the prospect has gallery photos: the layer then
     # shows his first gallery photo, so it follows any reordering (live preview included) instead of

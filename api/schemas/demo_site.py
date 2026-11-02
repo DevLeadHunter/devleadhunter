@@ -97,6 +97,13 @@ class DemoSiteStrength(BaseModel):
     description: str = Field(default="", max_length=240)
 
 
+class DemoSiteMethodStep(BaseModel):
+    """One step of the « Notre méthode » section: what happens, and what it means for the client."""
+
+    title: str = Field(..., min_length=1, max_length=60)
+    description: str = Field(default="", max_length=240)
+
+
 class DemoSiteTaxCredit(BaseModel):
     """The « crédit d'impôt » section of a « services à la personne » provider; an empty heading removes it."""
 
@@ -146,6 +153,22 @@ class DemoSiteUpdateRequest(BaseModel):
     # « Crédit d'impôt » section (stored in ``section_overrides["taxCredit"]``, kept across regenerations);
     # an empty heading removes it.
     tax_credit: DemoSiteTaxCredit | None = None
+    # Written over the template's texts, kept across regenerations; ``""`` or ``[]`` goes back to the generated ones.
+    hero_title: str | None = Field(default=None, max_length=90)
+    hero_subtitle: str | None = Field(default=None, max_length=220)
+    cta_quote_label: str | None = Field(default=None, max_length=60)
+    services_heading: str | None = Field(default=None, max_length=90)
+    services_lead: str | None = Field(default=None, max_length=300)
+    about_heading: str | None = Field(default=None, max_length=90)
+    steps: list[DemoSiteMethodStep] | None = Field(default=None, max_length=6)
+    cta_title: str | None = Field(default=None, max_length=90)
+    cta_lead: str | None = Field(default=None, max_length=300)
+    contact_heading: str | None = Field(default=None, max_length=90)
+    contact_lead: str | None = Field(default=None, max_length=300)
+    # Texts of displayed « reviews » that are none (an owner's reply, a page notice), kept off the site; ``[]`` shows all.
+    hidden_reviews: list[str] | None = Field(default=None, max_length=30)
+    # Shows the template's photos instead of the prospect's; ``false`` shows his again.
+    hide_prospect_photos: bool | None = None
 
 
 class DemoSiteServiceCardsConfig(BaseModel):
@@ -300,6 +323,9 @@ class DemoSiteResponse(BaseModel):
     # Injected by the route: the « crédit d'impôt » section written for this site
     # (``section_overrides["taxCredit"]``, with the PATCH payload's keys); None when the site has none.
     tax_credit: DemoSiteTaxCredit | None = None
+    # Injected by the route: the reviews kept off the site, and whether it shows the template's photos only.
+    hidden_reviews: list[str] = Field(default_factory=list)
+    hide_prospect_photos: bool = False
     # Prospection video (webcam + capture du site du prospect).
     video_status: str | None = None
     video_error: str | None = None
