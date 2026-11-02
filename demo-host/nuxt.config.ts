@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.4.0',
     'github:DevLeadHunter/devleadhunter-template-electrician-eclat#v1.1.0',
     'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.4.0',
-    'github:DevLeadHunter/devleadhunter-template-mechanic-pitlane#v1.6.0',
+    'github:DevLeadHunter/devleadhunter-template-mechanic-pitlane#v1.6.1',
     'github:DevLeadHunter/devleadhunter-template-dental#v1.3.0',
     'github:DevLeadHunter/devleadhunter-template-food#v1.2.0',
     'github:DevLeadHunter/devleadhunter-template-barber#v1.3.0',
