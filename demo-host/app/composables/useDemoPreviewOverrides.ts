@@ -40,6 +40,9 @@ const MAX_IDENTITY_PHONE_LENGTH: number = 32
 const MAX_IDENTITY_CITY_LENGTH: number = 80
 const MAX_IDENTITY_AREA_LENGTH: number = 120
 
+/** Told to the embedding window once the page listens: a message posted while the page still hydrates is lost. */
+const PREVIEW_READY_MESSAGE_TYPE: string = 'dlh:preview-ready'
+
 /**
  * Validate and extract a template id from a raw message value.
  * @param raw - Untrusted `templateId` field of the message.
@@ -162,7 +165,8 @@ function sanitizeIdentity(raw: unknown): DemoPreviewIdentity | null {
  * Origins are deliberately not filtered: the dashboard runs from several origins (Tauri shell,
  * web build, local dev), dibodev.fr frames the showroom demos, and a rogue embedder could only
  * restyle its OWN iframe — nothing is read back, persisted, or sent anywhere. The strict shape
- * validation above is the actual guard.
+ * validation above is the actual guard. Once listening, the page posts `{ type: 'dlh:preview-ready' }`
+ * to its embedder, which sends its full state on that signal rather than on the frame's `load` alone.
  * @param enabled - Whether live-edit mode is active (the `?_edit=1` query flag).
  * @returns The reactive overrides (all null until a first valid message arrives).
  */
@@ -196,6 +200,9 @@ export function useDemoPreviewOverrides(enabled: ComputedRef<boolean>): { overri
 
   onMounted((): void => {
     window.addEventListener('message', onMessage)
+    if (enabled.value && window.parent !== window) {
+      window.parent.postMessage({ type: PREVIEW_READY_MESSAGE_TYPE }, '*')
+    }
   })
 
   onBeforeUnmount((): void => {

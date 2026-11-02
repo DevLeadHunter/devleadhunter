@@ -99,7 +99,11 @@ du `SiteContent`, puis les valeurs publiées sont remplacées partout où les te
 }
 ```
 
-Côté encadrant : `iframe.contentWindow.postMessage(message, 'https://demo.dibodev.fr')`, à renvoyer après
-chaque `load` de l'iframe (un rechargement repart du contenu publié) ; modèle = `web/app/components/atelier/DevicePreview.vue`.
+Côté encadrant : `iframe.contentWindow.postMessage(message, 'https://demo.dibodev.fr')`, avec l'**état complet** à
+chaque fois (un message remplace tout l'aperçu : un champ absent revient à la valeur publiée). La page annonce
+`{ type: 'dlh:preview-ready' }` à son parent dès qu'elle écoute (vérifier `event.source === iframe.contentWindow`) :
+envoyer l'état à ce signal, puis à chaque changement. Un message posté au seul `load` de l'iframe peut arriver avant
+l'hydratation et se perdre (1 essai sur 3 le 2026-11-02). Un rechargement repart du contenu publié et renvoie le
+signal ; modèle = `web/app/components/atelier/DevicePreview.vue` (qui n'envoie encore qu'au `load`).
 Origines autorisées à encadrer (`frame-ancestors`, `demo-host/nuxt.config.ts`) : le tableau de bord,
 Storyblok, `https://dibodev.fr`, `https://www.dibodev.fr`, `https://localhost:3000`, `http://localhost:3200`.
