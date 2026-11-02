@@ -166,6 +166,8 @@ TS `storyblokSiteContentToSiteContent.ts`). Le webhook est enregistré par space
 (`section_overrides` : prestations, FAQ, à propos, atouts, repères, photos uniques…) sont réappliquées
 par-dessus la story : le webhook y reprend d'abord ce que le client a publié
 (`overrides_from_published_story`, depuis le 27/10/2026), sinon sa modification ne s'afficherait pas.
+Les avis masqués par l'opérateur (`hiddenReviews`) et le choix de ne montrer aucune photo du prospect
+(`hideProspectPhotos`) y vivent aussi : le webhook ne les touche pas.
 Une photo que nous avons envoyée garde son adresse R2 : sa copie dans la médiathèque porte
 `storyblok_asset_key` de cette adresse. Seule une photo envoyée par le client remplace la nôtre, et
 `persist_content_images_to_r2` la recopie sur R2 avec le reste avant que l'expiration supprime l'espace.
