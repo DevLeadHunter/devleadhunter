@@ -25,7 +25,7 @@ TEMPLATE_REPOS: dict[str, tuple[str, str]] = {
     "dental": ("devleadhunter-template-dental", "v1.3.0"),
     "food": ("devleadhunter-template-food", "v1.2.0"),
     "barber": ("devleadhunter-template-barber", "v1.3.0"),
-    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.9.1"),
+    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.10.0"),
 }
 
 

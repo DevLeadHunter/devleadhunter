@@ -55,7 +55,7 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 | `dental` | Dentiste / cabinet dentaire | **v1.3.0** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
 | `food` | Food truck / street food | **v1.2.0** | DA crème & vert forêt, primary thémable, Unsplash fallbacks, favicon logo |
 | `barber` | Barbier / coiffeur homme | **v1.3.0** | DA crème & charcoal (Barlow + Work Sans), one-page, favicon logo, fallbacks Unsplash |
-| `landscaper-verdure` | Paysagiste | **v1.9.1** | DA verte « Verdure », section avis, vrais chiffres, méthode ; champs Storyblok propres via `SECTION_FIELDS` ; coches de l'« À propos » = `strengths` (masquées sans), réalisations du prospect seulement (section masquée sinon), aucune promesse en dur (gratuit, délai, assurance) |
+| `landscaper-verdure` | Paysagiste | **v1.10.0** | DA verte « Verdure », section avis, vrais chiffres, méthode ; champs Storyblok propres via `SECTION_FIELDS` ; coches de l'« À propos » = `strengths` (masquées sans), réalisations du prospect seulement (section masquée sinon), aucune promesse en dur (gratuit, délai, assurance) ; un site livré garde à la lecture les anciens défauts (coches, titre du contact, phrase des étapes `stepsLead`) tant que son contenu ne les remplit pas (`DELIVERED_SITE_FORMER_DEFAULTS`) |
 
 Contrat `@devleadhunter/website-content` : **v1.11.0** (licence professionnelle `professionalLicenseLabel` / `professionalLicenseNumber` + `professionalLicenseLine()`, rendue en pied de page par les 11 templates).
 
