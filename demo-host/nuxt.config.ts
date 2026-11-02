@@ -38,12 +38,13 @@ export default defineNuxtConfig({
     '/**': {
       cors: true,
       headers: {
-        // Allow embedding in the Storyblok Visual Editor AND the DevLeadHunter dashboard
-        // (web + Tauri desktop) so the builder can iframe live template previews.
+        // Allow embedding in the Storyblok Visual Editor, the DevLeadHunter dashboard (web + Tauri desktop)
+        // and dibodev.fr (showroom demos in its workshop; https://localhost:3000 and :3200 are its dev servers).
         'Content-Security-Policy':
           "frame-ancestors 'self' https://app.storyblok.com https://*.storyblok.com " +
           'https://devleadhunter.fr https://devleadhunter.dibodev.fr http://localhost:3000 http://localhost:5173 http://localhost:1420 ' +
-          'http://tauri.localhost https://tauri.localhost',
+          'http://tauri.localhost https://tauri.localhost ' +
+          'https://dibodev.fr https://www.dibodev.fr https://localhost:3000 http://localhost:3200',
       },
     },
     // The assistant widget is an iframe on the clients' own websites: any site may frame it.

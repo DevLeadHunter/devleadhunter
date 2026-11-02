@@ -18,6 +18,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { DemoPreviewOverrides, DemoPreviewServiceCard } from '~/composables/useDemoPreviewOverrides'
 import type { DemoSitePublic, DemoSiteWithdrawn } from '~/types/demoSite'
 import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
+import { DemoPreviewIdentityUtils } from '~/utils/DemoPreviewIdentityUtils'
 import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
 const route: ReturnType<typeof useRoute> = useRoute()
@@ -88,16 +89,23 @@ function reseedFoodSectionPhotos(content: Record<string, unknown>, gallery: stri
 }
 
 /**
- * The published site with the dashboard's live-edit overrides merged in (template, palette,
- * photo order, curated section cards) — what an instant editor preview renders. Null outside
- * live-edit mode or before any override arrives, so the regular published rendering is untouched.
+ * The published site with the embedder's live-edit overrides merged in (template, palette,
+ * photo order, curated section cards, business identity) — what an instant editor preview or the
+ * dibodev.fr workshop renders. Null outside live-edit mode or before any override arrives, so the
+ * regular published rendering is untouched.
  */
 const previewedSite: ComputedRef<DemoSitePublic | null> = computed((): DemoSitePublic | null => {
   const published: DemoSitePublic | null | undefined = site.value
   if (!published || !isLiveEditPreview.value) return null
-  const { templateId, palette, photos, services }: DemoPreviewOverrides = overrides.value
-  if (!templateId && !palette && !photos && !services) return null
-  const content: Record<string, unknown> = { ...((published.content_json ?? {}) as Record<string, unknown>) }
+  const { templateId, palette, photos, services, identity }: DemoPreviewOverrides = overrides.value
+
+  if (!templateId && !palette && !photos && !services && !identity) {
+    return null
+  }
+  let content: Record<string, unknown> = { ...((published.content_json ?? {}) as Record<string, unknown>) }
+  if (identity) {
+    content = DemoPreviewIdentityUtils.apply(content, identity)
+  }
   if (palette) {
     content.palette = { ...((content.palette as Record<string, unknown>) ?? {}), ...palette }
   }
@@ -146,7 +154,8 @@ function readableTextColor(background: string): string {
  * SVG « initiale + couleur de marque » — jamais le favicon placeholder générique.
  */
 const faviconHref: ComputedRef<string> = computed((): string => {
-  const content: Record<string, unknown> = (site.value?.content_json ?? {}) as Record<string, unknown>
+  const rendered: DemoSitePublic | null | undefined = previewedSite.value ?? site.value
+  const content: Record<string, unknown> = (rendered?.content_json ?? {}) as Record<string, unknown>
   const logo: string = typeof content.logo === 'string' ? content.logo.trim() : ''
   if (logo) {
     return logo
@@ -154,7 +163,7 @@ const faviconHref: ComputedRef<string> = computed((): string => {
   const palette: Record<string, unknown> = (content.palette ?? {}) as Record<string, unknown>
   const background: string =
     typeof palette.primary === 'string' && palette.primary.trim() ? palette.primary.trim() : '#111111'
-  const name: string = site.value?.business_name ?? ''
+  const name: string = typeof content.businessName === 'string' ? content.businessName : (rendered?.business_name ?? '')
   const initial: string = (name.match(/[a-z0-9]/i)?.[0] ?? '●').toUpperCase()
   const svg: string =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">` +

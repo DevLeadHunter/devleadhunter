@@ -71,7 +71,11 @@ async def dashboard_stats(
 
     demo_sites_active = _count(
         db,
-        select(DemoSite.id).where(DemoSite.user_id == uid, DemoSite.status == DemoSiteStatus.ACTIVE.value),
+        select(DemoSite.id).where(
+            DemoSite.user_id == uid,
+            DemoSite.status == DemoSiteStatus.ACTIVE.value,
+            DemoSite.is_showcase.is_(False),
+        ),
     )
     campaigns_active = _count(
         db,

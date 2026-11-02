@@ -51,7 +51,11 @@
       </div>
 
       <div class="flex items-center justify-between text-xs text-[var(--app-ink-soft)]">
-        <span class="flex items-center gap-1.5">
+        <span v-if="site.is_showcase" class="flex items-center gap-1.5 font-medium text-[var(--app-ink)]">
+          <UIcon name="i-lucide-store" class="h-3.5 w-3.5" />
+          Vitrine · jamais retirée
+        </span>
+        <span v-else class="flex items-center gap-1.5">
           <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
           <template v-if="DemoSiteService.isTtlPending(site)">En attente d'envoi</template>
           <template v-else>Expire {{ formatNumericDate(site.expires_at) }}</template>

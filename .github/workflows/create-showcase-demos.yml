@@ -1,0 +1,36 @@
+name: 🏪 Create showcase demos (manual)
+
+# Creates or refreshes the showroom demos dibodev.fr embeds (one per template), on the production
+# database, with the API code deployed on the VPS. Replayable: existing demos are kept.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rebuild_content:
+        description: "Regenerate the content of the demos that already exist (drops dashboard colour edits)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  create-showcase-demos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ▶️ Run the showcase script on the VPS (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /var/www/api.devleadhunter.dibodev.fr/html/api
+            if [ "${{ github.event.inputs.rebuild_content }}" = "true" ]; then
+              ../.venv/bin/python scripts/create_showcase_demos.py --rebuild-content
+            else
+              ../.venv/bin/python scripts/create_showcase_demos.py
+            fi

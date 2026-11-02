@@ -128,6 +128,7 @@ export default defineNuxtConfig({
 - Le dispatch `template_id → composant racine` reste en **`defineAsyncComponent`** → chaque démo prospect n'embarque que **son** chunk de template.
 - Repos **publics** → les `extends` `github:` (giget) et l'install `git+https` marchent **sans token**. (Un `GIGET_AUTH` ne serait requis que si un repo repassait privé.)
 - Ajouter une template = 1 ligne dans `extends`. La retirer = supprimer la ligne.
+- **Démos vitrines + aperçu en direct depuis dibodev.fr** (`?_edit=1` + `postMessage` `dlh:preview` avec `identity`) : voir [SHOWCASE_DEMOS.md](SHOWCASE_DEMOS.md).
 
 ## Le contrat entre template et tunnel
 

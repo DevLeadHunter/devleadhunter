@@ -1,9 +1,11 @@
 import type { ComputedRef, Ref } from 'vue'
+import type { DemoPreviewIdentity } from '~/types/DemoPreviewIdentity'
 
 /**
- * Live-edit overrides pushed by the dashboard's preview iframe via `postMessage`.
+ * Live-edit overrides pushed by an embedder's preview iframe via `postMessage`.
  *
- * The dashboard demo-site page acts as an editor: colour, photo-order and template changes are
+ * The dashboard demo-site page acts as an editor, and the dibodev.fr workshop shows a visitor his own
+ * business on a showroom demo: colour, photo-order, template, section-card and identity changes are
  * applied instantly on the REAL published site (no regeneration, no reload) by merging these
  * overrides into the rendered content. Nothing is persisted here — saving still goes through the
  * API, which regenerates the published content.
@@ -20,6 +22,7 @@ export type DemoPreviewOverrides = {
   palette: Record<string, string> | null
   photos: string[] | null
   services: DemoPreviewServiceCard[] | null
+  identity: DemoPreviewIdentity | null
 }
 
 /** Palette keys the dashboard can override — mirrors the theme contract used at generation. */
@@ -32,6 +35,10 @@ const MAX_TEMPLATE_ID_LENGTH: number = 64
 const MAX_SERVICE_CARDS: number = 12
 const MAX_SERVICE_TITLE_LENGTH: number = 120
 const MAX_SERVICE_DESCRIPTION_LENGTH: number = 400
+const MAX_IDENTITY_BUSINESS_NAME_LENGTH: number = 120
+const MAX_IDENTITY_PHONE_LENGTH: number = 32
+const MAX_IDENTITY_CITY_LENGTH: number = 80
+const MAX_IDENTITY_AREA_LENGTH: number = 120
 
 /**
  * Validate and extract a template id from a raw message value.
@@ -103,11 +110,59 @@ function sanitizeServiceCards(raw: unknown): DemoPreviewServiceCard[] | null {
 }
 
 /**
- * Listen for the dashboard's live-edit messages and expose the current overrides.
+ * Validate one single-line identity text.
+ * @param raw - Untrusted field of the `identity` message object.
+ * @param maxLength - Longest value kept.
+ * @returns The trimmed text, control characters replaced by spaces, or null when absent, empty or too long.
+ */
+function sanitizeIdentityText(raw: unknown, maxLength: number): string | null {
+  if (typeof raw !== 'string') {
+    return null
+  }
+  const singleLine: string = raw.replace(/\p{Cc}+/gu, ' ').trim()
+  return singleLine && singleLine.length <= maxLength ? singleLine : null
+}
+
+/**
+ * Validate the logo of an identity message.
+ * @param raw - Untrusted `logoUrl` field.
+ * @returns The https or `data:image/` URL (at most the photo cap), or null.
+ */
+function sanitizeLogoUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') {
+    return null
+  }
+  const trimmed: string = raw.trim()
+  return trimmed.length <= MAX_PHOTO_LENGTH && /^(https?:\/\/|data:image\/)/.test(trimmed) ? trimmed : null
+}
+
+/**
+ * Validate and extract the business identity from a raw message value.
+ * @param raw - Untrusted `identity` field of the message.
+ * @returns The identity with each invalid field null, or null when absent or when no field survives.
+ */
+function sanitizeIdentity(raw: unknown): DemoPreviewIdentity | null {
+  if (typeof raw !== 'object' || raw === null) {
+    return null
+  }
+  const source: Record<string, unknown> = raw as Record<string, unknown>
+  const identity: DemoPreviewIdentity = {
+    businessName: sanitizeIdentityText(source.businessName, MAX_IDENTITY_BUSINESS_NAME_LENGTH),
+    phone: sanitizeIdentityText(source.phone, MAX_IDENTITY_PHONE_LENGTH),
+    city: sanitizeIdentityText(source.city, MAX_IDENTITY_CITY_LENGTH),
+    area: sanitizeIdentityText(source.area, MAX_IDENTITY_AREA_LENGTH),
+    logoUrl: sanitizeLogoUrl(source.logoUrl),
+  }
+  return Object.values(identity).some((value: string | null): boolean => value !== null) ? identity : null
+}
+
+/**
+ * Listen for an embedder's live-edit messages and expose the current overrides.
  *
  * Origins are deliberately not filtered: the dashboard runs from several origins (Tauri shell,
- * web build, local dev) and a rogue embedder could only restyle its OWN iframe — nothing is read
- * back, persisted, or sent anywhere. The strict shape validation above is the actual guard.
+ * web build, local dev), dibodev.fr frames the showroom demos, and a rogue embedder could only
+ * restyle its OWN iframe — nothing is read back, persisted, or sent anywhere. The strict shape
+ * validation above is the actual guard.
  * @param enabled - Whether live-edit mode is active (the `?_edit=1` query flag).
  * @returns The reactive overrides (all null until a first valid message arrives).
  */
@@ -117,6 +172,7 @@ export function useDemoPreviewOverrides(enabled: ComputedRef<boolean>): { overri
     palette: null,
     photos: null,
     services: null,
+    identity: null,
   })
 
   /**
@@ -134,6 +190,7 @@ export function useDemoPreviewOverrides(enabled: ComputedRef<boolean>): { overri
       palette: sanitizePalette(message.palette),
       photos: sanitizePhotos(message.photos),
       services: sanitizeServiceCards(message.services),
+      identity: sanitizeIdentity(message.identity),
     }
   }
 

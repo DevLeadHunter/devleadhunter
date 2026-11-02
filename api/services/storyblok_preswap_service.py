@@ -93,6 +93,7 @@ class StoryblokPreswapService:
             select(DemoSite)
             .where(
                 DemoSite.status == DemoSiteStatus.ACTIVE.value,
+                DemoSite.is_showcase.is_(False),
                 DemoSite.storyblok_space_id.is_(None),
                 DemoSite.demo_link_sent_at.is_(None),
                 DemoSite.created_at >= new_site_cutoff,

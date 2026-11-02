@@ -75,6 +75,8 @@ class DemoSite(Base):
     # Client production domain once sold (e.g. toto-plombier-rennes.fr).
     custom_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     demo_url_live: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Permanent showroom demo embedded by dibodev.fr: no prospect, never expires nor withdrawn (``showcase_demo_service``).
+    is_showcase: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Prospection video (webcam + capture du site) — NULL = jamais générée.
     video_status: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     video_error: Mapped[str | None] = mapped_column(Text, nullable=True)

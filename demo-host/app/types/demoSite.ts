@@ -9,6 +9,7 @@ export type DemoSitePublic = {
   storyblok_region?: string | null
   content_json?: Record<string, unknown> | null
   status: string
+  is_showcase?: boolean
   video_available?: boolean
   video_url?: string | null
   video_thumbnail_url?: string | null

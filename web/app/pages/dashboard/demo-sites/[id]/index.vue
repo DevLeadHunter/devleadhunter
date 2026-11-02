@@ -1110,7 +1110,11 @@ const selectableTemplates: ComputedRef<DemoSiteTemplate[]> = computed((): DemoSi
 const siteFactsLine: ComputedRef<string> = computed((): string => {
   if (!site.value) return ''
   const facts: string[] = []
-  facts.push(DemoSiteService.isTtlPending(site.value) ? 'Pas encore envoyé' : `Expire dans ${daysLeft.value} j`)
+  if (site.value.is_showcase) {
+    facts.push('Démo vitrine · jamais retirée')
+  } else {
+    facts.push(DemoSiteService.isTtlPending(site.value) ? 'Pas encore envoyé' : `Expire dans ${daysLeft.value} j`)
+  }
   facts.push(
     site.value.video_status === 'ready'
       ? 'Vidéo prête'
@@ -1118,19 +1122,24 @@ const siteFactsLine: ComputedRef<string> = computed((): string => {
         ? 'Vidéo en cours'
         : 'Pas de vidéo',
   )
-  facts.push(
-    cmsStatus.value === 'joined'
-      ? 'Client dans son espace'
-      : cmsStatus.value === 'pending'
-        ? 'Client invité'
-        : 'Client pas encore invité',
-  )
+  if (!site.value.is_showcase) {
+    facts.push(
+      cmsStatus.value === 'joined'
+        ? 'Client dans son espace'
+        : cmsStatus.value === 'pending'
+          ? 'Client invité'
+          : 'Client pas encore invité',
+    )
+  }
   return facts.join(' · ')
 })
 
 /** When the demo goes offline, in words. */
 const expiryLabel: ComputedRef<string> = computed((): string => {
   if (!site.value) return ''
+  if (site.value.is_showcase) {
+    return "Démo vitrine de l'atelier dibodev.fr : elle reste en ligne et n'est jamais retirée."
+  }
   if (DemoSiteService.isTtlPending(site.value)) return 'Le compte à rebours démarre au premier email envoyé.'
   return `Elle est retirée dans ${daysLeft.value} jour${daysLeft.value > 1 ? 's' : ''}, le ${formatNumericDate(site.value.expires_at)}.`
 })

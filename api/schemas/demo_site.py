@@ -271,6 +271,8 @@ class DemoSiteResponse(BaseModel):
     status: str
     demo_url: str | None = None
     demo_url_live: bool = False
+    # A permanent showroom demo of one template (dibodev.fr workshop): no prospect, no TTL, never withdrawn.
+    is_showcase: bool = False
     local_demo_url: str | None = None
     verification_message: str | None = None
     storyblok_space_id: int | None = None
@@ -327,6 +329,8 @@ class DemoSitePublicResponse(BaseModel):
     content_json: dict | None = None
     status: str
     expires_at: datetime
+    # A permanent showroom demo (dibodev.fr workshop): the host never tracks it as a prospect's visit.
+    is_showcase: bool = False
     # True when a prospection video is generated for this demo (player at /v/{slug}).
     video_available: bool = False
     # Public R2 URLs consumed by the player page (empty when no video).

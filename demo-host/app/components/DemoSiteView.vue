@@ -112,6 +112,9 @@ useStoryblokBridge(isVisualEditor, (content: Record<string, unknown>): void => {
 })
 
 onMounted((): void => {
+  if (props.site.is_showcase) {
+    return
+  }
   const variant: string | null = DemoBeaconUtils.variantFromQuery(route.query.v)
   void initDemoTracking(props.site.slug, props.site.status, variant, DemoBeaconUtils.channelFromQuery(route.query.src))
 })

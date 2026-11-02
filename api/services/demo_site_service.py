@@ -1409,6 +1409,7 @@ class DemoSiteService:
 
         Only a demo taken offline at its deadline (EXPIRED) qualifies, never one whose prospect
         asked not to be contacted or was set aside: their link stays a dead end naming nobody.
+        A showroom demo is never withdrawn, so its link never has anything to bring back.
 
         Args:
             db: Active database session.
@@ -1418,7 +1419,13 @@ class DemoSiteService:
             The dormant demo, or None when the link has nothing to bring back.
         """
         site: DemoSite | None = (
-            db.query(DemoSite).filter(DemoSite.slug == slug, DemoSite.status == DemoSiteStatus.EXPIRED.value).first()
+            db.query(DemoSite)
+            .filter(
+                DemoSite.slug == slug,
+                DemoSite.status == DemoSiteStatus.EXPIRED.value,
+                DemoSite.is_showcase.is_(False),
+            )
+            .first()
         )
         if site is None or site.prospect_id is None:
             return site
@@ -1452,6 +1459,11 @@ class DemoSiteService:
         """True when the 21-day countdown has not started yet (link not emailed)."""
         return site.demo_link_sent_at is None and site.status != DemoSiteStatus.DELIVERED.value
 
+    @staticmethod
+    def is_showcase(site: DemoSite) -> bool:
+        """True for a permanent showroom demo (dibodev.fr workshop): it has no TTL, whatever is sent."""
+        return bool(getattr(site, "is_showcase", False))
+
     def email_body_contains_demo_link(self, site: DemoSite, body_html: str) -> bool:
         """Whether rendered outreach HTML includes this site's public demo URL."""
         haystack: str = body_html or ""
@@ -1468,7 +1480,7 @@ class DemoSiteService:
         """
         if site.demo_link_sent_at is not None:
             return False
-        if site.status == DemoSiteStatus.DELIVERED.value:
+        if site.status == DemoSiteStatus.DELIVERED.value or self.is_showcase(site):
             return False
 
         sent_utc: datetime = self._as_utc(sent_at)
@@ -1493,7 +1505,7 @@ class DemoSiteService:
             site: The demo site being relanced.
             sent_at: When the relance SMS was sent.
         """
-        if site.status == DemoSiteStatus.DELIVERED.value:
+        if site.status == DemoSiteStatus.DELIVERED.value or self.is_showcase(site):
             return
         sent_utc: datetime = self._as_utc(sent_at)
         site.demo_link_sent_at = sent_utc
@@ -2022,7 +2034,8 @@ class DemoSiteService:
         The Storyblok space is freed in every case (only needed at sale). A prospect who can
         still receive an SMS keeps a dormant (EXPIRED) demo — ``content_json`` retained — so an
         auto-relance can revive it with a fresh TTL; everyone else is hard-deleted. Dormant demos
-        nobody relanced are hard-deleted once past the retention window.
+        nobody relanced are hard-deleted once past the retention window. A showroom demo is never
+        touched here, whatever its dates say.
 
         Returns:
             Number of sites cleaned up.
@@ -2032,6 +2045,7 @@ class DemoSiteService:
             db.query(DemoSite)
             .filter(
                 DemoSite.status.in_([DemoSiteStatus.ACTIVE.value, DemoSiteStatus.UNAVAILABLE.value]),
+                DemoSite.is_showcase.is_(False),
                 DemoSite.demo_link_sent_at.isnot(None),
                 DemoSite.expires_at <= now,
             )
@@ -2078,7 +2092,11 @@ class DemoSiteService:
         dormant_cutoff: datetime = now - timedelta(days=settings.demo_dormant_retention_days)
         stale_dormant: list[DemoSite] = (
             db.query(DemoSite)
-            .filter(DemoSite.status == DemoSiteStatus.EXPIRED.value, DemoSite.expires_at < dormant_cutoff)
+            .filter(
+                DemoSite.status == DemoSiteStatus.EXPIRED.value,
+                DemoSite.is_showcase.is_(False),
+                DemoSite.expires_at < dormant_cutoff,
+            )
             .all()
         )
         for site in stale_dormant:
