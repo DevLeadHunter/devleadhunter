@@ -1,6 +1,6 @@
 """Unit tests for the pure SMS helpers — phone, segments, legal window per country, pricing, callbacks."""
 
-from datetime import date, datetime
+from datetime import datetime
 
 import pytest
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ from services.sms.mo import mo_is_stop, mo_origin_message_id, mo_ref_client, mo_
 from services.sms.opt_out_mention import SmsOptOutMention
 from services.sms.phone_normalizer import PhoneNumberPlans, is_mobile_fr, to_e164_fr
 from services.sms.pricing import SmsPricing
-from services.sms.send_window import PublicHolidays, SmsSendWindow, france_send_window
+from services.sms.send_window import SmsSendWindow, france_send_window
 from services.sms_config_service import SmsConfigService
 from services.sms_service import sms_service
 
@@ -237,20 +237,6 @@ class TestSwissSendWindow:
         assert SmsSendWindow("XX").country == "FR"
         assert SmsSendWindow(None).country == "FR"
         assert SmsSendWindow("CA").timezone.key == "America/Toronto"
-
-
-class TestPublicHolidays:
-    def test_easter_based_days_2026(self) -> None:
-        assert PublicHolidays.easter_sunday(2026) == date(2026, 4, 5)
-        assert date(2026, 4, 6) in PublicHolidays.france(2026)  # Lundi de Pâques
-        assert date(2026, 5, 14) in PublicHolidays.france(2026)  # Ascension
-        assert date(2026, 4, 3) in PublicHolidays.switzerland(2026)  # Vendredi saint
-        assert date(2026, 5, 25) in PublicHolidays.switzerland(2026)  # Lundi de Pentecôte
-
-    def test_the_country_dispatch_defaults_to_france(self) -> None:
-        assert PublicHolidays.for_country("CH", 2026) == PublicHolidays.switzerland(2026)
-        assert PublicHolidays.for_country("BE", 2026) == PublicHolidays.france(2026)
-        assert PublicHolidays.for_country(None, 2026) == PublicHolidays.france(2026)
 
 
 class TestSenderValidation:

@@ -11,6 +11,7 @@ from datetime import date, datetime
 from types import SimpleNamespace
 
 from services.campaign_queue_service import CampaignQueueService
+from services.prospect_calendar import ProspectCalendar
 
 
 class _Result:
@@ -136,7 +137,7 @@ def test_reschedule_slots_drops_own_pending_and_seeds_sent_days(monkeypatch) -> 
         captured["occupied"] = set(kwargs["occupied"])
         captured["campaign_seed_counts"] = dict(kwargs["campaign_seed_counts"])
         captured["per_campaign_cap"] = kwargs["per_campaign_cap"]
-        captured["slot_timezones"] = list(kwargs["slot_timezones"])
+        captured["slot_calendars"] = list(kwargs["slot_calendars"])
         return [datetime(2026, 9, 9, 8, 0) for _ in range(count)]
 
     monkeypatch.setattr(send_policy_service, "next_send_slots", _fake_next_send_slots)
@@ -152,4 +153,4 @@ def test_reschedule_slots_drops_own_pending_and_seeds_sent_days(monkeypatch) -> 
     assert captured["campaign_seed_counts"] == {date(2026, 9, 7): 1}
     assert captured["per_campaign_cap"] == 1
     # Each moved row is re-slotted on its own prospect's clock.
-    assert captured["slot_timezones"] == ["Europe/Zurich"]
+    assert captured["slot_calendars"] == [ProspectCalendar(timezone_name="Europe/Zurich", country="CH")]

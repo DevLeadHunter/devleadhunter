@@ -7,14 +7,14 @@ weekdays and hour window, spaced by ``spacing_minutes`` and capped at
 ``daily_cap`` per day. This is what makes the whole queue respect
 "20 mails/jour, lun–ven, 7h–18h, 1 toutes les 20 min".
 
-Two clocks are at play. The hour window and the allowed weekdays are the
-**prospect's**: an 8 a.m. email to Montréal leaves at 8 a.m. in Montréal, not at
-2 a.m. because it is 8 a.m. in Paris. The daily cap and the spacing are the
-**sender's**: one mailbox sends them all, so a day of the cap is a calendar day
-of :data:`SENDER_TIMEZONE` (Paris) whatever the prospect's zone, and two sends
-are never closer than ``spacing_minutes`` in absolute time. Every helper takes
-the zone it works in; when the timezone database is missing, every zone
-degrades to naive server time, as before.
+Two clocks are at play. The hour window, the allowed weekdays and the public
+holidays are the **prospect's**: an 8 a.m. email to Montréal leaves at 8 a.m. in
+Montréal, not at 2 a.m. because it is 8 a.m. in Paris. The daily cap and the
+spacing are the **sender's**: one mailbox sends them all, so a day of the cap is
+a calendar day of :data:`SENDER_TIMEZONE` (Paris) whatever the prospect's zone,
+and two sends are never closer than ``spacing_minutes`` in absolute time. Every
+helper takes the calendar it works in; when the timezone database is missing,
+every zone degrades to naive server time, as before.
 """
 
 from __future__ import annotations
@@ -35,9 +35,14 @@ from models.send_policy import (
     DEFAULT_WINDOW_START_HOUR,
     SendPolicy,
 )
+from services.country_profiles import DEFAULT_COUNTRY_CODE
+from services.prospect_calendar import ProspectCalendar
 
 #: The mailbox is in Paris: the policy hours are read in this zone and the daily cap counts its calendar days.
 SENDER_TIMEZONE: str = "Europe/Paris"
+SENDER_CALENDAR: ProspectCalendar = ProspectCalendar(timezone_name=SENDER_TIMEZONE, country=DEFAULT_COUNTRY_CODE)
+
+_MAXIMUM_DAYS_TO_NEXT_SENDING_DAY: int = 366
 
 
 def _utcnow() -> datetime:
@@ -168,17 +173,18 @@ class SendPolicyService:
         occupied: set[datetime] | None = None,
         per_campaign_cap: int | None = None,
         campaign_seed_counts: dict[date, int] | None = None,
-        slot_timezones: Sequence[str] | None = None,
+        slot_calendars: Sequence[ProspectCalendar] | None = None,
     ) -> list[datetime]:
         """
         Produce ``count`` naive-UTC send datetimes respecting the policy.
 
-        Slot ``i`` falls on an allowed weekday, inside ``[window_start_hour,
-        window_end_hour)`` of the wall clock of ``slot_timezones[i]`` — the prospect
-        who receives it — and consecutive slots are ``spacing_minutes`` apart in
-        absolute time. The daily cap is counted on the sender's calendar day
-        (:data:`SENDER_TIMEZONE`): one mailbox sends to every zone, so « 20 a day »
-        means twenty leaving the mailbox on one Paris day wherever they go.
+        Slot ``i`` falls on an allowed weekday, none of the prospect's public holidays,
+        inside ``[window_start_hour, window_end_hour)`` of the wall clock of
+        ``slot_calendars[i]`` — the prospect who receives it — and consecutive slots
+        are ``spacing_minutes`` apart in absolute time. The daily cap is counted on
+        the sender's calendar day (:data:`SENDER_TIMEZONE`): one mailbox sends to
+        every zone, so « 20 a day » means twenty leaving the mailbox on one Paris day
+        wherever they go.
         ``seed_counts`` pre-loads per-sender-day usage (e.g. emails already queued
         today) so a second launch the same day doesn't blow the cap.
 
@@ -196,21 +202,23 @@ class SendPolicyService:
             occupied: Optional naive-UTC instants already taken by the user.
             per_campaign_cap: Optional max slots per sender day for this campaign.
             campaign_seed_counts: Optional {sender day: this campaign's used count}.
-            slot_timezones: One IANA zone per slot to produce, in order — the zone of
-                each prospect. Every slot uses the sender's zone when omitted.
+            slot_calendars: One calendar per slot to produce, in order — the calendar of
+                each prospect. Every slot uses the sender's calendar when omitted.
 
         Returns:
             A list of ``count`` naive-UTC datetimes, ascending.
 
         Raises:
-            ValueError: When ``slot_timezones`` does not hold exactly ``count`` zones.
+            ValueError: When ``slot_calendars`` does not hold exactly ``count`` calendars.
         """
         if count <= 0:
             return []
-        if slot_timezones is not None and len(slot_timezones) != count:
-            raise ValueError(f"slot_timezones holds {len(slot_timezones)} zones for {count} slots")
+        if slot_calendars is not None and len(slot_calendars) != count:
+            raise ValueError(f"slot_calendars holds {len(slot_calendars)} calendars for {count} slots")
 
-        zone_per_slot: Sequence[str] = slot_timezones if slot_timezones is not None else [SENDER_TIMEZONE] * count
+        calendar_per_slot: Sequence[ProspectCalendar] = (
+            slot_calendars if slot_calendars is not None else [SENDER_CALENDAR] * count
+        )
         cursor_utc: datetime = start_utc or _utcnow()
         per_day: dict[date, int] = dict(seed_counts or {})
         per_day_campaign: dict[date, int] = dict(campaign_seed_counts or {})
@@ -222,12 +230,16 @@ class SendPolicyService:
         guard: int = 0
         while len(slots) < count and guard < count * 400 + 1000:
             guard += 1
-            timezone_name: str = zone_per_slot[len(slots)]
-            local_moment: datetime = self._advance_into_window(_to_local(cursor_utc, timezone_name), policy)
-            slot: datetime = _to_utc(local_moment, timezone_name)
+            calendar: ProspectCalendar = calendar_per_slot[len(slots)]
+            local_moment: datetime = self._advance_into_window(
+                _to_local(cursor_utc, calendar.timezone_name), policy, calendar
+            )
+            slot: datetime = _to_utc(local_moment, calendar.timezone_name)
             sender_day: date = _sender_day(slot)
             if per_day.get(sender_day, 0) >= policy.daily_cap or per_day_campaign.get(sender_day, 0) >= campaign_cap:
-                cursor_utc = _to_utc(self._next_day_window_start(local_moment, policy), timezone_name)
+                cursor_utc = _to_utc(
+                    self._next_day_window_start(local_moment, policy, calendar), calendar.timezone_name
+                )
                 continue
             if slot in taken:
                 cursor_utc = slot + timedelta(minutes=policy.spacing_minutes)
@@ -246,79 +258,89 @@ class SendPolicyService:
         sent_at_utc: datetime,
         delay_days: int | None = None,
         *,
-        timezone_name: str = SENDER_TIMEZONE,
+        calendar: ProspectCalendar = SENDER_CALENDAR,
     ) -> datetime:
         """
-        When a follow-up should leave, counted in *sending* days on the prospect's clock.
+        When a follow-up should leave, counted in *sending* days on the prospect's calendar.
 
         Calendar arithmetic is wrong here: ``sent_at + 5 days`` on a Monday lands on
         the following Saturday, outside the window the user configured. Only the
-        weekdays ticked in the policy are counted, so a follow-up always falls the
-        same weekday and the same local hour as the email it answers — 8 a.m. in
+        weekdays ticked in the policy are counted, the prospect's public holidays aside,
+        so a follow-up falls the same local hour as the email it answers — 8 a.m. in
         Montréal stays 8 a.m. in Montréal, even once one side has changed to winter time.
 
         Args:
             policy: The resolved policy.
             sent_at_utc: When the answered email actually left (naive UTC).
             delay_days: Sending days to wait; defaults to the policy value.
-            timezone_name: The prospect's IANA zone; the sender's when unknown.
+            calendar: The prospect's calendar; the sender's when unknown.
 
         Returns:
             The follow-up instant, as naive UTC, inside the sending window.
         """
         remaining: int = max(1, delay_days if delay_days is not None else policy.follow_up_delay_days)
-        local_moment: datetime = _to_local(sent_at_utc, timezone_name)
-
-        # Bounded: a policy always has at least one sending day, so this ends.
-        guard: int = 0
-        while remaining > 0 and guard < remaining * 8 + 16:
-            guard += 1
-            local_moment = local_moment + timedelta(days=1)
-            if local_moment.weekday() in policy.days_of_week:
-                remaining -= 1
-
-        return _to_utc(self._advance_into_window(local_moment, policy), timezone_name)
+        local_moment: datetime = _to_local(sent_at_utc, calendar.timezone_name)
+        for _ in range(remaining):
+            local_moment = self._next_sending_day(local_moment, policy, calendar)
+        return _to_utc(self._advance_into_window(local_moment, policy, calendar), calendar.timezone_name)
 
     def advance_into_window(
-        self, moment_utc: datetime, policy: ResolvedPolicy, *, timezone_name: str = SENDER_TIMEZONE
+        self, moment_utc: datetime, policy: ResolvedPolicy, *, calendar: ProspectCalendar = SENDER_CALENDAR
     ) -> datetime:
         """
         The first instant at or after ``moment_utc`` that falls inside the sending window.
 
-        A moment already inside the window on an allowed weekday comes back unchanged; a night,
-        a weekend or an early morning moves to the next window start on the prospect's clock.
+        A moment already inside the window on a sending day comes back unchanged; a night,
+        a weekend, a public holiday or an early morning moves to the next window start on
+        the prospect's clock.
 
         Args:
             policy: The resolved policy.
             moment_utc: The candidate instant (naive UTC).
-            timezone_name: The prospect's IANA zone; the sender's when unknown.
+            calendar: The prospect's calendar; the sender's when unknown.
 
         Returns:
             The instant, as naive UTC, inside the sending window.
         """
-        local_moment: datetime = _to_local(moment_utc, timezone_name)
-        return _to_utc(self._advance_into_window(local_moment, policy), timezone_name)
+        local_moment: datetime = _to_local(moment_utc, calendar.timezone_name)
+        return _to_utc(self._advance_into_window(local_moment, policy, calendar), calendar.timezone_name)
 
-    def _advance_into_window(self, local_moment: datetime, policy: ResolvedPolicy) -> datetime:
-        """Move a wall-clock moment forward to the next valid weekday + in-window instant."""
-        # Wrong weekday, or already past the window → jump to next day's start.
-        if local_moment.weekday() not in policy.days_of_week or local_moment.hour >= policy.window_end_hour:
-            return self._next_day_window_start(local_moment, policy)
+    def _advance_into_window(
+        self, local_moment: datetime, policy: ResolvedPolicy, calendar: ProspectCalendar
+    ) -> datetime:
+        """Move a wall-clock moment forward to the next sending day + in-window instant."""
+        # Not a sending day, or already past the window → jump to next day's start.
+        if (
+            not self._is_sending_day(local_moment.date(), policy, calendar)
+            or local_moment.hour >= policy.window_end_hour
+        ):
+            return self._next_day_window_start(local_moment, policy, calendar)
         # Before the window on a valid day → snap to the window start.
         if local_moment.hour < policy.window_start_hour:
             return local_moment.replace(hour=policy.window_start_hour, minute=0, second=0, microsecond=0)
         return local_moment
 
-    def _next_day_window_start(self, local_moment: datetime, policy: ResolvedPolicy) -> datetime:
-        """Return the window start of the next allowed weekday after a wall-clock moment."""
-        following: datetime = (local_moment + timedelta(days=1)).replace(
+    def _next_day_window_start(
+        self, local_moment: datetime, policy: ResolvedPolicy, calendar: ProspectCalendar
+    ) -> datetime:
+        """Return the window start of the next sending day after a wall-clock moment."""
+        return self._next_sending_day(local_moment, policy, calendar).replace(
             hour=policy.window_start_hour, minute=0, second=0, microsecond=0
         )
-        for _ in range(8):
-            if following.weekday() in policy.days_of_week:
+
+    def _next_sending_day(self, local_moment: datetime, policy: ResolvedPolicy, calendar: ProspectCalendar) -> datetime:
+        """Return the same wall-clock time on the next sending day after a wall-clock moment."""
+        following: datetime = local_moment + timedelta(days=1)
+        for _ in range(_MAXIMUM_DAYS_TO_NEXT_SENDING_DAY):
+            if self._is_sending_day(following.date(), policy, calendar):
                 return following
             following = following + timedelta(days=1)
         return following  # unreachable (days_of_week is always non-empty)
+
+    @staticmethod
+    def _is_sending_day(day: date, policy: ResolvedPolicy, calendar: ProspectCalendar) -> bool:
+        """Whether emails may leave on a day of the prospect's calendar: an allowed weekday, none of his holidays."""
+        return day.weekday() in policy.days_of_week and not calendar.is_public_holiday(day)
 
     def pending_counts_by_day(self, db: Session, user_id: int) -> dict[date, int]:
         """

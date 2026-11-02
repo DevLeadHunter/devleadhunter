@@ -10,8 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from services.country_profiles import CountryProfiles
-from services.french_overseas import FrenchOverseas
+from services.prospect_calendar import ProspectCalendar
 
 if TYPE_CHECKING:
     from models.prospect_db import ProspectDB
@@ -29,7 +28,4 @@ def prospect_timezone(prospect: ProspectDB | None) -> str:
     Returns:
         An IANA zone name such as ``America/Martinique`` or ``Europe/Paris``.
     """
-    department = FrenchOverseas.of_prospect(prospect)
-    if department is not None:
-        return department.timezone
-    return CountryProfiles.get(prospect.country if prospect is not None else None).timezone
+    return ProspectCalendar.of_prospect(prospect).timezone_name

@@ -25,6 +25,7 @@ from models.user import User
 from schemas.campaign import CampaignFollowUpCreate
 from services.campaign_follow_up_rules import CampaignFollowUpRules
 from services.campaign_queue_service import CampaignQueueService
+from services.prospect_calendar import ProspectCalendar
 from services.send_policy_service import send_policy_service
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
 from services.sms_service import sms_service
@@ -127,9 +128,9 @@ def test_the_first_sms_schedules_its_relance_after_the_chosen_sending_days(
     counted_delays: list[int] = []
     original_slot = send_policy_service.follow_up_slot
 
-    def follow_up_slot(policy: object, sent_at: datetime, delay_days: int, *, timezone_name: str) -> datetime:
+    def follow_up_slot(policy: object, sent_at: datetime, delay_days: int, *, calendar: ProspectCalendar) -> datetime:
         counted_delays.append(delay_days)
-        return original_slot(policy, sent_at, delay_days, timezone_name=timezone_name)
+        return original_slot(policy, sent_at, delay_days, calendar=calendar)
 
     monkeypatch.setattr(send_policy_service, "follow_up_slot", follow_up_slot)
 
@@ -225,7 +226,7 @@ def test_a_demo_that_dies_before_the_relance_records_the_skip_at_the_first_sms(
     monkeypatch.setattr(
         send_policy_service,
         "follow_up_slot",
-        lambda policy, sent_at, delay_days, *, timezone_name: sent_at + timedelta(days=60),
+        lambda policy, sent_at, delay_days, *, calendar: sent_at + timedelta(days=60),
     )
 
     asyncio.run(CampaignQueueService(db)._dispatch_sms(_queued(db, campaign, prospect)))
