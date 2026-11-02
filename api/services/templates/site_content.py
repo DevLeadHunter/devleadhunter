@@ -20,6 +20,7 @@ remaining boilerplate (section headings, etc.).
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import uuid
@@ -1016,6 +1017,26 @@ def apply_section_overrides(
     tax_credit = clean_tax_credit(overrides.get("taxCredit"))
     if tax_credit:
         apply_tax_credit(site_content, tax_credit)
+    return site_content
+
+
+def keep_former_defaults(
+    site_content: dict[str, Any], former_defaults: dict[str, Any], country: str | None
+) -> dict[str, Any]:
+    """
+    Fill every text a delivered site leaves empty with what its template wrote there by default when it was sold.
+
+    Args:
+        site_content: The site's public content, updated in place.
+        former_defaults: ``SiteContent`` key → the template's former default (``DELIVERED_SITE_FORMER_DEFAULTS``).
+        country: The business's country, whose regional words the former defaults take (Québec reads « soumission »).
+
+    Returns:
+        The same content.
+    """
+    for key, former_default in apply_country_conventions(former_defaults, country).items():
+        if not site_content.get(key):
+            site_content[key] = copy.deepcopy(former_default)
     return site_content
 
 

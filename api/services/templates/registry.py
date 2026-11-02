@@ -293,6 +293,19 @@ def section_image_slots(template_id: str) -> dict[str, str]:
     return {slot["field"]: slot["label"] for slots in declared.values() for slot in slots}
 
 
+def delivered_site_former_defaults(template_id: str) -> dict[str, Any]:
+    """
+    The texts a template wrote by default before changing its wording, which a delivered site keeps.
+
+    Args:
+        template_id: The template.
+
+    Returns:
+        Its ``DELIVERED_SITE_FORMER_DEFAULTS`` (``SiteContent`` key → former default), empty when it declares none.
+    """
+    return getattr(get_module(template_id), "DELIVERED_SITE_FORMER_DEFAULTS", None) or {}
+
+
 def content_schemas(template_id: str, country: str) -> list[dict[str, Any]]:
     """Return the Storyblok component schemas for a template — its per-template image fields included.
 

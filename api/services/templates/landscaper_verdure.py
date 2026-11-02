@@ -137,6 +137,21 @@ FIELD_SCHEMA_OVERRIDES: dict[str, dict[str, Any]] = {
     "strengths": {"description": "Les coches de la section « À propos » : trois au plus, seul le titre s'affiche"},
 }
 
+# What the layer wrote by default before v1.9.0 stopped promising what a business never proved: a delivered site
+# keeps these words wherever its own content stays empty, so a template update never changes a site a client bought.
+DELIVERED_SITE_FORMER_DEFAULTS: dict[str, Any] = {
+    "strengths": [
+        {"title": "Devis gratuit et sans engagement", "description": ""},
+        {"title": "Entreprise assurée, travail garanti", "description": ""},
+        {"title": "Pratiques durables et éco-responsables", "description": ""},
+    ],
+    "contactHeading": "Demandez votre devis gratuit",
+    "stepsLead": (
+        "Un déroulé simple et sans stress : vous savez toujours où en est votre projet, du premier rendez-vous à "
+        "la dernière finition."
+    ),
+}
+
 
 def default_subtitle(area: str) -> str:
     """Landscaper-aware default hero subtitle when the prospect has no description.

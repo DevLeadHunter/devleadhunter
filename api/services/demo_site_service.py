@@ -78,6 +78,7 @@ from services.templates.site_content import (
     from_storyblok_site_content,
     hides_prospect_photos,
     is_complaint_review,
+    keep_former_defaults,
     overrides_from_published_story,
     template_default_source,
     usable_site_photos,
@@ -428,12 +429,18 @@ class DemoSiteService:
     def content_json_for_public(self, db: Session, demo_site: DemoSite) -> dict:
         """
         Published demo payload with operator overrides layered on stored ``content_json``, and the prospect's
-        country, which a Storyblok round trip drops and the template needs to word its own labels.
+        country, which a Storyblok round trip drops and the template needs to word its own labels. A delivered
+        site keeps its template's former default texts wherever its content stays empty.
         """
         content: dict = dict(demo_site.content_json) if isinstance(demo_site.content_json, dict) else {}
         content["country"] = CountryProfiles.get(self._prospect_country_for_site(db, demo_site)).code
         enrichment = self._enrichment_with_site_photos(db, demo_site)
-        return apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        content = apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        if demo_site.status == DemoSiteStatus.DELIVERED.value:
+            keep_former_defaults(
+                content, template_registry.delivered_site_former_defaults(demo_site.template_id), content["country"]
+            )
+        return content
 
     @staticmethod
     def hero_line(demo_site: DemoSite) -> str:
