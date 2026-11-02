@@ -104,6 +104,29 @@ class FrenchDepartments:
         return is_town
 
     @classmethod
+    async def is_commune_of_department(cls, word: str, department: str) -> bool:
+        """
+        Whether a word is the name of a commune of a département (« Lescar » for the Pyrénées-Atlantiques).
+
+        A family name is often a commune's somewhere in France (« Exemplebourg », in the Allier): only a commune near the
+        business makes the word a place.
+
+        Args:
+            word: A word of a business name.
+            department: The business's département.
+
+        Returns:
+            True when a commune of that exact name lies in the département; False otherwise or when the list does
+            not answer.
+        """
+        key = town_key(word)
+        communes = await cls._communes_named(word) or []
+        return bool(key) and any(
+            town_key(str(commune.get("nom") or "")) == key and str(commune.get("codeDepartement") or "") == department
+            for commune in communes
+        )
+
+    @classmethod
     async def commune_name(cls, registry_commune: str, *, postal_code: str | None = None) -> str:
         """
         A commune's name as the official list spells it (« PONT-DU-CHATEAU » gives « Pont-du-Château »).

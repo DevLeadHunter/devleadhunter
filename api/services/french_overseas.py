@@ -23,6 +23,10 @@ _FRENCH_POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"(?<!\d)(\d{5})(?!\d)")
 _NON_ALPHANUMERIC_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 _NATIONAL_NUMBER_DIGITS: int = 9
 _NUMBER_PREFIX_DIGITS: int = 3
+_ARTICLES: frozenset[str] = frozenset({"le", "la", "les", "l"})
+_ARTICLE_AFTER_NAME_RE: re.Pattern[str] = re.compile(
+    r"([^\W\d_][^,()\d]*?)\s*\(\s*(le|la|les|l['’]?)(?:\s*\))?", re.IGNORECASE
+)
 
 
 def _comparison_text(text: str) -> str:
@@ -84,8 +88,9 @@ class OverseasDepartment:
         """
         The commune of the department a text names, the one written last when it names several.
 
-        An address writes its town after its street (« Route de Sainte-Marie, 97220 La Trinité »), and
-        Google may glue the town to the street (« Route De Jeanne D'Arc LE LAMENTIN, 97232 »).
+        An address writes its town after its street (« Route de Sainte-Marie, 97220 La Trinité »), Google
+        may glue the town to the street (« Route De Jeanne D'Arc LE LAMENTIN, 97232 ») and write its article
+        after it, in brackets (« 13 Exemple, ROBERT (LE 97231 » for Le Robert).
 
         Args:
             text: An address or a line of a listing.
@@ -96,10 +101,40 @@ class OverseasDepartment:
         padded_text = f" {_comparison_text(text or '')} "
         named: list[tuple[int, str]] = []
         for commune in self.communes:
-            position = padded_text.rfind(f" {_comparison_text(commune)} ")
-            if position >= 0:
-                named.append((position + len(_comparison_text(commune)), commune))
+            for spelling in self._spellings_of(commune):
+                position = padded_text.rfind(f" {spelling} ")
+                if position >= 0:
+                    named.append((position + len(spelling), commune))
         return max(named)[1] if named else None
+
+    def with_communes_spelled(self, text: str) -> str:
+        """
+        A text whose communes written article last, in brackets, are spelled as the department does.
+
+        « 13 Exemple, ROBERT (LE 97231, Martinique » reads « 13 Exemple, Le Robert 97231, Martinique ».
+
+        Args:
+            text: An address.
+
+        Returns:
+            The address, unchanged when it writes no commune that way.
+        """
+
+        def spelled(match: re.Match[str]) -> str:
+            written = f"{match.group(2)} {match.group(1)}"
+            commune = self.commune_in(written)
+            if commune is not None and _comparison_text(commune) == _comparison_text(written):
+                return commune
+            return match.group(0)
+
+        return _ARTICLE_AFTER_NAME_RE.sub(spelled, text)
+
+    @staticmethod
+    def _spellings_of(commune: str) -> list[str]:
+        """A commune's comparison text, and the one with its article written after it (« robert le »)."""
+        spelling = _comparison_text(commune)
+        article, _, name = spelling.partition(" ")
+        return [spelling, f"{name} {article}"] if article in _ARTICLES and name else [spelling]
 
 
 class FrenchOverseas:

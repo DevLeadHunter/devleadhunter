@@ -594,6 +594,14 @@ _GENERIC_REVIEW_AUTHORS = frozenset(
 )
 
 
+_PAGE_NOTICE_RE = re.compile(
+    r"pas encore [ée]valu[ée]|a limit[ée] qui peut commenter|has limited who can comment|not yet rated", re.IGNORECASE
+)
+_REPLY_DATE_LINE_RE = re.compile(r"^\s*(?:il y a|modifié il y a)[^\n]{1,30}\n|^\s*[^\n]{1,30}\bago\n", re.IGNORECASE)
+_SHOW_MORE_RE = re.compile(r"\s*(?:…|\.\.\.)?\s*(?:plus|more)\s*$", re.IGNORECASE)
+_MIN_REPLY_ECHO_CHARS = 12
+
+
 def _norm_review_value(value: Any) -> str:
     """Collapse whitespace/case so the same snippet scraped twice still matches."""
     return re.sub(r"\s+", " ", str(value or "")).strip().lower()
@@ -603,6 +611,40 @@ def _is_distinctive_review_author(author: str) -> bool:
     """True when the author is a real name we can use as a review identity."""
     key = _norm_review_value(author)
     return bool(key) and key not in _GENERIC_REVIEW_AUTHORS
+
+
+def _customer_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
+    """
+    The reviews customers wrote: never the owner's reply read as a review's text, nor a page's notice.
+
+    A review left without text shows only its reply, which the panel read as the text (« Je vous remercie
+    Madame Exemple »); a Facebook page shows « Pas encore évalué (1 avis) » or « … a limité qui peut commenter
+    cette publication » where a recommendation would be.
+
+    Args:
+        reviews: Scraped reviews (``text``, ``owner_response``…).
+
+    Returns:
+        The customers' own reviews, in their order.
+    """
+    kept: list[dict[str, Any]] = []
+    for review in reviews:
+        if not isinstance(review, dict):
+            continue
+        text = str(review.get("text") or "")
+        reply = str(review.get("owner_response") or "")
+        if _PAGE_NOTICE_RE.search(text) or (reply and _is_reply_echo(text, reply)):
+            continue
+        kept.append(review)
+    return kept
+
+
+def _is_reply_echo(text: str, reply: str) -> bool:
+    """Whether a review's text is its owner's reply, the reply's date line and both « … Plus » cuts aside."""
+    review_words = _norm_review_value(_SHOW_MORE_RE.sub("", text))
+    reply_words = _norm_review_value(_SHOW_MORE_RE.sub("", _REPLY_DATE_LINE_RE.sub("", reply)))
+    is_long_enough = min(len(review_words), len(reply_words)) >= _MIN_REPLY_ECHO_CHARS
+    return is_long_enough and (review_words.startswith(reply_words) or reply_words.startswith(review_words))
 
 
 def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:

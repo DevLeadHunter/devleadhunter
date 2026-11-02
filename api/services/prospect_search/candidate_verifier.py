@@ -522,16 +522,19 @@ class CandidateVerifier:
 
     @classmethod
     def own_name_words(cls, facts: CandidateFacts, trade: TradeProfile) -> set[str]:
-        """Words of the business name that belong to it alone: no linking word, trade word, common word or town."""
+        """
+        Words of the business name that belong to it alone: no linking word, trade word, common word, town or region
+        (« Grand Est » names a page of any trade there).
+        """
         trade_words = cls._trade_words(trade)
-        town_words = company_tokens(facts.town)
+        place_words = company_tokens(facts.town) | BusinessName.region_words(facts.name)
         return {
             token
             for token in company_tokens(facts.name)
             if token not in NAME_LINK_WORDS
             and token not in COMMON_NAME_WORDS
             and token not in trade_words
-            and token not in town_words
+            and token not in place_words
         }
 
     @staticmethod

@@ -53,6 +53,7 @@ _OTHER_ADDRESS_RE: re.Pattern[str] = re.compile(
 )
 _INITIALS_TOKEN_RE: re.Pattern[str] = re.compile(r"^[A-Z]{2,3}$")
 _FIRM_NAME_PART_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s*,\s*|\s+[-–]\s+")
+_SEAT_IN_PUBLICATION_RE: re.Pattern[str] = re.compile(r",\s+à\s+([^,]+?),\s+CHE-\d")
 # The cantonal excerpts of Vaud, Geneva, Fribourg and Neuchâtel (« …/extract?companyOfsUid=CHE-… »), and their request.
 _EXCERPT_PATH: str = "/extract"
 _XSRF_COOKIE: str = "XSRF-TOKEN"
@@ -127,7 +128,8 @@ class SwissRegistry:
         The register adds its owner's name to a sole proprietorship (« CENTRE AUTO EXEMPLE MODELE » for
         « CENTRE AUTO EXEMPLE »): in liquidation or struck off lately there, it closes the business — unless an
         active firm of the business's words sits at its place (« EXEMPLE SWISS SA », founded next door the month
-        the old one went bankrupt), when the business may go on under it and a person checks.
+        the old one went bankrupt), when the business may go on under it and a person checks. A listing keeps the
+        address a firm left before closing: a firm the gazette once seated in the business's town counts too.
 
         Args:
             facts: The candidate, completed in place.
@@ -142,7 +144,8 @@ class SwissRegistry:
             if self.closing_words(firm) is not None
             and name_words <= self._words(_LIQUIDATION_SUFFIX_RE.sub("", firm.name))
         ]
-        holder = next(iter(await self._firms_at_place(closed_holders, town=facts.town, postal_code=postal_code)), None)
+        holders_at_place = await self._firms_at_place(closed_holders, town=facts.town, postal_code=postal_code)
+        holder = next(iter(holders_at_place), None) or await self._firm_once_seated_in(closed_holders, facts.town)
         closing = self.closing_words(holder) if holder is not None else None
         if holder is None or closing is None:
             return
@@ -290,6 +293,27 @@ class SwissRegistry:
         if at_seat or not postal_code:
             return at_seat
         return [firm for firm in firms[:_MAX_ADDRESSES_READ] if (await self.address_of(firm))[0] == postal_code]
+
+    async def _firm_once_seated_in(self, firms: list[SwissRegisterFirm], town: str | None) -> SwissRegisterFirm | None:
+        """
+        The firm the gazette once seated in the business's town (« Exemple Sàrl, à Exempleville, CHE-… »), before it
+        moved its seat elsewhere.
+
+        Args:
+            firms: Firms of the business's name.
+            town: The business's town.
+
+        Returns:
+            The first such firm, or None.
+        """
+        if not town:
+            return None
+        for firm in firms[:_MAX_ADDRESSES_READ]:
+            for _published_on, text in await self.publications(firm):
+                seat = _SEAT_IN_PUBLICATION_RE.search(re.sub(r"<[^>]+>", "", text))
+                if seat is not None and fold(seat.group(1)) == fold(town):
+                    return firm
+        return None
 
     @classmethod
     def name_inside(cls, name: str) -> str:

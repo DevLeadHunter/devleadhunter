@@ -321,6 +321,9 @@ class GoogleLocalResultsParser:
             destination = unquote_plus(href.split("/maps/dir//", 1)[-1].split("/data=", 1)[0])
             destination = _PLUS_CODE_PREFIX_RE.sub("", destination)
             address = destination[len(listing.name) :].lstrip(", ") if destination.startswith(listing.name) else ""
+            department = FrenchOverseas.of_address(address) if address and country == "FR" else None
+            if department is not None:
+                address = department.with_communes_spelled(address)
             if address:
                 listing.address = address
                 town = GoogleScraper.extract_city(address, country)

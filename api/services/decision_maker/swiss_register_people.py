@@ -426,13 +426,23 @@ class SwissRegisterPeople:
 
     @staticmethod
     def _entries(body: str) -> list[str]:
-        """The people of a section's text, one entry each."""
-        return [
-            person.strip(" .")
-            for entry in body.split(";")
-            for person in _NEXT_PERSON_RE.split(entry)
-            if person.strip(" .")
-        ]
+        """
+        The people of a section's text, one entry each.
+
+        A last name standing alone before a comma opens « Nom, Prénoms, de … » (« Exemple, Jules Paul, de … »): it
+        stays with the first names that follow, which the older lists' split would have cut away.
+        """
+        people: list[str] = []
+        for entry in body.split(";"):
+            for written_person in _NEXT_PERSON_RE.split(entry):
+                person = written_person.strip(" .")
+                if not person:
+                    continue
+                if people and " " not in people[-1] and "," not in people[-1]:
+                    people[-1] = f"{people[-1]}, {person}"
+                else:
+                    people.append(person)
+        return people
 
     @staticmethod
     def _first_sentence(text: str) -> str:

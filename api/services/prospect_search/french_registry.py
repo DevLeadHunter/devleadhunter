@@ -24,6 +24,7 @@ _RESULTS_PER_PAGE: int = 10
 _CEASED_STATE: str = "C"
 _ACTIVE_STATE: str = "A"
 _POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"\b(\d{5})\b")
+_DEPARTMENT_CODE_RE: re.Pattern[str] = re.compile(r"\d{2,3}")
 _BRACKETS_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
 _BRACKETED_NAME_RE: re.Pattern[str] = re.compile(r"\(([^)]*)\)")
 _RECENT_CLOSING: timedelta = timedelta(days=3 * 365)
@@ -49,7 +50,8 @@ class FrenchRegistry:
         (its postal code, else its town) counts. An open one there clears the business; so does an open company of
         its name elsewhere in the département, or of its trade at its street address, run by the same person (a sole
         trader turned into a company, the seat moved to the owner's home); otherwise one closed less than three
-        years ago closes it, a newcomer at the address being another business.
+        years ago closes it, a newcomer at the address being another business. A listing without address is also
+        looked for in the département its own email or Facebook page names (« …PAYSAGES34 »).
 
         Args:
             facts: The candidate, completed in place.
@@ -60,13 +62,18 @@ class FrenchRegistry:
         department = FrenchDepartments.of_postal_code(postal_code) or await FrenchDepartments.of_town(facts.town)
         if not department:
             return
+        departments = [department]
+        contact_department = self.department_its_contact_names(facts)
+        if facts.is_placed_by_the_search_only and contact_department is not None and contact_department != department:
+            departments.append(contact_department)
         named: dict[str, dict[str, Any]] = {}
         found: dict[str, dict[str, Any]] = {}
         for query in await self._queries(facts):
-            for company in await self._companies(query, department=department):
-                found.setdefault(str(company.get("siren") or len(found)), company)
-                if self.is_named_like_the_business(company, facts):
-                    named.setdefault(str(company.get("siren") or len(named)), company)
+            for searched_department in departments:
+                for company in await self._companies(query, department=searched_department):
+                    found.setdefault(str(company.get("siren") or len(found)), company)
+                    if self.is_named_like_the_business(company, facts):
+                        named.setdefault(str(company.get("siren") or len(named)), company)
             if any(self.is_at_place(company, facts, postal_code=postal_code) for company in named.values()):
                 break
         await self.place_listing_without_address(facts, list(named.values()))
@@ -85,7 +92,8 @@ class FrenchRegistry:
 
         The search placed it in the town it searched; the registry tells where it is (« La petite Maçonnerie »
         found from Reims is in « 51370 Les Mesneux »). Only the postal code and the commune are taken: a sole
-        trader's seat is often their home.
+        trader's seat is often their home. Its email or Facebook page naming that commune's département is then no
+        other place than the business's.
 
         Args:
             facts: The candidate, completed in place.
@@ -105,9 +113,28 @@ class FrenchRegistry:
         commune = str(siege.get("libelle_commune") or "").strip()
         if not _POSTAL_CODE_RE.fullmatch(postal_code) or not commune:
             return
-        facts.city = await FrenchDepartments.commune_name(commune)
+        facts.city = await FrenchDepartments.commune_name(commune, postal_code=postal_code)
         facts.address = f"{postal_code} {facts.city}"
         facts.add_evidence("address", facts.address, source=_REGISTER_SOURCE)
+        contact_department = cls.department_its_contact_names(facts)
+        if contact_department is not None and contact_department == FrenchDepartments.of_postal_code(postal_code):
+            facts.evidence = [line for line in facts.evidence if line.get("fact") != "contact_elsewhere"]
+
+    @staticmethod
+    def department_its_contact_names(facts: CandidateFacts) -> str | None:
+        """
+        The French département the business's email or Facebook page names (« 34 », « 34290 »), if any.
+
+        Args:
+            facts: The candidate, with the place its contact names when it is not the business's.
+
+        Returns:
+            The département code; None when the contact names none, or a region rather than a département.
+        """
+        place = (facts.contact_elsewhere or {}).get("value") or ""
+        if _POSTAL_CODE_RE.fullmatch(place):
+            return FrenchDepartments.of_postal_code(place)
+        return place if _DEPARTMENT_CODE_RE.fullmatch(place) else None
 
     @staticmethod
     def note_association(facts: CandidateFacts, companies: list[dict[str, Any]]) -> None:
@@ -203,18 +230,21 @@ class FrenchRegistry:
 
     @staticmethod
     def _carries_exact_name(company: dict[str, Any], facts: CandidateFacts) -> bool:
-        """Whether one of a registry company's names is the business's, word for word, legal forms aside."""
-        from services.decision_maker.strategies import RegistreGouvStrategy
+        """
+        Whether one of a registry company's names is the business's word for word, as written or as the registry
+        files it (« EXPAYSAGES » is « EX PAYSAGE »), legal forms and plurals aside.
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy, TradeName
 
         siege = company.get("siege") or {}
         names = [
             *RegistreGouvStrategy.names_in(str(company.get("nom_complet") or "")),
             *(str(trade_name) for trade_name in siege.get("liste_enseignes") or []),
         ]
-        own_words = company_tokens(BusinessName.without_legal_form(facts.name))
-        return bool(own_words) and any(
-            company_tokens(BusinessName.without_legal_form(name)) == own_words for name in names if name
-        )
+        own_stems = [
+            stems for stems in map(BusinessName.name_stems, (facts.name, TradeName.searchable(facts.name))) if stems
+        ]
+        return any(BusinessName.name_stems(name) in own_stems for name in names if name)
 
     @classmethod
     def complete_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
@@ -365,15 +395,24 @@ class FrenchRegistry:
 
     @staticmethod
     def is_named_like_the_business(company: dict[str, Any], facts: CandidateFacts) -> bool:
-        """Whether one of a registry company's names (its legal name, a trade name it declared) is the business's."""
-        from services.decision_maker.strategies import RegistreGouvStrategy
+        """
+        Whether one of a registry company's names (its legal name, a trade name it declared) is the business's, as
+        written or as the registry files it (« EXPAYSAGES » for « EX PAYSAGE »).
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy, TradeName
 
         siege = company.get("siege") or {}
         names = [
             *RegistreGouvStrategy.names_in(str(company.get("nom_complet") or "")),
             *(str(trade_name) for trade_name in siege.get("liste_enseignes") or []),
         ]
-        return any(BusinessName.is_named_like(name, facts.name, town=facts.town) for name in names if name)
+        own_names = dict.fromkeys((facts.name, TradeName.searchable(facts.name)))
+        return any(
+            BusinessName.is_named_like(name, own_name, town=facts.town)
+            for name in names
+            if name
+            for own_name in own_names
+        )
 
     @staticmethod
     def is_at_place(company: dict[str, Any], facts: CandidateFacts, *, postal_code: str | None) -> bool:

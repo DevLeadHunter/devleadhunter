@@ -25,7 +25,7 @@ from enums.professional_license_source import ProfessionalLicenseSource
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
-from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrichment_scraper
+from scrappers.enrichment_scraper import EnrichmentData, _customer_reviews, _dedupe_reviews, enrichment_scraper
 from scrappers.google_scraper import GoogleScraper
 from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
@@ -203,7 +203,7 @@ class EnrichmentService:
             else:
                 record.reviews = self._merge_reviews(record.reviews, data.reviews)
             # Same Facebook author often comes back with extra DOM chrome on a relance.
-            record.reviews = _dedupe_reviews(record.reviews)
+            record.reviews = _dedupe_reviews(_customer_reviews(record.reviews))
         if data.opening_hours and self._should_apply_opening_hours(record.opening_hours, data.opening_hours):
             record.opening_hours = self._valid_hour_rows(data.opening_hours)
         if data.services:
