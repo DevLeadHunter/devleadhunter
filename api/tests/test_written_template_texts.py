@@ -95,7 +95,7 @@ def test_a_written_title_wins_over_the_title_a_template_words_from_the_city() ->
         description=None,
         template_id="electrician-eclat",
     )
-    assert generated["heroTitle"] == "Votre électricien de confiance au Mans"
+    assert generated["heroTitle"] == "Votre électricien au Mans"
 
     result = apply_section_overrides(generated, {"heroTitle": " Électricien au Mans depuis 1998 "})
 

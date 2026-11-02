@@ -56,6 +56,7 @@ from services.service_card_suggestion_service import ServiceCardsUnavailableErro
 from services.site_export_service import site_export_service
 from services.site_legal import site_legal_notice_service
 from services.storyblok_service import StoryblokProvisionError, storyblok_service
+from services.templates.site_content import clean_hidden_reviews, hides_prospect_photos
 from services.video_pipeline import VideoGenerationError
 
 logger = logging.getLogger(__name__)
@@ -131,6 +132,9 @@ def _demo_site_response(
         if isinstance(logo, str) and logo.strip():
             payload["brand_color"] = brand_color_service.extract_brand_color(logo)
     payload["tax_credit"] = demo_site_service.get_tax_credit(site)
+    overrides = site.section_overrides if isinstance(site.section_overrides, dict) else {}
+    payload["hidden_reviews"] = clean_hidden_reviews(overrides.get("hiddenReviews"))
+    payload["hide_prospect_photos"] = hides_prospect_photos(overrides)
     release_blocker: str | None = demo_site_service.storyblok_release_blocker(site)
     payload["can_release_storyblok_space"] = release_blocker is None
     payload["storyblok_release_blocker"] = release_blocker if site.storyblok_space_id else None

@@ -27,19 +27,19 @@ from core.config import settings
 from services.country_profiles import CountryProfiles
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
-from services.templates.default_images import apply_default_images, default_image_urls
+from services.templates.default_images import apply_default_images
 from services.templates.site_content import (
     SECTION_COMPONENT_NAMES,
     SITE_CONTENT_SCHEMAS,
     apply_country_conventions,
     apply_section_overrides,
+    is_stock_photo,
     storyblok_asset_key,
     storyblok_asset_stem,
 )
 
 logger = logging.getLogger(__name__)
 
-_STOCK_PHOTO_HOST: str = "images.unsplash.com"
 _SPACE_COUNT_TTL_SECONDS: float = 300.0
 
 
@@ -468,27 +468,7 @@ class StoryblokService:
             True for a template's picture, False for a photo of the business or one its owner uploaded.
         """
         host: str = urlparse(url).netloc.lower()
-        if host in {_STOCK_PHOTO_HOST, urlparse(settings.demo_host_base_url).netloc.lower()}:
-            return True
-        return url in default_image_urls() or self.template_default_source(url) is not None
-
-    @staticmethod
-    def template_default_source(url: str) -> str | None:
-        """
-        The template's own address of the default image an asset was uploaded from, by the name the push gave it.
-
-        The Verdure hero copied into a space is « …/a086cb6054ad505274e3.jpg », the name a push gives the copy of
-        « …/images/verdure/image-import-27.jpg » (see ``storyblok_asset_key``): the same bytes, at an address that
-        lives on when the space is deleted.
-
-        Args:
-            url: An image's address.
-
-        Returns:
-            The default image's own address, or None for any other image.
-        """
-        stem: str = storyblok_asset_stem(url)
-        return next((source for source in default_image_urls() if storyblok_asset_key(source) == stem), None)
+        return host == urlparse(settings.demo_host_base_url).netloc.lower() or is_stock_photo(url)
 
     async def _list_space_assets(self, client: httpx.AsyncClient, space_id: int) -> dict[str, dict[str, Any]]:
         """Map each already-uploaded asset's filename stem to ``{id, filename}`` so a re-publish reuses it.

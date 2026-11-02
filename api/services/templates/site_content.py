@@ -25,6 +25,7 @@ import re
 import uuid
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from services.country_profiles import CountryProfiles
 from services.photo_labels import (
@@ -38,6 +39,7 @@ from services.photo_labels import (
 )
 from services.regional_lexicon import RegionalLexicon
 from services.sms.phone_normalizer import format_phone_for_display
+from services.templates.default_images import default_image_urls
 from services.validation_service import validation_service
 
 # Operator-curated service cards (``DemoSite.section_overrides["services"]``): shape limits.
@@ -77,6 +79,12 @@ MAX_TAX_CREDIT_FAQ_QUESTION_CHARS = 160
 MAX_TAX_CREDIT_FAQ_ANSWER_CHARS = 600
 # A FAQ entry that already covers the tax credit (any wording) keeps the override from adding a twin.
 _TAX_CREDIT_FAQ_MARKER = "crédit d'impôt"
+
+# Reviews an operator hides on a site (``DemoSite.section_overrides["hiddenReviews"]``), by their text.
+MAX_HIDDEN_REVIEWS = 30
+MAX_HIDDEN_REVIEW_CHARS = 2000
+
+STOCK_PHOTO_HOST: str = "images.unsplash.com"
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
@@ -274,6 +282,41 @@ def _is_unrehostable_photo(url: str) -> bool:
     return any(host in lowered for host in _UNREHOSTABLE_PHOTO_HOSTS)
 
 
+def template_default_source(url: str) -> str | None:
+    """
+    The template's own address of the default image an asset was uploaded from, by the name the push gave it.
+
+    The Verdure hero copied into a space is « …/a086cb6054ad505274e3.jpg », the name a push gives the copy of
+    « …/images/verdure/image-import-27.jpg » (see ``storyblok_asset_key``): the same bytes, at an address that
+    lives on when the space is deleted.
+
+    Args:
+        url: An image's address.
+
+    Returns:
+        The default image's own address, or None for any other image.
+    """
+    stem: str = storyblok_asset_stem(url)
+    return next((source for source in default_image_urls() if storyblok_asset_key(source) == stem), None)
+
+
+def is_stock_photo(url: str) -> bool:
+    """
+    Whether an image is a template's picture rather than a photo of the business.
+
+    Args:
+        url: The image's address.
+
+    Returns:
+        True for an Unsplash picture or a template's default image, the CMS copy of one included.
+    """
+    return (
+        urlparse(url).netloc.lower() == STOCK_PHOTO_HOST
+        or url in default_image_urls()
+        or template_default_source(url) is not None
+    )
+
+
 def usable_site_photos(enrichment: dict[str, Any] | None) -> list[str]:
     """The prospect photos eligible for the site, in order: deduped, logo excluded, broken hosts dropped.
 
@@ -314,6 +357,8 @@ def format_review_count(count: Any) -> str | None:
 
 
 _RATING_VALUE_RE = re.compile(r"^\d(?:[.,]\d)?\s*/\s*5$")
+
+_FREE_QUOTE_TRUST_ITEM: dict[str, str] = {"value": "Devis gratuit", "label": "Sans engagement"}
 
 # Below this real Google rating, trust badges fall back to neutral claims instead of showcasing it
 # (a 2,7/5 renders as « 54 % de clients satisfaits » — an anti-sale on the prospect's own demo).
@@ -366,7 +411,12 @@ def experience_years_from_text(text: Any) -> int | None:
     return years if 1 <= years <= 80 else None
 
 
-def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
+def apply_real_trust_stats(
+    site: dict[str, Any],
+    enrichment: dict[str, Any] | None,
+    *,
+    unrated_trust_item: dict[str, str] | None = _FREE_QUOTE_TRUST_ITEM,
+) -> None:
     """Fill a template's trust badges from real data instead of fabricated numbers.
 
     By label: a "satisfaction" badge derives its percentage from the real Google rating (4,9/5 → 98 %);
@@ -375,7 +425,8 @@ def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
     Without any real figure the badge is replaced by a neutral claim — a fabricated "4,9/5" reads as a
     lie to a prospect who knows his own (absent or lower) rating. A real rating below
     ``TRUST_RATING_FLOOR`` is also demoted to the neutral claim: a truthful « 54 % de clients
-    satisfaits » banner is an anti-sale, and hiding it is not lying. Mutates ``site`` in place.
+    satisfaits » banner is an anti-sale, and hiding it is not lying. The "rating/avis" badge of a business
+    without a rating becomes ``unrated_trust_item``, or is dropped when it is None. Mutates ``site`` in place.
     """
     enr = enrichment or {}
     rating = enr.get("rating")
@@ -413,8 +464,10 @@ def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
             if rating_value:
                 item["value"] = rating_value
                 item["label"] = f"{count_value} avis" if count_value else "Avis Google"
+            elif unrated_trust_item is None:
+                continue
             else:
-                item["value"], item["label"] = "Devis gratuit", "Sans engagement"
+                item["value"], item["label"] = unrated_trust_item["value"], unrated_trust_item["label"]
         result.append(item)
     site["trustItems"] = result
 
@@ -791,7 +844,9 @@ def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str,
     Candidates are the gallery photos, then the hero / about photos; the vision labels rank the
     dishes first and keep the truck, menu boards and flyers off the cards. Without labels the
     gallery order is used as before. The layer would otherwise fall back to ``gallery[index]``
-    (position only) — which is how the truck ended up under a dish title.
+    (position only) — which is how the truck ended up under a dish title. A template's own picture is
+    never a candidate: handed out in gallery order, a charging station landed under « Dépannage ». A card
+    left without a real photo keeps its photo empty, and its template chooses one for its title.
     """
     services = site_content.get("services")
     if not isinstance(services, list) or not services:
@@ -799,10 +854,15 @@ def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str,
     gallery = [
         photo["url"]
         for photo in site_content.get("gallery", [])
-        if isinstance(photo, dict) and isinstance(photo.get("url"), str) and photo["url"].strip()
+        if isinstance(photo, dict)
+        and isinstance(photo.get("url"), str)
+        and photo["url"].strip()
+        and not is_stock_photo(photo["url"])
     ]
     extra = [
-        url for url in (site_content.get("heroImage"), site_content.get("aboutImage")) if isinstance(url, str) and url
+        url
+        for url in (site_content.get("heroImage"), site_content.get("aboutImage"))
+        if isinstance(url, str) and url and not is_stock_photo(url)
     ]
     photo_labels = (enrichment or {}).get("photo_labels")
     labels = labels_for_urls(photo_labels, gallery + extra)
@@ -845,6 +905,44 @@ _WRITTEN_TEXT_KEYS: tuple[str, ...] = (
 )
 
 
+def clean_hidden_reviews(texts: Any) -> list[str]:
+    """
+    The texts of the reviews an operator hides on a site, tidied like a displayed review.
+
+    Args:
+        texts: The texts sent by the operator, as the site shows them.
+
+    Returns:
+        Each text once, on one line, at most ``MAX_HIDDEN_REVIEWS`` of them; empty to show every review again.
+    """
+    if not isinstance(texts, list):
+        return []
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for text in texts:
+        line = _clean_review_text(text) if isinstance(text, str) else ""
+        if not line or len(line) > MAX_HIDDEN_REVIEW_CHARS or line.casefold() in seen:
+            continue
+        seen.add(line.casefold())
+        cleaned.append(line)
+        if len(cleaned) >= MAX_HIDDEN_REVIEWS:
+            break
+    return cleaned
+
+
+def hides_prospect_photos(overrides: Any) -> bool:
+    """
+    Whether the operator chose to show none of the prospect's photos on a site.
+
+    Args:
+        overrides: The site's overrides (``DemoSite.section_overrides``).
+
+    Returns:
+        True when the site shows its template's photos only.
+    """
+    return isinstance(overrides, dict) and overrides.get("hideProspectPhotos") is True
+
+
 def apply_section_overrides(
     site_content: dict[str, Any],
     overrides: Any,
@@ -864,17 +962,20 @@ def apply_section_overrides(
     ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the « Pourquoi nous
     choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la
     personne » provider. A template that never shows one of them just ignores its key.
+    ``hiddenReviews`` takes the reviews with these texts off the site, and ``hideProspectPhotos`` keeps the
+    prospect's photos off its cards, its other photos and its realizations.
     The override lives on the demo site, so it survives every regeneration — a colour tweak no longer
     wipes the specialties or the text typed by hand.
     """
     if not isinstance(overrides, dict):
         return site_content
+    shows_prospect_photos = not hides_prospect_photos(overrides)
     cards = clean_service_cards(overrides.get("services"))
     if cards:
-        site_content["services"] = cards
+        site_content["services"] = cards if shows_prospect_photos else [{**card, "image": ""} for card in cards]
         fill_missing_card_images(site_content, enrichment)
     raw_images = overrides.get("images")
-    if isinstance(raw_images, dict):
+    if isinstance(raw_images, dict) and shows_prospect_photos:
         existing = site_content.get("images")
         merged: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
         for key, url in raw_images.items():
@@ -896,8 +997,16 @@ def apply_section_overrides(
     if steps:
         site_content["steps"] = steps
     portfolio = clean_portfolio_items(overrides.get("portfolio"))
-    if portfolio:
+    if portfolio and shows_prospect_photos:
         site_content["portfolio"] = portfolio
+    hidden_review_texts = {text.casefold() for text in clean_hidden_reviews(overrides.get("hiddenReviews"))}
+    if hidden_review_texts and isinstance(site_content.get("reviews"), list):
+        site_content["reviews"] = [
+            review
+            for review in site_content["reviews"]
+            if not isinstance(review, dict)
+            or _clean_review_text(review.get("text", "")).casefold() not in hidden_review_texts
+        ]
     faq = clean_faq_items(overrides.get("faq"))
     if faq:
         site_content["faq"] = faq
