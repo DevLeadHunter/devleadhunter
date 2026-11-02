@@ -99,10 +99,11 @@ def french_registry_offline(monkeypatch: pytest.MonkeyPatch) -> None:
 def french_communes_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     """The official list of communes answers nothing unless a test scripts it: a run never calls geo.api.gouv.fr."""
 
-    async def no_answer(town: str) -> None:
+    async def no_answer(town_or_postal_code: str) -> None:
         return None
 
     monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(no_answer))
+    monkeypatch.setattr(FrenchDepartments, "_communes_of_postal_code", staticmethod(no_answer))
     monkeypatch.setattr(FrenchDepartments, "_department_by_town", {})
     monkeypatch.setattr(FrenchDepartments, "_is_town_by_word", {})
 

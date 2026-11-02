@@ -10,6 +10,7 @@ from dataclasses import replace
 from enums.website_status import WebsiteStatus
 from services.decision_maker.email_owner import EmailOwnerStrategy
 from services.decision_maker.given_names import GivenNames
+from services.decision_maker.search_owner import SearchOwnerStrategy
 from services.decision_maker.strategies import (
     BusinessNameOwnerStrategy,
     LegalMentionsStrategy,
@@ -20,7 +21,13 @@ from services.decision_maker.strategies import (
     RegistreGouvStrategy,
     WebRegistryStrategy,
 )
-from services.decision_maker.types import NameCandidate, NameResolution, NameStrategy, ResolutionContext
+from services.decision_maker.types import (
+    NameCandidate,
+    NameResolution,
+    NameStrategy,
+    ResolutionContext,
+    SearchedOwner,
+)
 from services.decision_maker.web_owner import WebOwnerStrategy
 
 logger = logging.getLogger(__name__)
@@ -57,6 +64,7 @@ class DecisionMakerResolver:
             LlmAggregateStrategy(),
             BusinessNameOwnerStrategy(),
             EmailOwnerStrategy(),
+            SearchOwnerStrategy(),
         ]
         self.fallback_strategies: list[NameStrategy] = fallback_strategies or []
 
@@ -179,8 +187,10 @@ class DecisionMakerResolver:
         return boosted
 
 
-def context_from_prospect(prospect, enrichment=None, *, registry_number: str | None = None) -> ResolutionContext:
-    """Build the strategy input from a prospect row (+ optional enrichment, + the company number the search read).
+def context_from_prospect(
+    prospect, enrichment=None, *, registry_number: str | None = None, searched_owner: SearchedOwner | None = None
+) -> ResolutionContext:
+    """Build the strategy input from a prospect row (+ optional enrichment, + the number and owner the search read).
 
     Source-agnostic on purpose: only persisted prospect/enrichment data is
     used, whatever scraper discovered the prospect. When the prospect address
@@ -227,6 +237,7 @@ def context_from_prospect(prospect, enrichment=None, *, registry_number: str | N
         trade=prospect.category,
         country=prospect.country,
         address=prospect.address,
+        searched_owner=searched_owner,
     )
 
 
@@ -237,6 +248,7 @@ public_text_resolver = DecisionMakerResolver(
         LlmAggregateStrategy(),
         BusinessNameOwnerStrategy(),
         EmailOwnerStrategy(),
+        SearchOwnerStrategy(),
         RbqOfficerStrategy(),
         WebOwnerStrategy(),
     ]

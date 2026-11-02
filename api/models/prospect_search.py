@@ -21,11 +21,13 @@ class ProspectSearch(Base):
         user_id: Owner of the search
         trades: Searched trades, as typed by the user
         country: ISO alpha-2 country of the search
+        region: French overseas department searched instead of mainland France (« MQ »), None elsewhere
         cities: Cities asked by the user (empty = chosen by the search)
         count_per_trade: Prospects wanted for each trade
         channel: Contact channel the kept prospects must allow
         only_without_website: Whether a business with a working website is discarded
         minimum_rating: Google rating under which a business is discarded
+        use_registries: Whether the public registries with emails (RGE, RBQ) are read before Google and Facebook
         validation_mode: Whether the user accepts each candidate, or the search creates the prospects itself
         status: Lifecycle state
         progress: Counters and scanned cities, per trade
@@ -46,11 +48,13 @@ class ProspectSearch(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     trades: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     country: Mapped[str] = mapped_column(String(2), nullable=False, default="FR")
+    region: Mapped[str | None] = mapped_column(String(2), nullable=True)
     cities: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     count_per_trade: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     channel: Mapped[str] = mapped_column(String(16), nullable=False, default=ProspectSearchChannel.EMAIL.value)
     only_without_website: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     minimum_rating: Mapped[float | None] = mapped_column(Float, nullable=True)
+    use_registries: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     validation_mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=ProspectSearchValidationMode.MANUAL.value
     )

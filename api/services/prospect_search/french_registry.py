@@ -2,7 +2,9 @@
 French company register — whether a French business a search found is still open, as the official registry says.
 
 A garage struck off last spring keeps its Google listing for months. The registry (recherche-entreprises) is read only
-for a candidate about to be proposed: the companies of its name in its département, at its address.
+for a candidate about to be proposed: the companies of its name in its département, at its address. The one open
+company of its name at its place gives it its SIREN: two listings of a search with the same SIREN are one business.
+Its seat gives a street address without postal code the postal code and town it lacks.
 """
 
 from __future__ import annotations
@@ -10,18 +12,31 @@ from __future__ import annotations
 import re
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from urllib.parse import unquote
 
-from services.decision_maker.normalize import town_key
+from services.decision_maker.french_departments import FrenchDepartments
+from services.decision_maker.normalize import company_tokens, fold, town_key
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
+from services.prospect_search.place_of_contact import PlaceOfContact
 
 _RESULTS_PER_PAGE: int = 10
 _CEASED_STATE: str = "C"
 _ACTIVE_STATE: str = "A"
 _POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"\b(\d{5})\b")
+_DEPARTMENT_CODE_RE: re.Pattern[str] = re.compile(r"\d{2,3}")
 _BRACKETS_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
+_BRACKETED_NAME_RE: re.Pattern[str] = re.compile(r"\(([^)]*)\)")
 _RECENT_CLOSING: timedelta = timedelta(days=3 * 365)
 _REGISTER_SOURCE: str = "Registre des entreprises (INSEE)"
+# The legal forms of associations start with 92 (« 9220 » : association déclarée).
+_ASSOCIATION_LEGAL_FORM_PREFIX: str = "92"
+# A word of the business's name an association must carry: initials and link words say nothing.
+_ASSOCIATION_NAME_WORD_MIN_CHARS: int = 3
+_CLUB_WORDS: frozenset[str] = frozenset(
+    {"association", "asso", "club", "sportif", "sportive", "amicale", "comite", "federation"}
+)
+_TOWN_HALL_RE: re.Pattern[str] = re.compile(r"\b(?:mairie|hotel de ville|hotel-de-ville)\b")
 
 
 class FrenchRegistry:
@@ -29,33 +44,310 @@ class FrenchRegistry:
 
     async def read_closing(self, facts: CandidateFacts) -> None:
         """
-        Take the registry's recent closing of the business's company as the closing of the business.
+        Take the registry's recent closing of the business's company as its closing, with its SIREN and postal code.
 
         Only a company of the business's name (its legal name or a trade name it declared) at the business's place
         (its postal code, else its town) counts. An open one there clears the business; so does an open company of
         its name elsewhere in the département, or of its trade at its street address, run by the same person (a sole
         trader turned into a company, the seat moved to the owner's home); otherwise one closed less than three
-        years ago closes it, a newcomer at the address being another business.
+        years ago closes it, a newcomer at the address being another business. A listing without address is also
+        looked for in the département its own email or Facebook page names (« …PAYSAGES34 »).
 
         Args:
             facts: The candidate, completed in place.
         """
         if facts.country != "FR" or facts.is_closed or not facts.name:
             return
-        from services.decision_maker.french_departments import FrenchDepartments
-
         postal_code = self.postal_code_of(facts.address)
         department = FrenchDepartments.of_postal_code(postal_code) or await FrenchDepartments.of_town(facts.town)
         if not department:
             return
+        departments = [department]
+        contact_department = self.department_its_contact_names(facts)
+        if facts.is_placed_by_the_search_only and contact_department is not None and contact_department != department:
+            departments.append(contact_department)
         named: dict[str, dict[str, Any]] = {}
+        found: dict[str, dict[str, Any]] = {}
         for query in await self._queries(facts):
-            for company in await self._companies(query, department=department):
-                if self.is_named_like_the_business(company, facts):
-                    named.setdefault(str(company.get("siren") or len(named)), company)
+            for searched_department in departments:
+                for company in await self._companies(query, department=searched_department):
+                    found.setdefault(str(company.get("siren") or len(found)), company)
+                    if self.is_named_like_the_business(company, facts):
+                        named.setdefault(str(company.get("siren") or len(named)), company)
             if any(self.is_at_place(company, facts, postal_code=postal_code) for company in named.values()):
                 break
+        await self.place_listing_without_address(facts, list(named.values()))
+        self.take_registry_number(facts, list(named.values()), postal_code=postal_code)
+        self.note_registered_heads(facts, list(named.values()))
+        self.complete_address(facts, list(named.values()))
+        self.note_association(facts, list(found.values()))
+        self.note_registered_activity(facts, list(named.values()))
+        self.note_town_hall_address(facts, list(named.values()))
         await self._read_closing_of(facts, list(named.values()), department=department, postal_code=postal_code)
+
+    @classmethod
+    async def place_listing_without_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Give a listing without address nor town the commune of the one open company of its exact name in its département.
+
+        The search placed it in the town it searched; the registry tells where it is (« La petite Maçonnerie »
+        found from Reims is in « 51370 Les Mesneux »). Only the postal code and the commune are taken: a sole
+        trader's seat is often their home. Its email or Facebook page naming that commune's département is then no
+        other place than the business's.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        if facts.address or facts.city is not None:
+            return
+        carrying_its_name = [
+            company
+            for company in named
+            if company.get("etat_administratif") == _ACTIVE_STATE and cls._carries_exact_name(company, facts)
+        ]
+        if len(carrying_its_name) != 1:
+            return
+        siege = carrying_its_name[0].get("siege") or {}
+        postal_code = str(siege.get("code_postal") or "")
+        commune = str(siege.get("libelle_commune") or "").strip()
+        if not _POSTAL_CODE_RE.fullmatch(postal_code) or not commune:
+            return
+        facts.city = await FrenchDepartments.commune_name(commune, postal_code=postal_code)
+        facts.address = f"{postal_code} {facts.city}"
+        facts.add_evidence("address", facts.address, source=_REGISTER_SOURCE)
+        contact_department = cls.department_its_contact_names(facts)
+        if contact_department is not None and contact_department == FrenchDepartments.of_postal_code(postal_code):
+            facts.evidence = [line for line in facts.evidence if line.get("fact") != "contact_elsewhere"]
+
+    @staticmethod
+    def department_its_contact_names(facts: CandidateFacts) -> str | None:
+        """
+        The French département the business's email or Facebook page names (« 34 », « 34290 »), if any.
+
+        Args:
+            facts: The candidate, with the place its contact names when it is not the business's.
+
+        Returns:
+            The département code; None when the contact names none, or a region rather than a département.
+        """
+        place = (facts.contact_elsewhere or {}).get("value") or ""
+        if _POSTAL_CODE_RE.fullmatch(place):
+            return FrenchDepartments.of_postal_code(place)
+        return place if _DEPARTMENT_CODE_RE.fullmatch(place) else None
+
+    @staticmethod
+    def note_association(facts: CandidateFacts, companies: list[dict[str, Any]]) -> None:
+        """
+        Note the business as an association when the registry and its own words both say so.
+
+        Every open company of the département carrying the words of its name must be an association (« Ass sportive
+        Gazelec Gardois football » for « Gazelec S. Gardois »), and its name or its Facebook page's must say a club
+        (« Nîmes Gazelec Sportif Gardois »): a community garden association named like a landscaper says nothing of
+        the landscaper.
+
+        Args:
+            facts: The candidate, completed in place.
+            companies: The registry companies its name brought back in its département.
+        """
+        name_words = {
+            word
+            for word in company_tokens(BusinessName.without_legal_form(facts.name))
+            if len(word) >= _ASSOCIATION_NAME_WORD_MIN_CHARS
+        }
+        open_companies = [
+            company
+            for company in companies
+            if company.get("etat_administratif") == _ACTIVE_STATE
+            and name_words <= company_tokens(str(company.get("nom_complet") or ""))
+        ]
+        are_associations = (
+            bool(name_words)
+            and bool(open_companies)
+            and all(
+                str(company.get("nature_juridique") or "").startswith(_ASSOCIATION_LEGAL_FORM_PREFIX)
+                for company in open_companies
+            )
+        )
+        own_names = [facts.name, *map(PlaceOfContact.facebook_page_name, PlaceOfContact.facebook_addresses_of(facts))]
+        says_a_club = any(
+            word in _CLUB_WORDS for name in own_names for word in re.split(r"[^a-z]+", fold(unquote(name)))
+        )
+        if are_associations and says_a_club:
+            facts.add_evidence("association", str(open_companies[0].get("nom_complet") or ""), source=_REGISTER_SOURCE)
+
+    @classmethod
+    def note_registered_activity(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note the activity of another trade the one open company of the business's exact name declares.
+
+        « Au Jardin de l'Exemple », a landscaper on Google, is filed as a greengrocer (« 52.2A »): the listing may be
+        the shop's, a person checks it. An activity close to the trade (earthworks for a landscaper) says nothing.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        from services.decision_maker.activity import activity_consistency
+        from services.trade_normalizer import TradeNormalizer
+
+        carrying_its_name = [
+            company
+            for company in named
+            if company.get("etat_administratif") == _ACTIVE_STATE and cls._carries_exact_name(company, facts)
+        ]
+        if len(carrying_its_name) != 1:
+            return
+        company = carrying_its_name[0]
+        siege = company.get("siege") or {}
+        activity = str(siege.get("activite_principale") or company.get("activite_principale") or "")
+        if activity_consistency(TradeNormalizer.normalize(facts.trade_key), activity) is not False:
+            return
+        facts.add_evidence(
+            "registered_activity",
+            activity,
+            source=_REGISTER_SOURCE,
+            snippet=str(company.get("nom_complet") or ""),
+        )
+
+    @staticmethod
+    def note_town_hall_address(facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note a listing addressed at the town hall, for a business no company of its name is registered for in its
+        département.
+
+        A travelling tradesperson (a tree trimmer) gives the town hall of the commune they are attached to (« 2 Pass.
+        de l'Hôtel de ville »): the listing places no workshop, a person checks it. A shop of the town hall's street
+        has a company of its name in the département.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business in its département.
+        """
+        if named or not _TOWN_HALL_RE.search(fold(facts.address or "")):
+            return
+        facts.add_evidence("town_hall_address", facts.address or "", source="Fiche Google")
+
+    @staticmethod
+    def _carries_exact_name(company: dict[str, Any], facts: CandidateFacts) -> bool:
+        """
+        Whether one of a registry company's names is the business's word for word, as written or as the registry
+        files it (« EXPAYSAGES » is « EX PAYSAGE »), legal forms and plurals aside.
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy, TradeName
+
+        siege = company.get("siege") or {}
+        names = [
+            *RegistreGouvStrategy.names_in(str(company.get("nom_complet") or "")),
+            *(str(trade_name) for trade_name in siege.get("liste_enseignes") or []),
+        ]
+        own_stems = [
+            stems for stems in map(BusinessName.name_stems, (facts.name, TradeName.searchable(facts.name))) if stems
+        ]
+        return any(BusinessName.name_stems(name) in own_stems for name in names if name)
+
+    @classmethod
+    def complete_address(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Give a street address without postal code the postal code and town of the business's company seated there.
+
+        The company must be open, of the business's name, in its town and at the same number and street (« 12 Rue
+        Exemple » becomes « 12 Rue Exemple, 03100 Montluçon »).
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy
+
+        street = RegistreGouvStrategy.street_of(facts.address)
+        if street is None or cls.postal_code_of(facts.address) is not None:
+            return
+        for company in named:
+            siege = company.get("siege") or {}
+            seat_postal_code = str(siege.get("code_postal") or "")
+            is_seated_at_street = (
+                company.get("etat_administratif") == _ACTIVE_STATE
+                and cls.is_at_place(company, facts, postal_code=None)
+                and RegistreGouvStrategy.street_of(str(siege.get("adresse") or "")) == street
+            )
+            if is_seated_at_street and _POSTAL_CODE_RE.fullmatch(seat_postal_code):
+                facts.address = f"{facts.address}, {seat_postal_code} {facts.town}"
+                facts.city = facts.city or facts.town
+                facts.add_evidence("address", facts.address, source=_REGISTER_SOURCE)
+                return
+
+    @classmethod
+    def take_registry_number(
+        cls, facts: CandidateFacts, named: list[dict[str, Any]], *, postal_code: str | None
+    ) -> None:
+        """
+        Give the business the SIREN of the one open company of its name at its place.
+
+        Several open companies there, or none, leave it without: a wrong number would merge two businesses.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+            postal_code: The business's postal code, if its address gives one.
+        """
+        if facts.registry_number:
+            return
+        sirens = {
+            str(company["siren"])
+            for company in named
+            if company.get("siren")
+            and company.get("etat_administratif") == _ACTIVE_STATE
+            and cls.is_at_place(company, facts, postal_code=postal_code)
+        }
+        if len(sirens) == 1:
+            facts.registry_number = sirens.pop()
+            facts.add_evidence("registry", facts.registry_number, source=_REGISTER_SOURCE)
+
+    @classmethod
+    def note_registered_heads(cls, facts: CandidateFacts, named: list[dict[str, Any]]) -> None:
+        """
+        Note the people the registry writes at the head of the company the business's number designates.
+
+        The decision compares them with the person its email is named after: « temoin.jules@ », read on a page a
+        search found, is a namesake's address when the registry writes Jules Exemple at the head of the business.
+
+        Args:
+            facts: The candidate, completed in place.
+            named: The registry companies named like the business.
+        """
+        siren = (facts.registry_number or "")[:9]
+        company = next((company for company in named if siren and str(company.get("siren") or "") == siren), None)
+        if company is None:
+            return
+        noted = {line.get("value") for line in facts.evidence if line.get("fact") == "registered_head"}
+        for head in company.get("dirigeants") or []:
+            person = cls.person_of_head(head)
+            if person is not None and person not in noted:
+                noted.add(person)
+                facts.add_evidence(
+                    "registered_head", person, source=_REGISTER_SOURCE, snippet=str(company.get("nom_complet") or "")
+                )
+
+    @staticmethod
+    def person_of_head(head: dict[str, Any]) -> str | None:
+        """
+        A person the registry writes at a company's head, as a reader writes them (pure — testable).
+
+        « EXEMPLE (TEMOIN) » « MARIE CLAIRE » is « Marie Exemple (Temoin) », the name of use kept for comparison;
+        a company, a liquidator or a hidden name gives None.
+        """
+        from services.decision_maker.normalize import title_case_name
+
+        registered_name = str(head.get("nom") or "")
+        last_name = title_case_name(registered_name)
+        first_name = title_case_name(str(head.get("prenoms") or "").strip().split(" ")[0])
+        is_liquidator = "liquidat" in fold(str(head.get("qualite") or ""))
+        if not last_name or not first_name or is_liquidator or "diffusible" in fold(registered_name):
+            return None
+        name_of_use = title_case_name(" ".join(_BRACKETED_NAME_RE.findall(registered_name)))
+        has_other_name_of_use = name_of_use is not None and fold(name_of_use) != fold(last_name)
+        return f"{first_name} {last_name}" + (f" ({name_of_use})" if has_other_name_of_use else "")
 
     async def _read_closing_of(
         self, facts: CandidateFacts, named: list[dict[str, Any]], *, department: str, postal_code: str | None
@@ -84,7 +376,6 @@ class FrenchRegistry:
         (« Garage Exemple Auto 46 » as « Exemple Auto 46 »), then without the communes it names (« Exemple-Auto
         Pau-Lescar » as « Exemple Auto »).
         """
-        from services.decision_maker.french_departments import FrenchDepartments
         from services.decision_maker.strategies import TradeName
 
         name = BusinessName.without_legal_form(facts.name)
@@ -104,15 +395,24 @@ class FrenchRegistry:
 
     @staticmethod
     def is_named_like_the_business(company: dict[str, Any], facts: CandidateFacts) -> bool:
-        """Whether one of a registry company's names (its legal name, a trade name it declared) is the business's."""
-        from services.decision_maker.strategies import RegistreGouvStrategy
+        """
+        Whether one of a registry company's names (its legal name, a trade name it declared) is the business's, as
+        written or as the registry files it (« EXPAYSAGES » for « EX PAYSAGE »).
+        """
+        from services.decision_maker.strategies import RegistreGouvStrategy, TradeName
 
         siege = company.get("siege") or {}
         names = [
             *RegistreGouvStrategy.names_in(str(company.get("nom_complet") or "")),
             *(str(trade_name) for trade_name in siege.get("liste_enseignes") or []),
         ]
-        return any(BusinessName.is_named_like(name, facts.name, town=facts.town) for name in names if name)
+        own_names = dict.fromkeys((facts.name, TradeName.searchable(facts.name)))
+        return any(
+            BusinessName.is_named_like(name, own_name, town=facts.town)
+            for name in names
+            if name
+            for own_name in own_names
+        )
 
     @staticmethod
     def is_at_place(company: dict[str, Any], facts: CandidateFacts, *, postal_code: str | None) -> bool:

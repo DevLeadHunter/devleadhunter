@@ -6,7 +6,8 @@ Zefix gives no person list, only the FOSC publications of each firm. Since about
 individuelle »; older ones « Titulaire: Exemple Paul, de … » or « Administration: Exemple Paul, de …,
 à …, président, Modèle Anne, de …, à …, lesquels signent individuellement », and « Exemple Paul n'est
 plus directeur ». Read in date order, entries and departures give the people registered today, and
-their roles say who runs the business.
+their roles say who runs the business. A firm older than the online gazette published nothing there:
+its canton's register excerpt lists its people, one line each.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import html
 import re
 from dataclasses import dataclass, replace
 from datetime import date
+from typing import Any
 
 from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import fold, title_case_name
@@ -56,12 +58,21 @@ _ROLE_HEADINGS: frozenset[str] = frozenset(
         "associés-gérants",
         "associé gérant",
         "associé-gérant",
+        "associés",
+        "associé",
         "gérants",
         "gérant",
         "gérance",
         "administrateur unique",
     }
 )
+_PARTNER_HEADINGS: frozenset[str] = frozenset({"associés", "associé"})
+_WITHOUT_SIGNATURE_RE: re.Pattern[str] = re.compile(r"\b(?:sans\s+signature|ohne\s+unterschrift)\b", re.IGNORECASE)
+_SIGNATURE_GRANTED_RE: re.Pattern[str] = re.compile(
+    r"signature\s+(?:individuelle|collective\s+à\s+deux)\s+(?:a\s+été|est)\s+conférée\s+à\s+", re.IGNORECASE
+)
+_GRANTED_PEOPLE_SEPARATOR_RE: re.Pattern[str] = re.compile(r",?\s+et\s+à\s+")
+_SIGNATURE_GRANTED_HEADING: str = "signature conférée"
 _HEADING_RE: re.Pattern[str] = re.compile(
     r"(?<![\w-])("
     + "|".join(
@@ -119,6 +130,10 @@ _MANAGER_ROLES: tuple[str, ...] = (
     "geschäftsführerin",
 )
 _DIRECTOR_ROLES: tuple[str, ...] = ("directeur", "directrice", "direktor", "direktorin")
+_PARTNER_ROLES: tuple[str, ...] = ("associé", "associée", "gesellschafter", "gesellschafterin")
+# A cantonal excerpt marks each person line active (« A ») or struck off (« R »); its lines read like a list of entries.
+_ACTIVE_EXCERPT_STATE: str = "A"
+_EXCERPT_HEADING: str = "personne(s) inscrite(s)"
 
 
 @dataclass(frozen=True)
@@ -136,11 +151,21 @@ class RegisteredPerson:
 
     @property
     def rank(self) -> int:
-        """How much the person runs the business: 4 owner, 3 chair, 2 manager, 1 director, 0 otherwise (a vice-chair too)."""
+        """
+        How much the person runs the business: 4 owner, 3 chair, 2 manager, 1 director or partner who signs, 0
+        otherwise (a vice-chair too, a partner « sans signature »).
+        """
         roles = " ".join(fold(role) for role in self.roles)
         if "vice" in roles:
             return 0
-        for rank, vocabulary in ((4, _OWNER_ROLES), (3, _CHAIR_ROLES), (2, _MANAGER_ROLES), (1, _DIRECTOR_ROLES)):
+        ranked_roles = (
+            (4, _OWNER_ROLES),
+            (3, _CHAIR_ROLES),
+            (2, _MANAGER_ROLES),
+            (1, _DIRECTOR_ROLES),
+            (1, _PARTNER_ROLES),
+        )
+        for rank, vocabulary in ranked_roles:
             if any(fold(role) in roles for role in vocabulary):
                 return rank
         return 0
@@ -201,7 +226,8 @@ class SwissRegisterPeople:
         Jules », « Garage Exemple - Modèle Exemple Jules »), or with the first name first and no separator
         (« Garage du Lac Jules Modèle »). Its first name must be one the list of given names knows: « Exemple,
         dos Santos Modèle » holds a last name only — unless the name says « titulaire » before it (« Exemple -
-        titulaire Modèle Jules »). Without a separator, the name is only a proposal.
+        titulaire Modèle Jules »). Without a separator, the name is only a proposal. The owner may as well open
+        the name before the comma, first name first (« Jules Modèle, Garage du Lac »).
 
         Args:
             firm_name: The name of a sole proprietorship in the register.
@@ -211,26 +237,8 @@ class SwissRegisterPeople:
         """
         parts = _OWNER_IN_FIRM_NAME_SEPARATOR_RE.split(firm_name.strip())
         if len(parts) > 1:
-            words = parts[-1].split()
-            is_named_owner = bool(words) and fold(words[0]) in _OWNER_ROLES
-            words = words[1:] if is_named_owner else words
-            name_words = [word for word in words if word not in _NAME_PARTICLES]
-            is_person = (
-                len(name_words) >= _MIN_OWNER_NAME_WORDS
-                and len(words) <= _MAX_OWNER_NAME_WORDS
-                and _LAST_NAME_START_RE.match(" ".join(words))
-            )
-            if not is_person or not all(word[:1].isupper() or word in _NAME_PARTICLES for word in words):
-                return None
-            last_name, first_name, is_cut_sure = SwissRegisterPeople._split_name_without_comma(words)
-            if not is_named_owner and not GivenNames.is_common_given_name(first_name.split()[0]):
-                return None
-            return RegisteredPerson(
-                first_name=title_case_name(first_name),
-                last_name=title_case_name(last_name) or last_name,
-                roles=("titulaire",),
-                is_name_certain=is_cut_sure,
-            )
+            owner_closing_name = SwissRegisterPeople._owner_closing_firm_name(parts[-1])
+            return owner_closing_name or SwissRegisterPeople._owner_opening_firm_name(parts[0])
         words = firm_name.split()
         if (
             len(words) < 3
@@ -243,6 +251,51 @@ class SwissRegisterPeople:
             last_name=title_case_name(words[-1]) or words[-1],
             roles=("titulaire",),
             is_name_certain=False,
+        )
+
+    @staticmethod
+    def _owner_closing_firm_name(part: str) -> RegisteredPerson | None:
+        """The owner closing a firm name, last name first (« Modèle Jules », « titulaire Modèle Jules »)."""
+        words = part.split()
+        is_named_owner = bool(words) and fold(words[0]) in _OWNER_ROLES
+        words = words[1:] if is_named_owner else words
+        name_words = [word for word in words if word not in _NAME_PARTICLES]
+        is_person = (
+            len(name_words) >= _MIN_OWNER_NAME_WORDS
+            and len(words) <= _MAX_OWNER_NAME_WORDS
+            and _LAST_NAME_START_RE.match(" ".join(words))
+        )
+        if not is_person or not all(word[:1].isupper() or word in _NAME_PARTICLES for word in words):
+            return None
+        last_name, first_name, is_cut_sure = SwissRegisterPeople._split_name_without_comma(words)
+        if not is_named_owner and not GivenNames.is_common_given_name(first_name.split()[0]):
+            return None
+        return RegisteredPerson(
+            first_name=title_case_name(first_name),
+            last_name=title_case_name(last_name) or last_name,
+            roles=("titulaire",),
+            is_name_certain=is_cut_sure,
+        )
+
+    @staticmethod
+    def _owner_opening_firm_name(part: str) -> RegisteredPerson | None:
+        """
+        The owner a firm name's first part names, first name first (« Jules Modèle » before « , Garage du Lac »).
+
+        Sure only when it holds a first name and a last name, nothing more.
+        """
+        words = part.split()
+        is_capitalised = all(word[:1].isupper() or word in _NAME_PARTICLES for word in words)
+        if not _MIN_OWNER_NAME_WORDS <= len(words) <= _MAX_OWNER_NAME_WORDS or not is_capitalised:
+            return None
+        if not GivenNames.is_common_given_name(words[0]) or GivenNames.is_common_given_name(words[-1]):
+            return None
+        last_name = " ".join(words[1:])
+        return RegisteredPerson(
+            first_name=title_case_name(words[0]),
+            last_name=title_case_name(last_name) or last_name,
+            roles=("titulaire",),
+            is_name_certain=len(words) == _MIN_OWNER_NAME_WORDS,
         )
 
     @staticmethod
@@ -288,11 +341,50 @@ class SwissRegisterPeople:
         business_words = {fold(word) for word in re.findall(r"[\w'’-]+", business_name)}
         return fold(last_words[-1]) in business_words
 
+    @classmethod
+    def excerpt_people(cls, entries: list[dict[str, Any]]) -> list[RegisteredPerson]:
+        """
+        The people a cantonal register excerpt lists today, for a firm whose FOSC publications name nobody.
+
+        Each line gives the person as an older publication does (« Exemple Paul, de Lausanne, à Morges ») and the
+        role apart (« associé gérant »); a struck-off line (state « R ») is a former one.
+
+        Args:
+            entries: The excerpt's people lines (``adms``): state (``codeEtat``), person (``pers``), role
+                (``fonction``).
+
+        Returns:
+            The active people, a company (an auditor) left out.
+        """
+        people: list[RegisteredPerson] = []
+        for entry in entries:
+            if str(entry.get("codeEtat") or "") != _ACTIVE_EXCERPT_STATE:
+                continue
+            parts = (str(entry.get("pers") or "").strip(), str(entry.get("fonction") or "").strip())
+            person = cls._person(", ".join(part for part in parts if part), heading=_EXCERPT_HEADING)
+            if person is not None:
+                people.append(person)
+        return people
+
     @staticmethod
     def lead_people(people: list[RegisteredPerson]) -> list[RegisteredPerson]:
         """The people holding the highest running role (owner, chair, manager, director); none when nobody runs it."""
         top = max((person.rank for person in people), default=0)
         return [person for person in people if top and person.rank == top]
+
+    @staticmethod
+    def family_name_of(people: list[RegisteredPerson]) -> str | None:
+        """
+        The last name the several people running a business share (« Exemple » for Jules and Paul Exemple).
+
+        Args:
+            people: The people holding the highest running role.
+
+        Returns:
+            Their family name, or ``None`` for a single person or people of different families.
+        """
+        last_names = {fold(person.last_name) for person in people}
+        return people[0].last_name if len(people) > 1 and len(last_names) == 1 else None
 
     @staticmethod
     def _plain_text(text: str) -> str:
@@ -317,21 +409,40 @@ class SwissRegisterPeople:
 
         People follow one another with a semicolon, or in the older lists with a comma before the next
         « Nom Prénom, … »; a heading may carry the signature (« Associé-gérant avec signature
-        individuelle: … »).
+        individuelle: … »). A sentence granting a signature names its people without a heading (« Signature
+        individuelle a été conférée à Modèle Jules, de …, à …, directeur. »).
         """
         sections: list[tuple[str, list[str]]] = []
         matches = list(_HEADING_RE.finditer(text))
         for index, match in enumerate(matches):
             body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
             body = cls._first_sentence(text[match.end() : body_end])
-            entries = [
-                person.strip(" .")
-                for entry in body.split(";")
-                for person in _NEXT_PERSON_RE.split(entry)
-                if person.strip(" .")
-            ]
-            sections.append((match.group(1).lower(), entries))
+            sections.append((match.group(1).lower(), cls._entries(body)))
+        for match in _SIGNATURE_GRANTED_RE.finditer(text):
+            body = cls._first_sentence(text[match.end() :])
+            entries = [entry for part in _GRANTED_PEOPLE_SEPARATOR_RE.split(body) for entry in cls._entries(part)]
+            sections.append((_SIGNATURE_GRANTED_HEADING, entries))
         return sections
+
+    @staticmethod
+    def _entries(body: str) -> list[str]:
+        """
+        The people of a section's text, one entry each.
+
+        A last name standing alone before a comma opens « Nom, Prénoms, de … » (« Exemple, Jules Paul, de … »): it
+        stays with the first names that follow, which the older lists' split would have cut away.
+        """
+        people: list[str] = []
+        for entry in body.split(";"):
+            for written_person in _NEXT_PERSON_RE.split(entry):
+                person = written_person.strip(" .")
+                if not person:
+                    continue
+                if people and " " not in people[-1] and "," not in people[-1]:
+                    people[-1] = f"{people[-1]}, {person}"
+                else:
+                    people.append(person)
+        return people
 
     @staticmethod
     def _first_sentence(text: str) -> str:
@@ -402,7 +513,8 @@ class SwissRegisterPeople:
             for part in details
             if not (_ORIGIN_RE.match(part) or _DOMICILE_RE.match(part) or _NOT_A_ROLE_RE.search(part))
         )
-        if heading in _ROLE_HEADINGS:
+        is_partner_without_signature = heading in _PARTNER_HEADINGS and bool(_WITHOUT_SIGNATURE_RE.search(entry))
+        if heading in _ROLE_HEADINGS and not is_partner_without_signature:
             roles = (heading, *roles)
         return RegisteredPerson(
             first_name=title_case_name(first_name),

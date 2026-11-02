@@ -54,6 +54,7 @@ from services.ai_assistant.mailbox_sync import ai_assistant_mailbox_sync
 from services.ai_assistant.report_service import ai_assistant_report_service
 from services.ai_assistant.request_runner import AiAssistantRequestRunner
 from services.ai_assistant.source_service import ai_assistant_source_service
+from services.cms_invitation_watch_service import cms_invitation_watch_service
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from services.email_queue_worker import email_queue_worker
 from services.notification_service import notification_service, run_daily_recap_loop
@@ -157,6 +158,7 @@ async def startup_event() -> None:
         email_queue_worker.run_forever(),
         run_order_fulfillment_recovery_loop(),
         run_order_payment_reconciliation_loop(),
+        cms_invitation_watch_service.run_loop(),
         acquisition_orchestrator.run_forever(),
         _warmup_maps_autocomplete(),
         run_daily_recap_loop(),

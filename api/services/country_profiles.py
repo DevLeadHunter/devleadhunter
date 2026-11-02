@@ -23,6 +23,7 @@ from typing import ClassVar
 
 from enums.privacy_regime import PrivacyRegime
 from enums.sms_opt_out_mode import SmsOptOutMode
+from services.french_overseas import FrenchOverseas
 
 DEFAULT_COUNTRY_CODE: str = "FR"
 
@@ -245,7 +246,7 @@ class CountryProfiles:
                 privacy_authority_name="Commission nationale de l'informatique et des libertés (CNIL)",
                 privacy_authority_url="https://www.cnil.fr",
             ),
-            address_trailing_names=("France",),
+            address_trailing_names=("France", *FrenchOverseas.address_names()),
         ),
         "CH": CountryProfile(
             code="CH",

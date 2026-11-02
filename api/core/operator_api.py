@@ -22,6 +22,7 @@ from core.config import settings
 
 _DEFAULT_API_BASE: str = "https://api.devleadhunter.dibodev.fr"
 _API_PREFIX: str = "/api/v1"
+_TRANSIENT_STATUSES: frozenset[int] = frozenset({500, 502, 503, 504})
 
 
 class OperatorApi:
@@ -97,6 +98,13 @@ class OperatorApi:
             The response, whatever its status.
         """
         return await self._client.post(f"{self.base_url}{_API_PREFIX}{path}", headers=self._auth_headers(), json=json)
+
+    @staticmethod
+    def is_transient_error(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
+        """Whether an API error is passing (a deployment restarting it, a database that times out), worth a new try."""
+        if isinstance(exc, httpx.RequestError):
+            return True
+        return exc.response.status_code in _TRANSIENT_STATUSES
 
     def _auth_headers(self) -> dict[str, str]:
         """The Bearer header resolved by :meth:`authenticate`."""

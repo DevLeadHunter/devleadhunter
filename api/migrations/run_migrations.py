@@ -215,6 +215,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_email_queue_send_attempts", "migrations.add_email_queue_send_attempts"),
     ("hold_back_undeliverable_pending_emails", "migrations.hold_back_undeliverable_pending_emails"),
     ("set_email_template_layout_default_plain", "migrations.set_email_template_layout_default_plain"),
+    ("add_prospect_search_region_and_registries", "migrations.add_prospect_search_region_and_registries"),
+    ("add_prospect_region", "migrations.add_prospect_region"),
     ("add_demo_site_is_showcase", "migrations.add_demo_site_is_showcase"),
 ]
 

@@ -21,6 +21,8 @@ from enums.prospect_search import (
 from enums.website_status import WebsiteStatus
 from models.prospect_search import ProspectSearch
 from services.prospect_search.candidate_facts import CandidateFacts
+from services.prospect_search.name_in_address import NameInAddress
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.trade_catalog import TradeProfile
 
 # A rating read on fewer reviews says too little to discard a business.
@@ -88,6 +90,16 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="L'annuaire suisse n'a pas répondu : l'astérisque « pas de publicité » n'a pas été lu.",
             )
+        register_successor = facts.register_successor
+        if register_successor is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Le registre du commerce donne « {register_successor.get('snippet')} », et "
+                    f"« {register_successor['value']} » est inscrite à {facts.town} : à vérifier, "
+                    "l'atelier continue peut-être sous ce nom."
+                ),
+            )
         if facts.has_email_on_another_site and facts.email is not None:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM,
@@ -96,11 +108,44 @@ class CandidateDecision:
                     "à vérifier."
                 ),
             )
-        has_untraced_website = facts.has_website_button is True and facts.website is None and facts.facebook_url is None
+        has_untraced_website = (
+            facts.has_website_button is True
+            and (facts.website is None or facts.is_website_guessed_from_email_domain)
+            and not facts.is_facebook_page_the_listed_website
+        )
         if criteria.only_without_website and has_untraced_website:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM,
                 detail="Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.",
+            )
+        technical_address = facts.website_technical_address
+        is_reachable = has_proven_email or has_guessed_email or has_mobile
+        if criteria.only_without_website and technical_address is not None and facts.website is None and is_reachable:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"{technical_address['source']} lui donne {technical_address['value']}, l'adresse technique d'un "
+                    "site : il a sans doute un site, qui n'a pas été retrouvé : à vérifier."
+                ),
+            )
+        place_elsewhere = facts.contact_elsewhere
+        if place_elsewhere is not None and facts.email is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"{place_elsewhere['source']} ({place_elsewhere.get('url') or facts.email}) désigne un autre "
+                    f"endroit ({place_elsewhere['value']}) que {facts.town} : à vérifier, ce peut être un homonyme."
+                ),
+            )
+        email_person_mismatch = NameInAddress.email_person_mismatch(facts.email, facts) if facts.email else None
+        if email_person_mismatch is not None:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Son email ({facts.email}) porte le nom de {email_person_mismatch.email_person}, mais "
+                    f"{email_person_mismatch.named_by} nomme {email_person_mismatch.named_person} : à vérifier, ce "
+                    "n'est peut-être pas son adresse."
+                ),
             )
         is_page_without_phone = (
             facts.origin == CandidateOrigin.FACEBOOK_SEARCH.value and facts.is_facebook_page_read and not facts.phone
@@ -118,6 +163,29 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="Page Facebook dont le nom ne dit pas le métier : à vérifier (association, groupe, agence…).",
             )
+        if facts.is_placed_by_the_search_only and (has_proven_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=f"Sa fiche Google ne donne pas d'adresse : rien ne montre qu'il est à {facts.town}, à vérifier.",
+            )
+        if facts.is_addressed_at_town_hall and (has_proven_email or has_guessed_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    "Sa fiche Google donne l'adresse de la mairie et aucune entreprise de son nom n'est inscrite dans "
+                    "le département : une commune de rattachement, pas un atelier ? À vérifier."
+                ),
+            )
+        registered_activity = facts.activity_of_another_trade
+        if registered_activity is not None and (has_proven_email or has_guessed_email or has_mobile):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail=(
+                    f"Le registre inscrit « {registered_activity.get('snippet') or facts.name} » sous une autre "
+                    f"activité ({registered_activity['value']}) : à vérifier, ce n'est peut-être pas un "
+                    f"{trade.label.lower()}."
+                ),
+            )
         if cls._meets_channel(criteria.channel, has_email=has_proven_email, has_mobile=has_mobile):
             return CandidateVerdict(CandidateStatus.KEPT)
         if not has_proven_email and can_read_facebook_page and criteria.channel != ProspectSearchChannel.SMS:
@@ -125,10 +193,7 @@ class CandidateDecision:
                 CandidateStatus.NEEDS_BROWSER, detail="Sa page Facebook reste à lire pour y chercher son email."
             )
         if has_guessed_email:
-            return CandidateVerdict(
-                CandidateStatus.TO_CONFIRM,
-                detail="Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir.",
-            )
+            return CandidateVerdict(CandidateStatus.TO_CONFIRM, detail=cls._guessed_email_detail(facts))
         if has_proven_email or has_mobile:
             return CandidateVerdict(
                 CandidateStatus.SET_ASIDE, detail=cls._set_aside_detail(has_proven_email, has_mobile)
@@ -145,6 +210,20 @@ class CandidateDecision:
         if channel == ProspectSearchChannel.EMAIL_AND_SMS:
             return has_email and has_mobile
         return has_email
+
+    @staticmethod
+    def _guessed_email_detail(facts: CandidateFacts) -> str:
+        """Why an email without a frank proof is left to the user: it may even name another business."""
+        if facts.email is not None and NameInAddress.email_names_another_business(facts.email, facts):
+            return f"Son email ({facts.email}) porte le nom d'une autre affaire : à vérifier."
+        if facts.is_email_beside_another_phone:
+            return (
+                f"Son email ({facts.email}) est écrit à côté d'un autre numéro que le sien : à vérifier, ce peut être "
+                "un homonyme."
+            )
+        if facts.is_email_unplaced:
+            return f"La page qui donne son email ({facts.email}) ne dit pas où il est : à vérifier, ce peut être un homonyme."
+        return "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir."
 
     @staticmethod
     def _set_aside_detail(has_email: bool, has_mobile: bool) -> str:
@@ -169,6 +248,12 @@ class CandidateDecision:
                 if facts.address
                 else f"Numéro d'un autre pays que la recherche : {facts.phone}",
             )
+        searched_department = facts.searched_department
+        if searched_department is not None and facts.is_outside_region:
+            return cls._rejected(
+                CandidateRejectReason.OUT_OF_COUNTRY,
+                f"Hors de la zone de la recherche ({searched_department.label}) : {facts.address or facts.phone}",
+            )
         if facts.refuses_advertising:
             return cls._rejected(
                 CandidateRejectReason.NO_ADVERTISING,
@@ -178,9 +263,16 @@ class CandidateDecision:
             return cls._rejected(
                 CandidateRejectReason.HOMONYM, "Google montre une autre entreprise du même nom, dans une autre ville."
             )
-        if facts.is_chain:
+        if facts.is_chain or NetworkOutlets.facebook_page_names_network(facts.facebook_url):
+            return cls._rejected(CandidateRejectReason.CHAIN, cls._chain_detail(facts))
+        if facts.registered_association is not None:
             return cls._rejected(
-                CandidateRejectReason.CHAIN, "Enseigne de réseau ou franchise : le patron ne décide pas seul."
+                CandidateRejectReason.WRONG_TRADE,
+                f"Inscrit au registre comme association ({facts.registered_association}) : pas une entreprise.",
+            )
+        if trade.names_another_trade(facts.name):
+            return cls._rejected(
+                CandidateRejectReason.WRONG_TRADE, f"Son nom dit un autre métier que celui cherché : « {facts.name} »."
             )
         if not facts.matches_trade or not trade.accepts_category(facts.google_category):
             category = facts.google_category or "autre activité"
@@ -205,6 +297,15 @@ class CandidateDecision:
                 f"Note Google {facts.google_rating:.1f} sur {facts.google_reviews_count} avis, sous le seuil demandé.",
             )
         return None
+
+    @staticmethod
+    def _chain_detail(facts: CandidateFacts) -> str:
+        """The network a discarded outlet belongs to: a brand it is the agent or dealer of, its Facebook page's, a chain."""
+        if facts.outlet_brand is not None:
+            return f"Agent ou concessionnaire {facts.outlet_brand} : le patron ne décide pas seul."
+        if not facts.is_chain:
+            return "Sa page Facebook porte le nom d'un réseau : le patron ne décide pas seul."
+        return "Enseigne de réseau ou franchise : le patron ne décide pas seul."
 
     @staticmethod
     def _closed_detail(facts: CandidateFacts) -> str:

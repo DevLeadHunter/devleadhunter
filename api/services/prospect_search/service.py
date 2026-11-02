@@ -24,7 +24,8 @@ from schemas.prospect_search import (
     RefusedCandidateDecision,
     SearchTradeCounts,
 )
-from services.country_profiles import CountryProfiles
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
+from services.french_overseas import FrenchOverseas
 from services.organization_service import organization_service
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
 from services.prospect_search.candidate_store import CandidateStore
@@ -82,7 +83,8 @@ class ProspectSearchService:
             The stored search, still pending (call :meth:`start_or_queue` to run it).
 
         Raises:
-            ProspectSearchError: No usable trade, a country the prospection is not open to, or a full queue.
+            ProspectSearchError: No usable trade, a country or an overseas department the search is not open to,
+                or a full queue.
         """
         if self._has_search_at_work(db, user_id) and self._queued_count(db, user_id) >= _MAXIMUM_QUEUED_SEARCHES:
             raise ProspectSearchError(_QUEUE_FULL)
@@ -97,16 +99,22 @@ class ProspectSearchService:
         profile = CountryProfiles.declared(payload.country)
         if profile is None or not profile.enabled:
             raise ProspectSearchError("La prospection n'est pas ouverte dans ce pays.")
+        department = FrenchOverseas.by_code(payload.region) if payload.region else None
+        is_region_closed = department is None or not department.is_searchable or profile.code != DEFAULT_COUNTRY_CODE
+        if payload.region and is_region_closed:
+            raise ProspectSearchError("La recherche n'est pas ouverte dans cette zone.")
 
         search = ProspectSearch(
             user_id=user_id,
             trades=trades,
             country=profile.code,
+            region=department.code if department is not None else None,
             cities=[city.strip() for city in payload.cities if city.strip()],
             count_per_trade=payload.count_per_trade,
             channel=payload.channel.value,
             only_without_website=payload.only_without_website,
             minimum_rating=payload.minimum_rating,
+            use_registries=payload.use_registries,
             validation_mode=payload.validation_mode.value,
             status=ProspectSearchStatus.PENDING.value,
             progress={},

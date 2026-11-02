@@ -221,20 +221,28 @@ def test_a_live_german_site_selling_something_stays_live() -> None:
     assert _check(service, "https://garage-keller.ch") is WebsiteStatus.LIVE
 
 
-def test_a_host_s_welcome_page_for_a_domain_without_a_site_is_dead() -> None:
+def test_a_host_s_welcome_page_for_a_domain_without_a_site_is_a_placeholder() -> None:
+    """The domain answers with no site: never a dead site (« votre site ne répond plus »), never a live one."""
     _FakeAsyncClient.response = _FakeResponse(
         200, "<html><head><title>Bienvenue sur garage-exemple.ch</title></head><body></body></html>"
     )
 
-    assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.DEAD
+    assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.PLACEHOLDER
 
 
-def test_a_host_s_welcome_page_of_an_accented_domain_is_dead() -> None:
+def test_a_host_s_welcome_page_of_an_accented_domain_is_a_placeholder() -> None:
     _FakeAsyncClient.response = _FakeResponse(
         200, "<html><head><title>Bienvenue sur rochat-contrôles.ch</title></head><body></body></html>"
     )
 
-    assert _check(WebsiteLivenessService(), "https://xn--rochat-contrles-nsb.ch/") is WebsiteStatus.DEAD
+    assert _check(WebsiteLivenessService(), "https://xn--rochat-contrles-nsb.ch/") is WebsiteStatus.PLACEHOLDER
+
+
+def test_a_domain_answering_an_empty_page_is_a_placeholder() -> None:
+    """« jardinier-exemple.com » answers 200 with nothing in it."""
+    _FakeAsyncClient.response = _FakeResponse(200, "")
+
+    assert _check(WebsiteLivenessService(), "http://jardinier-exemple.com") is WebsiteStatus.PLACEHOLDER
 
 
 def test_a_site_welcoming_its_visitors_by_name_stays_live() -> None:
@@ -243,3 +251,12 @@ def test_a_site_welcoming_its_visitors_by_name_stays_live() -> None:
     )
 
     assert _check(WebsiteLivenessService(), "https://garage-exemple.ch/") is WebsiteStatus.LIVE
+
+
+def test_a_domain_parked_by_its_registrar_is_dead() -> None:
+    _FakeAsyncClient.response = _FakeResponse(
+        200,
+        '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script></head></html>',
+    )
+
+    assert _check(WebsiteLivenessService(), "https://welington.fr") is WebsiteStatus.DEAD

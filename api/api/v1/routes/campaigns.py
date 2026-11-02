@@ -43,12 +43,14 @@ from schemas.campaign_results import (
     CampaignResultsReply,
     CampaignResultsResponse,
 )
+from schemas.campaign_storyblok_spaces import CampaignStoryblokSpacesResponse
 from schemas.campaign_videos import CampaignVideoRequestsCreate, CampaignVideoRequestsResponse, CampaignVideosResponse
 from services.auth_service import get_current_user
 from services.campaign_follow_up_rules import CampaignFollowUpRules
 from services.campaign_queue_service import CampaignQueueService
 from services.campaign_results_service import campaign_results_service
 from services.campaign_service import campaign_service
+from services.campaign_storyblok_spaces_service import CampaignStoryblokSpacesService
 from services.campaign_videos_service import CampaignVideosService
 from services.sms.send_window import france_send_window
 from services.sms.templates import find_sms_template
@@ -1111,6 +1113,17 @@ async def get_campaign_videos(
     """Where the videos of the campaign's demo sites stand, and whether the owner's PC is on to build them."""
     campaign = _get_or_404(db, campaign_id, current_user.id)
     return CampaignVideosService.summarize(db, campaign)
+
+
+@router.get("/{campaign_id}/storyblok-spaces", response_model=CampaignStoryblokSpacesResponse)
+async def get_campaign_storyblok_spaces(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignStoryblokSpacesResponse:
+    """Which Storyblok spaces of the campaign's demo sites can be released together, and which stay."""
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    return await CampaignStoryblokSpacesService.summarize(db, campaign)
 
 
 @router.post("/{campaign_id}/videos/requests", response_model=CampaignVideoRequestsResponse)

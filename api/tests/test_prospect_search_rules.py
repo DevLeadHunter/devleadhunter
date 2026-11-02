@@ -28,6 +28,7 @@ from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity, KnownBusinessIndex
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.facebook_page_results import FacebookPageResults
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.registry_sources import RegistryCompany
 from services.prospect_search.search_judge import SearchJudge, SearchResultLine
 from services.prospect_search.search_zones import SearchZones
@@ -132,6 +133,117 @@ class TestTradeCatalog:
         assert _LANDSCAPER.accepts_category(None) is True
 
 
+class TestNetworkOutlets:
+    @pytest.mark.parametrize(
+        ("name", "category", "expected_brand"),
+        [
+            ("PEUGEOT - DAX AUTO SAS", "Atelier de réparation automobile", "Peugeot"),
+            ("Peugeot - Garage Paul Exemple", "Concessionnaire Peugeot", "Peugeot"),
+            ("RENAULT / DACIA - GARAGE TASTET", "Garage automobile", "Renault"),
+            ("Garage Exemple voitures sans permis Aixam neuves occasions", "Concessionnaire automobile", "Aixam"),
+            ("Garage Exemple Agent Renault", "Atelier de mécanique automobile", "Renault"),
+            ("Garage Exemple", "Concessionnaire Peugeot", "Peugeot"),
+            ("DS Store Exemple", "Concessionnaire DS", "DS"),
+            ("Welington Automobiles", "Concessionnaire automobile", None),
+            ("Garage Exemple", "Concessionnaire automobile", None),
+            ("Mini Garage Exemple", "Garage automobile", None),
+        ],
+    )
+    def test_a_brand_heading_the_name_or_naming_the_dealer_category_makes_a_brand_outlet(
+        self, name: str, category: str, expected_brand: str | None
+    ) -> None:
+        assert TradeCatalog.resolve("garage").brand_outlet_of(name, category) == expected_brand
+
+    def test_a_landscaper_named_like_a_car_brand_is_no_dealer(self) -> None:
+        assert _LANDSCAPER.brand_outlet_of("Renault Jardins", "Paysagiste") is None
+
+    @pytest.mark.parametrize(
+        ("name", "is_network"),
+        [
+            ("AD Carrosserie et Garage Expert ATELIER EXEMPLE", True),
+            ("AD Garage Expert EXEMPLE", True),
+            ("Bosch Car Service - Garage Exemple", True),
+            ("Motrio Garage Exemple", True),
+            ("Garage des Marais - Motrio", True),
+            ("Autoprimo Garage Exemple", True),
+            ("Eurorepar Car Service Exemple", True),
+            ("Top Garage Exemple", True),
+            ("Point S", True),
+            ("Carter-Cash Exemple", True),
+            ("Vulco Exemple", True),
+            ("Auto Expert", False),
+            ("Garage Expert Exemple", False),
+            ("Garage Adam", False),
+            ("Point Service Auto", False),
+        ],
+    )
+    def test_the_networks_of_independent_garages_are_chains(self, name: str, is_network: bool) -> None:
+        assert NetworkOutlets.names_network(name) is is_network
+
+    @pytest.mark.parametrize(
+        ("facebook_url", "names_network"),
+        [
+            ("https://www.facebook.com/pages/AD-Garage-du-Paradis/419715775056290", True),
+            ("https://www.facebook.com/Motrio.GarageExempleMontlucon", True),
+            ("https://www.facebook.com/p/Carrosserie-CS-AUTO-100091598269049/", False),
+            ("https://www.facebook.com/100093608361393", False),
+            (None, False),
+        ],
+    )
+    def test_a_facebook_page_named_after_a_network_is_a_network_s(
+        self, facebook_url: str | None, names_network: bool
+    ) -> None:
+        assert NetworkOutlets.facebook_page_names_network(facebook_url) is names_network
+
+    @pytest.mark.parametrize(
+        ("website", "is_network_page"),
+        [
+            ("https://www.motrio.fr/shop/GLD AUTOMOBILES/1234", True),
+            ("http://www.boschcarservice.fr/", True),
+            ("https://www.autoprimo.com/storelocator", True),
+            ("https://www.points.fr/centre/my-cars-03-montlucon/", True),
+            ("https://www.ag-garage.fr/", False),
+        ],
+    )
+    def test_a_page_of_a_network_s_site_is_known(self, website: str, is_network_page: bool) -> None:
+        assert NetworkOutlets.is_network_page(website) is is_network_page
+
+    def test_a_business_whose_facebook_page_is_named_after_a_network_is_discarded(self) -> None:
+        facts = _facts(
+            name="Garage des Marais",
+            trade_key="garage",
+            country="FR",
+            city="Montluçon",
+            google_category="Atelier de réparation automobile",
+            facebook_url="https://www.facebook.com/Motrio.GarageDesMaraisMontlucon",
+            email="ggedesmarais@hotmail.com",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+
+        verdict = CandidateDecision.decide(facts, TradeCatalog.resolve("garage"), _EMAIL_ONLY)
+
+        assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+        assert verdict.detail == "Sa page Facebook porte le nom d'un réseau : le patron ne décide pas seul."
+
+    def test_a_brand_outlet_is_discarded_with_its_brand_in_plain_words(self) -> None:
+        garage = TradeCatalog.resolve("garage")
+        facts = _facts(
+            name="Peugeot - Garage Paul Exemple",
+            trade_key="garage",
+            country="FR",
+            city="Mulhouse",
+            google_category="Concessionnaire Peugeot",
+            email="garage.exemple@wanadoo.fr",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+
+        assert CandidateVerifier.mark_network_outlet(facts, garage) is True
+        verdict = CandidateDecision.decide(facts, garage, _EMAIL_ONLY)
+
+        assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+        assert verdict.detail == "Agent ou concessionnaire Peugeot : le patron ne décide pas seul."
+
+
 class TestSearchZones:
     def test_asked_towns_are_searched_alone_and_in_order(self) -> None:
         plan = SearchZones.plan(country="CH", asked_cities=[" Sion ", "Bulle"], already_scanned=set(), seed=1)
@@ -174,6 +286,16 @@ class TestCandidateIdentity:
 
         assert people == CandidateIdentity.facebook_key("https://www.facebook.com/profile.php?id=100075901827931")
         assert people == CandidateIdentity.facebook_key("https://www.facebook.com/p/Jardins-Martin-100075901827931/")
+
+    def test_a_registry_number_is_one_key_however_it_is_spaced(self) -> None:
+        listing_keys = CandidateIdentity.keys(
+            name="Garage CS Auto", city="Exemple", country="FR", registry_number="123 456 789"
+        )
+        other_listing_keys = CandidateIdentity.keys(
+            name="Carrosserie CS Auto", city="Exemple", country="FR", registry_number="123456789"
+        )
+
+        assert "reg:123456789" in set(listing_keys) & set(other_listing_keys)
 
     def test_the_google_identifier_is_read_from_both_maps_url_forms(self) -> None:
         cid = str(int("66d92e58019e9a3e", 16))
@@ -419,6 +541,12 @@ class TestCandidateDecision:
         declared_as_facebook_page = _facts(
             has_website_button=True, facebook_url="https://www.facebook.com/tendance", **proven
         )
+        declared_as_facebook_page.add_evidence(
+            "facebook",
+            "https://www.facebook.com/tendance",
+            source="Fiche Google",
+            url="https://www.facebook.com/tendance",
+        )
 
         verdict = CandidateDecision.decide(untraced, _LANDSCAPER, _EMAIL_ONLY)
 
@@ -427,6 +555,30 @@ class TestCandidateDecision:
         assert (
             CandidateDecision.decide(declared_as_facebook_page, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.KEPT
         )
+
+    def test_a_facebook_page_found_by_a_search_does_not_stand_for_the_website_the_listing_declares(self) -> None:
+        facts = _facts(
+            name="DAC Automobiles",
+            trade_key="garage",
+            country="FR",
+            city="Narrosse",
+            google_category="Atelier de réparation automobile",
+            has_website_button=True,
+            facebook_url="https://www.facebook.com/dacautomobiles",
+            email="dacautomobiles@orange.fr",
+            email_proof_level=EmailProofLevel.DIRECTORY.value,
+        )
+        facts.add_evidence(
+            "facebook",
+            "https://www.facebook.com/dacautomobiles",
+            source="Recherche Facebook",
+            url="https://www.facebook.com/dacautomobiles/?locale=fr_FR",
+        )
+
+        verdict = CandidateDecision.decide(facts, TradeCatalog.resolve("garage"), _EMAIL_ONLY)
+
+        assert verdict.status is CandidateStatus.TO_CONFIRM
+        assert "déclaré sur sa fiche Google" in (verdict.detail or "")
 
     def test_a_search_open_to_businesses_with_a_website_keeps_them(self) -> None:
         criteria = SearchCriteria(channel=ProspectSearchChannel.EMAIL, only_without_website=False, minimum_rating=None)

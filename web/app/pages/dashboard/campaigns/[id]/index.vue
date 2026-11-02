@@ -123,6 +123,8 @@
 
       <CampaignVideosCard :campaign-id="campaign.id" />
 
+      <CampaignStoryblokSpacesCard :campaign-id="campaign.id" />
+
       <div class="border-b border-[var(--app-line)]">
         <!-- `overflow-x-auto` alone makes the row scroll on both axes on iOS (an implicit `overflow-y: auto` plus the 1px the tabs overlap the border by), so a finger could drag the tabs up and down: lock the touch gesture to the x axis. -->
         <nav

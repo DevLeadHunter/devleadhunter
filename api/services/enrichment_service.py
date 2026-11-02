@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
@@ -24,11 +25,12 @@ from enums.professional_license_source import ProfessionalLicenseSource
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
-from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrichment_scraper
+from scrappers.enrichment_scraper import EnrichmentData, _customer_reviews, _dedupe_reviews, enrichment_scraper
 from scrappers.google_scraper import GoogleScraper
 from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
-from services.decision_maker.types import NameCandidate, NameResolution
+from services.decision_maker.french_departments import FrenchDepartments
+from services.decision_maker.types import NameCandidate, NameResolution, SearchedOwner
 from services.enrichment_content import EnrichmentContentMapper
 from services.photo_labeling_service import photo_labeling_service
 from services.professional_license_service import professional_license_service
@@ -44,10 +46,12 @@ from services.scraper_diagnostics_service import (
 from services.service_list_reader import ServiceListReader
 from services.trade_normalizer import TradeNormalizer
 from services.validation_service import validation_service
+from services.website_liveness_service import website_liveness_service
 
 logger = logging.getLogger(__name__)
 
 _MIN_SPECIFIC_NAME_WORDS: int = 2
+_FRENCH_POSTAL_CODE_RE: re.Pattern[str] = re.compile(r"\d{5}")
 
 # Registre/Pappers are shared rate-limited APIs — a scraping job must not fire dozens of lookups at once.
 _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
@@ -199,7 +203,7 @@ class EnrichmentService:
             else:
                 record.reviews = self._merge_reviews(record.reviews, data.reviews)
             # Same Facebook author often comes back with extra DOM chrome on a relance.
-            record.reviews = _dedupe_reviews(record.reviews)
+            record.reviews = _dedupe_reviews(_customer_reviews(record.reviews))
         if data.opening_hours and self._should_apply_opening_hours(record.opening_hours, data.opening_hours):
             record.opening_hours = self._valid_hour_rows(data.opening_hours)
         if data.services:
@@ -303,6 +307,7 @@ class EnrichmentService:
                         data.description, business_name=prospect.name, city=prospect.city
                     )
                 self._apply_data(record, data)
+                self._set_aside_network_outlet(db, prospect, record.place_title, record.description)
                 # A Facebook page on the Maps listing (as the "website" link or a social link) is not a
                 # real website — capture it as the prospect's facebook_url so a later complementary
                 # Facebook enrichment can recover a second contact email (e.g. contact@…).
@@ -311,6 +316,7 @@ class EnrichmentService:
                     prospect.facebook_url = facebook_url
                     db.add(prospect)
                     logger.info("Enrichment found a Facebook page for prospect_id=%s: %s", prospect.id, facebook_url)
+                self._link_facebook_page(record, prospect)
                 # Fold any discovered email (typically from the Facebook page) into the multi-email list,
                 # and backfill the list from the existing single email on first pass.
                 emails = getattr(data, "emails", None) or []
@@ -322,6 +328,10 @@ class EnrichmentService:
                     logger.info("Enrichment set the website of prospect_id=%s to %s", prospect.id, website)
                     prospect.website = website
                     prospect.website_status = None
+                    db.add(prospect)
+                if prospect.website and prospect.website_status is None:
+                    status = await website_liveness_service.check_website_status(prospect.website)
+                    prospect.website_status = status.value if status is not None else None
                     db.add(prospect)
                 # Phone from the page (Facebook « Coordonnées ») — Facebook-discovered prospects
                 # start with no contact data at all, so the enrichment fills the gap.
@@ -445,6 +455,89 @@ class EnrichmentService:
         return candidate or None
 
     @staticmethod
+    def _link_facebook_page(record: ProspectEnrichment, prospect: ProspectDB) -> None:
+        """Give the generated site the business's known Facebook page among its social links, when none is there."""
+        page = (prospect.facebook_url or "").strip()
+        if page and not (record.social_links or {}).get("facebook"):
+            record.social_links = {**(record.social_links or {}), "facebook": page}
+
+    @staticmethod
+    def _set_aside_network_outlet(
+        db: Session, prospect: ProspectDB, place_title: str | None, description: str | None = None
+    ) -> None:
+        """
+        Set aside a business whose Google listing names a network or the brand it sells (« Garage Exemple - Motrio »),
+        or whose presentation says it is a brand's agent or approved repairer (« atelier … agréé Renault »).
+
+        The same networks and brands as the prospect search's: the owner of such an outlet does not decide alone
+        on a website.
+
+        Args:
+            db: Active database session.
+            prospect: The business being enriched.
+            place_title: The title of its Google listing, as the enrichment read it.
+            description: Its presentation, as the enrichment read it.
+        """
+        from services.prospect_search.network_outlets import NetworkOutlets
+        from services.prospect_search.trade_catalog import TradeCatalog
+        from services.prospect_service import prospect_service
+
+        if prospect.is_dismissed:
+            return
+        trade = TradeCatalog.resolve(prospect.category or "")
+        title = (place_title or "").strip()
+        if title and (trade.brand_outlet_of(title, None) is not None or NetworkOutlets.names_network(title)):
+            reason = (
+                f"Sa fiche Google « {title} » est celle d'un réseau ou d'une marque : le patron ne décide pas seul."
+            )
+        else:
+            brand = trade.brand_dealt_in_text(description or "")
+            if brand is None:
+                return
+            reason = f"Sa présentation le dit agent ou réparateur agréé {brand} : le patron ne décide pas seul."
+        prospect_service.dismiss(db, prospect.id, reason=reason, dismissed_by_user_id=None)
+
+    @staticmethod
+    def set_aside_network_on_photos(db: Session, prospect_id: int, labels: dict[str, Any]) -> None:
+        """
+        Set aside a business whose photos show a network's or a brand's sign (« enseigne 'Top Garage' », « panneau
+        avec logo AD Garage Expert », « Agence Renault »), as the vision labels describe them.
+
+        A product never counts, even of a network (« batterie Bosch », « plaquettes de frein Eurorepar »).
+
+        Args:
+            db: Active database session.
+            prospect_id: The business whose photos were labelled.
+            labels: Its photo labels, by photo address, each with the caption the vision model wrote.
+        """
+        from services.prospect_search.network_outlets import NetworkOutlets
+        from services.prospect_search.trade_catalog import TradeCatalog
+        from services.prospect_service import prospect_service
+
+        prospect = db.get(ProspectDB, prospect_id)
+        if prospect is None or prospect.is_dismissed:
+            return
+        trade = TradeCatalog.resolve(prospect.category or "")
+        captions = [str(label.get("description") or "") for label in labels.values() if isinstance(label, dict)]
+        caption = next(
+            (
+                caption
+                for caption in captions
+                if NetworkOutlets.shows_network_sign(caption) or trade.brand_dealt_in_text(caption) is not None
+            ),
+            None,
+        )
+        if caption is None:
+            return
+        prospect_service.dismiss(
+            db,
+            prospect.id,
+            reason=f"Ses photos montrent l'enseigne d'un réseau ou d'une marque (« {caption.rstrip('.')} ») : le "
+            "patron ne décide pas seul.",
+            dismissed_by_user_id=None,
+        )
+
+    @staticmethod
     def _own_website(stored: str | None, *, listed: str | None) -> str | None:
         """
         The website a prospect keeps once its listing is read: its own site only.
@@ -496,7 +589,12 @@ class EnrichmentService:
             # The full cascade reads FRENCH registries (SIRENE, Pappers): elsewhere it could only find a French homonym.
             resolver = decision_maker_resolver if country == "FR" else public_text_resolver
             resolution = await resolver.resolve(
-                context_from_prospect(prospect, record, registry_number=registry_number)
+                context_from_prospect(
+                    prospect,
+                    record,
+                    registry_number=registry_number,
+                    searched_owner=self._searched_owner(db, prospect),
+                )
             )
             record.name_candidates = [candidate.to_persistable() for candidate in resolution.candidates]
 
@@ -534,8 +632,20 @@ class EnrichmentService:
                             ),
                         )
 
+            # Another person the registry writes at the business's place contradicts the chosen one: a human decides.
+            registry_person = self._registry_person_against(candidate, resolution.candidates)
+            if candidate is not None and registry_person is not None:
+                status_to_apply = NameResolution.PROPOSED
+                record.identity_check_status = IdentityCheckStatus.CONFLICT.value
+                record.identity_check_detail = (
+                    f"{self._full_name(candidate)} est proposé, mais le registre inscrit "
+                    f"{self._full_name(registry_person)} ({registry_person.provenance or registry_person.source}) : "
+                    "à vérifier avant de l'utiliser"
+                )[:400]
+
             if status_to_apply == NameResolution.AUTO and candidate is not None:
                 self._store_trusted_contact(record, candidate)
+                await self._place_at_registered_seat(prospect, candidate)
             elif status_to_apply == NameResolution.PROPOSED and candidate is not None:
                 self._store_proposed_contact(record, candidate)
             else:
@@ -569,6 +679,41 @@ class EnrichmentService:
             )
 
     @staticmethod
+    def _registry_person_against(
+        candidate: NameCandidate | None, candidates: list[NameCandidate]
+    ) -> NameCandidate | None:
+        """
+        A person the registry writes at the business's place who is not the chosen one.
+
+        « Patrick Exemple », read from a company bearing that name, is no answer when the company named like the
+        business writes « Marc Exemple ». Only a registry company matched at the business's place, or tied to it
+        by its number, counts: a namesake company of another département names nobody of the business. A name
+        read from the company the search tied to the business by its number leaves no room to another one.
+
+        Args:
+            candidate: The name the cascade chose.
+            candidates: Every name the cascade read.
+
+        Returns:
+            The registry's person who contradicts the chosen one, or None.
+        """
+        if candidate is None or candidate.anchored:
+            return None
+        return next(
+            (
+                other
+                for other in candidates
+                if other.primary and (other.geo_confirmed or other.anchored) and not other.agrees_with(candidate)
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _full_name(candidate: NameCandidate) -> str:
+        """A candidate's name as a reader writes it (« Jules Exemple »)."""
+        return " ".join(part for part in (candidate.first, candidate.last) if part)
+
+    @staticmethod
     def _has_settled_contact(record: ProspectEnrichment) -> bool:
         """Whether a person set or confirmed the contact name: the machine never touches it then."""
         return bool(record.contact_name_manual) or record.contact_name_status in (
@@ -591,6 +736,33 @@ class EnrichmentService:
             .limit(1)
         ).scalar_one_or_none()
 
+    @staticmethod
+    def _searched_owner(db: Session, prospect: ProspectDB) -> SearchedOwner | None:
+        """The person the prospect search read running the business, with the page it read them on, when it read one."""
+        from models.prospect_search_candidate import ProspectSearchCandidate
+
+        found = db.execute(
+            select(ProspectSearchCandidate.owner_name, ProspectSearchCandidate.evidence)
+            .where(
+                ProspectSearchCandidate.prospect_id == prospect.id,
+                ProspectSearchCandidate.owner_name.is_not(None),
+            )
+            .order_by(ProspectSearchCandidate.id.desc())
+            .limit(1)
+        ).one_or_none()
+        if found is None:
+            return None
+        owner_name, evidence = found
+        owner_line = next(
+            (
+                line
+                for line in reversed(evidence or [])
+                if isinstance(line, dict) and line.get("fact") == "owner" and line.get("value") == owner_name
+            ),
+            {},
+        )
+        return SearchedOwner(name=owner_name, source=owner_line.get("source"), url=owner_line.get("url"))
+
     async def _read_swiss_register(
         self, db: Session, prospect: ProspectDB, record: ProspectEnrichment, *, uid: str | None
     ) -> None:
@@ -598,10 +770,13 @@ class EnrichmentService:
         Read the federal register for a Swiss prospect: a closed company is set aside, its head is the contact.
 
         A firm in liquidation or struck off lately goes to the « Écartés » tab with the reason (a landscaper
-        ceased trading two months before the campaign, 7 Oct 2026). Otherwise the person running it, read
-        from its FOSC publications, becomes the trusted contact — or a proposal when two people share the
-        role, the firm was matched away from its seat, or the publication leaves the first name unsure and the
-        business's own reviews, email, initials or name do not settle it. A firm filed under another name is
+        ceased trading two months before the campaign, 7 Oct 2026); a firm of a merged commune is found by its
+        postal code. Otherwise the person running it, read from its FOSC publications (from its canton's
+        register excerpt for a firm older than the online gazette), becomes the trusted contact — or a proposal
+        when two people share the role, the firm was matched away from its seat, or the publication leaves the
+        first name unsure and the business's own reviews, email, initials or name do not settle it. Partners of
+        one family sharing the role give their family name alone, so the greeting stays « Bonjour ». A firm filed
+        under another name is
         found by its words at the business's address, only to name the head; a sole proprietorship that
         published nothing names its owner in its own name. The firm of a company number that now trades under
         another name (sold, turned into a property company) names nobody.
@@ -617,7 +792,10 @@ class EnrichmentService:
         from services.prospect_search.swiss_registry import swiss_registry
 
         try:
-            firm = await swiss_registry.firm_of(name=prospect.name, town=prospect.city, uid=uid)
+            postal_code = self._swiss_postal_code(prospect, record)
+            firm = await swiss_registry.firm_of(
+                name=prospect.name, town=prospect.city, uid=uid, postal_code=postal_code
+            )
             closing = swiss_registry.closing_words(firm) if firm is not None else None
             if closing is not None and not prospect.is_dismissed:
                 from services.prospect_service import prospect_service
@@ -633,13 +811,13 @@ class EnrichmentService:
                 return
             is_firm_matched_exactly = firm is not None
             firm = firm or await swiss_registry.firm_of(
-                name=prospect.name, town=prospect.city, uid=uid, allow_unique_name=True
+                name=prospect.name, town=prospect.city, uid=uid, postal_code=postal_code, allow_unique_name=True
             )
             if firm is not None and not swiss_registry.shares_words(firm.name, prospect.name or "", town=prospect.city):
                 return
             if firm is None:
                 firm = await swiss_registry.firm_by_words_and_address(
-                    name=prospect.name or "", town=prospect.city, postal_code=self._swiss_postal_code(prospect, record)
+                    name=prospect.name or "", town=prospect.city, postal_code=postal_code
                 )
                 is_firm_matched_exactly = firm is not None
             if firm is None or swiss_registry.closing_words(firm) is not None:
@@ -652,33 +830,44 @@ class EnrichmentService:
             leads = SwissRegisterPeople.lead_people(
                 SwissRegisterPeople.registered_people(await swiss_registry.publications(firm))
             )
+            register_label = "Registre du commerce (Zefix)"
+            if not leads:
+                excerpt_leads = SwissRegisterPeople.lead_people(await swiss_registry.excerpt_people(firm))
+                if excerpt_leads:
+                    leads, register_label = excerpt_leads, "Extrait du registre du commerce cantonal"
             if not leads and firm.is_sole_proprietorship:
                 owner = SwissRegisterPeople.owner_in_firm_name(firm.name)
                 leads = [owner] if owner is not None else []
             if not leads:
                 return
             lead = leads[0]
-            usual_first_name = (lead.first_name or "").split(" ")[0] or None
+            family_name = SwissRegisterPeople.family_name_of(leads)
+            usual_first_name = None if family_name else (lead.first_name or "").split(" ")[0] or None
             candidate = NameCandidate(
                 first=usual_first_name,
-                last=lead.last_name,
-                gender=infer_gender(usual_first_name),
+                last=family_name or lead.last_name,
+                gender=infer_gender(usual_first_name) if usual_first_name else None,
                 source="registre_ch",
                 confidence=0.9,
                 primary=True,
                 geo_confirmed=is_firm_matched_exactly,
                 evidence_group="registry",
-                provenance=f"Registre du commerce (Zefix) : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
+                provenance=f"{register_label} : {firm.name}, {', '.join(lead.roles) or 'inscrit'}",
             )
-            is_name_certain = lead.is_name_certain or SwissRegisterPeople.is_name_confirmed(
-                lead,
-                business_name=prospect.name or "",
-                emails=[email for email in (prospect.emails or [prospect.email]) if email],
-                review_texts=[
-                    str(review.get("text") or "") for review in record.reviews or [] if isinstance(review, dict)
-                ],
+            is_name_certain = (
+                family_name is not None
+                or lead.is_name_certain
+                or SwissRegisterPeople.is_name_confirmed(
+                    lead,
+                    business_name=prospect.name or "",
+                    emails=[email for email in (prospect.emails or [prospect.email]) if email],
+                    review_texts=[
+                        str(review.get("text") or "") for review in record.reviews or [] if isinstance(review, dict)
+                    ],
+                )
             )
-            if len(leads) == 1 and is_name_certain and is_firm_matched_exactly:
+            is_one_contact = len(leads) == 1 or family_name is not None
+            if is_one_contact and is_name_certain and is_firm_matched_exactly:
                 self._store_trusted_contact(record, candidate)
             else:
                 self._store_proposed_contact(record, candidate)
@@ -725,6 +914,30 @@ class EnrichmentService:
         """
         postal_match = CountryProfiles.get("CH").postal_code_regex.search(prospect.address or "")
         return postal_match.group(1) if postal_match else record.place_postal_code
+
+    @staticmethod
+    async def _place_at_registered_seat(prospect: ProspectDB, candidate: NameCandidate) -> None:
+        """
+        Give a prospect without a public address the commune and postal code of the company the registry identified.
+
+        A tradesman serving an area shows no address on Google, and the search left the town it searched: the
+        registered seat tells the commune (« 63430 Pont-du-Château », not Clermont-Ferrand). Its street, often the
+        owner's home, never reaches the public site.
+
+        Args:
+            prospect: The prospect, completed in place.
+            candidate: The head the registry gave, with its company's seat.
+        """
+        postal_code = str(candidate.raw.get("siege_postal_code") or "")
+        registry_commune = str(candidate.raw.get("siege_commune") or "")
+        if (
+            (prospect.address or "").strip()
+            or not _FRENCH_POSTAL_CODE_RE.fullmatch(postal_code)
+            or not registry_commune
+        ):
+            return
+        prospect.city = await FrenchDepartments.commune_name(registry_commune)
+        prospect.address = f"{postal_code} {prospect.city}"
 
     @staticmethod
     def _store_trusted_contact(record: ProspectEnrichment, candidate: NameCandidate) -> None:

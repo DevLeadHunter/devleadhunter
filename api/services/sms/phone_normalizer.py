@@ -7,8 +7,9 @@ numbers come in every French shape (``06 12 34 56 78``, ``0612345678``,
 for a send. A national number is read in the country of the business that owns it
 (``prospects.country``): a Québec « 514 555-0199 » is ``+15145550199`` and is never
 mistaken for a French number, a Swiss ``079`` typed without its country code is ``+4179…``
-for a Swiss business. A prospecting SMS only reaches a mobile of the prospect's own country
-(:class:`PhoneNumberPlans`).
+for a Swiss business. A French overseas number keeps the French national form but takes its
+department's dial code: a Martinique « 0696 12 34 56 » is ``+596696123456``. A prospecting SMS
+only reaches a mainland mobile of the prospect's own country (:class:`PhoneNumberPlans`).
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from services.country_profiles import CountryProfiles
+from services.french_overseas import FrenchOverseas
 
 # Any non-digit separator a human or a scraper might use between groups.
 _NON_DIGITS: re.Pattern[str] = re.compile(r"\D")
@@ -28,24 +30,30 @@ _E164: re.Pattern[str] = re.compile(r"^\+[1-9]\d{7,14}$")
 _NANP_SUBSCRIBER: re.Pattern[str] = re.compile(r"^[2-9]\d{2}[2-9]\d{6}$")
 # Countries whose national numbers carry no trunk « 0 » to strip (Luxembourg dials 621 … directly).
 _NO_TRUNK_PREFIX_COUNTRIES: frozenset[str] = frozenset({"LU"})
+_OVERSEAS_NATIONAL_BLOCKS: tuple[int, ...] = (4, 2, 2, 2)
 
 
 def to_e164_fr(raw: str | None) -> str | None:
-    """Convert a French phone number to E.164 (``+33…``), or ``None`` if invalid.
+    """Convert a French phone number to E.164, or ``None`` if invalid.
 
-    Accepts the national form (``0X…``), the already-international form
-    (``+33X…`` / ``0033X…``) and any spacing/punctuation. A number that is not a
-    plausible 9-digit French subscriber number returns ``None``.
+    Accepts the national form (``0X…``), the international forms (``+33X…`` / ``0033X…``, an overseas
+    department's ``+596…`` / ``00596…``) and any spacing/punctuation. A number that is not a plausible
+    9-digit French subscriber number returns ``None``. An overseas number takes its department's dial
+    code, a « +33 6 96 … » written by mistake included: ``0696 12 34 56`` is ``+596696123456``.
 
     Args:
         raw: The phone number in any French format.
 
     Returns:
-        The number as ``+33XXXXXXXXX``, or ``None`` when it is not a valid FR number.
+        The number as ``+33XXXXXXXXX`` (``+596…``, ``+590…``, ``+594…``, ``+262…`` overseas), or ``None``
+        when it is not a valid FR number.
     """
     if not raw:
         return None
     digits = _NON_DIGITS.sub("", raw)
+    overseas_international = FrenchOverseas.e164_of_international_digits(digits.removeprefix("00"))
+    if overseas_international is not None:
+        return overseas_international
     if digits.startswith("0033"):
         digits = digits[4:]
     elif digits.startswith("33") and len(digits) == 11:
@@ -55,20 +63,60 @@ def to_e164_fr(raw: str | None) -> str | None:
     # A French subscriber number is 9 digits, first digit 1–9.
     if len(digits) != 9 or digits[0] == "0":
         return None
-    return f"+33{digits}"
+    department = FrenchOverseas.of_national_number(digits)
+    return f"{department.dial_code}{digits}" if department is not None else f"+33{digits}"
 
 
 def is_mobile_fr(raw: str | None) -> bool:
-    """Whether a French number is a mobile (06/07) — the only kind an SMS reaches.
+    """Whether a French number is a mainland mobile (06/07), the only French kind a prospecting SMS reaches.
+
+    An overseas mobile (« 0696 12 34 56 ») is a mobile too (:func:`to_e164_french_mobile`), but the
+    prospection never texts the overseas departments.
 
     Args:
         raw: The phone number in any French format.
 
     Returns:
-        ``True`` when the normalised number is a French mobile (``+336…`` / ``+337…``).
+        ``True`` when the normalised number is a mainland mobile (``+336…`` / ``+337…``).
     """
     e164 = to_e164_fr(raw)
-    return bool(e164 and e164[3] in {"6", "7"})
+    return bool(e164 and e164.startswith("+33") and e164[3] in {"6", "7"})
+
+
+def to_e164_french_mobile(raw: str | None) -> str | None:
+    """E.164 form of a French mobile, mainland (``+336…``) or overseas (``+596696…``), ``None`` for any other number.
+
+    It tells a mobile from a landline (a WhatsApp link, the « Portable » mark of a lead), not who
+    the prospection may text: :func:`is_mobile_fr` does.
+
+    Args:
+        raw: The phone number in any French format.
+
+    Returns:
+        The mobile as ``+…``, or ``None`` for a landline, a service number or a number of no French shape.
+    """
+    e164 = to_e164_fr(raw)
+    if e164 is None:
+        return None
+    if is_mobile_fr(e164):
+        return e164
+    department = FrenchOverseas.of_e164(e164)
+    return e164 if department is not None and department.is_mobile_e164(e164) else None
+
+
+def is_number_of_country(e164: str, *, country: str) -> bool:
+    """Whether an E.164 number belongs to a country: its dial code, or a French overseas department's for France.
+
+    Args:
+        e164: A number in ``+…`` form.
+        country: ISO code of the country, any case.
+
+    Returns:
+        ``True`` when the number is one of that country's.
+    """
+    profile = CountryProfiles.get(country)
+    is_overseas_french_number = profile.code == "FR" and FrenchOverseas.of_e164(e164) is not None
+    return e164.startswith(profile.dial_code) or is_overseas_french_number
 
 
 def to_e164_nanp(raw: str | None) -> str | None:
@@ -176,29 +224,29 @@ class NationalPhoneLayouts:
         if len(national) != 10:
             return None
         blocks = (4, 3, 3) if national.startswith(cls._SWISS_SERVICE_PREFIXES) else (3, 3, 2, 2)
-        return cls._group_in_blocks(national, blocks)
+        return cls.group_in_blocks(national, blocks)
 
     @classmethod
     def _group_belgian_digits(cls, national: str) -> str | None:
         """Mobile ``0470 12 34 56``, landline ``02 123 45 67`` or ``081 22 33 44``, business ``0800 12 345``."""
         if len(national) == 10:
-            return cls._group_in_blocks(national, (4, 2, 2, 2))
+            return cls.group_in_blocks(national, (4, 2, 2, 2))
         if len(national) != 9:
             return None
         if national.startswith(cls._BELGIAN_SERVICE_PREFIXES):
-            return cls._group_in_blocks(national, (4, 2, 3))
+            return cls.group_in_blocks(national, (4, 2, 3))
         if national.startswith(cls._BELGIAN_ONE_DIGIT_ZONES):
-            return cls._group_in_blocks(national, (2, 3, 2, 2))
-        return cls._group_in_blocks(national, (3, 2, 2, 2))
+            return cls.group_in_blocks(national, (2, 3, 2, 2))
+        return cls.group_in_blocks(national, (3, 2, 2, 2))
 
     @classmethod
     def _group_luxembourg_digits(cls, subscriber: str) -> str | None:
         """Mobile ``621 123 456``, landline ``26 12 34 56`` or ``44 55 66``: Luxembourg dials no trunk zero."""
         blocks = cls._LUXEMBOURG_BLOCKS_BY_LENGTH.get(len(subscriber))
-        return cls._group_in_blocks(subscriber, blocks) if blocks else None
+        return cls.group_in_blocks(subscriber, blocks) if blocks else None
 
     @staticmethod
-    def _group_in_blocks(digits: str, sizes: tuple[int, ...]) -> str:
+    def group_in_blocks(digits: str, sizes: tuple[int, ...]) -> str:
         """``digits`` cut into consecutive blocks of ``sizes`` digits, joined by spaces."""
         blocks: list[str] = []
         start = 0
@@ -211,10 +259,11 @@ class NationalPhoneLayouts:
 def format_phone_for_display(raw: str | None, *, country: str = "FR") -> str:
     """The number as a reader of ``country`` expects it on a site or in a message.
 
-    France groups ten digits by two (``06 12 34 56 78``); Québec writes the area code apart and
-    hyphenates the line (``514 555-0199``); Switzerland, Belgium and Luxembourg print a number of
-    their own in their usual blocks (``079 123 45 67``, ``0470 12 34 56``, ``621 123 456``). Any
-    other number, or a number of no known shape, keeps what was typed.
+    France groups ten digits by two (``06 12 34 56 78``), its overseas departments write their four-digit
+    prefix apart (``0696 12 34 56``); Québec writes the area code apart and hyphenates the line
+    (``514 555-0199``); Switzerland, Belgium and Luxembourg print a number of their own in their usual
+    blocks (``079 123 45 67``, ``0470 12 34 56``, ``621 123 456``). Any other number, or a number of no
+    known shape, keeps what was typed.
 
     Args:
         raw: The phone number as stored.
@@ -234,6 +283,10 @@ def format_phone_for_display(raw: str | None, *, country: str = "FR") -> str:
     if e164.startswith("+33"):
         national = f"0{e164[3:]}"
         return " ".join(national[index : index + 2] for index in range(0, 10, 2))
+    department = FrenchOverseas.of_e164(e164)
+    if department is not None:
+        national = f"0{e164[len(department.dial_code) :]}"
+        return NationalPhoneLayouts.group_in_blocks(national, _OVERSEAS_NATIONAL_BLOCKS)
     return NationalPhoneLayouts.to_national_form(e164, country=country) or raw.strip()
 
 
@@ -241,8 +294,9 @@ def format_phone_in_national_form(raw: str | None, *, country: str = "FR") -> st
     """The number as its own country writes it nationally, when it is a number of ``country``.
 
     « +41 79 123 45 67 » gives « 079 123 45 67 » for a Swiss business, « 0470123456 » gives
-    « 0470 12 34 56 » for a Belgian one and « +1 514 555 0199 » gives « 514 555-0199 » for a Québec
-    one, while a French « +33 6 … » gives nothing for any of them.
+    « 0470 12 34 56 » for a Belgian one, « +596 696 12 34 56 » gives « 0696 12 34 56 » for a French
+    one and « +1 514 555 0199 » gives « 514 555-0199 » for a Québec one, while a French « +33 6 … »
+    gives nothing for any of them.
 
     Args:
         raw: The phone number as typed or scraped.
@@ -253,7 +307,7 @@ def format_phone_in_national_form(raw: str | None, *, country: str = "FR") -> st
     """
     e164 = to_e164(raw, country=country)
     profile = CountryProfiles.get(country)
-    if e164 is None or not e164.startswith(profile.dial_code):
+    if e164 is None or not is_number_of_country(e164, country=profile.code):
         return None
     return format_phone_for_display(raw, country=profile.code)
 
@@ -278,7 +332,7 @@ def format_phone_for_reader(raw: str | None, *, number_country: str, reader_coun
     if e164 is None:
         return raw.strip()
     reader = CountryProfiles.get(reader_country)
-    if e164.startswith(reader.dial_code):
+    if is_number_of_country(e164, country=reader.code):
         return format_phone_for_display(e164, country=reader.code)
     if e164.startswith("+33"):
         subscriber = e164[3:]
@@ -292,12 +346,12 @@ def format_phone_for_reader(raw: str | None, *, number_country: str, reader_coun
 def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
     """E.164 form of a number able to receive an SMS, French or not.
 
-    A French number must be a mobile (06 / 07): in national form (``06 12 34 56 78``, leading 0
-    required) only for a French business, or in international form (``+33 6…``, ``+33 (0)6…``).
-    A Canadian business's ten-digit number (``514 555-0199``) reads as ``+1514…``: the plan does
-    not tell a cellular from a landline, so the number is kept and the country rule of the SMS
-    guard decides (no cold SMS to Canada). Any other country's number must be typed in
-    international form (``+352 621 …``, ``0032 …``): a Luxembourg ``621 123 456`` or a Swiss
+    A French number must be a mobile, mainland (06 / 07) or overseas (Martinique 0696 …): in national
+    form (``06 12 34 56 78``, leading 0 required) only for a French business, or in international form
+    (``+33 6…``, ``+33 (0)6…``, ``+596 696…``). A Canadian business's ten-digit number (``514 555-0199``)
+    reads as ``+1514…``: the plan does not tell a cellular from a landline, so the number is kept and
+    the country rule of the SMS guard decides (no cold SMS to Canada). Any other country's number must
+    be typed in international form (``+352 621 …``, ``0032 …``): a Luxembourg ``621 123 456`` or a Swiss
     ``079 …`` typed nationally would otherwise read as a stranger's French mobile. Foreign mobile
     ranges are not checked.
 
@@ -313,8 +367,8 @@ def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
         return None
     if compact.startswith("00"):
         compact = "+" + compact[2:]
-    if compact.startswith("+33"):
-        return to_e164_fr(compact) if is_mobile_fr(compact) else None
+    if compact.startswith("+33") or FrenchOverseas.of_e164(compact) is not None:
+        return to_e164_french_mobile(compact)
     if compact.startswith("+1"):
         return to_e164_nanp(compact)
     if compact.startswith("+"):
@@ -323,7 +377,7 @@ def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
         return to_e164_nanp(compact)
     if country.upper() != "FR" or not compact.startswith("0"):
         return None
-    return to_e164_fr(compact) if is_mobile_fr(compact) else None
+    return to_e164_french_mobile(compact)
 
 
 @dataclass(frozen=True)
@@ -406,8 +460,8 @@ class PhoneNumberPlans:
 
         The number is read in the prospect's country by :func:`to_e164`, then refused when its dial code
         is another country's or its range is not a mobile one (``+41 22 …`` is a Geneva landline). A
-        French prospect's number is read exactly as :func:`to_e164_fr` and :func:`is_mobile_fr` always
-        read it.
+        French prospect's number is read as :func:`to_e164_fr` and :func:`is_mobile_fr` read it: a
+        mainland mobile only, an overseas one (``+596 696 …``) never being texted.
 
         Args:
             raw: The phone number as stored on the prospect.
@@ -425,6 +479,24 @@ class PhoneNumberPlans:
         if e164 is None or not e164.startswith(plan.dial_code):
             return None
         return e164 if plan.is_mobile(e164) else None
+
+    @classmethod
+    def is_mobile_line(cls, raw: str | None, *, country: str | None) -> bool:
+        """Whether a business's number is a mobile line of its country, not a landline, an overseas mobile included.
+
+        Unlike :meth:`mobile_of_country`, which tells the one number a prospecting SMS may reach, a
+        Martinique « 0696 12 34 56 » of a French business counts here: it is a mobile, though never texted.
+
+        Args:
+            raw: The phone number as stored.
+            country: The business's ISO country code, ``None`` read as France.
+
+        Returns:
+            ``True`` for a mobile of that country.
+        """
+        if (country or "FR").strip().upper() == "FR":
+            return to_e164_french_mobile(raw) is not None
+        return cls.mobile_of_country(raw, country=country) is not None
 
     @staticmethod
     def international_to_e164(raw: str | None) -> str | None:

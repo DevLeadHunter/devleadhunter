@@ -420,7 +420,10 @@ class PhotoLabelingService:
         asyncio.create_task(self._label_in_background(prospect_id))
 
     async def _label_in_background(self, prospect_id: int) -> None:
-        """Label a prospect's usable site photos in the family of its trade, on a fresh session, without a time budget."""
+        """
+        Label a prospect's usable site photos in the family of its trade, on a fresh session, without a time budget;
+        a network's sign the labels describe sets the prospect aside.
+        """
         from core.database import SessionLocal
         from services.enrichment_service import enrichment_service
         from services.templates.site_content import usable_site_photos
@@ -441,6 +444,8 @@ class PhotoLabelingService:
                 time_budget_seconds=float("inf"),
             )
             logger.info("Photo labelling done for prospect_id=%s (%s/%s photos)", prospect_id, len(labelled), len(pool))
+            labels = record.photo_labels if isinstance(record.photo_labels, dict) else labelled
+            enrichment_service.set_aside_network_on_photos(db, prospect_id, labels)
         except Exception as exc:
             logger.warning("Background photo labelling failed for prospect_id=%s: %s", prospect_id, exc)
         finally:

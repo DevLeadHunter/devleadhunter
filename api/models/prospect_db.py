@@ -5,10 +5,11 @@ Prospect database model for SQLAlchemy.
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Float, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import JSON, Boolean, Connection, Float, Integer, String, Text, event
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from core.database import Base
+from services.french_overseas import FrenchOverseas
 
 if TYPE_CHECKING:
     from models.campaign import Campaign
@@ -23,6 +24,7 @@ class ProspectDB(Base):
         name: Business name
         address: Street address
         city: City name
+        region: French overseas department the address or the numbers place the prospect in (« MQ »), None elsewhere
         phone: Phone number
         email: Email address
         website: Website URL
@@ -42,6 +44,7 @@ class ProspectDB(Base):
     city: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     # ISO 3166-1 alpha-2 (FR, CH, BE…) — drives search geo, phone rules and registry lookups.
     country: Mapped[str] = mapped_column(String(2), nullable=False, default="FR", server_default="FR", index=True)
+    region: Mapped[str | None] = mapped_column(String(2), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # All known phone numbers, best-first; ``phone`` above stays synced to ``phones[0]`` (the primary).
     phones: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
@@ -122,3 +125,15 @@ class ProspectDB(Base):
     def __repr__(self) -> str:
         """String representation of the prospect."""
         return f"<ProspectDB(id={self.id}, name='{self.name}', city='{self.city}', source='{self.source}')>"
+
+    @staticmethod
+    def place_in_overseas_department(
+        mapper: "Mapper[ProspectDB]", connection: Connection, prospect: "ProspectDB"
+    ) -> None:
+        """Set ``region`` from the address and the numbers each time the prospect is written, whatever wrote it."""
+        department = FrenchOverseas.of_prospect(prospect)
+        prospect.region = department.code if department is not None else None
+
+
+event.listen(ProspectDB, "before_insert", ProspectDB.place_in_overseas_department)
+event.listen(ProspectDB, "before_update", ProspectDB.place_in_overseas_department)

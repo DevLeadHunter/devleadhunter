@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from enums.prospect_search import CandidateOrigin
+from services.decision_maker.french_departments import FrenchDepartments
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.french_registry import FrenchRegistry, french_registry
 
@@ -117,3 +118,67 @@ def test_the_same_head_s_company_of_the_name_elsewhere_in_the_departement_goes_o
     asyncio.run(french_registry.read_closing(facts))
 
     assert not facts.is_closed
+
+
+def _open_company(siren: str, *, postal_code: str = "46000") -> dict[str, object]:
+    """An open registry company of the garage's name."""
+    company = _company("A", postal_code=postal_code)
+    company["siren"] = siren
+    return company
+
+
+def test_the_one_open_company_of_the_name_at_the_place_gives_the_business_its_siren(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _registry(monkeypatch, [_open_company("123456789"), _open_company("987654321", postal_code="46090")])
+    facts = _facts()
+
+    asyncio.run(french_registry.read_closing(facts))
+
+    assert facts.registry_number == "123456789"
+    assert not facts.is_closed
+
+
+@pytest.mark.parametrize(
+    "companies",
+    [
+        [_open_company("123456789"), _open_company("111222333")],
+        [_open_company("987654321", postal_code="46090")],
+    ],
+)
+def test_two_open_companies_of_the_name_at_the_place_or_none_leave_the_business_without_siren(
+    monkeypatch: pytest.MonkeyPatch, companies: list[dict[str, object]]
+) -> None:
+    _registry(monkeypatch, companies)
+    facts = _facts()
+
+    asyncio.run(french_registry.read_closing(facts))
+
+    assert facts.registry_number is None
+
+
+@pytest.mark.parametrize(
+    ("seat_address", "expected_address"),
+    [
+        ("836 RUE EXEMPLE 46000 CAHORS", "836 Rue Exemple, 46000 Cahors"),
+        ("12 AVENUE MODELE 46000 CAHORS", "836 Rue Exemple"),
+    ],
+)
+def test_an_address_without_postal_code_takes_the_one_of_the_company_seated_at_its_street(
+    monkeypatch: pytest.MonkeyPatch, seat_address: str, expected_address: str
+) -> None:
+    """A listing gave the street alone and no town: the registry's seat at that street gives both."""
+
+    async def cahors(town: str) -> list[dict[str, object]]:
+        return [{"nom": "Cahors", "codeDepartement": "46"}]
+
+    monkeypatch.setattr(FrenchDepartments, "_communes_named", staticmethod(cahors))
+    company = _open_company("123456789")
+    company["siege"]["adresse"] = seat_address  # type: ignore[index]
+    _registry(monkeypatch, [company])
+    facts = _facts(address="836 Rue Exemple", city=None, searched_city="Cahors")
+
+    asyncio.run(french_registry.read_closing(facts))
+
+    assert facts.address == expected_address
+    assert facts.city == ("Cahors" if expected_address.endswith("Cahors") else None)

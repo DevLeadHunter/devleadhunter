@@ -2,12 +2,13 @@
 Prospect search runner — walks a search from its objective to verified prospects.
 
 For each trade: go town by town; in each town read the public registries that carry
-an email, then Google's local results page by page, then the Facebook pages a search
-engine knows. Every business seen becomes a candidate, is recognised if it is already
-known, verified with one web search, completed with a contact, and placed: kept, set
-aside, to confirm, waiting for a browser, or discarded with a reason. In an automatic
-search a kept or set-aside candidate becomes a prospect at once; in a manual one it
-waits for the user to accept or refuse it.
+an email (unless the search skips them), then Google's local results page by page, then
+the Facebook pages a search engine knows. A search of a French overseas department walks
+its communes and names it in every query. Every business seen becomes a candidate, is
+recognised if it is already known, verified with one web search, completed with a contact,
+and placed: kept, set aside, to confirm, waiting for a browser, or discarded with a reason.
+In an automatic search a kept or set-aside candidate becomes a prospect at once; in a
+manual one it waits for the user to accept or refuse it.
 
 The run stops when every trade has its count, when the towns or the request budget
 run out, or when the user cancels. It never holds a database session across a
@@ -40,28 +41,30 @@ from enums.prospect_search import (
 )
 from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
-from scrappers.brightdata_client import BrightDataClient
+from scrappers.brightdata_client import BrightDataAccountError, BrightDataClient
 from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_local_results import GoogleLocalResultsParser, LocalListing
 from scrappers.google_website_button import google_website_button
 from services.decision_maker.normalize import fold
+from services.french_overseas import FrenchOverseas
 from services.organization_service import organization_service
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
+from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
+from services.prospect_search.candidate_registers import CandidateRegisters
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.facebook_contact import FacebookContactRead, facebook_contact_recorder
 from services.prospect_search.facebook_page_results import FacebookPageResults
-from services.prospect_search.french_registry import french_registry
 from services.prospect_search.registry_sources import RegistryCompany, rbq_registry, rge_registry
 from services.prospect_search.search_judge import search_judge
 from services.prospect_search.search_zones import SearchZones
-from services.prospect_search.swiss_registry import swiss_registry
 from services.prospect_search.trade_catalog import TradeCatalog, TradeProfile
 from services.sms.phone_normalizer import format_phone_in_national_form
+from services.swiss_localities import SwissLocalities, swiss_localities
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +83,6 @@ _WEBSITE_LISTING_BUDGET_SHARE: float = 0.7
 _WAITING_CANDIDATE_WEIGHT: float = 0.5
 # Bright Data can go silent for minutes: the last try of a trade's unanswered candidates waits this long.
 _DEFERRED_RETRY_PAUSE_SECONDS: float = 60.0
-_PROPOSED_STATUSES: tuple[CandidateStatus, ...] = (
-    CandidateStatus.KEPT,
-    CandidateStatus.SET_ASIDE,
-    CandidateStatus.TO_CONFIRM,
-)
 
 
 @dataclass
@@ -94,10 +92,12 @@ class _RunState:
     user_id: int
     organization_id: int | None
     country: str
+    region: str | None
     trades: list[str]
     cities: list[str]
     count_per_trade: int
     criteria: SearchCriteria
+    use_registries: bool
     creates_prospects: bool
     request_budget: int
     max_towns_per_trade: int
@@ -128,9 +128,21 @@ class ProspectSearchRunner:
         self._stored_judge_call_count: int = 0
 
     async def run(self) -> None:
-        """Run the search; an unexpected error ends it as failed, with what was found kept."""
+        """
+        Run the search; an unexpected error ends it as failed, with what was found kept.
+
+        Bright Data refusing the account (suspended, unpaid) ends it at once, saying so: every page would come back
+        empty, and the search would read « no result » everywhere.
+        """
         try:
             await self._run()
+        except BrightDataAccountError as exc:
+            logger.error("Prospect search %s stopped, Bright Data refuses the account: %s", self._search_id, exc)
+            self._log(
+                f"Bright Data refuse les requêtes du compte ({exc}) : la recherche s'arrête. Réactivez le compte "
+                "Bright Data, puis relancez-la. Ce qui a été trouvé est conservé."
+            )
+            self._flush(status=ProspectSearchStatus.FAILED, error_message=f"Bright Data : {exc}"[:500])
         except Exception as exc:
             logger.error("Prospect search %s failed: %s", self._search_id, exc, exc_info=True)
             self._log("La recherche s'est arrêtée sur une erreur. Ce qui a été trouvé est conservé.")
@@ -210,10 +222,12 @@ class ProspectSearchRunner:
                 user_id=search.user_id,
                 organization_id=organization_id,
                 country=search.country,
+                region=search.region,
                 trades=list(search.trades),
                 cities=list(search.cities or []),
                 count_per_trade=search.count_per_trade,
                 criteria=SearchCriteria.of_search(search),
+                use_registries=search.use_registries,
                 creates_prospects=search.validation_mode == ProspectSearchValidationMode.AUTOMATIC.value,
                 request_budget=(_BASE_REQUEST_BUDGET + _REQUEST_BUDGET_PER_PROSPECT * total_wanted) * granted_runs,
                 max_towns_per_trade=_MAX_TOWNS_PER_TRADE * granted_runs,
@@ -265,6 +279,7 @@ class ProspectSearchRunner:
                 asked_cities=state.cities,
                 already_scanned=state.scanned_before.get(profile.key, set()),
                 seed=self._search_id,
+                region=state.region,
             )
         )
         retried_towns: set[str] = set()
@@ -313,7 +328,7 @@ class ProspectSearchRunner:
                 state, profile, self._store_registry_companies(state, profile, town, companies)
             )
 
-        region = search_label(state.country)
+        region = self._search_label(state)
         for term_position, term in enumerate(profile.terms_for(state.country)):
             page_count = _PAGES_FOR_MAIN_TERM if term_position == 0 else 1
             for page in range(page_count):
@@ -354,15 +369,38 @@ class ProspectSearchRunner:
         start = page * _LISTINGS_PER_PAGE
         html = await self._client.google_local_html(query, country=country, start=start)
         listings = GoogleLocalResultsParser.parse_html(html, country=country) if html else []
-        if listings:
-            return listings
-        parsed = await self._client.google_parsed(query, country=country, start=start, local=True)
-        if parsed is None:
-            return None
-        return GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
+        if not listings:
+            parsed = await self._client.google_parsed(query, country=country, start=start, local=True)
+            if parsed is None:
+                return None
+            listings = GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
+        if country == "CH":
+            await self._mend_bare_article_towns(listings)
+        return listings
+
+    @staticmethod
+    async def _mend_bare_article_towns(listings: list[LocalListing]) -> None:
+        """
+        Give a Swiss listing whose town reads as a bare article (« 2999 Le ») the locality of its postal code, and
+        rebuild its address; a postal code telling no single locality leaves it without a town, never « Le ».
+        """
+        for listing in listings:
+            if not SwissLocalities.is_bare_article(listing.locality):
+                continue
+            locality, address = await swiss_localities.mended_town_and_address(listing.address or "")
+            listing.locality = locality
+            listing.address = address if locality else listing.address
+
+    @staticmethod
+    def _search_label(state: _RunState) -> str:
+        """The words a query appends to pin the search's place: its overseas department, else its country's."""
+        department = FrenchOverseas.by_code(state.region)
+        return department.label if department is not None else search_label(state.country)
 
     async def _registry_companies(self, state: _RunState, profile: TradeProfile, town: str) -> list[RegistryCompany]:
         """Companies of the trade that a public registry lists with an email, for the search's country."""
+        if not state.use_registries:
+            return []
         if state.country == "FR":
             return await rge_registry.companies_near(trade=profile, city=town, limit=_REGISTRY_COMPANIES_PER_TOWN)
         if state.country == "CA":
@@ -380,6 +418,7 @@ class ProspectSearchRunner:
                     name=company.name,
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=company.origin.value,
                     city=company.city,
                     searched_city=town,
@@ -430,6 +469,7 @@ class ProspectSearchRunner:
                     name=BusinessName.clean(listing.name),
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=CandidateOrigin.GOOGLE_LOCAL.value,
                     city=listing.locality,
                     searched_city=town,
@@ -449,8 +489,13 @@ class ProspectSearchRunner:
                         facts, destination, source="Bouton « Site Web » de la fiche Google", proof_url=destination
                     )
                     facts.has_website_button = facts.website is not None
+                CandidateVerifier.mark_network_outlet(facts, profile, listing_name=listing.name)
                 early_verdict: CandidateVerdict | None = None
-                if facts.is_closed or facts.is_abroad or not profile.accepts_category(listing.category):
+                is_elsewhere = facts.is_abroad or facts.is_outside_region
+                is_ruled_out = (
+                    facts.is_closed or is_elsewhere or facts.is_chain or profile.names_another_trade(facts.name)
+                )
+                if is_ruled_out or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)
                 is_left_unverified = bool(facts.has_website_button) and leaves_website_listings_unverified
@@ -462,7 +507,7 @@ class ProspectSearchRunner:
     async def _store_facebook_pages(self, state: _RunState, profile: TradeProfile, town: str) -> list[int]:
         """Save the business pages of the town that a search engine finds on Facebook."""
         term = profile.terms_for(state.country)[0]
-        region = search_label(state.country)
+        region = self._search_label(state)
         query = " ".join(part for part in (f'site:facebook.com "{term}" "{town}"', region) if part)
         page = await self._client.google_parsed(query, country=state.country)
         if page is None:
@@ -474,6 +519,7 @@ class ProspectSearchRunner:
                     name=business_page.name,
                     trade_key=profile.key,
                     country=state.country,
+                    region=state.region,
                     origin=CandidateOrigin.FACEBOOK_SEARCH.value,
                     searched_city=town,
                     facebook_url=business_page.page_url,
@@ -554,6 +600,7 @@ class ProspectSearchRunner:
                 if row is None or row.status != CandidateStatus.DISCOVERED.value:
                     return
                 facts = CandidateStore.facts_of(row)
+            facts.region = state.region
 
             try:
                 await self._verifier.verify(facts, profile)
@@ -571,23 +618,24 @@ class ProspectSearchRunner:
                     and verdict.reject_reason != CandidateRejectReason.NO_CONTACT
                 )
                 if verdict.status == CandidateStatus.KEPT:
-                    await self._contact_finder.drop_dead_email(facts)
+                    await self._contact_finder.check_email(facts, profile)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 elif not is_final_rejection and facts.is_verified:
                     await self._contact_finder.find(facts, profile)
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
-                if verdict.status in _PROPOSED_STATUSES:
-                    await swiss_registry.read_closing(facts)
-                    await french_registry.read_closing(facts)
+                if await CandidateRegisters.read_if_proposed(facts, verdict):
                     verdict = CandidateDecision.decide(facts, profile, state.criteria)
+            except BrightDataAccountError:
+                raise
             except Exception as exc:
                 logger.warning("Prospect search %s: candidate %s failed: %s", self._search_id, candidate_id, exc)
                 verdict = CandidateVerdict(
                     CandidateStatus.TO_CONFIRM, detail="Une erreur a interrompu sa vérification : fiche non contrôlée."
                 )
-            # The verification reveals keys the listing did not carry (email, Facebook page, Google id):
-            # a business already known under one of them must not become a second prospect.
-            known = self._index.match(CandidateStore.identity_keys(facts))
+            # The verification reveals keys the listing did not carry (email, Facebook page, Google id, registry
+            # number): a business already known under one of them must not become a second prospect. Another
+            # listing of this search is compared with it once it is saved.
+            known = self._index.match(CandidateStore.identity_keys(facts), include_run_proposals=False)
             if known is not None and verdict.status != CandidateStatus.REJECTED:
                 verdict = CandidateVerdict(CandidateStatus.REJECTED, known.reason, known.detail)
             await self._save(state, profile, candidate_id, facts, verdict)
@@ -603,8 +651,9 @@ class ProspectSearchRunner:
         """
         Store a candidate's verdict and, in an automatic search, create its prospect when it is kept or set aside.
 
-        The creation has the last word: a business that became a prospect meanwhile is discarded
-        as already known, and a creation that fails leaves the candidate to the user.
+        Another listing of the same business in the search leaves a single one proposed, the better-informed,
+        before any prospect is created. The creation has the last word: a business that became a prospect
+        meanwhile is discarded as already known, and a creation that fails leaves the candidate to the user.
         """
         with SessionLocal() as db:
             row = db.get(ProspectSearchCandidate, candidate_id)
@@ -612,6 +661,13 @@ class ProspectSearchRunner:
                 return
             self._add_count(row.trade, row.status, -1)
             CandidateStore.write_back(row, facts, verdict)
+            for listing, previous_status in CandidateDuplicates.settle(db, row):
+                if listing is row:
+                    continue
+                self._add_count(listing.trade, previous_status, -1)
+                self._add_count(listing.trade, listing.status, 1)
+                self._index.remember_rejected(listing.identity_keys or [], listing.reject_reason)
+                self._log(f"{listing.name} : écarté. {listing.reject_detail or ''}".strip())
             db.commit()
             if state.creates_prospects:
                 await CandidateStore.promote_or_leave_to_confirm(

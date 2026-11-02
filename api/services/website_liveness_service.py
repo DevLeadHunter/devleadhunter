@@ -59,7 +59,7 @@ class WebsiteLivenessService:
         }
     )
 
-    # Lowercase markers of hosting error pages that answer for a dead site.
+    # Lowercase markers of hosting error pages and parked domains that answer for a dead site.
     DEAD_PAGE_MARKERS: tuple[str, ...] = (
         "site not found",
         "account suspended",
@@ -74,6 +74,11 @@ class WebsiteLivenessService:
         "domain steht zum verkauf",
         "site is currently suspended",
         "website unavailable",
+        # Parked domains: the registrar's lander (GoDaddy's « /lander »), a parking company's page.
+        'location.href="/lander"',
+        "parking-lander",
+        "sedoparking.com",
+        "parkingcrew.net",
     )
 
     HOSTING_WELCOME_TITLE_PREFIXES: tuple[str, ...] = ("bienvenue sur", "welcome to", "willkommen auf", "benvenuto su")
@@ -182,7 +187,7 @@ class WebsiteLivenessService:
             return cached
 
         status = await self._probe(normalized)
-        if status is WebsiteStatus.DEAD:
+        if status is not WebsiteStatus.LIVE:
             # A listing often keeps an old address form (http, or without www) of a site that works.
             for other_form in self.other_address_forms(normalized):
                 if await self._probe(other_form) is WebsiteStatus.LIVE:
@@ -234,11 +239,14 @@ class WebsiteLivenessService:
         """
         Fetch the URL and classify the response.
 
+        A host's welcome page (« Bienvenue sur exemple.ch ») or an empty page answers for a domain that holds no site:
+        a placeholder, never a dead site (« votre site ne répond plus » would be false) nor a live one.
+
         Args:
             url: Normalized website URL.
 
         Returns:
-            DEAD on definitive failure signals, LIVE otherwise.
+            DEAD on definitive failure signals, PLACEHOLDER for a domain showing no site, LIVE otherwise.
         """
         try:
             async with httpx.AsyncClient(
@@ -260,8 +268,9 @@ class WebsiteLivenessService:
         body_start = response.text[: self.BODY_SNIFF_CHARS].lower()
         if any(marker in body_start for marker in self.DEAD_PAGE_MARKERS):
             return WebsiteStatus.DEAD
-        if self._is_hosting_welcome_page(url, response.text):
-            return WebsiteStatus.DEAD
+        is_empty_page = response.status_code == 200 and not body_start.strip()
+        if is_empty_page or self._is_hosting_welcome_page(url, response.text):
+            return WebsiteStatus.PLACEHOLDER
         is_own_page_offline = response.status_code == self.MAINTENANCE_HTTP_STATUS and self._shows_own_page(
             response.text
         )

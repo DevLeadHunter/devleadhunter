@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
+from scrappers.google_result_link import GoogleResultLink
 from services.decision_maker.given_names import GivenNames
 from services.decision_maker.normalize import (
     company_tokens,
@@ -160,7 +161,7 @@ class OwnerMentions:
         """
         title = cls._with_joined_initials(str(result.get("title") or "").strip())
         description = cls._with_joined_initials(str(result.get("description") or "").strip())
-        host = (urlparse(str(result.get("link") or "")).hostname or "").removeprefix("www.")
+        host = (urlparse(GoogleResultLink.address_of(result)).hostname or "").removeprefix("www.")
         text = f"{title} · {description}"
         is_here = is_own_text or cls._is_placed_here(text, context.city) or cls._shows_phone(text, context.phone)
         if not is_here or cls._is_elsewhere(text, context.city):

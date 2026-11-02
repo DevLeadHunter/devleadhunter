@@ -218,6 +218,9 @@ class Prospect(ProspectBase):
     )
 
     id: int = Field(..., description="Unique prospect identifier")
+    region: str | None = Field(
+        None, description="French overseas department the prospect lives in (« MQ »), None elsewhere"
+    )
     emails: list[str] | None = Field(
         None,
         description="All known emails, ordered; emails[0] is the primary (mirrors the `email` field).",

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from enums.acquisition import AcquisitionItemStep, AcquisitionRunStatus
 from enums.demo_site_status import DemoSiteStatus
+from enums.demo_video_status import DemoVideoStatus
 from enums.storyblok_collaborator_status import StoryblokCollaboratorStatus
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
@@ -39,6 +40,7 @@ from services.demo_site_verification_service import (
 from services.demo_slug_guard import DemoSlugGuard
 from services.enrichment_service import enrichment_service
 from services.french_date_formatter import FrenchDateFormatter
+from services.notification_service import notification_service
 from services.photo_labeling_service import photo_family_for_category, photo_labeling_service
 from services.photo_labels import PHOTO_FAMILY_CRAFT, craft_labels_for_urls, is_card_worthy, labels_for_urls
 from services.pricing_service import PricingService
@@ -66,13 +68,19 @@ from services.templates.site_content import (
     apply_section_overrides,
     clean_faq_items,
     clean_hero_points,
+    clean_hidden_reviews,
     clean_portfolio_items,
     clean_service_cards,
+    clean_step_items,
     clean_strength_items,
     clean_tax_credit,
     clean_trust_items,
     from_storyblok_site_content,
+    hides_prospect_photos,
+    is_complaint_review,
+    keep_former_defaults,
     overrides_from_published_story,
+    template_default_source,
     usable_site_photos,
 )
 from services.trade_normalizer import TradeNormalizer
@@ -259,6 +267,23 @@ class DemoSiteService:
         return country.format_price_without_approximation(PricingService.sale_price_cents(db, demo_site.user_id))
 
     @staticmethod
+    def is_kept_alive_by_client(demo_site: DemoSite) -> bool:
+        """
+        Whether the demo never expires because its client works in the CMS space.
+
+        A client who joined their Storyblok space is editing the site: the countdown that retires a demo
+        (its space, its video, then the site itself) must not run under them. Like a sold site, such a demo
+        stays until it is sold or deleted by hand.
+
+        Args:
+            demo_site: The demo, or any row carrying its ``storyblok_collaborator_status``.
+
+        Returns:
+            True once the client has joined the space.
+        """
+        return getattr(demo_site, "storyblok_collaborator_status", None) == StoryblokCollaboratorStatus.JOINED.value
+
+    @staticmethod
     def expiry_date_label(demo_site: DemoSite) -> str | None:
         """
         The day the demo goes offline, the same as ``{date_expiration}`` in the prospect's emails (« 2 novembre »).
@@ -267,9 +292,10 @@ class DemoSiteService:
             demo_site: The demo the prospect is looking at.
 
         Returns:
-            The French day and month, or None while the demo link was never sent (countdown not started).
+            The French day and month, or None while the demo link was never sent (countdown not started)
+            or once the client works in the CMS space (the demo no longer has a deadline).
         """
-        if demo_site.demo_link_sent_at is None:
+        if demo_site.demo_link_sent_at is None or DemoSiteService.is_kept_alive_by_client(demo_site):
             return None
         return FrenchDateFormatter.day_month(demo_site.expires_at)
 
@@ -280,7 +306,7 @@ class DemoSiteService:
             return None
         record = enrichment_service.get_for_prospect(db, demo_site.user_id, prospect_id)
         prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
-        return self._with_prospect_location(enrichment_service.to_dict(record), prospect)
+        return self._with_prospect_listing(enrichment_service.to_dict(record), prospect)
 
     async def _resolve_enrichment_for_creation(self, db: Session, user_id: int, prospect_id: int | None) -> dict | None:
         """Fetch (and run on demand if missing) the prospect enrichment before generation."""
@@ -291,7 +317,7 @@ class DemoSiteService:
             if not prospect:
                 return None
             record = await enrichment_service.ensure_enriched(db, user_id, prospect)
-            return self._with_prospect_location(enrichment_service.to_dict(record), prospect)
+            return self._with_prospect_listing(enrichment_service.to_dict(record), prospect)
         except Exception:
             logger.warning("Enrichment resolution failed for prospect_id=%s", prospect_id, exc_info=True)
             return None
@@ -315,13 +341,15 @@ class DemoSiteService:
         return float(match.group(1)), float(match.group(2))
 
     @classmethod
-    def _with_prospect_location(cls, enrichment: dict | None, prospect: object) -> dict | None:
-        """Fold the prospect's real street address + map coordinates into the enrichment dict.
+    def _with_prospect_listing(cls, enrichment: dict | None, prospect: object) -> dict | None:
+        """Fold the prospect's real street address, map coordinates and Google rating into the enrichment dict.
 
         The street address and Google Maps URL live on the prospect, not the enrichment record,
-        yet the templates need them for the contact block and the map. Returns an augmented copy
-        (the record's dict is never mutated); may return a fresh dict even without enrichment so the
-        location still reaches generation.
+        yet the templates need them for the contact block and the map. The rating and review count
+        the prospect search read on the listing stand in when the enrichment could not open the
+        listing (a business serving its area, whose listing gives no address). Returns an augmented
+        copy (the record's dict is never mutated); may return a fresh dict even without enrichment so
+        the location still reaches generation.
         """
         if prospect is None:
             return enrichment
@@ -332,26 +360,49 @@ class DemoSiteService:
         coords = cls._coords_from_maps_url(getattr(prospect, "google_maps_url", None))
         if coords:
             data["lat"], data["lng"] = coords
+        searched_rating = getattr(prospect, "google_rating", None)
+        has_enrichment_rating = isinstance(data.get("rating"), (int, float))
+        if not has_enrichment_rating and isinstance(searched_rating, (int, float)) and searched_rating > 0:
+            data["rating"] = searched_rating
+            data["reviews_count"] = getattr(prospect, "google_reviews_count", None)
         return data or None
 
     def _build_content_for_site(self, db: Session, demo_site: DemoSite) -> dict:
         """Build Storyblok content JSON from the demo site record."""
         return self._build_content_for_site_with_theme(db, demo_site, theme=None)
 
+    def _enrichment_with_site_photos(self, db: Session, demo_site: DemoSite) -> dict | None:
+        """
+        The prospect's enrichment with the photos its site shows, in the order the shared mapping places them.
+
+        A user-curated placement overrides the scraped order, photos added to the prospect since the last save
+        appended to the gallery; a site whose operator hides the prospect's photos shows none.
+
+        Args:
+            db: Active database session.
+            demo_site: The demo site.
+
+        Returns:
+            The enrichment with its ``photos`` in site order, or None when the site has none.
+        """
+        enrichment = self._enrichment_dict_for_site(db, demo_site)
+        if not isinstance(enrichment, dict):
+            return enrichment
+        if hides_prospect_photos(demo_site.section_overrides):
+            return {**enrichment, "photos": []}
+        if isinstance(demo_site.image_order, list) and demo_site.image_order:
+            pool: list[str] = usable_site_photos(enrichment)
+            return {
+                **enrichment,
+                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
+            }
+        return enrichment
+
     def _build_content_for_site_with_theme(
         self, db: Session, demo_site: DemoSite, theme: dict[str, str] | None = None
     ) -> dict:
         """Build Storyblok content JSON from the demo site record (with enrichment)."""
-        enrichment = self._enrichment_dict_for_site(db, demo_site)
-        # A user-curated photo placement overrides the scraped order: fold it into the photo pool so
-        # the shared mapping ([0]→hero, [1]→about, [2:]→gallery) produces the arrangement they chose,
-        # with photos added to the prospect since the last save appended to the gallery.
-        if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
-            pool: list[str] = usable_site_photos(enrichment)
-            enrichment = {
-                **enrichment,
-                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
-            }
+        enrichment = self._enrichment_with_site_photos(db, demo_site)
         palette = (
             theme
             or self._theme_from_content(demo_site.content_json)
@@ -378,18 +429,18 @@ class DemoSiteService:
     def content_json_for_public(self, db: Session, demo_site: DemoSite) -> dict:
         """
         Published demo payload with operator overrides layered on stored ``content_json``, and the prospect's
-        country, which a Storyblok round trip drops and the template needs to word its own labels.
+        country, which a Storyblok round trip drops and the template needs to word its own labels. A delivered
+        site keeps its template's former default texts wherever its content stays empty.
         """
         content: dict = dict(demo_site.content_json) if isinstance(demo_site.content_json, dict) else {}
         content["country"] = CountryProfiles.get(self._prospect_country_for_site(db, demo_site)).code
-        enrichment = self._enrichment_dict_for_site(db, demo_site)
-        if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
-            pool: list[str] = usable_site_photos(enrichment)
-            enrichment = {
-                **enrichment,
-                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
-            }
-        return apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        enrichment = self._enrichment_with_site_photos(db, demo_site)
+        content = apply_section_overrides(content, demo_site.section_overrides, enrichment)
+        if demo_site.status == DemoSiteStatus.DELIVERED.value:
+            keep_former_defaults(
+                content, template_registry.delivered_site_former_defaults(demo_site.template_id), content["country"]
+            )
+        return content
 
     @staticmethod
     def hero_line(demo_site: DemoSite) -> str:
@@ -592,6 +643,20 @@ class DemoSiteService:
         about_text: str | None = None,
         portfolio: list[dict] | None = None,
         tax_credit: dict | None = None,
+        hero_title: str | None = None,
+        hero_subtitle: str | None = None,
+        cta_quote_label: str | None = None,
+        services_heading: str | None = None,
+        services_lead: str | None = None,
+        about_heading: str | None = None,
+        steps_lead: str | None = None,
+        steps: list[dict] | None = None,
+        cta_title: str | None = None,
+        cta_lead: str | None = None,
+        contact_heading: str | None = None,
+        contact_lead: str | None = None,
+        hidden_reviews: list[str] | None = None,
+        hide_prospect_photos: bool | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -599,11 +664,18 @@ class DemoSiteService:
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
         colours, photo placement and curated cards — with a single regeneration. ``services``
         replaces the curated section cards (``[]`` drops the curation, back to generated cards).
-        ``hero_points``, ``trust_items``, ``faq`` and ``strengths`` replace the facts under the title, the trust
-        markers, the questions and the « Pourquoi nous choisir » strengths (``[]`` goes back to the generated ones).
-        ``about_text`` replaces the « À propos » text (``""`` goes back to the generated one), ``portfolio``
-        the realizations with photos of the pool (``[]`` goes back to the template's), ``tax_credit`` the
-        « crédit d'impôt » section (an empty heading removes it).
+        ``hero_points``, ``trust_items``, ``faq``, ``strengths`` and ``steps`` replace the facts under the title, the
+        trust markers, the questions, the « Pourquoi nous choisir » strengths and the « Notre méthode » steps
+        (``[]`` goes back to the generated ones). ``about_text`` replaces the « À propos » text, ``hero_title`` and
+        ``hero_subtitle`` the title and the sentence under it (over ``description``), ``cta_quote_label`` the quote
+        button, ``services_heading`` and ``services_lead`` the services title and the paragraph under it,
+        ``about_heading`` the « À propos » title, ``steps_lead`` the paragraph under the « Notre méthode » title,
+        ``cta_title`` and ``cta_lead`` the banner above the contact,
+        ``contact_heading`` and ``contact_lead`` the contact title and the paragraph under it (``""`` goes back to the
+        generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the template's),
+        ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
+        ``hidden_reviews`` takes the reviews with these texts off the site (``[]`` shows them all again) and
+        ``hide_prospect_photos`` shows the template's photos instead of the prospect's (``False`` shows his again).
         """
         pending_theme = theme
         if use_brand_color is not None:
@@ -631,6 +703,20 @@ class DemoSiteService:
             or about_text is not None
             or portfolio is not None
             or tax_credit is not None
+            or hero_title is not None
+            or hero_subtitle is not None
+            or cta_quote_label is not None
+            or services_heading is not None
+            or services_lead is not None
+            or about_heading is not None
+            or steps_lead is not None
+            or steps is not None
+            or cta_title is not None
+            or cta_lead is not None
+            or contact_heading is not None
+            or contact_lead is not None
+            or hidden_reviews is not None
+            or hide_prospect_photos is not None
         ):
             overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
             if section_images is not None:
@@ -646,11 +732,13 @@ class DemoSiteService:
                 else:
                     overrides.pop("images", None)
             if hero_badge is not None:
-                badge = hero_badge.strip()
-                if badge:
-                    overrides["heroBadge"] = badge
-                else:
-                    overrides.pop("heroBadge", None)
+                self._store_written_text(overrides, "heroBadge", hero_badge)
+            if hero_title is not None:
+                self._store_written_text(overrides, "heroTitle", hero_title)
+            if hero_subtitle is not None:
+                self._store_written_text(overrides, "subtitle", hero_subtitle)
+            if cta_quote_label is not None:
+                self._store_written_text(overrides, "ctaQuoteLabel", cta_quote_label)
             if hero_points is not None:
                 self._store_written_section(overrides, "heroPoints", clean_hero_points(hero_points))
             if trust_items is not None:
@@ -659,12 +747,36 @@ class DemoSiteService:
                 self._store_written_section(overrides, "faq", clean_faq_items(faq))
             if strengths is not None:
                 self._store_written_section(overrides, "strengths", clean_strength_items(strengths))
+            if steps is not None:
+                self._store_written_section(overrides, "steps", clean_step_items(steps))
+            if steps_lead is not None:
+                self._store_written_text(overrides, "stepsLead", steps_lead)
             if about_text is not None:
-                about = about_text.strip()
-                if about:
-                    overrides["about"] = about
+                self._store_written_text(overrides, "about", about_text)
+            if about_heading is not None:
+                self._store_written_text(overrides, "aboutHeading", about_heading)
+            if services_heading is not None:
+                self._store_written_text(overrides, "servicesHeading", services_heading)
+            if services_lead is not None:
+                self._store_written_text(overrides, "servicesLead", services_lead)
+            if cta_title is not None:
+                self._store_written_text(overrides, "ctaTitle", cta_title)
+            if cta_lead is not None:
+                self._store_written_text(overrides, "ctaLead", cta_lead)
+            if contact_heading is not None:
+                self._store_written_text(overrides, "contactHeading", contact_heading)
+            if contact_lead is not None:
+                self._store_written_text(overrides, "contactLead", contact_lead)
+            if hidden_reviews is not None:
+                hidden_review_texts = clean_hidden_reviews(hidden_reviews)
+                if hidden_review_texts:
+                    overrides["hiddenReviews"] = hidden_review_texts
                 else:
-                    overrides.pop("about", None)
+                    overrides.pop("hiddenReviews", None)
+            if hide_prospect_photos:
+                overrides["hideProspectPhotos"] = True
+            elif hide_prospect_photos is not None:
+                overrides.pop("hideProspectPhotos", None)
             if portfolio is not None:
                 pool, _ = self._photo_pool_with_enrichment(db, demo_site)
                 items = clean_portfolio_items(portfolio, allowed_images=pool)
@@ -722,6 +834,22 @@ class DemoSiteService:
             overrides[section_key] = written_items
         else:
             overrides.pop(section_key, None)
+
+    @staticmethod
+    def _store_written_text(overrides: dict, text_key: str, written_text: str) -> None:
+        """
+        Keep a text written for the business in the site overrides, or drop it when it came back blank.
+
+        Args:
+            overrides: The site's section overrides, updated in place.
+            text_key: The ``SiteContent`` key of the text (``heroTitle``, ``about``…).
+            written_text: The text; blank to go back to the generated one.
+        """
+        text = written_text.strip()
+        if text:
+            overrides[text_key] = text
+        else:
+            overrides.pop(text_key, None)
 
     @staticmethod
     def get_tax_credit(demo_site: DemoSite) -> dict | None:
@@ -924,6 +1052,7 @@ class DemoSiteService:
                 and str(review.get("text") or "").strip()
                 and isinstance(review.get("rating"), (int, float))
                 and review["rating"] >= 4
+                and not is_complaint_review(review.get("text"))
             ],
             rating=float(record.rating) if isinstance(record.rating, (int, float)) else None,
             reviews_count=int(record.reviews_count) if isinstance(record.reviews_count, (int, float)) else None,
@@ -967,12 +1096,13 @@ class DemoSiteService:
         if personalization.section_images:
             existing_images = overrides.get("images") if isinstance(overrides.get("images"), dict) else {}
             overrides["images"] = {**existing_images, **personalization.section_images}
+        if personalization.hero_sentence and (replace_description or not demo_site.description):
+            demo_site.description = personalization.hero_sentence
+            overrides.pop("subtitle", None)
         overrides["personalization"] = {"source": "auto", "at": datetime.now(UTC).isoformat()}
         demo_site.section_overrides = overrides
         demo_site.image_order = personalization.photo_order if personalization.photo_order != pool else None
         demo_site.image_pool_snapshot = list(pool)
-        if personalization.hero_sentence and (replace_description or not demo_site.description):
-            demo_site.description = personalization.hero_sentence
 
     async def _personalize_at_creation(self, db: Session, demo_site: DemoSite, enrichment: dict | None) -> dict | None:
         """
@@ -1134,7 +1264,7 @@ class DemoSiteService:
 
         Cheap short-circuit: an uninvited site is ``not_invited`` without any API call. Otherwise the
         live status is fetched best-effort — a transient ``unknown`` never overwrites a known state,
-        and the first observed ``joined`` stamps ``storyblok_joined_at``.
+        and the first observed ``joined`` stamps ``storyblok_joined_at`` and notifies the owner.
         """
         if not demo_site.storyblok_invite_sent:
             if demo_site.storyblok_collaborator_status != StoryblokCollaboratorStatus.NOT_INVITED.value:
@@ -1160,6 +1290,8 @@ class DemoSiteService:
         if not email or not email.strip():
             return demo_site
 
+        # Nothing to save: this commit frees the database connection while Storyblok answers.
+        db.commit()
         status: str = await storyblok_service.get_collaborator_status(space_id, email.strip())
         # A transient read failure must not erase a state we already trust.
         if status == StoryblokCollaboratorStatus.UNKNOWN.value:
@@ -1170,15 +1302,33 @@ class DemoSiteService:
             status = StoryblokCollaboratorStatus.PENDING.value
 
         demo_site.storyblok_collaborator_status = status
+        has_client_just_joined: bool = False
         if status == StoryblokCollaboratorStatus.JOINED.value:
             if demo_site.storyblok_joined_at is None:
                 demo_site.storyblok_joined_at = datetime.now(UTC)
+                has_client_just_joined = True
         else:
             # Keep the stamp consistent if a client is ever read back as not-yet-joined.
             demo_site.storyblok_joined_at = None
         db.commit()
         db.refresh(demo_site)
+        if has_client_just_joined:
+            await self._notify_client_joined_cms(db, demo_site)
         return demo_site
+
+    @staticmethod
+    async def _notify_client_joined_cms(db: Session, demo_site: DemoSite) -> None:
+        """Tell the owner their client joined the editing space; a failed notification never fails the refresh."""
+        try:
+            await notification_service.notify_cms_joined(
+                db,
+                user_id=demo_site.user_id,
+                prospect_id=demo_site.prospect_id,
+                fallback_name=demo_site.business_name,
+                demo_site_id=demo_site.id,
+            )
+        except Exception:
+            logger.warning("CMS joined notification failed for demo site %s", demo_site.id, exc_info=True)
 
     async def create_demo_site(
         self,
@@ -1376,7 +1526,8 @@ class DemoSiteService:
         post-provisioning verification and the demo-host render work. A **sold**
         site (status DELIVERED), a deleted one, or a **dormant** one (EXPIRED, kept
         for a possible SMS relance) is taken down here (404) until it is sold or
-        revived — a sold site then lives only on the client's own domain.
+        revived — a sold site then lives only on the client's own domain. A demo whose client works in
+        the CMS space is never taken down by its date.
         """
         now: datetime = datetime.now(UTC)
         site: DemoSite | None = (
@@ -1393,7 +1544,7 @@ class DemoSiteService:
         if not site:
             return None
 
-        if site.demo_link_sent_at is not None:
+        if site.demo_link_sent_at is not None and not self.is_kept_alive_by_client(site):
             expires_at: datetime = site.expires_at
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=UTC)
@@ -1701,27 +1852,173 @@ class DemoSiteService:
             The site, with its space when it had none.
 
         Raises:
-            ValueError: When the site has no content, or Storyblok refuses (its daily limit included).
+            ValueError: When the site has no content.
+            StoryblokProvisionError: When Storyblok refuses the space (its daily limit included) or its seeding fails.
         """
         if site.storyblok_space_id or not storyblok_service.is_configured:
             return site
         content_json: dict = site.content_json if isinstance(site.content_json, dict) else {}
         if not content_json:
             raise ValueError("Ce site n'a pas encore de contenu à copier dans Storyblok.")
-        provision = await storyblok_service.provision_space_with_content(
-            business_name=site.business_name,
-            slug=site.slug,
-            template_id=site.template_id,
-            collaborator_email=(site.email or site.storyblok_login_email or "").strip(),
-            preview_url=self.demo_url_for_slug(site.slug),
-            content_json=content_json,
-            invite_client=False,
-            rehost_all_assets=True,
-            country=self._prospect_country_for_site(db, site),
-        )
+        try:
+            provision = await storyblok_service.provision_space_with_content(
+                business_name=site.business_name,
+                slug=site.slug,
+                template_id=site.template_id,
+                collaborator_email=(site.email or site.storyblok_login_email or "").strip(),
+                preview_url=self.demo_url_for_slug(site.slug),
+                content_json=content_json,
+                invite_client=False,
+                rehost_all_assets=True,
+                country=self._prospect_country_for_site(db, site),
+                sync_seed_publication=False,
+            )
+        except StoryblokProvisionError as exc:
+            await self._discard_half_built_space(exc.space_id)
+            raise
         self._apply_storyblok_provision(site, provision)
         db.commit()
         db.refresh(site)
+        return site
+
+    @staticmethod
+    async def _discard_half_built_space(space_id: int | None) -> None:
+        """Delete a space Storyblok created before its seeding failed, so a retry does not pile up empty spaces."""
+        if not space_id:
+            return
+        try:
+            await storyblok_service.delete_space(space_id)
+        except Exception:
+            logger.warning("Half-built Storyblok space %s could not be deleted", space_id, exc_info=True)
+
+    @staticmethod
+    def storyblok_release_blocker(demo_site: DemoSite) -> str | None:
+        """
+        Why the site's Storyblok space cannot be released now, in the words the dashboard shows.
+
+        The space only serves to film the video and to sell: it can go once the demo has gone out, its
+        video is made and nobody works in the space. The demo itself keeps running from its content.
+
+        Args:
+            demo_site: The demo site.
+
+        Returns:
+            The reason, or None when the space can be released.
+        """
+        if not demo_site.storyblok_space_id:
+            return "Ce site n'a pas d'espace Storyblok."
+        if demo_site.status != DemoSiteStatus.ACTIVE.value:
+            return "Seule une démo en ligne peut libérer son espace."
+        if demo_site.storyblok_collaborator_status == StoryblokCollaboratorStatus.JOINED.value:
+            return "Le client a rejoint l'espace : on le garde."
+        if demo_site.storyblok_invite_sent or (
+            demo_site.storyblok_collaborator_status == StoryblokCollaboratorStatus.PENDING.value
+        ):
+            return "Le client a été invité dans l'espace : on le garde."
+        if demo_site.demo_link_sent_at is None:
+            return "Le lien de la démo n'a pas encore été envoyé : on garde l'espace."
+        if demo_site.video_status != DemoVideoStatus.READY.value:
+            return "La vidéo n'est pas encore générée : l'espace sert à la filmer."
+        if demo_site.video_desktop_requested_at is not None:
+            return "Une vidéo est en cours de demande ou de montage : l'espace sert à la filmer."
+        if not demo_site.content_json:
+            return "Ce site n'a pas de contenu enregistré : on ne pourrait pas lui recréer son espace."
+        return None
+
+    @staticmethod
+    def storyblok_asset_urls(demo_site: DemoSite) -> list[str]:
+        """
+        The Storyblok-hosted URLs the demo still shows, in its content and its section overrides.
+
+        Args:
+            demo_site: The demo site.
+
+        Returns:
+            Every URL on a Storyblok host: images that die with the space they live in.
+        """
+        found: list[str] = []
+
+        def collect(node: object) -> None:
+            if isinstance(node, str):
+                if node.startswith(("http://", "https://")) and "storyblok.com" in node.lower():
+                    found.append(node)
+            elif isinstance(node, dict):
+                for value in node.values():
+                    collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    collect(value)
+
+        collect(demo_site.content_json)
+        collect(getattr(demo_site, "section_overrides", None))
+        return found
+
+    async def release_storyblok_space(self, db: Session, site: DemoSite) -> DemoSite:
+        """
+        Delete the site's Storyblok space and keep its demo online exactly as it was.
+
+        The demo's photos live in the space's asset library, so they are first copied onto permanent R2,
+        in place and byte for byte, and the space goes only once no Storyblok URL is left in the content.
+        The content stays in the database, so :meth:`provision_missing_storyblok_space` can later give the
+        site a new space seeded from it, with the same texts and photos.
+
+        Args:
+            db: Database session.
+            site: The demo site whose space is released.
+
+        Returns:
+            The site, without its space.
+
+        Raises:
+            ValueError: With the reason the dashboard shows, when the space cannot be released now, a photo
+                could not be copied, or Storyblok kept the space (it is then still there).
+        """
+        blocker: str | None = self.storyblok_release_blocker(site)
+        if blocker:
+            raise ValueError(blocker)
+
+        async with self._storyblok_swap_lock(site.id):
+            db.refresh(site)
+            blocker = self.storyblok_release_blocker(site)
+            if blocker:
+                raise ValueError(blocker)
+
+            try:
+                await self.persist_content_images_to_r2(site)
+            except Exception as exc:
+                logger.warning("Photo copy before releasing the space failed for slug=%s", site.slug, exc_info=True)
+                raise ValueError("Les photos n'ont pas pu être copiées chez nous : l'espace est conservé.") from exc
+            db.commit()
+            left_behind: list[str] = self.storyblok_asset_urls(site)
+            if left_behind:
+                raise ValueError(
+                    f"{len(left_behind)} photo(s) n'ont pas pu être copiées chez nous : l'espace est conservé, réessayez."
+                )
+
+            space_id: int = int(site.storyblok_space_id)
+            try:
+                await storyblok_service.delete_space(space_id)
+            except Exception as exc:
+                logger.warning("Storyblok space %s of slug=%s could not be deleted", space_id, site.slug, exc_info=True)
+                raise ValueError("Storyblok n'a pas supprimé l'espace : il est conservé, réessayez.") from exc
+
+            site.storyblok_space_id = None
+            site.storyblok_public_token = None
+            site.storyblok_preview_token = None
+            site.storyblok_editor_url = None
+            db.commit()
+            db.refresh(site)
+
+        logger.info("Storyblok space %s released for slug=%s, demo kept online", space_id, site.slug)
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="storyblok_space_released",
+            status=STATUS_INFO,
+            title=f"Espace Storyblok libéré · {site.business_name}",
+            user_id=site.user_id,
+            entity_type="demo_site",
+            entity_id=site.id,
+        )
         return site
 
     def get_public_by_domain(self, db: Session, host: str) -> DemoSite | None:
@@ -1891,14 +2188,16 @@ class DemoSiteService:
         revived for a J+30 relance shows exactly what the prospect first saw, without depending on a
         Storyblok space that expiry has since deleted, or a Google link that has rotted. The sections written
         for the business (``section_overrides``, laid over the content when the site is served) move with it,
-        since they hold the photos a client uploaded from the CMS. Best-effort: a download/upload failure
-        keeps the original URL, and this never commits (the caller does).
+        since they hold the photos a client uploaded from the CMS. A space's copy of a template's default image
+        gets back the template's own address instead (the same bytes, often too heavy to copy). Best-effort: a
+        download/upload failure keeps the original URL, and this never commits (the caller does).
 
         Args:
             demo_site: The demo whose stored content images are moved to R2.
 
         Returns:
-            The number of image URLs moved to R2 (0 when nothing was fragile or R2 is unconfigured).
+            The number of image URLs swapped, for R2 or a template's own address (0 when nothing was fragile or R2 is
+            unconfigured).
         """
         prospect_id: int | None = getattr(demo_site, "prospect_id", None)
         content = demo_site.content_json
@@ -1929,6 +2228,9 @@ class DemoSiteService:
         semaphore = asyncio.Semaphore(_CONTENT_IMAGE_REHOST_CONCURRENCY)
 
         async def _rehost(url: str) -> tuple[str, str]:
+            default_source = template_default_source(url)
+            if default_source is not None:
+                return url, default_source
             async with semaphore:
                 return url, await prospect_photo_storage.rehost_remote_image(prospect_id, url)
 
@@ -2034,7 +2336,8 @@ class DemoSiteService:
         The Storyblok space is freed in every case (only needed at sale). A prospect who can
         still receive an SMS keeps a dormant (EXPIRED) demo — ``content_json`` retained — so an
         auto-relance can revive it with a fresh TTL; everyone else is hard-deleted. Dormant demos
-        nobody relanced are hard-deleted once past the retention window. A showroom demo is never
+        nobody relanced are hard-deleted once past the retention window. A demo whose client
+        works in the CMS space is left alone: the client is editing it. A showroom demo is never
         touched here, whatever its dates say.
 
         Returns:
@@ -2054,6 +2357,8 @@ class DemoSiteService:
 
         cleaned: int = 0
         for site in due_sites:
+            if self.is_kept_alive_by_client(site):
+                continue
             keep_dormant: bool = self._should_keep_dormant(db, site)
             # A dormant demo will be revived for an SMS relance, so copy its images onto permanent R2 now,
             # while the Storyblok space still serves them (it is deleted just below). Best-effort — a

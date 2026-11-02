@@ -12,4 +12,5 @@ export type CityAutocompleteInputProps = {
   required?: boolean
   showIcon?: boolean
   disabled?: boolean
+  departmentCode?: string | null
 }

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Mapping
 from typing import Any
 from urllib.parse import quote_plus
 
@@ -29,6 +30,15 @@ _BRIGHTDATA_REQUEST_URL: str = "https://api.brightdata.com/request"
 # A search page fails now and then for no lasting reason: one more try settles most of them.
 _PARSED_SEARCH_ATTEMPTS: int = 3
 _PARSED_SEARCH_RETRY_PAUSE_SECONDS: float = 1.5
+# Bright Data answers 200 with an empty body when it refuses the account itself, the reason in these headers
+# (« client_10020 », « Account is suspended… »); a refused target page carries another prefix.
+_ERROR_CODE_HEADER: str = "x-brd-err-code"
+_ERROR_MESSAGE_HEADERS: tuple[str, ...] = ("x-brd-err-msg", "x-brd-error")
+_ACCOUNT_ERROR_PREFIX: str = "client_"
+
+
+class BrightDataAccountError(RuntimeError):
+    """Bright Data refuses every request of the account (suspended, unpaid, zone unknown): no Google page can be read."""
 
 
 class BrightDataClient:
@@ -75,16 +85,16 @@ class BrightDataClient:
         """Load the Bright Data zone name from settings, falling back to the env.
 
         Returns:
-            The zone name, defaulting to ``"mcp_unlocker"``.
+            The zone name, defaulting to ``"devleadhunter_unlocker"``.
         """
         try:
             from core.config import settings
 
-            return settings.brightdata_zone or "mcp_unlocker"
+            return settings.brightdata_zone or "devleadhunter_unlocker"
         except Exception:
             import os
 
-            return os.environ.get("BRIGHTDATA_ZONE", "mcp_unlocker")
+            return os.environ.get("BRIGHTDATA_ZONE", "devleadhunter_unlocker")
 
     async def fetch(self, url: str, *, zone: str | None = None) -> str:
         """Fetch *url* through the Web Unlocker and return the raw HTML.
@@ -99,6 +109,7 @@ class BrightDataClient:
         Raises:
             aiohttp.ClientResponseError: When the API returns a non-2xx status.
             aiohttp.ClientError: On network-level failures.
+            BrightDataAccountError: When Bright Data refuses the account itself (an empty page otherwise).
         """
         self.request_count += 1
         payload: dict[str, str] = {"zone": zone or self._zone, "url": url, "format": "raw"}
@@ -115,7 +126,27 @@ class BrightDataClient:
             ) as resp,
         ):
             resp.raise_for_status()
+            refusal = self.account_refusal(resp.headers)
+            if refusal is not None:
+                raise BrightDataAccountError(refusal)
             return await resp.text()
+
+    @staticmethod
+    def account_refusal(headers: Mapping[str, str]) -> str | None:
+        """
+        Why Bright Data refuses the account, read in an answer's headers (pure — testable).
+
+        Args:
+            headers: The headers of a Bright Data answer.
+
+        Returns:
+            The code and Bright Data's words (« client_10020 : Account is suspended… »), or None for any other answer.
+        """
+        code = str(headers.get(_ERROR_CODE_HEADER) or "")
+        if not code.startswith(_ACCOUNT_ERROR_PREFIX):
+            return None
+        message = next((str(headers[name]) for name in _ERROR_MESSAGE_HEADERS if headers.get(name)), "")
+        return f"{code} : {message}" if message else code
 
     async def google(self, query: str, *, num: int = 20, start: int = 0, country: str = "FR") -> str:
         """Fetch a Google results page for *query* (French language, country-ranked).

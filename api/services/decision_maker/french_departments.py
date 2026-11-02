@@ -9,6 +9,7 @@ town is looked up in the official list of communes (geo.api.gouv.fr).
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, ClassVar
 
 import httpx
@@ -22,6 +23,9 @@ _TIMEOUT_SECONDS: float = 8.0
 _MAX_COMMUNES: int = 10
 _OVERSEAS_PREFIX: str = "97"
 _CORSICA_PREFIX: str = "20"
+_COMMUNE_LINK_WORDS: frozenset[str] = frozenset(
+    {"de", "du", "des", "la", "le", "les", "sur", "sous", "en", "et", "aux"}
+)
 
 
 class FrenchDepartments:
@@ -99,17 +103,93 @@ class FrenchDepartments:
         cls._is_town_by_word[key] = is_town
         return is_town
 
+    @classmethod
+    async def is_commune_of_department(cls, word: str, department: str) -> bool:
+        """
+        Whether a word is the name of a commune of a département (« Lescar » for the Pyrénées-Atlantiques).
+
+        A family name is often a commune's somewhere in France (« Exemplebourg », in the Allier): only a commune near the
+        business makes the word a place.
+
+        Args:
+            word: A word of a business name.
+            department: The business's département.
+
+        Returns:
+            True when a commune of that exact name lies in the département; False otherwise or when the list does
+            not answer.
+        """
+        key = town_key(word)
+        communes = await cls._communes_named(word) or []
+        return bool(key) and any(
+            town_key(str(commune.get("nom") or "")) == key and str(commune.get("codeDepartement") or "") == department
+            for commune in communes
+        )
+
+    @classmethod
+    async def commune_name(cls, registry_commune: str, *, postal_code: str | None = None) -> str:
+        """
+        A commune's name as the official list spells it (« PONT-DU-CHATEAU » gives « Pont-du-Château »).
+
+        The registry writes communes in capitals, without accents nor always hyphens; the communes of its postal code
+        are read first when it gives one (« TROUVILLE SUR MER » at 14360 is « Trouville-sur-Mer »). A name the list
+        does not find is only made readable (« Pont-du-Chateau »).
+
+        Args:
+            registry_commune: The commune as the registry writes it.
+            postal_code: Its postal code, when the registry gives one.
+
+        Returns:
+            The commune's spelling.
+        """
+        key = town_key(registry_commune)
+        spelled = cls._spelling_among(await cls._communes_of_postal_code(postal_code), key) if postal_code else None
+        if spelled is None:
+            spelled = cls._spelling_among(await cls._communes_named(registry_commune), key)
+        return spelled or cls.readable_commune(registry_commune)
+
+    @staticmethod
+    def _spelling_among(communes: list[dict[str, Any]] | None, key: str) -> str | None:
+        """The official name of the commune of the list whose comparison key is *key*."""
+        return next(
+            (
+                str(commune["nom"])
+                for commune in communes or []
+                if commune.get("nom") and town_key(str(commune["nom"])) == key
+            ),
+            None,
+        )
+
+    @staticmethod
+    def readable_commune(registry_commune: str) -> str:
+        """A commune the registry writes in capitals, made readable (« PONT-DU-CHATEAU » gives « Pont-du-Chateau »)."""
+        words = re.split(r"([\s-])", registry_commune.strip().lower())
+        return "".join(
+            word if word in _COMMUNE_LINK_WORDS and index > 0 else word.capitalize() for index, word in enumerate(words)
+        )
+
     @staticmethod
     async def _communes_named(town: str) -> list[dict[str, Any]] | None:
         """The communes the official list finds for a name, or None when it does not answer."""
-        params: dict[str, str | int] = {"nom": town, "fields": "nom,codeDepartement", "limit": _MAX_COMMUNES}
+        return await FrenchDepartments._communes_where(
+            {"nom": town, "fields": "nom,codeDepartement", "limit": _MAX_COMMUNES}
+        )
+
+    @staticmethod
+    async def _communes_of_postal_code(postal_code: str) -> list[dict[str, Any]] | None:
+        """The communes the official list gives a postal code, or None when it does not answer."""
+        return await FrenchDepartments._communes_where({"codePostal": postal_code, "fields": "nom,codeDepartement"})
+
+    @staticmethod
+    async def _communes_where(params: dict[str, str | int]) -> list[dict[str, Any]] | None:
+        """The communes the official list answers a query with, or None when it does not answer."""
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
                 response = await client.get(_COMMUNES_URL, params=params)
                 response.raise_for_status()
                 communes = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            logger.info("Commune lookup of %r failed: %s", town, exc)
+            logger.info("Commune lookup %s failed: %s", params, exc)
             return None
         if not isinstance(communes, list):
             return None

@@ -42,6 +42,7 @@ _COMPANY_NOISE: frozenset[str] = frozenset(
 )
 
 _DOTTED_INITIAL_RE: re.Pattern[str] = re.compile(r"\b([A-Za-z])\.(?=[A-Za-z]\b)")
+_SPACED_CAPITALS_RE: re.Pattern[str] = re.compile(r"\b[A-Z](?: [A-Z]\b)+")
 _INITIALS_RE: re.Pattern[str] = re.compile(r"(?<![\w.])((?:[A-Z]\.?){2,3})(?!\w)")
 
 
@@ -103,8 +104,9 @@ def infer_gender(first_name: str | None) -> str | None:
 
 
 def join_dotted_initials(name: str) -> str:
-    """The name with its dotted initials joined (« A.S auto » reads « AS auto »)."""
-    return _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
+    """The name with its dotted or spaced initials joined (« A.S auto » reads « AS auto », « E X C » « EXC »)."""
+    joined = _DOTTED_INITIAL_RE.sub(r"\1", _DOTTED_INITIAL_RE.sub(r"\1", name or ""))
+    return _SPACED_CAPITALS_RE.sub(lambda match: match.group(0).replace(" ", ""), joined)
 
 
 def initials_in(name: str) -> list[str]:

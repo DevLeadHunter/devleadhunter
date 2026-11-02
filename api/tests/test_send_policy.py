@@ -13,9 +13,11 @@ from datetime import date, datetime
 
 import pytest
 
+from services.prospect_calendar import ProspectCalendar
 from services.send_policy_service import SENDER_TIMEZONE, ResolvedPolicy, _to_local, send_policy_service
 
 MONTREAL: str = "America/Toronto"
+MONTREAL_CALENDAR: ProspectCalendar = ProspectCalendar(timezone_name=MONTREAL, country="CA")
 
 
 def _local(moment: datetime) -> datetime:
@@ -171,7 +173,7 @@ def test_canadian_prospect_slot_is_eight_in_montreal_fourteen_in_paris() -> None
     """A Monday 8 a.m. in Montréal is 12:00 UTC in October — 2 p.m. in Paris, not 2 a.m. in Montréal."""
     start = datetime(2026, 10, 5, 0, 0, 0)  # Monday 00:00 UTC = Sunday 20:00 in Montréal
     slots = send_policy_service.next_send_slots(
-        _policy(window_start_hour=8), 1, start_utc=start, slot_timezones=[MONTREAL]
+        _policy(window_start_hour=8), 1, start_utc=start, slot_calendars=[MONTREAL_CALENDAR]
     )
     assert slots == [datetime(2026, 10, 5, 12, 0, 0)]
     assert _to_local(slots[0], MONTREAL) == datetime(2026, 10, 5, 8, 0, 0)
@@ -182,7 +184,7 @@ def test_slot_keeps_eight_in_montreal_across_both_winter_time_changes() -> None:
     """Paris changes on the 25th of October, Montréal on the 1st of November: the local hour never moves."""
     start = datetime(2026, 10, 19, 0, 0, 0)  # Monday
     slots = send_policy_service.next_send_slots(
-        _policy(window_start_hour=8), 15, start_utc=start, per_campaign_cap=1, slot_timezones=[MONTREAL] * 15
+        _policy(window_start_hour=8), 15, start_utc=start, per_campaign_cap=1, slot_calendars=[MONTREAL_CALENDAR] * 15
     )
     montreal = [_to_local(slot, MONTREAL) for slot in slots]
     assert all(moment.hour == 8 and moment.minute == 0 for moment in montreal)
@@ -195,7 +197,7 @@ def test_slot_keeps_eight_in_montreal_across_both_winter_time_changes() -> None:
 def test_no_slot_on_the_prospect_local_weekend() -> None:
     """Saturday 02:00 UTC is still Friday evening in Montréal: the next slot is Monday 7 a.m. there."""
     start = datetime(2026, 10, 10, 2, 0, 0)
-    slots = send_policy_service.next_send_slots(_policy(), 5, start_utc=start, slot_timezones=[MONTREAL] * 5)
+    slots = send_policy_service.next_send_slots(_policy(), 5, start_utc=start, slot_calendars=[MONTREAL_CALENDAR] * 5)
     assert slots[0] == datetime(2026, 10, 12, 11, 0, 0)  # Monday 07:00 EDT
     assert all(_to_local(slot, MONTREAL).weekday() < 5 for slot in slots)
 
@@ -216,7 +218,7 @@ def test_fr_and_ca_campaigns_interleaved_respect_the_global_cap() -> None:
         seed_counts=_sender_days(french),
         occupied=set(french),
         per_campaign_cap=1,
-        slot_timezones=[MONTREAL] * 3,
+        slot_calendars=[MONTREAL_CALENDAR] * 3,
     )
 
     combined = _sender_days(french + canadian)
@@ -238,7 +240,7 @@ def test_canadian_sends_move_to_free_sender_days_when_the_cap_is_one() -> None:
         start_utc=start,
         seed_counts=_sender_days(french),
         occupied=set(french),
-        slot_timezones=[MONTREAL] * 3,
+        slot_calendars=[MONTREAL_CALENDAR] * 3,
     )
 
     assert [_local(s).date() for s in french] == [date(2026, 10, 5), date(2026, 10, 6), date(2026, 10, 7)]
@@ -248,7 +250,7 @@ def test_canadian_sends_move_to_free_sender_days_when_the_cap_is_one() -> None:
 def test_canadian_follow_up_keeps_the_local_hour_across_the_time_change() -> None:
     """A J1 at 8 a.m. in Montréal on the 26th answers at 8 a.m. in Montréal on the 2nd — 13:00 UTC, no longer 12:00."""
     sent_at = datetime(2026, 10, 26, 12, 0, 0)  # Monday 08:00 EDT
-    follow_up = send_policy_service.follow_up_slot(_policy(), sent_at, timezone_name=MONTREAL)
+    follow_up = send_policy_service.follow_up_slot(_policy(), sent_at, calendar=MONTREAL_CALENDAR)
     assert follow_up == datetime(2026, 11, 2, 13, 0, 0)
     assert _to_local(follow_up, MONTREAL) == datetime(2026, 11, 2, 8, 0, 0)
 
@@ -260,7 +262,7 @@ def test_follow_up_keeps_the_sender_hour_by_default() -> None:
     assert _local(follow_up) == datetime(2026, 10, 26, 14, 0, 0)  # Monday 14:00 CET
 
 
-def test_slot_timezones_must_match_the_slot_count() -> None:
-    """One zone per slot: a mismatch is a programming error, not something to guess around."""
+def test_slot_calendars_must_match_the_slot_count() -> None:
+    """One calendar per slot: a mismatch is a programming error, not something to guess around."""
     with pytest.raises(ValueError):
-        send_policy_service.next_send_slots(_policy(), 2, slot_timezones=[MONTREAL])
+        send_policy_service.next_send_slots(_policy(), 2, slot_calendars=[MONTREAL_CALENDAR])

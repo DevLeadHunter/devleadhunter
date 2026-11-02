@@ -12,7 +12,10 @@ gets a craft label, ``{"family": "craft", "kind": str, "description": str, "serv
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+from services.decision_maker.normalize import fold
 
 # Photo kinds the vision model chooses from. ``dish`` / ``drink`` are the only card-worthy ones.
 PHOTO_KIND_DISH = "dish"
@@ -233,6 +236,16 @@ CRAFT_SHOWABLE_KINDS: frozenset[str] = frozenset(
 )
 CRAFT_PHOTO_LABEL_VERSION = 2
 MIN_APPEAL_OF_A_SHOWABLE_OTHER_PHOTO = 4
+_RESIDENTS_NAMES_RE = re.compile(
+    r"\b(?:interphones?|boites? aux lettres|sonnettes?|digicodes?)\b.*\b(?:residents?|locataires?|habitants?|noms?)\b"
+)
+_SUPPLIER_BRAND_LOGO_RE = re.compile(
+    r"\b(?:bardahl|castrol|motul|liqui moly|valvoline|wynn ?s|facom|wurth)\b.*\blogos?\b"
+    r"|\blogos?\b.*\b(?:bardahl|castrol|motul|liqui moly|valvoline|wynn ?s|facom|wurth)\b"
+)
+_MESSY_WORK_RE = re.compile(
+    r"\ben desordre\b|\bemmele|\benchevetre|\banarchique|\bchaotique|\bsurcharges? de (?:cables|fils)\b"
+)
 
 _CRAFT_KIND_SYNONYMS: dict[str, str] = {
     "chantier": CRAFT_KIND_WORK,
@@ -341,9 +354,14 @@ def craft_labels_for_urls(photo_labels: Any, urls: list[str]) -> dict[str, dict[
 def is_showable_craft_photo(label: dict[str, Any] | None) -> bool:
     """Whether a craft-labelled photo may appear on the site: never a flyer or a customer, an « other » only when good.
 
-    A well-made photo the vision could not file (a flower bed read as a landscape) still beats a stock photo.
+    A well-made photo the vision could not file (a flower bed read as a landscape) still beats a stock photo. Its
+    description rules out an intercom showing residents' names, a supplier's machine under its logo (« machine
+    Bardahl … avec logo ») and a mess (« câbles en désordre »), whatever its kind.
     """
     if not isinstance(label, dict):
+        return False
+    description = fold(str(label.get("description") or ""))
+    if any(rule.search(description) for rule in (_RESIDENTS_NAMES_RE, _SUPPLIER_BRAND_LOGO_RE, _MESSY_WORK_RE)):
         return False
     kind = str(label.get("kind", ""))
     if kind == PHOTO_KIND_OTHER:

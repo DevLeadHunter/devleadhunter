@@ -222,7 +222,7 @@ function prospectAgain(): void {
   navigateTo(
     ProspectSearches.newSearchLocation({
       ...(props.zone?.prefillCity ? { city: props.zone.prefillCity } : {}),
-      ...(props.zone?.country ? { country: props.zone.country } : {}),
+      ...(props.zone?.country ? { zone: props.zone.country } : {}),
       ...(store.selectedCategories.length === 1 ? { category: store.selectedCategories[0] as string } : {}),
     }),
   )

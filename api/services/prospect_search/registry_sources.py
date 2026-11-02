@@ -28,7 +28,9 @@ import httpx
 
 from enums.prospect_search import CandidateOrigin
 from scrappers.email_candidate_scoring import email_candidate_scorer
+from services.decision_maker.french_departments import FrenchDepartments
 from services.decision_maker.normalize import fold
+from services.prospect_search.register_spelling import RegisterSpelling
 from services.prospect_search.trade_catalog import TradeProfile
 
 logger = logging.getLogger(__name__)
@@ -127,11 +129,13 @@ class RgeRegistry:
             email = str(row.get("email") or "").strip().lower()
             if not name or "@" not in email or RegistryCompany.is_institution(name, email, city=city):
                 continue
+            postal_code = str(row.get("code_postal") or "").strip() or None
+            commune = await FrenchDepartments.commune_name(str(row.get("commune") or city), postal_code=postal_code)
             companies.append(
                 RegistryCompany(
-                    name=name.title(),
-                    city=str(row.get("commune") or city).title(),
-                    address=str(row.get("adresse") or "").title() or None,
+                    name=RegisterSpelling.business_name(name),
+                    city=commune,
+                    address=RegisterSpelling.address(str(row.get("adresse") or ""), postal_code, commune),
                     phone=str(row.get("telephone") or "").strip() or None,
                     email=email,
                     registry_number=str(row.get("siret") or "").strip() or None,

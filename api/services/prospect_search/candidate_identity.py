@@ -2,10 +2,10 @@
 Candidate identity — recognising the same business across sources, searches and prospects.
 
 A business is known by several keys at once: its phone number, Google's identifier of
-its listing, its Facebook page, its email, and its name in its town. Two records
-sharing any key are the same business. The index built here answers, before a single
-paid request is spent on a candidate: is it already a prospect, is it flagged « do not
-contact », was it discarded by an earlier search?
+its listing, its Facebook page, its email, its company's registry number, and its name
+in its town. Two records sharing any key are the same business. The index built here
+answers, before a single paid request is spent on a candidate: is it already a prospect,
+is it flagged « do not contact », was it discarded by an earlier search?
 """
 
 from __future__ import annotations
@@ -55,6 +55,7 @@ class CandidateIdentity:
         google_cid: str | None = None,
         facebook_url: str | None = None,
         email: str | None = None,
+        registry_number: str | None = None,
     ) -> list[str]:
         """
         Every key of a business, strongest first.
@@ -67,6 +68,7 @@ class CandidateIdentity:
             google_cid: Google's identifier of the listing.
             facebook_url: Facebook page URL.
             email: Email address.
+            registry_number: Its company's number in a public registry (a French SIREN, a Swiss UID).
 
         Returns:
             The keys that could be built (a business always has at least its name key).
@@ -82,6 +84,9 @@ class CandidateIdentity:
             keys.append(facebook_key)
         if email and "@" in email:
             keys.append(f"mail:{email.strip().lower()}")
+        registry_key = re.sub(r"[^A-Z0-9]", "", (registry_number or "").upper())
+        if registry_key:
+            keys.append(f"reg:{registry_key}")
         keys.append(cls.name_key(name, city))
         return keys
 
@@ -219,12 +224,15 @@ class KnownBusinessIndex:
         )
         return index
 
-    def match(self, keys: list[str]) -> KnownBusiness | None:
+    def match(self, keys: list[str], *, include_run_proposals: bool = True) -> KnownBusiness | None:
         """
         Tell why a business must be skipped, if it must.
 
         Args:
             keys: Identity keys of the candidate.
+            include_run_proposals: Whether a business the run proposed under another listing is known. A verified
+                candidate leaves that comparison to the listings themselves (``CandidateDuplicates``), which keep
+                the better-informed one.
 
         Returns:
             Why it is already known, or ``None`` for a new business.
@@ -253,7 +261,7 @@ class KnownBusinessIndex:
                 "Déjà proposé par une recherche précédente : il attend votre validation.",
                 None,
             )
-        if any(key in self._proposed_keys for key in keys):
+        if include_run_proposals and any(key in self._proposed_keys for key in keys):
             return KnownBusiness(
                 CandidateRejectReason.AWAITING_DECISION,
                 "Déjà proposé par cette recherche sous une autre fiche : il attend votre validation.",

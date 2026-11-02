@@ -38,6 +38,7 @@ from services.templates import (
     plumber_cuivre,
     plumber_signature,
 )
+from services.templates.site_content import SECTION_DEFINITIONS, comparable_section
 from services.templates.visitor_data import TemplateVisitorData
 
 # Order here defines the order shown in the template picker (default first).
@@ -255,6 +256,29 @@ def to_storyblok_site_content(template_id: str, site_content: dict[str, Any]) ->
     return module.to_storyblok_site_content(site_content, used_sections, extra_section_images, section_field_overrides)
 
 
+def changed_section_labels(template_id: str, previous: dict[str, Any], published: dict[str, Any]) -> list[str]:
+    """
+    The editor labels of the template's sections whose content differs between two versions of a site, in page order.
+
+    Args:
+        template_id: The site's template.
+        previous: The site content before the publication.
+        published: The site content after it.
+
+    Returns:
+        Labels such as « Services » or « Questions fréquentes »; empty when nothing the client edits changed.
+    """
+    label_by_component: dict[str, str] = {f"section_{suffix}": label for suffix, label, _ in SECTION_DEFINITIONS}
+    previous_sections: dict[str, dict[str, Any]] = {
+        blok["component"]: comparable_section(blok) for blok in to_storyblok_site_content(template_id, previous)
+    }
+    return [
+        label_by_component[blok["component"]]
+        for blok in to_storyblok_site_content(template_id, published)
+        if comparable_section(blok) != previous_sections.get(blok["component"])
+    ]
+
+
 def section_image_slots(template_id: str) -> dict[str, str]:
     """
     The template's one-off photos besides the hero, the « À propos » and the gallery, field → editor label.
@@ -267,6 +291,19 @@ def section_image_slots(template_id: str) -> dict[str, str]:
     """
     declared: dict[str, list[dict[str, str]]] = getattr(get_module(template_id), "EXTRA_SECTION_IMAGES", None) or {}
     return {slot["field"]: slot["label"] for slots in declared.values() for slot in slots}
+
+
+def delivered_site_former_defaults(template_id: str) -> dict[str, Any]:
+    """
+    The texts a template wrote by default before changing its wording, which a delivered site keeps.
+
+    Args:
+        template_id: The template.
+
+    Returns:
+        Its ``DELIVERED_SITE_FORMER_DEFAULTS`` (``SiteContent`` key → former default), empty when it declares none.
+    """
+    return getattr(get_module(template_id), "DELIVERED_SITE_FORMER_DEFAULTS", None) or {}
 
 
 def content_schemas(template_id: str, country: str) -> list[dict[str, Any]]:

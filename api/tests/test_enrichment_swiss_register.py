@@ -267,3 +267,29 @@ def test_an_unsure_register_name_the_business_email_confirms_is_trusted(
         "De Modèle",
         None,
     )
+
+
+def test_a_firm_without_publication_names_the_head_its_cantonal_excerpt_lists(
+    register_firms: list[SwissRegisterFirm], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An older Sàrl published nothing in the online gazette: its canton's excerpt names its managing associate."""
+    from services.decision_maker.swiss_register_people import RegisteredPerson
+
+    register_firms.append(_firm())
+
+    async def no_publication(firm: SwissRegisterFirm) -> list[tuple[date, str]]:
+        return []
+
+    async def excerpt(firm: SwissRegisterFirm) -> list[RegisteredPerson]:
+        return [RegisteredPerson(first_name="Jules", last_name="Exemple", roles=("associé gérant",))]
+
+    monkeypatch.setattr(swiss_registry, "publications", no_publication)
+    monkeypatch.setattr(swiss_registry, "excerpt_people", excerpt)
+    record = _record()
+
+    asyncio.run(EnrichmentService()._read_swiss_register(_Session(), _prospect(), record, uid=None))
+
+    assert (record.contact_first_name, record.contact_last_name) == ("Jules", "Exemple")
+    assert record.contact_name_provenance == (
+        "Extrait du registre du commerce cantonal : Exemple Paysages Sàrl, associé gérant"
+    )

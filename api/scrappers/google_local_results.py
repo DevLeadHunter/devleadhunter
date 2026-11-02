@@ -14,6 +14,7 @@ carries fewer fields (no phone, no website flag).
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -22,17 +23,27 @@ from urllib.parse import unquote_plus
 from bs4 import BeautifulSoup, Tag
 
 from scrappers.google_scraper import GoogleScraper
+from services.french_overseas import FrenchOverseas
 from services.sms.phone_normalizer import to_e164
 
 _RATING_LINE_RE: re.Pattern[str] = re.compile(r"^(\d[.,]\d)\s*\(([\d\s\u202f\u00a0.,]+)\)")
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"!1s0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
+# The page's inline data draws each card from a place record opening on the business's name and holding its feature id.
+_PLACE_RECORD_RE: re.Pattern[str] = re.compile(r'\{"498469725":\["((?:[^"\\]|\\.)*)"')
+_RECORD_FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]{6,}:0x([0-9a-f]+)", re.IGNORECASE)
 _PHONE_SHAPE_RE: re.Pattern[str] = re.compile(r"^\+?\(?\d[\d\s().\-]{6,18}\d$")
 _PERMANENTLY_CLOSED_MARKERS: tuple[str, ...] = ("définitivement fermé", "fermé définitivement", "permanently closed")
 _TEMPORARILY_CLOSED_MARKERS: tuple[str, ...] = ("fermé temporairement", "temporairement fermé", "temporarily closed")
 _OPENING_PREFIXES: tuple[str, ...] = ("ouvert", "fermé", "ouvre", "ferme", "open", "closed", "opens", "closes")
 _SENIORITY_MARKERS: tuple[str, ...] = ("en activité", "in business")
+_NO_REVIEWS_PREFIXES: tuple[str, ...] = ("aucun avis", "no reviews")
 _WEBSITE_BUTTON_LABELS: frozenset[str] = frozenset({"site web", "website", "site internet"})
-_PROVINCE_SUFFIX_RE: re.Pattern[str] = re.compile(r",\s*(QC|Québec|Quebec)$", re.IGNORECASE)
+_REGION_NAMES: tuple[str, ...] = ("QC", "Québec", "Quebec", *FrenchOverseas.address_names())
+_REGION_SUFFIX_RE: re.Pattern[str] = re.compile(
+    rf",\s*({'|'.join(re.escape(name) for name in _REGION_NAMES)})$", re.IGNORECASE
+)
+_REGION_NAME_KEYS: frozenset[str] = frozenset(name.lower() for name in _REGION_NAMES)
+_PLUS_CODE_PREFIX_RE: re.Pattern[str] = re.compile(r"^[2-9CFGHJMPQRVWX]{4}[+ ][2-9CFGHJMPQRVWX]{2,3}\s+")
 _STREET_SEGMENT_RE: re.Pattern[str] = re.compile(
     r"^(\d|(rue|av|avenue|bd|boulevard|chemin|ch|route|rte|place|pl|impasse|all[ée]e|quai|cours|square|passage"
     r"|zone|za|zi|zac|lieu-dit|rang|mont[ée]e)[\s.])",
@@ -92,7 +103,55 @@ class GoogleLocalResultsParser:
             # Some country layouts carry no action link at all: the website is then unknown, not absent.
             for listing in listings:
                 listing.has_website_button = None
+        cls._take_ids_of_place_records(listings, html)
         return listings
+
+    @classmethod
+    def _take_ids_of_place_records(cls, listings: list[LocalListing], html: str) -> None:
+        """
+        Give a card without directions link the Google identifier of its place record.
+
+        A business serving its area shows no address, so its card has no « Itinéraire » link to read the identifier
+        from; the place record the page draws the card from still holds it.
+
+        Args:
+            listings: The page's listings, completed in place.
+            html: Raw page HTML.
+        """
+        if all(listing.cid for listing in listings):
+            return
+        cids = cls.cids_of_place_records(html)
+        for listing in listings:
+            listing.cid = listing.cid or cids.get(cls._name_key(listing.name))
+
+    @classmethod
+    def cids_of_place_records(cls, html: str) -> dict[str, str]:
+        """
+        The Google identifier of each place record of a local results page, by its business's name (pure — testable).
+
+        Args:
+            html: Raw page HTML.
+
+        Returns:
+            The identifiers, keyed by the folded business name.
+        """
+        records = list(_PLACE_RECORD_RE.finditer(html))
+        cids: dict[str, str] = {}
+        for index, record in enumerate(records):
+            record_end = records[index + 1].start() if index + 1 < len(records) else len(html)
+            feature_id = _RECORD_FEATURE_ID_RE.search(html, record.start(), record_end)
+            try:
+                name = json.loads(f'"{record.group(1)}"')
+            except ValueError:
+                continue
+            if feature_id and name.strip():
+                cids.setdefault(cls._name_key(name), str(int(feature_id.group(1), 16)))
+        return cids
+
+    @staticmethod
+    def _name_key(name: str) -> str:
+        """A business name as cards and place records both write it: lowercase, single spaces."""
+        return " ".join(name.split()).lower()
 
     @classmethod
     def parse_snack_pack(cls, snack_pack: list[dict[str, Any]]) -> list[LocalListing]:
@@ -113,11 +172,12 @@ class GoogleLocalResultsParser:
             status_text = f"{place.get('work_status') or ''} {place.get('work_status_details') or ''}".lower()
             rating = place.get("rating")
             reviews_count = place.get("reviews_cnt")
+            address_line = str(place.get("address") or "")
             listings.append(
                 LocalListing(
                     name=name,
-                    category=str(place.get("type") or "").strip() or None,
-                    locality=cls._locality_of(str(place.get("address") or "")),
+                    category=str(place.get("type") or "").strip() or cls._category_of_unrated(address_line),
+                    locality=cls._locality_of(address_line),
                     rating=float(rating) if isinstance(rating, int | float) else None,
                     reviews_count=int(reviews_count) if isinstance(reviews_count, int | float) else None,
                     is_permanently_closed=any(marker in status_text for marker in _PERMANENTLY_CLOSED_MARKERS),
@@ -158,7 +218,7 @@ class GoogleLocalResultsParser:
                         # In the searched town itself Google shows the street, not the town.
                         listing.address = segment
                     else:
-                        listing.locality = _PROVINCE_SUFFIX_RE.sub("", segment).strip()
+                        listing.locality = cls._town_of(segment)
 
         card = cls._card_of(details)
         cls._read_links(listing, card, country)
@@ -178,7 +238,7 @@ class GoogleLocalResultsParser:
         for segment in segments[1:] if match else segments:
             if cls._is_phone(segment, country):
                 listing.phone = listing.phone or segment
-            elif not _STREET_SEGMENT_RE.match(segment) and not segment.lower().startswith(("aucun avis", "no reviews")):
+            elif not _STREET_SEGMENT_RE.match(segment) and not segment.lower().startswith(_NO_REVIEWS_PREFIXES):
                 category_segments.append(segment)
         listing.category = category_segments[-1] if category_segments else None
 
@@ -195,12 +255,41 @@ class GoogleLocalResultsParser:
             return False
         return not lowered.startswith(_OPENING_PREFIXES)
 
-    @staticmethod
-    def _locality_of(address_line: str) -> str | None:
-        """Town part of the parsed JSON's address line (« Plus de 7 ans en activité ⋅ Sion »)."""
-        segments = [segment.strip() for segment in re.split(r"[⋅·]", address_line) if segment.strip()]
+    @classmethod
+    def _locality_of(cls, address_line: str) -> str | None:
+        """
+        Town part of the parsed JSON's address line (« Plus de 7 ans en activité ⋅ Sion »).
+
+        A listing without reviews has its rating line there instead (« Aucun avis ⋅ Paysagiste »): it names no town.
+        """
+        segments = cls._json_line_segments(address_line)
+        if segments and segments[0].lower().startswith(_NO_REVIEWS_PREFIXES):
+            return None
         towns = [segment for segment in segments if not any(marker in segment.lower() for marker in _SENIORITY_MARKERS)]
-        return _PROVINCE_SUFFIX_RE.sub("", towns[-1]).strip() if towns else None
+        return cls._town_of(towns[-1]) if towns else None
+
+    @classmethod
+    def _category_of_unrated(cls, address_line: str) -> str | None:
+        """The category a listing without reviews gives on the parsed JSON's address line (« Aucun avis ⋅ Maçon »)."""
+        segments = cls._json_line_segments(address_line)
+        is_rating_line = len(segments) > 1 and segments[0].lower().startswith(_NO_REVIEWS_PREFIXES)
+        return segments[-1] if is_rating_line else None
+
+    @staticmethod
+    def _json_line_segments(line: str) -> list[str]:
+        """The parts of a parsed JSON line, split on its dots (« Plus de 7 ans en activité ⋅ Sion »)."""
+        return [segment.strip() for segment in re.split(r"[⋅·]", line) if segment.strip()]
+
+    @staticmethod
+    def _town_of(segment: str) -> str | None:
+        """
+        The town a listing line names, without the province or overseas department written after it.
+
+        Returns:
+            « Le Lamentin » for « Le Lamentin, Martinique »; ``None`` for a line naming the department alone.
+        """
+        town = _REGION_SUFFIX_RE.sub("", segment).strip()
+        return None if not town or town.lower() in _REGION_NAME_KEYS else town
 
     @staticmethod
     def _card_of(details: Tag) -> Tag:
@@ -230,7 +319,11 @@ class GoogleLocalResultsParser:
             if feature_id:
                 listing.cid = str(int(feature_id.group(1), 16))
             destination = unquote_plus(href.split("/maps/dir//", 1)[-1].split("/data=", 1)[0])
+            destination = _PLUS_CODE_PREFIX_RE.sub("", destination)
             address = destination[len(listing.name) :].lstrip(", ") if destination.startswith(listing.name) else ""
+            department = FrenchOverseas.of_address(address) if address and country == "FR" else None
+            if department is not None:
+                address = department.with_communes_spelled(address)
             if address:
                 listing.address = address
                 town = GoogleScraper.extract_city(address, country)

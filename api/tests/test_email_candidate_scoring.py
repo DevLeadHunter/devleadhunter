@@ -177,9 +177,9 @@ def test_foreign_state_and_canton_domains_are_rejected() -> None:
 
 
 def test_a_quebec_provincial_domain_is_split_after_qc_ca() -> None:
-    assert EmailCandidateScorer._registrable_label("plomberie-tremblay.qc.ca") == "plomberie-tremblay"
-    assert EmailCandidateScorer._registrable_label("info.plomberie-tremblay.qc.ca") == "plomberie-tremblay"
-    assert EmailCandidateScorer._registrable_label("saint-germain-lembron.fr") == "saint-germain-lembron"
+    assert EmailCandidateScorer.registrable_label("plomberie-tremblay.qc.ca") == "plomberie-tremblay"
+    assert EmailCandidateScorer.registrable_label("info.plomberie-tremblay.qc.ca") == "plomberie-tremblay"
+    assert EmailCandidateScorer.registrable_label("saint-germain-lembron.fr") == "saint-germain-lembron"
 
 
 def test_two_qc_ca_domains_no_longer_share_the_website_bonus() -> None:
@@ -234,3 +234,23 @@ def test_a_church_or_parish_address_belongs_to_an_institution(email: str) -> Non
 
 def test_a_name_starting_like_a_church_word_is_no_institution() -> None:
     assert scorer.belongs_to_an_institution("info@catherine-jardins.ch", city="Fribourg") is False
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "abjautorepair.net@domainsbyproxy.com",
+        "garage-exemple.fr@contactprivacy.com",
+        "a1b2c3d4@withheldforprivacy.com",
+        "garage-exemple.com@whoisprivacycorp.com",
+    ],
+)
+def test_a_privacy_service_s_address_is_never_the_business_email(email: str) -> None:
+    assert scorer.belongs_to_an_institution(email, city="Dax") is True
+    assert _only(email, name="Abj Auto") is None
+
+
+def test_a_privacy_service_s_address_tells_the_domain_it_stands_for() -> None:
+    assert scorer.domain_behind_privacy_proxy("abjautorepair.net@domainsbyproxy.com") == "abjautorepair.net"
+    assert scorer.domain_behind_privacy_proxy("a1b2c3d4@withheldforprivacy.com") is None
+    assert scorer.domain_behind_privacy_proxy("contact@garage-exemple.fr") is None

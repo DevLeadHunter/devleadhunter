@@ -143,7 +143,7 @@ def first_mobile_e164(prospect: ProspectDB) -> str | None:
     A text SMS only reaches a mobile, so every SMS path (relance, cold, campaign) targets the first
     mobile in the list — the display primary is often a business landline we deliberately keep. The
     mobile must belong to the prospect's country (a Swiss ``079`` becomes ``+4179…``, never ``+337…``),
-    and that country must be open to SMS prospecting: a Belgian prospect has no mobile to text.
+    and SMS prospecting must be open where he lives: a Belgian or a Martinique prospect has no mobile to text.
 
     Args:
         prospect: The prospect to read.
@@ -152,7 +152,7 @@ def first_mobile_e164(prospect: ProspectDB) -> str | None:
         The first mobile as ``+336…`` / ``+4179…``, or ``None`` when none may be texted.
     """
     country = SmsProspectingRules.country_of(prospect)
-    if not SmsProspectingRules.is_country_open(country):
+    if SmsProspectingRules.country_refusal(prospect) is not None:
         return None
     for phone in iter_phones(prospect):
         e164 = PhoneNumberPlans.mobile_of_country(phone, country=country)

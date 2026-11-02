@@ -10,6 +10,7 @@ from services.templates import electrician_eclat, registry
 from services.templates.default_images import DEFAULT_IMAGES, apply_default_images
 
 _PALETTE: dict[str, str] = {"primary": "#F59E0B", "secondary": "#0B1B2E", "accent": "#F59E0B"}
+_PROMISES: tuple[str, ...] = ("gratuit", "garanti", "7j/7", "rapide", "urgence", "confiance", "certifi", "borne")
 
 
 def _site(city: str | None = "Orléat", enrichment: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -41,11 +42,11 @@ def test_template_is_registered_before_the_older_electrician_template() -> None:
 def test_content_is_complete_without_any_enrichment() -> None:
     """A bare prospect still gets a title, six illustrated services, the method, the FAQ and both extra photos."""
     site = _site()
-    assert site["heroTitle"] == "Votre électricien de confiance à Orléat"
+    assert site["heroTitle"] == "Votre électricien à Orléat"
     assert len(site["services"]) == 6
     assert all(service["image"].startswith("https://images.unsplash.com/") for service in site["services"])
     assert len(site["steps"]) == 4
-    assert len(site["faq"]) == 5
+    assert len(site["faq"]) == 3
     assert site["images"]["heroSecondary"].startswith("https://images.unsplash.com/")
     assert site["images"]["ctaBackground"].startswith("https://images.unsplash.com/")
 
@@ -59,15 +60,28 @@ def test_copy_has_no_em_dash() -> None:
     assert not any("—" in text for text in texts)
 
 
-def test_rating_slot_shows_the_real_rating_or_a_neutral_claim() -> None:
-    """The placeholder rating never reaches the site: the real Google rating replaces it, or « Devis gratuit »."""
+def test_rating_slot_shows_the_real_rating_or_nothing() -> None:
+    """The placeholder rating never reaches the site: the real Google rating replaces it, or the slot goes."""
     with_rating = [
         (item["value"], item["label"]) for item in _site(enrichment={"rating": 5.0, "reviews_count": 35})["trustItems"]
     ]
-    assert ("5,0/5", "35 avis") in with_rating
+    assert with_rating == [("5,0/5", "35 avis"), ("Local", "Artisan de proximité"), ("Devis", "Sur demande")]
     without_rating = [(item["value"], item["label"]) for item in _site()["trustItems"]]
-    assert ("Devis gratuit", "Sans engagement") in without_rating
-    assert "4,9/5" not in [value for value, _ in without_rating]
+    assert without_rating == [("Local", "Artisan de proximité"), ("Devis", "Sur demande")]
+
+
+def test_template_texts_promise_nothing_whatever_the_opening_hours() -> None:
+    """No default text promises a price, a delay, a guarantee or a service, even for a business open every day."""
+    every_day = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+    site = _site(enrichment={"opening_hours": [{"day": day, "hours": "08:00–20:00"} for day in every_day]})
+    texts = [site[key] for key in ("heroTitle", "subtitle", "about", "aboutHeading", "galleryHeading", "ctaLead")]
+    texts += [site["contactLead"], *site["heroPoints"]]
+    texts += [f"{item['value']} {item['label']}" for item in site["trustItems"]]
+    texts += [f"{item['question']} {item['answer']}" for item in site["faq"]]
+    texts += [f"{step['title']} {step['description']}" for step in site["steps"]]
+    texts += [f"{service['title']} {service['description']}" for service in site["services"]]
+    assert site["heroPoints"] == []
+    assert [text for text in texts if any(promise in text.lower() for promise in _PROMISES)] == []
 
 
 def test_small_hero_photo_is_left_to_the_layer_when_the_prospect_has_gallery_photos() -> None:
@@ -97,15 +111,15 @@ def test_default_images_fill_only_empty_slots() -> None:
 
 def test_title_contracts_the_article_of_the_city() -> None:
     """« à Le Mont-sur-Lausanne » reads « au Mont-sur-Lausanne »."""
-    assert _site(city="Le Mont-sur-Lausanne")["heroTitle"] == "Votre électricien de confiance au Mont-sur-Lausanne"
+    assert _site(city="Le Mont-sur-Lausanne")["heroTitle"] == "Votre électricien au Mont-sur-Lausanne"
 
 
 def test_unknown_city_never_prints_the_placeholder() -> None:
     """Without a city the title has none, and the « votre secteur » placeholder is not stored as a city."""
     site = _site(city=None)
-    assert site["heroTitle"] == "Votre électricien de confiance"
+    assert site["heroTitle"] == "Votre électricien"
     assert site["city"] == ""
-    assert site["subtitle"].endswith("garanti dans votre secteur.")
+    assert site["subtitle"].endswith("rénovation dans votre secteur.")
 
 
 def test_generations_do_not_share_mutable_defaults() -> None:
@@ -116,7 +130,8 @@ def test_generations_do_not_share_mutable_defaults() -> None:
     first["steps"][0]["title"] = "Modifié"
     second = _site()
     assert "Ajout" not in second["heroPoints"]
-    assert second["faq"][0]["answer"] == electrician_eclat.ECLAT_FAQ[0]["answer"]
+    assert second["faq"][0]["answer"] != "Modifié"
+    assert "Modifié" not in str(electrician_eclat.ECLAT_FAQ)
     assert second["steps"][0]["title"] == "Premier contact"
 
 

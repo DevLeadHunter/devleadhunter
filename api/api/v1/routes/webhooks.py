@@ -20,7 +20,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ from models.resend_config import ResendConfig
 from services import reply_capture_service
 from services.activity_log_service import CATEGORY_DEMO_SITE, STATUS_INFO, activity_log_service
 from services.bounce_fallback_service import bounce_fallback_service
+from services.cms_client_publication_service import cms_client_publication_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.demo_site_service import demo_site_service
 from services.encryption_service import encryption_service
@@ -573,6 +574,7 @@ def _verify_storyblok_signature(body: bytes, signature: str) -> bool:
 @router.post("/storyblok", status_code=status.HTTP_204_NO_CONTENT)
 async def storyblok_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     webhook_signature: str = Header(default="", alias="webhook-signature"),
     db: Session = Depends(get_db),
 ) -> None:
@@ -583,7 +585,8 @@ async def storyblok_webhook(
     webhook is what makes the CMS functional for the client: whenever they hit
     "Publish" in their space, the published story is re-fetched (CDN API,
     ``version=published``, the site's own public token) and flattened back into
-    the ``SiteContent`` shape stored in the database.
+    the ``SiteContent`` shape stored in the database. Once answered, the owner is
+    told when the publication was their client's own.
 
     Registered per space at provisioning (``_register_publish_webhook``).
     """
@@ -675,4 +678,7 @@ async def storyblok_webhook(
         user_id=site.user_id,
         entity_type="demo_site",
         entity_id=site.id,
+    )
+    background_tasks.add_task(
+        cms_client_publication_service.notify_if_published_by_client, site.id, previous, flat_content
     )

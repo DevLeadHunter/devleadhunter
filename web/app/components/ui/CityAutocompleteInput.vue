@@ -54,7 +54,7 @@
 <script lang="ts" setup>
 import type { UseDebounceFnReturn } from '@vueuse/core'
 import type { UiCityAutocompleteInputEmits } from '~/types/UiCityAutocompleteInput'
-import type { EmitFn, Ref } from 'vue'
+import type { EmitFn, PropType, Ref } from 'vue'
 import { ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import type { CityAutocompleteInputProps, CitySuggestion } from '~/types/CityAutocompleteInput'
@@ -90,6 +90,10 @@ const props: CityAutocompleteInputProps = defineProps({
     type: Boolean,
     default: false,
   },
+  departmentCode: {
+    type: String as PropType<string | null>,
+    default: null,
+  },
 })
 
 const emit: EmitFn<UiCityAutocompleteInputEmits> = defineEmits<UiCityAutocompleteInputEmits>()
@@ -103,7 +107,7 @@ let blurTimeoutId: ReturnType<typeof setTimeout> | null = null
 
 /**
  * Recherche les communes françaises correspondant à la saisie via geo.api.gouv.fr
- * (API publique, sans clé), triées par population.
+ * (API publique, sans clé), triées par population, dans le seul département demandé s'il y en a un.
  * @param query - Début du nom de ville saisi.
  * @returns Une promesse résolue une fois les suggestions mises à jour.
  */
@@ -127,6 +131,7 @@ const fetchSuggestions: UseDebounceFnReturn<(query: string) => Promise<void>> = 
           fields: 'nom,codesPostaux,codeDepartement',
           boost: 'population',
           limit: maxResults,
+          ...(props.departmentCode ? { codeDepartement: props.departmentCode } : {}),
         },
       })
       if (requestId !== searchRequestId) {

@@ -28,6 +28,7 @@ from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.facebook_page_results import FacebookPageResults
+from services.prospect_search.place_of_contact import PlaceOfContact
 from services.prospect_search.search_judge import SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
@@ -156,9 +157,26 @@ class ContactFinder:
         if facts.website and facts.website_status is None:
             status = await website_liveness_service.check_website_status(facts.website)
             facts.website_status = status.value if status is not None else None
+        await self.check_email(facts, trade)
+
+    async def check_email(self, facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        Check the candidate's email before it is placed: no email is kept without its domain read.
+
+        The email is dropped when its domain receives no mail; the domains it reveals (its own, the one behind a
+        privacy service's address, the site that published it) are read for a website. Run after every contact
+        search, and for a candidate whose verification already gave all the contact asked for.
+
+        Args:
+            facts: The candidate, completed in place.
+            trade: Profile of the searched trade.
+        """
         await self.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
         await CandidateVerifier.consider_email_source_site(facts, trade)
+        await CandidateVerifier.consider_privacy_proxied_domains(facts, trade)
+        await PlaceOfContact.note_contact_elsewhere(facts)
+        CandidateVerifier.mark_brand_named_in_email(facts, trade)
 
     async def drop_dead_email(self, facts: CandidateFacts) -> None:
         """Forget the candidate's email when its domain receives no mail."""
@@ -216,6 +234,11 @@ class ContactFinder:
             if facebook_page != facts.facebook_url:
                 continue
             for email in self._usable_emails(line.text, facts):
+                is_another_entry_s = PlaceOfContact.is_beside_another_phone(
+                    line.text, email, facts.phone
+                ) and not CandidateVerifier.email_carries_name(email, facts, trade)
+                if is_another_entry_s:
+                    continue
                 facts.offer_email(
                     email, EmailProofLevel.DIRECTORY, source="Page Facebook", url=line.link, snippet=line.text
                 )
@@ -229,6 +252,12 @@ class ContactFinder:
         if page is None:
             return
         results = CandidateVerifier.result_lines(page)
+        for line in results:
+            if self._is_unreliable_source(line, facts):
+                continue
+            CandidateVerifier.take_site_showing_contact(facts, line, trade, source="Recherche de son email")
+            if self._is_about_business(line, facts, trade):
+                CandidateVerifier.read_site_revealing_addresses(facts, line)
         candidates = [
             (email, index)
             for index, line in enumerate(results)
@@ -249,19 +278,33 @@ class ContactFinder:
             (entry.email, entry.result_index): entry.belongs_to_business
             for entry in (verdict.emails if verdict else [])
         }
+        department = await PlaceOfContact.department_of(facts)
         for email, index in candidates:
             line = results[index]
-            is_named_without_another_phone = CandidateVerifier.names_business(
-                line.title, facts, trade
-            ) and not self._shows_only_other_phones(line.text, facts)
-            is_about_business = is_named_without_another_phone or self._shows_phone(line.text, facts)
+            is_about_business = self._is_about_business(line, facts, trade)
             if is_about_business:
                 CandidateVerifier.read_no_advertising_mark(facts, line)
             if judged.get((email, index)) is False or (judged.get((email, index)) is None and not is_about_business):
                 continue
             is_directory_entry = CandidateVerifier.is_known_third_party(line.link, line.host) and is_about_business
             proof = EmailProofLevel.DIRECTORY if is_directory_entry else EmailProofLevel.GUESSED
-            facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text)
+            CandidateVerifier.offer_email_read_in(
+                facts,
+                email,
+                CandidateVerifier.grade_email_by_its_words(email, proof, facts),
+                line,
+                trade,
+                department=department,
+                is_own_text=False,
+            )
+
+    @classmethod
+    def _is_about_business(cls, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile) -> bool:
+        """Whether a result is about the candidate: named in its title without another number, or showing its number."""
+        is_named_without_another_phone = CandidateVerifier.names_business(
+            line.title, facts, trade
+        ) and not cls._shows_only_other_phones(line.text, facts)
+        return is_named_without_another_phone or cls._shows_phone(line.text, facts)
 
     @staticmethod
     def _name_to_search(facts: CandidateFacts) -> str:
@@ -315,6 +358,7 @@ class ContactFinder:
             if not self._shows_phone(line.text, facts) or self._is_foreign_page(line, facts):
                 continue
             CandidateVerifier.read_no_advertising_mark(facts, line)
+            CandidateVerifier.take_site_showing_contact(facts, line, trade, source="Recherche par son numéro")
             if self._is_legal_notice_of_a_website(line):
                 site = urlparse(line.link)
                 CandidateVerifier.consider_website(
@@ -330,17 +374,25 @@ class ContactFinder:
             ) and not validation_service.is_social_url(line.link)
             if not (is_directory_page or CandidateVerifier.names_business(line.title, facts, trade)):
                 continue
+            CandidateVerifier.read_site_revealing_addresses(facts, line)
             emails = self._usable_emails(line.text, facts)
             if len(emails) == 1:
-                facts.offer_email(
-                    emails[0], EmailProofLevel.DIRECTORY, source=line.host, url=line.link, snippet=line.text
+                CandidateVerifier.offer_email_read_in(
+                    facts,
+                    emails[0],
+                    CandidateVerifier.grade_email_by_its_words(emails[0], EmailProofLevel.DIRECTORY, facts),
+                    line,
+                    trade,
+                    department=None,
+                    is_own_text=False,
                 )
 
     @classmethod
     def _is_unreliable_source(cls, line: SearchResultLine, facts: CandidateFacts) -> bool:
         """Whether a result can show the candidate's number beside a stranger's email: a group post, a document, a foreign page."""
         is_shared_page = CandidateVerifier.is_group_discussion(line.link) or cls._is_downloaded_document(line.link)
-        return is_shared_page or cls._is_foreign_page(line, facts)
+        is_foreign = cls._is_foreign_page(line, facts) or PlaceOfContact.is_in_foreign_script(line.text)
+        return is_shared_page or is_foreign
 
     @staticmethod
     def _is_foreign_page(line: SearchResultLine, facts: CandidateFacts) -> bool:

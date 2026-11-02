@@ -40,10 +40,11 @@ from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activi
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
-from services.country_profiles import CountryProfiles
 from services.email_sending_service import EmailSendingService
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.pricing_service import PricingService
+from services.prospect_calendar import ProspectCalendar
+from services.prospect_timezone import prospect_timezone
 from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, SmsTemplate, find_sms_template
 from services.sms_variables import SmsVariables
 from services.tracking_links import email_tracked_link, sms_tracked_link
@@ -585,19 +586,18 @@ class CampaignQueueService:
     @staticmethod
     def prospect_timezone(prospect: ProspectDB | None) -> str:
         """
-        The IANA zone a prospect reads the clock in, from its country.
+        The IANA zone a prospect reads the clock in: his overseas department's, else his country's.
 
         The send window of a policy is evaluated in this zone, and the queue exposes it
-        so the dashboard can show the prospect's local hour. An unknown or closed
-        country reads as France, like everywhere else in the product.
+        so the dashboard can show the prospect's local hour.
 
         Args:
             prospect: The prospect, or ``None`` on a row whose prospect is gone.
 
         Returns:
-            An IANA zone name such as ``America/Toronto``.
+            An IANA zone name such as ``America/Toronto`` or ``America/Martinique``.
         """
-        return CountryProfiles.get(prospect.country if prospect is not None else None).timezone
+        return prospect_timezone(prospect)
 
     def _schedule_slots(
         self,
@@ -646,7 +646,7 @@ class CampaignQueueService:
                 occupied=occupied,
                 per_campaign_cap=campaign.max_emails_per_day,
                 campaign_seed_counts=send_policy_service.pending_campaign_counts_by_day(self.db, campaign.id),
-                slot_timezones=[self.prospect_timezone(prospect) for prospect in prospects],
+                slot_calendars=[ProspectCalendar.of_prospect(prospect) for prospect in prospects],
             )
 
         delay = timedelta(minutes=max(campaign.send_delay_minutes, 1))
@@ -745,7 +745,7 @@ class CampaignQueueService:
             occupied=occupied,
             per_campaign_cap=campaign.max_emails_per_day,
             campaign_seed_counts=send_policy_service.sent_campaign_counts_by_day(self.db, campaign.id),
-            slot_timezones=[self.prospect_timezone(item.prospect) for item in pending_items],
+            slot_calendars=[ProspectCalendar.of_prospect(item.prospect) for item in pending_items],
         )
 
     def _enqueue_sms(self, campaign: Campaign) -> EnqueueResult:
@@ -1611,7 +1611,7 @@ class CampaignQueueService:
             item.scheduled_at = send_policy_service.advance_into_window(
                 _utcnow() + timedelta(minutes=_NETWORK_REPLAN_DELAY_MINUTES),
                 policy,
-                timezone_name=self.prospect_timezone(prospect),
+                calendar=ProspectCalendar.of_prospect(prospect),
             )
             self.db.commit()
             logger.warning(
@@ -1755,7 +1755,7 @@ class CampaignQueueService:
             j1_item: The just-sent J1 queue item.
         """
         campaign: Campaign = j1_item.campaign
-        timezone_name: str = self.prospect_timezone(j1_item.prospect)
+        calendar: ProspectCalendar = ProspectCalendar.of_prospect(j1_item.prospect)
 
         # Prefer the new multi-step follow-up table.
         follow_ups: list[CampaignFollowUp] = (
@@ -1777,7 +1777,7 @@ class CampaignQueueService:
             # Legacy fallback: single follow-up fields on the campaign.
             if campaign.follow_up_template_id:
                 follow_up_at = send_policy_service.follow_up_slot(
-                    resolved, sent_at, campaign.follow_up_delay_days or None, timezone_name=timezone_name
+                    resolved, sent_at, campaign.follow_up_delay_days or None, calendar=calendar
                 )
                 if not self._offer_link_outlives(j1_item, follow_up_at, template_id=campaign.follow_up_template_id):
                     return
@@ -1802,9 +1802,7 @@ class CampaignQueueService:
         elapsed_days: int = 0
         for step in follow_ups:
             elapsed_days += max(1, step.delay_days)
-            step_at: datetime = send_policy_service.follow_up_slot(
-                resolved, sent_at, elapsed_days, timezone_name=timezone_name
-            )
+            step_at: datetime = send_policy_service.follow_up_slot(resolved, sent_at, elapsed_days, calendar=calendar)
             if not self._offer_link_outlives(
                 j1_item, step_at, template_id=step.template_id, sms_template_key=step.sms_template_key
             ):
@@ -2069,7 +2067,7 @@ class CampaignQueueService:
         item.status = _STATUS_PENDING
         item.skip_reason = None
         item.scheduled_at = send_policy_service.advance_into_window(
-            _utcnow(), policy, timezone_name=self.prospect_timezone(item.prospect)
+            _utcnow(), policy, calendar=ProspectCalendar.of_prospect(item.prospect)
         )
         self.db.commit()
         logger.info("[Queue] Item %d re-queued for %s", item.id, item.scheduled_at.isoformat())

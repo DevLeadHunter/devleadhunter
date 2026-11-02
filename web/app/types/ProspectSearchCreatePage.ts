@@ -1,4 +1,4 @@
-import type { ProspectCountry } from '~/types'
+import type { ProspectCountry, ProspectRegion } from '~/types'
 import type { ProspectSearchChannel, ProspectSearchValidationMode } from '~/types/ProspectSearch'
 import type { SelectFieldOption } from '~/types/SelectField'
 
@@ -13,10 +13,12 @@ export type ProspectSearchStepDefinition = {
 export type ProspectSearchFormState = {
   trades: string[]
   country: ProspectCountry
+  region: ProspectRegion | null
   cities: string[]
   countPerTrade: number
   channel: ProspectSearchChannel
   onlyWithoutWebsite: boolean
+  useRegistries: boolean
   validationMode: ProspectSearchValidationMode
 }
 

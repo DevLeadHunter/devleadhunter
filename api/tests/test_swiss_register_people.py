@@ -291,3 +291,32 @@ def test_the_business_settles_an_unsure_register_name() -> None:
     assert confirmed("Garage J.D.M Auto-Moto", [], [])
     assert confirmed("Modèle Paysagiste", [], [])
     assert not confirmed("Garage Exemple", ["info@exemple.ch"], ["Très bon service."])
+
+
+def test_a_cantonal_excerpt_lists_its_active_people_and_who_runs_the_firm() -> None:
+    """A firm older than the online gazette: its canton's excerpt gives each person on a line, with a state."""
+    lines = [
+        {
+            "codeEtat": "A",
+            "pers": "Exemple Jules, de Corcelles-près-Payerne, à Chavornay",
+            "fonction": "associé gérant ",
+            "sign": "signature individuelle",
+        },
+        {"codeEtat": "A", "pers": "Exemple Anne, de Corcelles-près-Payerne, à Chavornay", "fonction": "associée "},
+        {"codeEtat": "R", "pers": "Modèle Paul, d'Oberthal, à Renens (VD)", "fonction": "adm. "},
+        {"codeEtat": "R", "pers": "Fiduciaire Exemple société anonyme de révision, à Lausanne", "fonction": "organe"},
+    ]
+    owner_line = [
+        {"codeEtat": "A", "pers": "Modèle dos Santos Rafael, du Portugal , à Henniez", "fonction": "titulaire "}
+    ]
+
+    people = SwissRegisterPeople.excerpt_people(lines)
+    owner = SwissRegisterPeople.lead_people(SwissRegisterPeople.excerpt_people(owner_line))
+
+    assert [(person.first_name, person.last_name) for person in people] == [("Jules", "Exemple"), ("Anne", "Exemple")]
+    assert [(person.first_name, person.last_name) for person in SwissRegisterPeople.lead_people(people)] == [
+        ("Jules", "Exemple")
+    ]
+    assert [(person.first_name, person.last_name, person.roles) for person in owner] == [
+        ("Rafael", "Modèle dos Santos", ("titulaire",))
+    ]

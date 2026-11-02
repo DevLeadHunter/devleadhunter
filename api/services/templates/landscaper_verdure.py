@@ -71,10 +71,12 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 # "trust" = the stats band (real Google rating + count), "method" = the « notre méthode » steps,
 # "reviews" = the Google reviews section — all editable in the client's Storyblok. "taxCredit" = the
 # « crédit d'impôt » section under the services, filled only for a « services à la personne » provider.
+# "strengths" = the ticks of the « À propos » block, which the layer hides when the business has none.
 USED_SECTIONS: list[str] = [
     "hero",
     "trust",
     "about",
+    "strengths",
     "services",
     "taxCredit",
     "method",
@@ -99,6 +101,10 @@ SECTION_FIELDS: dict[str, list[str]] = {
     "hero": ["heroTitle", "subtitle", "heroImage", "ctaQuoteLabel"],
     # Services: add the section intro paragraph (``servicesLead``) on top of the shared title + cards.
     "services": ["servicesHeading", "servicesLead", "services"],
+    # Strengths: the layer shows their titles as the « À propos » ticks, under its own heading.
+    "strengths": ["strengths"],
+    # Méthode: add the paragraph under the title (``stepsLead``) on top of the shared title + steps.
+    "method": ["stepsHeading", "stepsLead", "steps"],
     # Réalisations: add the section intro paragraph (``portfolioLead``) on top of the shared title + cards.
     "portfolio": ["portfolioHeading", "portfolioLead", "portfolio"],
     # Contact: the shared default fields + the editable section intro (``contactLead``), the CTA banner
@@ -124,12 +130,28 @@ SECTION_FIELDS: dict[str, list[str]] = {
 
 # Relabel a shared field this template repurposes (see build_content_schemas). ``ctaCallLabel`` drives
 # the contact banner's « Être rappelé » button here, not a generic « appeler » button — so the editor
-# labels it accordingly instead of the shared "Bouton « appeler »".
+# labels it accordingly instead of the shared "Bouton « appeler »". ``strengths`` only show their titles.
 FIELD_SCHEMA_OVERRIDES: dict[str, dict[str, Any]] = {
     "ctaCallLabel": {
         "display_name": "Bouton de la bannière contact",
         "description": "Texte du bouton « Être rappelé » de la bannière au-dessus du contact",
     },
+    "strengths": {"description": "Les coches de la section « À propos » : trois au plus, seul le titre s'affiche"},
+}
+
+# What the layer wrote by default before v1.9.0 stopped promising what a business never proved: a delivered site
+# keeps these words wherever its own content stays empty, so a template update never changes a site a client bought.
+DELIVERED_SITE_FORMER_DEFAULTS: dict[str, Any] = {
+    "strengths": [
+        {"title": "Devis gratuit et sans engagement", "description": ""},
+        {"title": "Entreprise assurée, travail garanti", "description": ""},
+        {"title": "Pratiques durables et éco-responsables", "description": ""},
+    ],
+    "contactHeading": "Demandez votre devis gratuit",
+    "stepsLead": (
+        "Un déroulé simple et sans stress : vous savez toujours où en est votre projet, du premier rendez-vous à "
+        "la dernière finition."
+    ),
 }
 
 
@@ -142,15 +164,10 @@ def default_subtitle(area: str) -> str:
     Returns:
         A landscaper subtitle.
     """
-    return f"Création, aménagement et entretien de jardins à {area}, avec devis gratuit et pratiques durables."
+    return f"Création, aménagement et entretien de jardins à {area}."
 
 
-_SITE_ABOUT_DEFAULT: str = (
-    "Paysagiste local, nous accompagnons particuliers et professionnels dans la "
-    "création et l'entretien de leurs espaces verts. Chaque projet commence par une "
-    "visite et un devis gratuit, et se termine par un extérieur dont on prend "
-    "plaisir à profiter."
-)
+_SITE_ABOUT_DEFAULT: str = "Paysagiste local : création, aménagement et entretien de jardins et d'espaces verts."
 
 # Trade defaults when enrichment provides no services / FAQ.
 # Mirror of layer defaults in devleadhunter-template-landscaper-verdure (verdure.ts).
@@ -175,69 +192,46 @@ VERDURE_SERVICES: list[dict[str, str]] = [
     },
     {
         "title": "Arrosage & clôtures",
-        "description": ("Arrosage automatique, clôtures et portails posés dans les règles, sans mauvaise surprise."),
+        "description": "Arrosage automatique, clôtures et portails, posés avec soin.",
     },
 ]
 
 VERDURE_FAQ: list[dict[str, str]] = [
     {
-        "question": "À quelle fréquence intervenez-vous pour l'entretien ?",
-        "answer": (
-            "Selon vos besoins : au contrat à l'année (passages réguliers planifiés ensemble) ou à la "
-            "demande. En pleine saison de pousse, un passage toutes les une à deux semaines garde un "
-            "jardin impeccable."
-        ),
+        "question": "Quels travaux de jardin sont proposés ?",
+        "answer": "Ceux présentés dans la section prestations. Pour un autre besoin, il suffit de demander.",
     },
     {
-        "question": "Le devis est-il vraiment gratuit ?",
-        "answer": (
-            "Oui. Nous nous déplaçons, écoutons votre projet et vous remettons un devis écrit, détaillé "
-            "et sans engagement, avant tout début de chantier."
-        ),
+        "question": "Que préciser lors d'une première demande ?",
+        "answer": "L'adresse du jardin, les travaux souhaités et, si possible, quelques photos de votre extérieur.",
     },
     {
-        "question": "Travaillez-vous avec des produits respectueux de l'environnement ?",
+        "question": "Faut-il une visite avant les travaux ?",
         "answer": (
-            "Absolument. Nous privilégions les traitements naturels, le paillage, des végétaux adaptés "
-            "au climat local et l'évacuation responsable des déchets verts."
-        ),
-    },
-    {
-        "question": "Proposez-vous des contrats d'entretien à l'année ?",
-        "answer": (
-            "Oui, ponctuel ou à l'année selon vos besoins : on définit ensemble la formule "
-            "qui convient à votre jardin et son budget."
+            "Selon le chantier, une visite permet de voir le terrain et de prendre les mesures avant de "
+            "chiffrer les travaux."
         ),
     },
 ]
 
 # Editorial copy pre-filled into the CMS — EXACT mirror of the layer defaults
 # (devleadhunter-template-landscaper-verdure app/types/verdure.ts fallbacks).
-# ``aboutHeading`` is left out on purpose: empty, the layer derives it from the name.
+# ``aboutHeading`` and ``servicesHeading`` are left out on purpose: empty, the layer words them from the
+# name and the city (« Votre paysagiste au Locle »).
 _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "heroTitle": "Des extérieurs pensés, plantés et entretenus",
     "ctaCallLabel": "Être rappelé",
-    "ctaQuoteLabel": "Demander un devis gratuit",
-    "servicesHeading": "Un seul artisan pour tout votre extérieur",
-    "servicesLead": (
-        "Du dessin du jardin à son entretien régulier : un interlocuteur unique, un matériel adapté "
-        "et des végétaux choisis pour votre terrain."
-    ),
+    "ctaQuoteLabel": "Demander un devis",
+    "servicesLead": "Du dessin du jardin à son entretien régulier, des prestations adaptées à votre terrain.",
     "stepsHeading": "Comment ça se passe ?",
     "reviewsHeading": "Ils nous ont fait confiance",
     "portfolioHeading": "Nos derniers chantiers",
     "portfolioLead": (
         "Chaque chantier est mené avec le même soin, qu'il s'agisse d'une création complète ou d'un entretien régulier."
     ),
-    "contactLead": (
-        "Appelez-nous, écrivez-nous ou laissez vos coordonnées : nous revenons vers vous sous 48 h "
-        "avec un premier avis et un rendez-vous de visite."
-    ),
+    "contactLead": "Décrivez votre extérieur et les travaux que vous envisagez.",
     "ctaTitle": "Parlons de votre jardin",
-    "ctaLead": (
-        "Un projet d'aménagement ou besoin d'un entretien régulier ? Décrivez-nous votre extérieur, "
-        "nous revenons vers vous sous 48 h."
-    ),
+    "ctaLead": "Un projet d'aménagement ou un entretien régulier ? Chaque projet commence par un échange.",
     "faqHeading": "Vos questions, nos réponses",
 }
 
@@ -247,29 +241,24 @@ _DEFAULT_STEPS: list[dict[str, str]] = [
     {
         "title": "Visite & écoute",
         "description": (
-            "Nous venons voir votre terrain, écoutons vos envies et vos contraintes, et prenons les "
-            "mesures nécessaires."
+            "Un premier rendez-vous sur le terrain pour écouter vos envies, repérer les contraintes et prendre "
+            "les mesures."
         ),
     },
     {
         "title": "Devis détaillé",
-        "description": (
-            "Vous recevez une proposition claire : prestations, végétaux ou matériaux, délais et budget, sans surprise."
-        ),
+        "description": "Une proposition claire : prestations, végétaux ou matériaux, délais et budget.",
     },
     {
         "title": "Réalisation soignée",
-        "description": (
-            "De la préparation du sol aux finitions, nous réalisons le chantier avec soin et laissons un "
-            "extérieur propre."
-        ),
+        "description": "De la préparation du sol aux finitions, le chantier est mené avec soin.",
     },
 ]
 
 
 def _real_trust_items(enrichment: dict[str, Any] | None) -> list[dict[str, str]]:
     """Honest stat-band badges: the real Google rating + review count when scraped, then qualitative
-    badges — never a fabricated count like « 180+ jardins » or « 100+ clients ».
+    badges — never a fabricated count like « 180+ jardins » or « 100+ clients », nor an unproven free quote.
 
     Args:
         enrichment: Scraped enrichment dict, or None.
@@ -286,7 +275,6 @@ def _real_trust_items(enrichment: dict[str, Any] | None) -> list[dict[str, str]]
     if count:
         items.append({"value": count, "label": "avis clients"})
     for badge in (
-        {"value": "Devis gratuit", "label": "Sans engagement"},
         {"value": "Sur mesure", "label": "Chaque jardin est unique"},
         {"value": "Local", "label": "Proche de chez vous"},
     ):
@@ -298,7 +286,7 @@ def _real_trust_items(enrichment: dict[str, Any] | None) -> list[dict[str, str]]
 
 # Bundled layer photos (served from demo-host), promoted to absolute URLs so Storyblok can preview
 # them, and seeded into the CMS so every photo becomes a dedicated, client-editable field. EXACT
-# mirror of the layer defaults (verdure.ts ``SERVICE_IMAGES`` / ``PORTFOLIO_IMAGES`` / the CTA bg).
+# mirror of the layer defaults (verdure.ts ``SERVICE_IMAGES`` / the CTA bg).
 _VERDURE_IMAGE_BASE: str = "https://demo.dibodev.fr/images/verdure"
 # One photo per prestation card, index-aligned with the four ``VERDURE_SERVICES``.
 _DEFAULT_SERVICE_IMAGES: list[str] = [
@@ -307,7 +295,8 @@ _DEFAULT_SERVICE_IMAGES: list[str] = [
     f"{_VERDURE_IMAGE_BASE}/image-import.jpg",
     f"{_VERDURE_IMAGE_BASE}/image-import-6.jpg",
 ]
-# The two « réalisations » cards (photo + title + category), seeded into the editable portfolio blok.
+# The two « réalisations » cards (photo + title + category), seeded into the editable portfolio blok: the
+# personalisation fills these two slots with the business's own photos, the layer never shows the examples.
 _DEFAULT_PORTFOLIO: list[dict[str, str]] = [
     {
         "image": f"{_VERDURE_IMAGE_BASE}/image-import-12.jpg",

@@ -147,10 +147,10 @@ class PostHogService:
         """Sanitize a slug for safe inlining in a HogQL string literal."""
         return re.sub(r"[^a-zA-Z0-9_-]", "", slug or "")
 
-    async def _run_query(self, query: str) -> list[Any]:
-        """Run a HogQL query and return the raw result rows ([] on error / not configured)."""
+    async def _read_rows(self, query: str) -> list[Any] | None:
+        """Run a HogQL query and return the raw result rows (None when not configured or the query failed)."""
         if not self.is_configured:
-            return []
+            return None
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
                 response = await client.post(
@@ -162,9 +162,13 @@ class PostHogService:
                 payload: dict[str, Any] = response.json()
         except Exception as exc:
             logger.warning("PostHog query failed: %s", exc)
-            return []
-        results = payload.get("results", [])
-        return results if isinstance(results, list) else []
+            return None
+        results = payload.get("results")
+        return results if isinstance(results, list) else None
+
+    async def _run_query(self, query: str) -> list[Any]:
+        """Run a HogQL query and return the raw result rows ([] on error / not configured)."""
+        return await self._read_rows(query) or []
 
     async def get_aggregate_by_slugs(self, slugs: list[str]) -> dict[str, dict[str, Any]]:
         """
@@ -211,7 +215,7 @@ class PostHogService:
             }
         return result
 
-    async def get_demo_sessions(self, slugs: list[str], since: datetime) -> list[DemoSession]:
+    async def get_demo_sessions(self, slugs: list[str], since: datetime) -> list[DemoSession] | None:
         """
         Return every browsing session on the given demos since a moment, one grouped query.
 
@@ -223,10 +227,11 @@ class PostHogService:
             since: Earliest session start to keep (naive UTC).
 
         Returns:
-            The sessions, oldest first; empty when PostHog is not configured, no slug is given or the query fails.
+            The sessions, oldest first (empty when no slug is given). None when PostHog is not configured or the
+            query failed: nobody was seen, but nobody could have been, which is not the same as nobody visiting.
         """
         safe_slugs = sorted({self._safe_slug(s) for s in slugs if self._safe_slug(s)})
-        if not self.is_configured or not safe_slugs:
+        if not safe_slugs:
             return []
         in_list = ", ".join(f"'{s}'" for s in safe_slugs)
         demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
@@ -247,8 +252,11 @@ class PostHogService:
             "ORDER BY started_at "
             "LIMIT 10000"
         )
+        rows = await self._read_rows(query)
+        if rows is None:
+            return None
         sessions: list[DemoSession] = []
-        for row in await self._run_query(query):
+        for row in rows:
             if not isinstance(row, (list, tuple)) or len(row) < 8 or not row[0] or not row[1] or not row[2]:
                 continue
             sessions.append(

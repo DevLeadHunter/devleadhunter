@@ -613,6 +613,7 @@ const CONTACT_SOURCE_LABELS: Record<string, string> = {
   owner_response: 'Réponse aux avis',
   legal_mentions: 'Mentions légales',
   llm_aggregate: 'IA (texte public)',
+  search_owner: 'Recherche de prospects',
   manual: 'Saisie manuelle',
 }
 

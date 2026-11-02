@@ -18,7 +18,7 @@ import {
   PROSPECT_SEARCH_REQUEST_COST_DOLLARS,
   PROSPECT_SEARCH_VALIDATION_OBJECTIVE_LABELS,
 } from '~/constants/prospectSearch'
-import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectZones } from '~/utils/prospectZones'
 
 const LOCALE: string = 'fr-FR'
 
@@ -110,19 +110,19 @@ export class ProspectSearches {
   }
 
   /**
-   * Where the search looks: its country, then its towns when the user picked some.
+   * Where the search looks: its country or overseas department, then its towns when the user picked some.
    * @param search - The search to read.
-   * @returns E.g. « France · Rennes, Nantes » or « Suisse · villes choisies par l'app ».
+   * @returns E.g. « France · Rennes, Nantes », « Martinique · villes choisies par l'app ».
    */
-  static placeLabel(search: Pick<ProspectSearchSummary, 'country' | 'cities'>): string {
-    const country: string = ProspectCountries.option(search.country).label
-    return `${country} · ${search.cities.length > 0 ? search.cities.join(', ') : "villes choisies par l'app"}`
+  static placeLabel(search: Pick<ProspectSearchSummary, 'country' | 'region' | 'cities'>): string {
+    const place: string = ProspectZones.option(ProspectZones.of(search)).label
+    return `${place} · ${search.cities.length > 0 ? search.cities.join(', ') : "villes choisies par l'app"}`
   }
 
   /**
    * The objective of a search on one line: how many, reachable how, where, under which criteria.
    * @param search - The search to read.
-   * @returns E.g. « 5 par métier · joignables par email · France · Rennes · sans site web · vous validez chaque lead ».
+   * @returns E.g. « 5 par métier · joignables par email · Martinique · villes choisies par l'app · sans site web · vous validez chaque lead ».
    */
   static objectiveLabel(search: ProspectSearchSummary): string {
     const parts: string[] = [
@@ -134,6 +134,7 @@ export class ProspectSearches {
     if (search.minimum_rating !== null) {
       parts.push(`note Google d'au moins ${ProspectSearches.ratingLabel(search.minimum_rating)}`)
     }
+    if (!search.use_registries) parts.push('sans les registres publics')
     parts.push(PROSPECT_SEARCH_VALIDATION_OBJECTIVE_LABELS[search.validation_mode])
     return parts.join(' · ')
   }
@@ -198,14 +199,14 @@ export class ProspectSearches {
 
   /**
    * Where to send the user to start a search, with the values another screen already knows.
-   * @param prefill - Trade, town and country to hand over, if any.
+   * @param prefill - Trade, town and zone to hand over, if any.
    * @returns The new-search page, its query carrying the prefill.
    */
   static newSearchLocation(prefill: ProspectSearchPrefill = {}): ProspectSearchPageLocation {
     const query: Record<string, string> = {}
     if (prefill.category) query.category = prefill.category
     if (prefill.city) query.city = prefill.city
-    if (prefill.country) query.country = prefill.country
+    if (prefill.zone) query.zone = prefill.zone
     return { path: PROSPECT_SEARCH_PAGE_PATH, query }
   }
 

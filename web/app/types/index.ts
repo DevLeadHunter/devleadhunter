@@ -20,6 +20,12 @@ export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable'
 /** Countries the prospection pipeline supports (ISO 3166-1 alpha-2); CA is Québec, prospected by email only. */
 export type ProspectCountry = 'FR' | 'CH' | 'BE' | 'LU' | 'CA'
 
+/** French overseas department a French prospect lives in, by its own ISO 3166-1 code (MQ is Martinique). */
+export type ProspectRegion = 'GP' | 'MQ' | 'GF' | 'RE' | 'YT'
+
+/** Where the map and the search place a prospect: its overseas department, else its country. */
+export type ProspectZone = ProspectCountry | ProspectRegion
+
 /**
  * Prospect interface representing a business without website
  */
@@ -30,6 +36,7 @@ export type Prospect = {
   address?: string
   city?: string
   country?: ProspectCountry
+  region?: ProspectRegion | null
   phone?: string
   phones?: string[] | null
   email?: string

@@ -166,7 +166,8 @@ _EXTRACT_JS = r"""
             if (/=s\d{1,2}-/.test(src) || /=w\d{1,2}-/.test(src)) return;
             // normalize the size param to ONE large variant so the same photo — served here as a small
             // panel <img> and in the grid as a background-image thumb — collapses to an identical URL.
-            src = /=[\w-]+$/.test(src) ? src.replace(/=[\w-]+$/, '=s1600') : (src + '=s1600');
+            // A 360° photo's size block holds decimals (« -ya174.09999- »): kept after « =s1600 », it answers 400.
+            src = /=[\w.-]+$/.test(src) ? src.replace(/=[\w.-]+$/, '=s1600') : (src + '=s1600');
             if (!seen.has(src)) { seen.add(src); out.photos.push(src); }
         });
         out.photos = out.photos.slice(0, 20);
@@ -382,7 +383,7 @@ _GRID_PHOTOS_JS = r"""
 (() => {
     const urls = [];
     const seen = new Set();
-    const norm = (u) => /=[\w-]+$/.test(u) ? u.replace(/=[\w-]+$/, '=s1600') : (u + '=s1600');
+    const norm = (u) => /=[\w.-]+$/.test(u) ? u.replace(/=[\w.-]+$/, '=s1600') : (u + '=s1600');
     const grab = (bg) => {
         if (!bg || bg === 'none') return '';
         const m = bg.match(/url\((['"]?)(.*?)\1\)/);
@@ -546,6 +547,7 @@ class PhotoTraits:
     flat_colour_share: float
     colour_count: int
     look_hash: int
+    is_placeholder_avatar: bool = False
 
 
 @dataclass(frozen=True)
@@ -563,7 +565,15 @@ _GRAPHIC_MAX_COLOURS: int = 170
 _LOGO_MIN_FLAT_COLOUR_SHARE: float = 0.2
 _LOGO_MIN_SQUARENESS: float = 0.8
 _LOGO_LOOK_DISTANCE: int = 10
+_TRAITS_SIDE_PX: int = 64
+_PLACEHOLDER_MIN_SQUARENESS: float = 0.98
+_PLACEHOLDER_MIN_TWO_COLOUR_SHARE: float = 0.85
+_PLACEHOLDER_MAX_SHAPES: int = 2
+_PLACEHOLDER_MIN_SHAPE_PIXELS: int = 20
+_NEAR_WHITE_LEVEL: int = 14
+_NEAR_BLACK_LEVEL: int = 1
 _SAME_PHOTO_LOOK_DISTANCE: int = 4
+_GONE_IMAGE_STATUSES: frozenset[int] = frozenset({400, 404, 410})
 
 
 def _hamming_distance(left: int, right: int) -> int:
@@ -584,6 +594,14 @@ _GENERIC_REVIEW_AUTHORS = frozenset(
 )
 
 
+_PAGE_NOTICE_RE = re.compile(
+    r"pas encore [ée]valu[ée]|a limit[ée] qui peut commenter|has limited who can comment|not yet rated", re.IGNORECASE
+)
+_REPLY_DATE_LINE_RE = re.compile(r"^\s*(?:il y a|modifié il y a)[^\n]{1,30}\n|^\s*[^\n]{1,30}\bago\n", re.IGNORECASE)
+_SHOW_MORE_RE = re.compile(r"\s*(?:…|\.\.\.)?\s*(?:plus|more)\s*$", re.IGNORECASE)
+_MIN_REPLY_ECHO_CHARS = 12
+
+
 def _norm_review_value(value: Any) -> str:
     """Collapse whitespace/case so the same snippet scraped twice still matches."""
     return re.sub(r"\s+", " ", str(value or "")).strip().lower()
@@ -593,6 +611,40 @@ def _is_distinctive_review_author(author: str) -> bool:
     """True when the author is a real name we can use as a review identity."""
     key = _norm_review_value(author)
     return bool(key) and key not in _GENERIC_REVIEW_AUTHORS
+
+
+def _customer_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
+    """
+    The reviews customers wrote: never the owner's reply read as a review's text, nor a page's notice.
+
+    A review left without text shows only its reply, which the panel read as the text (« Je vous remercie
+    Madame Exemple »); a Facebook page shows « Pas encore évalué (1 avis) » or « … a limité qui peut commenter
+    cette publication » where a recommendation would be.
+
+    Args:
+        reviews: Scraped reviews (``text``, ``owner_response``…).
+
+    Returns:
+        The customers' own reviews, in their order.
+    """
+    kept: list[dict[str, Any]] = []
+    for review in reviews:
+        if not isinstance(review, dict):
+            continue
+        text = str(review.get("text") or "")
+        reply = str(review.get("owner_response") or "")
+        if _PAGE_NOTICE_RE.search(text) or (reply and _is_reply_echo(text, reply)):
+            continue
+        kept.append(review)
+    return kept
+
+
+def _is_reply_echo(text: str, reply: str) -> bool:
+    """Whether a review's text is its owner's reply, the reply's date line and both « … Plus » cuts aside."""
+    review_words = _norm_review_value(_SHOW_MORE_RE.sub("", text))
+    reply_words = _norm_review_value(_SHOW_MORE_RE.sub("", _REPLY_DATE_LINE_RE.sub("", reply)))
+    is_long_enough = min(len(review_words), len(reply_words)) >= _MIN_REPLY_ECHO_CHARS
+    return is_long_enough and (review_words.startswith(reply_words) or reply_words.startswith(review_words))
 
 
 def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
@@ -627,8 +679,8 @@ def _dedupe_reviews(reviews: list[Any]) -> list[dict[str, Any]]:
 class GalleryCuration:
     """Keeps the photos that can illustrate a site: no logo, flyer, blur or blank banner, no visual duplicate."""
 
-    @staticmethod
-    def traits_of(image_bytes: bytes) -> PhotoTraits | None:
+    @classmethod
+    def traits_of(cls, image_bytes: bytes) -> PhotoTraits | None:
         """
         Read what a photo looks like, or ``None`` when the bytes are not an image.
 
@@ -636,7 +688,8 @@ class GalleryCuration:
             image_bytes: The downloaded image.
 
         Returns:
-            Its size, contrast, flat-colour share, colour count (over 16 levels a channel) and look hash.
+            Its size, contrast, flat-colour share, colour count (over 16 levels a channel), look hash, and
+            whether it is the picture Facebook draws for a page without one.
         """
         try:
             from collections import Counter
@@ -650,30 +703,101 @@ class GalleryCuration:
         look_hash = _average_hash(image_bytes)
         if look_hash is None:
             return None
-        pixels = image.resize((64, 64)).tobytes()
-        colours = Counter(
+        pixels = image.resize((_TRAITS_SIDE_PX, _TRAITS_SIDE_PX)).tobytes()
+        cells = [
             (pixels[index] // 16, pixels[index + 1] // 16, pixels[index + 2] // 16)
             for index in range(0, len(pixels), 3)
-        )
+        ]
+        colours = Counter(cells)
         return PhotoTraits(
             width=image.width,
             height=image.height,
             contrast=ImageStat.Stat(image.convert("L")).stddev[0],
-            flat_colour_share=colours.most_common(1)[0][1] / (64 * 64),
+            flat_colour_share=colours.most_common(1)[0][1] / len(cells),
             colour_count=len(colours),
             look_hash=look_hash,
+            is_placeholder_avatar=cls.is_placeholder_avatar(image.width, image.height, cells),
         )
+
+    @classmethod
+    def is_placeholder_avatar(cls, width: int, height: int, cells: list[tuple[int, int, int]]) -> bool:
+        """
+        Whether an image is the picture Facebook draws for a page without one (pure — testable).
+
+        A square of one flat colour, neither white nor black, holding one shape of a second colour, two at most:
+        the page's initial (a dark blue « G » on light blue, an accented « É ») or the white bust on grey.
+
+        Args:
+            width: The image's width.
+            height: The image's height.
+            cells: Its colours on a square grid, 16 levels a channel, row by row.
+
+        Returns:
+            True for the placeholder; a logo spelling a name has more shapes, and usually a white background.
+        """
+        from collections import Counter
+
+        squareness = min(width, height) / max(width, height, 1)
+        two_most_common = Counter(cells).most_common(2)
+        if squareness < _PLACEHOLDER_MIN_SQUARENESS or len(two_most_common) < 2:
+            return False
+        (background, background_cells), (_, shape_cells) = two_most_common
+        is_white_or_black = all(level >= _NEAR_WHITE_LEVEL for level in background) or all(
+            level <= _NEAR_BLACK_LEVEL for level in background
+        )
+        if is_white_or_black or (background_cells + shape_cells) / len(cells) < _PLACEHOLDER_MIN_TWO_COLOUR_SHARE:
+            return False
+        side = round(len(cells) ** 0.5)
+        shapes = cls.shape_sizes([cell != background for cell in cells], side)
+        return 1 <= sum(1 for size in shapes if size >= _PLACEHOLDER_MIN_SHAPE_PIXELS) <= _PLACEHOLDER_MAX_SHAPES
+
+    @staticmethod
+    def shape_sizes(mask: list[bool], side: int) -> list[int]:
+        """
+        The sizes of the shapes a square mask draws, two cells belonging together when they touch by a side.
+
+        Args:
+            mask: The cells of the shapes, row by row.
+            side: The grid's side.
+
+        Returns:
+            One size per shape, in cells.
+        """
+        seen = [False] * len(mask)
+        sizes: list[int] = []
+        for start, is_shape in enumerate(mask):
+            if not is_shape or seen[start]:
+                continue
+            seen[start] = True
+            stack, size = [start], 0
+            while stack:
+                row, column = divmod(stack.pop(), side)
+                size += 1
+                for next_row, next_column in (
+                    (row - 1, column),
+                    (row + 1, column),
+                    (row, column - 1),
+                    (row, column + 1),
+                ):
+                    neighbour = next_row * side + next_column
+                    if 0 <= next_row < side and 0 <= next_column < side and mask[neighbour] and not seen[neighbour]:
+                        seen[neighbour] = True
+                        stack.append(neighbour)
+            sizes.append(size)
+        return sizes
 
     @staticmethod
     def unfit_reason(traits: PhotoTraits) -> str | None:
         """
         Why a photo cannot illustrate a site, or ``None`` when it can.
 
-        Too small under 400 px on its longest side (a Facebook cover kept at 320 px is a blur), blank
-        under a grey-level spread of 12, a graphic when one flat colour covers 60 % of it in 170 colours
-        or fewer — a logo or a flyer (measured 7 Oct 2026: logos 66-88 % in 42-161 colours, real photos
-        5-13 % in 178-374 colours).
+        Facebook's placeholder for a page without a picture is nothing; too small under 400 px on its longest
+        side (a Facebook cover kept at 320 px is a blur), blank under a grey-level spread of 12, a graphic when
+        one flat colour covers 60 % of it in 170 colours or fewer — a logo or a flyer (measured 7 Oct 2026:
+        logos 66-88 % in 42-161 colours, real photos 5-13 % in 178-374 colours).
         """
+        if traits.is_placeholder_avatar:
+            return "placeholder avatar"
         if max(traits.width, traits.height) < _MIN_PHOTO_SIDE_PX:
             return "too small"
         if traits.contrast < _MIN_PHOTO_CONTRAST:
@@ -719,10 +843,11 @@ class GalleryCuration:
         Keep the photos of a gallery that can illustrate a site, in their order, and settle its logo.
 
         Downloads each image once (parallel, best-effort; a ``data:`` URI is decoded in place) and drops
-        the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. On
-        any download/decode failure the URL is kept (never silently dropped). A logo that is in fact a
-        photo (a Facebook profile picture of the shop front) is no logo; without a logo, the first square
-        graphic of the gallery is (a listing whose only image is its logo).
+        the ones :meth:`unfit_reason` refuses, the logo re-uploaded as a photo, and visual duplicates. An
+        address the server answers as wrong or gone is dropped (some Google gallery addresses answer 400 for
+        good); on any other download/decode failure the URL is kept (never silently dropped). A logo that is
+        in fact a photo (a Facebook profile picture of the shop front) is no logo; without a logo, the first
+        square graphic of the gallery is (a listing whose only image is its logo).
 
         The average hash is coarse (8×8), so the SAME image re-served sits at distance ~0-2 while two
         DISTINCT shots of one subject can reach ~6 — a threshold of 6 dropped real, different photos
@@ -743,6 +868,7 @@ class GalleryCuration:
         import httpx
 
         semaphore = asyncio.Semaphore(8)
+        gone_urls: set[str] = set()
 
         async def _traits_of(client: httpx.AsyncClient, url: str) -> PhotoTraits | None:
             if url.startswith("data:"):
@@ -755,6 +881,8 @@ class GalleryCuration:
                     response = await client.get(url)
                 except Exception:
                     return None
+                if response.status_code in _GONE_IMAGE_STATUSES:
+                    gone_urls.add(url)
                 return cls.traits_of(response.content) if response.status_code == 200 else None
 
         try:
@@ -766,12 +894,18 @@ class GalleryCuration:
             return CuratedGallery(photos=list(urls), logo_url=logo_url)
 
         logo_traits = traits.pop() if logo_url else None
-        if logo_traits is not None and cls.is_photo(logo_traits):
-            logger.info("Enrichment: a photo is no logo: %s", (logo_url or "")[:80])
+        if logo_traits is not None and (cls.is_photo(logo_traits) or logo_traits.is_placeholder_avatar):
+            logger.info("Enrichment: a photo or Facebook's placeholder is no logo: %s", (logo_url or "")[:80])
             logo_url, logo_traits = None, None
+        if logo_url in gone_urls:
+            logger.info("Enrichment: no image at the logo's address: %s", (logo_url or "")[:80])
+            logo_url = None
         kept: list[str] = []
         kept_look_hashes: list[int] = []
         for url, photo in zip(urls, traits):
+            if url in gone_urls:
+                logger.info("Enrichment: photo left out of the gallery (no image at its address): %s", url[:80])
+                continue
             if photo is None:
                 kept.append(url)
                 continue

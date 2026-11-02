@@ -62,6 +62,10 @@ _CIVILITY_BEFORE_LAST_NAME_RE = re.compile(
     r"\b(?i:m\.|mr\.?|monsieur|mme|madame)\s+([A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)?)\b"
 )
 _ENSEIGNE_IN_NAME_RE = re.compile(r"\(([^)]+)\)")
+# Initials a trade name is made of (« KR », « LDBM », « A.E »): two to five capitals, dotted or not.
+_NAME_INITIALS_RE = re.compile(r"(?<![\w.])((?:[A-Z]\.?){2,5})(?!\w)")
+# The words of a registered head's names whose first letters make his initials (« Paul-Henry » gives P and H).
+_INITIALS_WORD_RE = re.compile(r"[a-z]+")
 _NUMBERED_STREET_RE = re.compile(r"^\s*(?P<number>\d{1,4})\s*(?:bis|ter|[a-z](?=[\s,]))?[\s,]+(?P<street>[^,\d]{3,60})")
 _STREET_ABBREVIATIONS: dict[str, str] = {
     "av": "avenue",
@@ -79,9 +83,22 @@ _STREET_ABBREVIATIONS: dict[str, str] = {
     "ste": "sainte",
 }
 _MIN_STREET_WORD_CHARS = 3
+_MIN_UNNUMBERED_STREET_WORDS = 2
+_STREET_KINDS: frozenset[str] = frozenset(
+    {"rue", "avenue", "boulevard", "route", "chemin", "place", "impasse", "allee", "faubourg", "square", "quai"}
+    | {"cours", "passage", "lotissement", "hameau", "lieu-dit", "residence", "voie", "sentier", "ruelle"}
+)
 _SOLE_HOLDER_CONFIDENCE = 0.6
+# A company bearing another name than the business's, tied to it by its address or the business's own words: a proposal.
+_LINKED_COMPANY_CONFIDENCE = 0.6
+# Breaks the business's own words into runs a name is read in whole: « Exemple, élagage » writes no « Exemple Élagage ».
+_TEXT_RUN_BREAK_RE = re.compile(r"[.,;:!?()\[\]|/\n]+")
 _GLUED_WORDS_RE = re.compile(r"(?<=[a-zà-ÿ])(?=[A-ZÀ-Ý]|\d)")
 _DOTTED_CAPITALS_RE = re.compile(r"^[A-ZÀ-Ý](?:\.[A-ZÀ-Ý]+)+\.?['’]?$")
+_ACRONYM_RE = re.compile(r"[A-Z]{2,5}")
+_GLUED_TRADE_WORD_RE = re.compile(
+    r"^(?P<head>[^\W_]{2,}?)(?P<trade>paysages?|jardins?|electricite|elec|garage|plomberie)$", re.IGNORECASE
+)
 
 # Evidence groups — candidates extracted from the SAME underlying data are one
 # observation, not two (owner replies feed both the regex and the LLM; the
@@ -90,6 +107,10 @@ _GROUP_REGISTRY = "registry"
 _GROUP_WEBSITE = "website"
 _GROUP_SCRAPED_TEXT = "scraped_text"
 _GROUP_CUSTOMER_REVIEWS = "customer_reviews"
+# The title the tradesman gave his Google listing (« Max'Elec Marc Exemple »).
+_GROUP_LISTING_TITLE = "listing_title"
+# A signed title holds a trade name, then a first name and a last name.
+_MIN_SIGNED_TITLE_WORDS = 3
 
 _TRADE_AND_LEGAL_FORM_WORDS: frozenset[str] = frozenset(
     {
@@ -142,7 +163,8 @@ class TradeName:
         """
         The name as the registry files it: glued words apart, dotted initials joined.
 
-        « ExempleAuto64 » reads « Exemple Auto 64 », « E.XP' Jardins » reads « EXP Jardins ».
+        « ExempleAuto64 » reads « Exemple Auto 64 », « E.XP' Jardins » reads « EXP Jardins », « EXPAYSAGES » (a
+        trade word glued in capitals) « EX PAYSAGES ».
 
         Args:
             name: The trade name, as the listing or the page writes it.
@@ -151,13 +173,30 @@ class TradeName:
             The name to search the registry with; the name itself when nothing needs mending.
         """
         words = _GLUED_WORDS_RE.sub(" ", name or "").split()
-        return " ".join(re.sub(r"[.'’]", "", word) if _DOTTED_CAPITALS_RE.match(word) else word for word in words)
+        mended = [re.sub(r"[.'’]", "", word) if _DOTTED_CAPITALS_RE.match(word) else word for word in words]
+        return " ".join(TradeName._trade_word_apart(word) for word in mended)
+
+    @staticmethod
+    def _trade_word_apart(word: str) -> str:
+        """A word in one case ending on a trade word, the trade word set apart (« EXPAYSAGES » reads « EX PAYSAGES »)."""
+        glued = _GLUED_TRADE_WORD_RE.match(word) if word.isupper() or word.islower() else None
+        return f"{glued['head']} {glued['trade']}" if glued else word
 
     @staticmethod
     def without_trade_words(name: str) -> str:
-        """The name without its trade and legal-form words (« Garage Exemple Auto » reads « Exemple Auto »)."""
+        """
+        The name without its trade and legal-form words, nor the region it names (« Garage Exemple Auto » reads
+        « Exemple Auto », « Exemple Jaden Matinik » « Exemple Jaden »).
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        region_words = BusinessName.region_words(name)
         words = [word for word in re.split(r"\s+", (name or "").strip()) if word]
-        return " ".join(word for word in words if fold(word).strip(".,") not in _TRADE_AND_LEGAL_FORM_WORDS)
+        return " ".join(
+            word
+            for word in words
+            if fold(word).strip(".,") not in _TRADE_AND_LEGAL_FORM_WORDS and fold(word).strip(".,") not in region_words
+        )
 
 
 class RegistreGouvStrategy:
@@ -184,10 +223,12 @@ class RegistreGouvStrategy:
 
         The registry's full-text search wants every word of the query in the company's legal name: the name as
         the registry files it (« ExempleAuto64 » as « Exemple Auto 64 ») is tried next, then, when the trade name
-        carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its trade words.
+        carries words the legal name lacks (« A.S auto garage » for A.S AUTO), the name without its trade words,
+        then an acronym's letters apart, the way the registry may file it (« EXP » as « E X P »).
         The département comes from the postal code, else from the town (a business found on Facebook has none).
         When no query names the business, its street address, then its words and its owner's name, are searched
-        among the companies of its trade in its département.
+        among the companies of its trade in its département; a company of another name at its address is only a
+        proposal, weighed against what its words and its owner's name find.
         """
         query = (context.company_name or "").strip()
         if not query:
@@ -207,6 +248,9 @@ class RegistreGouvStrategy:
             and len(re.sub(r"\W", "", trade_free_query)) >= _MIN_REGISTRY_QUERY_CHARS
         ):
             queries.append((trade_free_query, True))
+        acronym = self.acronym_of(query)
+        if not siren and acronym is not None:
+            queries.append((" ".join(acronym), False))
         for registry_query, is_trade_free_query in queries:
             results = await self.search(registry_query, department=None if siren else department, per_page=5)
             if results is None:
@@ -218,7 +262,10 @@ class RegistreGouvStrategy:
                 return candidates
         if siren or not department:
             return []
-        return await self._search_by_address(context, department) or await self._search_by_keywords(context, department)
+        by_address = await self._search_by_address(context, department)
+        if any(candidate.primary for candidate in by_address):
+            return by_address
+        return [*by_address, *await self._search_by_keywords(context, department)]
 
     async def _search_by_address(self, context: ResolutionContext, department: str) -> list[NameCandidate]:
         """
@@ -227,11 +274,12 @@ class RegistreGouvStrategy:
         The registry files « Garage EX services » as « LIMOGES EXEMPLE SERVICES », and the trade name of a garage
         bought last year is declared nowhere: the company running an active establishment of the trade at the
         business's own number and street is the business, when it is the only one (a closed establishment there is
-        a former tenant).
+        a former tenant); a listing giving no number (« Impasse des Exemples ») is matched on its street alone. Under
+        another name than the business's, its head is only proposed: the address alone never names him.
         """
         from services.trade_normalizer import TradeNormalizer
 
-        street = self.street_of(context.address)
+        street = self.street_of(context.address) or self.unnumbered_street_of(context.address)
         trade = TradeNormalizer.normalize(context.trade)
         if street is None or not has_known_activity(trade):
             return []
@@ -250,9 +298,10 @@ class RegistreGouvStrategy:
         if len(matching) != 1:
             return []
         found = self._candidates_of(matching[0], base=0.75, geo_confirmed=True)
-        return [
-            replace(candidate, provenance=f"{candidate.provenance}, à son adresse « {street} »") for candidate in found
-        ]
+        provenance_note = f", à son adresse « {street} »"
+        if not self.bears_the_business_name(matching[0], context):
+            return self._proposed(found, f"{provenance_note}, sous un autre nom que l'enseigne")
+        return [replace(candidate, provenance=candidate.provenance + provenance_note) for candidate in found]
 
     @staticmethod
     def street_of(address: str | None) -> str | None:
@@ -267,29 +316,44 @@ class RegistreGouvStrategy:
         return f"{match['number']} {' '.join(words)}" if words else None
 
     @staticmethod
+    def unnumbered_street_of(address: str | None) -> str | None:
+        """
+        The street of an address that opens on its street without a number, abbreviations spelled out (« Imp. des
+        Exemples, 11100 Narbonne » gives « impasse des exemples »); None for any other address.
+        """
+        first_part = fold(address or "").split(",", 1)[0]
+        words = [_STREET_ABBREVIATIONS.get(word, word) for word in re.findall(r"[a-z'’-]+", first_part)]
+        if re.search(r"\d", first_part) or len(words) < _MIN_UNNUMBERED_STREET_WORDS or words[0] not in _STREET_KINDS:
+            return None
+        return " ".join(words)
+
+    @staticmethod
     def has_establishment_at(result: dict[str, Any], street: str, *, context: ResolutionContext, trade: str) -> bool:
         """
         Whether a company runs an active establishment of the trade at the business's number and street, in its
-        town (pure — testable).
+        town (pure — testable). The registry may write a hamlet before the number (« LE TEMOIN 30 RUE … »),
+        and a street's name in the singular (« IMPASSE DE L'EXEMPLE » for « Impasse des Exemples »).
 
         Args:
-            result: A registry company, with the establishments the search matched.
-            street: The business's number and street, as ``street_of`` writes it.
+            result: A registry company, with its head office and the establishments the search matched.
+            street: The business's number and street, as ``street_of`` writes it, or its street alone.
             context: The business looked for.
             trade: The business's trade, as the trade normalizer writes it.
 
         Returns:
-            True when one of its matched establishments is open there, in the trade.
+            True when its head office or one of its matched establishments is open there, in the trade.
         """
-        number, _, street_name = street.partition(" ")
-        street_words = {word for word in re.findall(r"[a-z]+", street_name) if len(word) >= _MIN_STREET_WORD_CHARS}
+        number, _, street_name = street.partition(" ") if street[:1].isdigit() else ("", "", street)
+        street_words = {
+            word.removesuffix("s") for word in re.findall(r"[a-z]+", street_name) if len(word) >= _MIN_STREET_WORD_CHARS
+        }
         town = town_key(context.city or "")
-        for establishment in result.get("matching_etablissements") or []:
+        for establishment in [*(result.get("matching_etablissements") or []), result.get("siege") or {}]:
             address = fold(str(establishment.get("adresse") or ""))
             address_words = set(re.findall(r"[a-z0-9]+", address))
             is_there = (
-                address.split(" ", 1)[0] == number
-                and street_words <= address_words
+                (not number or number in address_words)
+                and street_words <= {word.removesuffix("s") for word in address_words}
                 and (
                     (context.postal_code or "") in address_words
                     if context.postal_code
@@ -330,7 +394,11 @@ class RegistreGouvStrategy:
         (« Monsieur Modele »). Each is searched in the département among the companies declaring the trade's
         activity, a common name not hiding them; only active ones count, and a single one is the business — the
         one declaring the trade's main activity when several fit (an electrician, not a builder of the family).
-        A word naming a commune (« Exemple-Auto Pau-Lescar ») is a place, not the business: never searched.
+        A word naming a commune of its département (« Exemple-Auto Pau-Lescar ») is a place, not the business: never
+        searched; a commune's name elsewhere in France is often a family name (« Exemplebourg »). A company
+        a word found under another name than the business's (« EXEMPLE ELAGAGE » for « A Votre Service Exemple ») is
+        another business, unless its address or the business's own words tie them: its head is then only proposed,
+        weighed against what the next queries find.
         """
         from services.trade_normalizer import TradeNormalizer
 
@@ -339,9 +407,10 @@ class RegistreGouvStrategy:
             return []
         activity_codes = activity_codes_of(trade)
         name_words: list[str] = []
+        proposals: list[NameCandidate] = []
         for keyword in self._keywords(context):
             is_name_word = keyword.person is None and not keyword.is_email_domain
-            if is_name_word and await FrenchDepartments.is_town_name(keyword.text):
+            if is_name_word and await FrenchDepartments.is_commune_of_department(keyword.text, department):
                 continue
             if is_name_word:
                 name_words.append(keyword.text)
@@ -358,8 +427,16 @@ class RegistreGouvStrategy:
             if len(matching) == 1:
                 found = self._candidates_of(matching[0], base=0.75 if keyword.person else 0.7, geo_confirmed=True)
                 provenance_note = f", trouvée par « {keyword.text} » dans le métier"
-                return [replace(candidate, provenance=candidate.provenance + provenance_note) for candidate in found]
-        return await self._sole_holder_named(name_words, department)
+                if is_name_word and not self.bears_the_business_name(matching[0], context):
+                    tie = self.tie_to_the_business(matching[0], context, trade=trade)
+                    if tie is not None and not proposals:
+                        proposals = self._proposed(found, f"{provenance_note}, sous un autre nom que l'enseigne, {tie}")
+                    continue
+                return [
+                    *proposals,
+                    *(replace(candidate, provenance=candidate.provenance + provenance_note) for candidate in found),
+                ]
+        return proposals or await self._sole_holder_named(name_words, department)
 
     async def _sole_holder_named(self, name_words: list[str], department: str) -> list[NameCandidate]:
         """
@@ -517,7 +594,9 @@ class RegistreGouvStrategy:
         département, is another business: a homonym, or the business's former structure. A property company
         (SCI) owns premises and runs no trade: « SCI DE L'EXEMPLE » is the landlord of « Garage de l'Exemple ».
         When one company bears the business's name exactly (« EXEMPLE 05 »), the others found by its words
-        (« VENTE EXEMPLE 05 ») are other businesses.
+        (« VENTE EXEMPLE 05 ») are other businesses. An acronym is every homonym's (« EXP », a car dealer's too):
+        the company must declare the trade's activity. When several companies bear the name, the one established
+        at the business's address is it.
 
         Args:
             results: The registry's answer.
@@ -528,9 +607,13 @@ class RegistreGouvStrategy:
         Returns:
             One candidate per company that can be the business.
         """
-        candidates: list[NameCandidate] = []
+        from services.trade_normalizer import TradeNormalizer
+
+        found_by_company: list[tuple[dict[str, Any], list[NameCandidate]]] = []
         siren = self.siren_of(context.registry_number)
         department = department or FrenchDepartments.of_postal_code(context.postal_code)
+        trade = TradeNormalizer.normalize(context.trade)
+        is_acronym = self.acronym_of(context.company_name) is not None
         exact_name_results = [result for result in results[:5] if self._bears_the_exact_name(result, context)]
         for result in exact_name_results or results[:5]:
             anchored = bool(siren) and str(result.get("siren") or "") == siren
@@ -541,6 +624,9 @@ class RegistreGouvStrategy:
             is_elsewhere = department is not None and company_department is not None and not is_in_department
             is_ceased = str(result.get("etat_administratif") or "") == _CEASED_STATE
             if not anchored and (is_ceased or is_elsewhere or self._is_property_company(result)):
+                continue
+            is_of_another_trade = activity_consistency(trade, self._activity_of(result)) is False
+            if not anchored and is_acronym and is_of_another_trade:
                 continue
             if anchored:
                 similarity = 1.0
@@ -556,10 +642,39 @@ class RegistreGouvStrategy:
             geo_confirmed = city_ok or is_in_department
             base = 0.5 + 0.25 * similarity + (0.15 if city_ok else 0.0)
             found = self._candidates_of(result, base=base, geo_confirmed=geo_confirmed)
+            head_initials = self.head_initials_spelled(result, context)
+            if head_initials is not None:
+                note = f", enseigne aux initiales de son dirigeant ({head_initials})"
+                found = [replace(candidate, provenance=candidate.provenance + note) for candidate in found]
             if anchored:
                 found = [self._anchored(candidate) for candidate in found]
-            candidates.extend(found)
-        return candidates
+            if found:
+                found_by_company.append((result, found))
+        street = self.street_of(context.address)
+        if street is not None and len(found_by_company) > 1:
+            at_its_address = [
+                (result, found)
+                for result, found in found_by_company
+                if self.has_establishment_at(result, street, context=context, trade=trade)
+            ]
+            found_by_company = at_its_address if len(at_its_address) == 1 else found_by_company
+        return [candidate for _result, found in found_by_company for candidate in found]
+
+    @staticmethod
+    def acronym_of(name: str | None) -> str | None:
+        """
+        The acronym a business name is, its dots and spaces aside (« EXC », « E.X.C »), or None for a name of words.
+
+        Args:
+            name: A business name.
+
+        Returns:
+            The acronym's capitals, or None.
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        compact = join_dotted_initials(BusinessName.without_legal_form(name or "")).replace(".", "").strip()
+        return compact if _ACRONYM_RE.fullmatch(compact) else None
 
     @staticmethod
     def _bears_the_exact_name(result: dict[str, Any], context: ResolutionContext) -> bool:
@@ -573,6 +688,112 @@ class RegistreGouvStrategy:
         ]
         return any(BusinessName.is_exact_name(name, context.company_name) for name in names if name)
 
+    @staticmethod
+    def bears_the_business_name(result: dict[str, Any], context: ResolutionContext) -> bool:
+        """
+        Whether a registry company bears the business's name (pure — testable): one of its names is held whole in the
+        business's (« EXEMPLE » in « EXEMPLE Electrical »), or holds every word telling the business apart (« JULES
+        MODELE » for « Modele Entretien parc et jardin »). « EXEMPLE ELAGAGE » shares one word with « A Votre Service
+        Exemple »: a company of another name.
+
+        Args:
+            result: A registry company.
+            context: The business looked for.
+
+        Returns:
+            True when the company bears the business's name.
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        names = [
+            str(result.get("nom_complet") or ""),
+            str(result.get("nom_raison_sociale") or ""),
+            *RegistreGouvStrategy._trade_names(result),
+        ]
+        business_words = BusinessName.distinctive_stems(context.company_name, town=context.city)
+        return any(
+            BusinessName.is_within_name(name, context.company_name)
+            or (bool(business_words) and business_words <= BusinessName.distinctive_stems(name))
+            for name in names
+            if name
+        )
+
+    @classmethod
+    def tie_to_the_business(cls, result: dict[str, Any], context: ResolutionContext, *, trade: str) -> str | None:
+        """
+        What ties a registry company of another name to the business, as its provenance says it (pure — testable).
+
+        An open establishment of the trade at the business's number and street ties them; so do the business's own
+        words (its description, its replies to reviews, its email addresses) naming the company or its head in full.
+        The registry gives no telephone number to compare.
+
+        Args:
+            result: A registry company bearing another name than the business's.
+            context: The business looked for.
+            trade: The business's trade, as the trade normalizer writes it.
+
+        Returns:
+            The tie (« établie à son adresse « 12 rue exemple » »), or None when nothing ties them.
+        """
+        from services.prospect_search.business_name import BusinessName
+
+        street = cls.street_of(context.address)
+        if street is not None and cls.has_establishment_at(result, street, context=context, trade=trade):
+            return f"établie à son adresse « {street} »"
+        for head in result.get("dirigeants") or []:
+            first_names = _PERSON_NAME_WORD_RE.findall(fold(str(head.get("prenoms") or "")))
+            first_name = re.findall(r"[a-z0-9]+", first_names[0]) if first_names else []
+            last_name = re.findall(r"[a-z0-9]+", fold(_ENSEIGNE_IN_NAME_RE.sub(" ", str(head.get("nom") or ""))))
+            if (
+                first_name
+                and last_name
+                and (
+                    cls._is_written_by_the_business(first_name + last_name, context)
+                    or cls._is_written_by_the_business(last_name + first_name, context)
+                )
+            ):
+                return "son dirigeant nommé par l'entreprise"
+        names = [
+            _ENSEIGNE_IN_NAME_RE.sub(" ", str(result.get("nom_complet") or "")),
+            str(result.get("nom_raison_sociale") or ""),
+            *cls._trade_names(result),
+        ]
+        for name in names:
+            words = re.findall(r"[a-z0-9]+", fold(BusinessName.without_legal_form(name)))
+            if cls._is_written_by_the_business(words, context):
+                return "son nom écrit par l'entreprise"
+        return None
+
+    @staticmethod
+    def _is_written_by_the_business(words: list[str], context: ResolutionContext) -> bool:
+        """
+        Whether two words or more follow one another in the business's own words (its description, its replies to
+        reviews), or glued in one of its email addresses.
+        """
+        if len(words) < 2:
+            return False
+        phrase = f" {' '.join(words)} "
+        runs = [
+            f" {' '.join(re.findall(r'[a-z0-9]+', run))} "
+            for text in [context.description or "", *context.owner_responses]
+            for run in _TEXT_RUN_BREAK_RE.split(fold(text))
+        ]
+        addresses = [re.sub(r"[^a-z0-9]", "", fold(email.partition("@")[0])) for email in context.emails]
+        return any(phrase in run for run in runs) or any("".join(words) in address for address in addresses)
+
+    @staticmethod
+    def _proposed(candidates: list[NameCandidate], provenance_note: str) -> list[NameCandidate]:
+        """The heads of a company of another name than the business's: proposals, never used alone."""
+        return [
+            replace(
+                candidate,
+                confidence=min(candidate.confidence, _LINKED_COMPANY_CONFIDENCE),
+                primary=False,
+                provenance=candidate.provenance + provenance_note,
+            )
+            for candidate in candidates
+        ]
+
     @classmethod
     def _is_property_company(cls, result: dict[str, Any]) -> bool:
         """
@@ -581,6 +802,22 @@ class RegistreGouvStrategy:
         """
         is_civil_company = str(result.get("nature_juridique") or "").startswith(_CIVIL_COMPANY_LEGAL_CATEGORY)
         return is_civil_company or cls._activity_of(result).startswith(_REAL_ESTATE_ACTIVITY)
+
+    @staticmethod
+    def last_name_of(head: dict[str, Any]) -> str | None:
+        """
+        The last name a registered head goes by: the name of use the registry writes in brackets after the birth
+        name (« EXEMPLE MODELE (EXEMPLE) » is Jules Exemple), else the name itself (pure — testable).
+
+        Args:
+            head: A head of a registry company (``nom``, ``prenoms``).
+
+        Returns:
+            The last name, title-cased; None when the registry gives none.
+        """
+        name = str(head.get("nom") or "")
+        name_of_use = _ENSEIGNE_IN_NAME_RE.search(name)
+        return title_case_name(name_of_use.group(1) if name_of_use else name)
 
     def _candidates_of(self, result: dict[str, Any], *, base: float, geo_confirmed: bool) -> list[NameCandidate]:
         """The person a registry company names: the EI holder, its sole dirigeant, else its gérant/président."""
@@ -596,7 +833,7 @@ class RegistreGouvStrategy:
             first, last = split_registry_full_name(str(result.get("nom_complet") or ""))
             if dirigeants:
                 first = title_case_name(dirigeants[0].get("prenoms")) or first
-                last = title_case_name(dirigeants[0].get("nom")) or last
+                last = self.last_name_of(dirigeants[0]) or last
             if first or last:
                 return [self._candidate(first, last, min(0.95, base + 0.25), result, geo_confirmed)]
             return []
@@ -606,7 +843,7 @@ class RegistreGouvStrategy:
             return [
                 self._candidate(
                     title_case_name(d.get("prenoms")),
-                    title_case_name(d.get("nom")),
+                    self.last_name_of(d),
                     min(0.9, base + 0.1),
                     result,
                     geo_confirmed,
@@ -627,7 +864,7 @@ class RegistreGouvStrategy:
         return [
             self._candidate(
                 title_case_name(lead.get("prenoms")),
-                title_case_name(lead.get("nom")),
+                self.last_name_of(lead),
                 min(0.75, base),
                 result,
                 geo_confirmed,
@@ -673,6 +910,7 @@ class RegistreGouvStrategy:
                 "siren": result.get("siren"),
                 "nom_complet": result.get("nom_complet"),
                 "siege_postal_code": str((result.get("siege") or {}).get("code_postal") or "") or None,
+                "siege_commune": str((result.get("siege") or {}).get("libelle_commune") or "") or None,
                 # Declared main activity (NAF) — the activity guard compares it to
                 # the prospect's trade to catch a same-town homonym in another line
                 # of work (« Mayer Paysagiste » → a cleaning company).
@@ -711,11 +949,56 @@ class RegistreGouvStrategy:
             for business_name in business_names
             for trade_name in RegistreGouvStrategy._trade_names(result)
         )
+        is_named_with_its_head_initials = RegistreGouvStrategy.head_initials_spelled(result, context) is not None
         return max(
             legal_similarity,
-            1.0 if is_trading_under_the_name else 0.0,
+            1.0 if is_trading_under_the_name or is_named_with_its_head_initials else 0.0,
             RegistreGouvStrategy._trade_free_similarity(result, context),
         )
+
+    @staticmethod
+    def head_initials_spelled(result: dict[str, Any], context: ResolutionContext) -> str | None:
+        """
+        The initials of a company's registered head that the business name is made of, in either order.
+
+        An independent tradesman often trades under his initials: « EK Électricité Générale » is Karim Exemple's
+        (Exemple Karim), « LMJE Élec » Luc Marc Jean Exemple's. The company must declare the trade's activity:
+        initials alone are shared by every homonym of another trade.
+
+        Args:
+            result: A registry company.
+            context: The business looked for.
+
+        Returns:
+            The initials (« KR »), or None when the name spells none of its heads' initials.
+        """
+        from services.prospect_search.business_name import BusinessName
+        from services.trade_normalizer import TradeNormalizer
+
+        name = BusinessName.without_legal_form(context.company_name or "")
+        name_initials = {initials.replace(".", "") for initials in _NAME_INITIALS_RE.findall(name)}
+        trade = TradeNormalizer.normalize(context.trade)
+        if not name_initials or activity_consistency(trade, RegistreGouvStrategy._activity_of(result)) is not True:
+            return None
+        for head in result.get("dirigeants") or []:
+            if (head.get("type_dirigeant") or "personne physique") != "personne physique":
+                continue
+            first_names = _INITIALS_WORD_RE.findall(fold(str(head.get("prenoms") or "")))
+            last_names = _INITIALS_WORD_RE.findall(fold(_ENSEIGNE_IN_NAME_RE.sub(" ", str(head.get("nom") or ""))))
+            if not first_names or not last_names:
+                continue
+            first_initials = "".join(word[0] for word in first_names)
+            last_initials = "".join(word[0] for word in last_names)
+            orders = {
+                first_initials + last_initials,
+                first_initials[0] + last_initials,
+                last_initials + first_initials,
+                last_initials + first_initials[0],
+            }
+            spelled = name_initials & {initials.upper() for initials in orders}
+            if spelled:
+                return min(spelled)
+        return None
 
     @staticmethod
     def _trade_names(result: dict[str, Any]) -> list[str]:
@@ -1014,9 +1297,9 @@ class WebRegistryStrategy:
         ]
 
 
-# « Réponse du propriétaire » signatures: a line/dash followed by a short name.
+# « Réponse du propriétaire » signatures: a line/dash followed by a short name, a full stop after it (« Jules. »).
 _OWNER_SIGNATURE_RE = re.compile(
-    r"(?:^|[\n\-—–])\s*(?:cordialement|merci|à bientôt)?[,\s]*([A-ZÀ-Ü][a-zà-ü]{2,15})\s*$",
+    r"(?:^|[\n\-—–])\s*(?:cordialement|merci|à bientôt)?[,\s]*([A-ZÀ-Ü][a-zà-ü]{2,15})\s*[.!]?\s*$",
     re.MULTILINE,
 )
 _FULL_NAME_SIGNATURE_RE = re.compile(
@@ -1062,7 +1345,8 @@ class OwnerResponseStrategy:
 
     Uses only text already captured by the enrichment scraper (no network).
     A recurring signature (« … à bientôt ! — Léo ») is a decent first-name
-    signal, scored moderately; a word no one is given as a first name
+    signal, scored moderately, and used alone when the business's name or its
+    email writes it too; a word no one is given as a first name
     (« Avatacar », the booking platform answering for the garage) is no person.
     A reply signed with a full name (« Jules Exemple, Gérant. ») names the
     person too: never a primary source, it confirms the registry's head or,
@@ -1087,6 +1371,10 @@ class OwnerResponseStrategy:
         (first, last), seen = max(counts.items(), key=lambda kv: (kv[1], kv[0][1] is not None))
         confidence = 0.7 if seen > 1 else (0.6 if last else 0.55)
         signature = f"{first} {last}" if last else first
+        named_by = self.where_the_business_writes(first, context) if last is None else None
+        provenance = (
+            f"Signature « {signature} » dans {seen} réponse{'s' if seen > 1 else ''} du propriétaire aux avis Google"
+        )
         return [
             NameCandidate(
                 first=first,
@@ -1096,13 +1384,34 @@ class OwnerResponseStrategy:
                 confidence=confidence,
                 primary=False,
                 evidence_group=_GROUP_SCRAPED_TEXT,
-                provenance=(
-                    f"Signature « {signature} » dans {seen} réponse{'s' if seen > 1 else ''} du propriétaire aux "
-                    "avis Google"
-                ),
+                provenance=f"{provenance}, et {named_by}" if named_by else provenance,
                 raw={"occurrences": seen},
+                self_declared=named_by is not None,
             )
         ]
+
+    @staticmethod
+    def where_the_business_writes(first_name: str, context: ResolutionContext) -> str | None:
+        """
+        Where the business itself writes the first name the owner's replies are signed with (pure — testable).
+
+        « Jardins Exemple » signed « Exemple. » and written « jardins.exemple@… »: the business names the person who
+        answers, whose first name is then used alone.
+
+        Args:
+            first_name: The first name the replies are signed with.
+            context: The business, with its name and its emails.
+
+        Returns:
+            The words naming it (« le nom de l'entreprise »), or None when the business never writes it.
+        """
+        wanted = fold(first_name)
+        if wanted in _PERSON_NAME_WORD_RE.findall(fold(context.company_name or "")):
+            return f"le nom de l'entreprise « {context.company_name} »"
+        for email in context.emails:
+            if wanted in re.findall(r"[a-z]+", fold(email.partition("@")[0])):
+                return f"son adresse mail « {email} »"
+        return None
 
     @staticmethod
     def full_name_signed(text: str, context: ResolutionContext) -> tuple[str, str] | None:
@@ -1161,7 +1470,7 @@ class BusinessNameOwnerStrategy:
         """
         company_words = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'-]+", context.company_name or "")
         if all(self._is_name_word(word) for word in company_words):
-            return []
+            return self._owner_after_the_trade_name(context, company_words)
         customer_texts = [text for text in [*context.review_texts, *context.owner_responses] if text]
         for first, last in pairwise(company_words):
             if not (self._is_name_word(first) and self._is_name_word(last)):
@@ -1187,7 +1496,56 @@ class BusinessNameOwnerStrategy:
                         raw={"mentions": mentions},
                     )
                 ]
-        return self._first_name_of_initials(context)
+        return self._owner_after_the_trade_name(context, company_words) or self._first_name_of_initials(context)
+
+    def _owner_after_the_trade_name(self, context: ResolutionContext, company_words: list[str]) -> list[NameCandidate]:
+        """
+        The owner whose first name and last name close the listing's title, after the trade name: a proposal.
+
+        A tradesman often signs his listing (« Max'Elec Marc Exemple »): a known first name then a name word, after
+        a trade name of its own that is not itself a first name. « Garage Jules Exemple » is a business named after
+        a person, who may have left; « Jean Pierre Exemple » names one person. A customer calling the first word
+        « M. Martin » makes it a last name: the title then tells nothing.
+
+        Args:
+            context: The business looked for.
+            company_words: The words of its name.
+
+        Returns:
+            The owner, or nothing when the title ends otherwise.
+        """
+        if len(company_words) < _MIN_SIGNED_TITLE_WORDS:
+            return []
+        trade_name, (first, last) = company_words[:-2], company_words[-2:]
+        customer_texts = " ".join(text for text in [*context.review_texts, *context.owner_responses] if text)
+        is_called_by_last_name = any(
+            fold(name) == fold(first) for name in _CIVILITY_BEFORE_LAST_NAME_RE.findall(customer_texts)
+        )
+        is_signed = (
+            self._is_name_word(first)
+            and self._is_name_word(last)
+            and GivenNames.is_given_name(first)
+            and any(self._is_name_word(word) for word in trade_name)
+            and not all(GivenNames.is_given_name(word) for word in trade_name)
+            and not is_called_by_last_name
+        )
+        if not is_signed:
+            return []
+        first_name, last_name = title_case_name(first), title_case_name(last)
+        return [
+            NameCandidate(
+                first=first_name,
+                last=last_name,
+                gender=infer_gender(first_name),
+                source=self.name,
+                confidence=0.6,
+                primary=False,
+                evidence_group=_GROUP_LISTING_TITLE,
+                provenance=(
+                    f"Titre de la fiche « {context.company_name} » : son enseigne, puis le prénom et le nom de son patron"
+                ),
+            )
+        ]
 
     def _first_name_of_initials(self, context: ResolutionContext) -> list[NameCandidate]:
         """

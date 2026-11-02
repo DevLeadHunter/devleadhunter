@@ -1,4 +1,4 @@
-import type { ProspectCountryOption } from '~/utils/prospectCountries'
+import type { ProspectZoneOption } from '~/utils/prospectZones'
 
 /** One prospect placed at its own address, or at the city centre when `isPreciseAddress` is false. */
 export type ProspectFeatureProperties = {
@@ -28,8 +28,8 @@ export type CoverageTierColors = {
 /** A [[west, south], [east, north]] box in degrees, as MapLibre frames it. */
 export type CoverageMapBounds = [[number, number], [number, number]]
 
-/** A country of the selector, with how many prospects the current scope and trades hold there. */
-export type CoverageCountryOption = ProspectCountryOption & {
+/** A country (or Martinique) of the selector, with how many prospects the current scope and trades hold there. */
+export type CoverageCountryOption = ProspectZoneOption & {
   prospectCount: number
 }
 

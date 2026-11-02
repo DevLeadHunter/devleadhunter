@@ -49,12 +49,7 @@
             {{ candidate.name }}
           </button>
           <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
-            <UiCountryFlag
-              v-if="candidate.country !== 'FR'"
-              :code="candidate.country"
-              :title="ProspectCountries.option(candidate.country).label"
-              size="compact"
-            />
+            <UiCountryFlag :code="ProspectZones.of(candidate)" size="compact" />
             <span>{{ store.buildTradeAndTownLabel(candidate) }}</span>
           </p>
         </BaseTableTd>
@@ -139,8 +134,8 @@ import { computed } from 'vue'
 import { PROSPECT_SEARCH_EMAIL_PROOF_LABELS } from '~/constants/prospectSearch'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { formatRelativeTime } from '~/utils/date'
-import { ProspectCountries } from '~/utils/prospectCountries'
 import { ProspectSearches } from '~/utils/prospectSearches'
+import { ProspectZones } from '~/utils/prospectZones'
 
 /** Leads waiting for a decision, in the layout of the prospects table; a click outside the controls opens the lead. */
 const props: ProspectSearchLeadTableProps = defineProps({

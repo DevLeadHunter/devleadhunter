@@ -112,6 +112,15 @@ class NameResolution:
     candidates: list[NameCandidate] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class SearchedOwner:
+    """The person the prospect search read running the business, and the page it read them on, when it knows it."""
+
+    name: str
+    source: str | None = None
+    url: str | None = None
+
+
 @dataclass
 class ResolutionContext:
     """Inputs shared with every strategy (source-agnostic).
@@ -143,6 +152,8 @@ class ResolutionContext:
     country: str | None = None
     #: The business's street address as its listing writes it (« 23 Rue Exemple, 87000 Limoges »).
     address: str | None = None
+    #: The person the prospect search read running the business (« Aurélie Exemple » on a directory of tradespeople).
+    searched_owner: SearchedOwner | None = None
 
 
 @runtime_checkable

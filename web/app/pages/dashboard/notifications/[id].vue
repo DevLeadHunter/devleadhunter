@@ -87,6 +87,8 @@ const targetLabel: ComputedRef<string> = computed((): string => {
     case 'email':
     case 'demo':
       return 'Voir le prospect'
+    case 'demo_site':
+      return 'Voir le site'
     case 'sms':
       return notification.value?.url?.startsWith('/dashboard/my-prospects') ? 'Voir le prospect' : 'Voir les SMS'
     default:

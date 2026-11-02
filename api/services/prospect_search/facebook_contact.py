@@ -20,11 +20,15 @@ from models.prospect_search_candidate import ProspectSearchCandidate
 from scrappers.email_candidate_scoring import email_candidate_scorer
 from services.organization_service import organization_service
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
+from services.prospect_search.candidate_duplicates import CandidateDuplicates
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
+from services.prospect_search.candidate_registers import CandidateRegisters
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import EmailDomainCheck
+from services.prospect_search.network_outlets import NetworkOutlets
+from services.prospect_search.place_of_contact import PlaceOfContact
 from services.prospect_search.swiss_directory import SwissDirectoryUnavailableError, swiss_directory
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.validation_service import validation_service
@@ -95,7 +99,10 @@ class FacebookContactRecorder:
                 facts.phone = read.phone
                 facts.add_evidence("phone", read.phone, source="Page Facebook", url=page_url)
                 has_learnt_phone = True
-            if read.website and facts.website is None and CandidateVerifier.is_own_website(read.website):
+            if read.website and NetworkOutlets.is_network_page(read.website):
+                facts.is_chain = True
+                facts.add_evidence("chain", read.website, source="Page Facebook", url=page_url)
+            elif read.website and facts.website is None and CandidateVerifier.is_own_website(read.website):
                 facts.website = read.website
                 status = await website_liveness_service.check_website_status(read.website)
                 facts.website_status = status.value if status is not None else None
@@ -105,19 +112,25 @@ class FacebookContactRecorder:
             await self._read_directory_asterisk(facts)
         await self._domain_check.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
+        await PlaceOfContact.note_contact_elsewhere(facts)
+        CandidateVerifier.mark_brand_named_in_email(facts, trade)
 
         verdict = CandidateDecision.decide(facts, trade, criteria)
+        if await CandidateRegisters.read_if_proposed(facts, verdict):
+            verdict = CandidateDecision.decide(facts, trade, criteria)
         with SessionLocal() as db:
             row = db.get(ProspectSearchCandidate, candidate_id)
             if row is None or row.status != CandidateStatus.NEEDS_BROWSER.value:
                 return None
-            # The page may reveal an email the user already wrote to, or one of an existing prospect.
+            # The page may reveal an email the user already wrote to, or one of an existing prospect,
+            # or of another listing of the search: a single listing of the business stays proposed.
             known = KnownBusinessIndex.load(
                 db, user_id=row.user_id, organization_id=organization_id, search_id=row.search_id
             ).match(CandidateStore.identity_keys(facts))
             if known is not None and verdict.status != CandidateStatus.REJECTED:
                 verdict = CandidateVerdict(CandidateStatus.REJECTED, known.reason, known.detail)
             CandidateStore.write_back(row, facts, verdict)
+            CandidateDuplicates.settle(db, row)
             db.commit()
             if creates_prospect:
                 await CandidateStore.promote_or_leave_to_confirm(db, row, facts, trade, organization_id=organization_id)

@@ -12,6 +12,7 @@ import type {
   ProspectSearchValidationMode,
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
+import type { ProspectCountry } from '~/types'
 import type { ProspectSearchStepDefinition } from '~/types/ProspectSearchCreatePage'
 import type { StatusPresentation } from '~/types/StatusPresentation'
 
@@ -82,6 +83,8 @@ export const PROSPECT_SEARCH_CHANNEL_OPTIONS: ProspectSearchChannelOption[] = [
     icon: 'i-lucide-messages-square',
   },
 ]
+
+export const PROSPECT_SEARCH_COUNTRIES_WITH_REGISTRIES: ProspectCountry[] = ['FR', 'CA']
 
 export const PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE: ProspectSearchValidationMode = 'manual'
 
@@ -156,7 +159,7 @@ export const PROSPECT_SEARCH_REJECT_REASON_LABELS: Record<ProspectSearchRejectRe
   chain: 'Chaîne ou franchise',
   closed: 'Fermé',
   no_advertising: 'Refuse la publicité (annuaire suisse)',
-  out_of_country: 'Dans un autre pays',
+  out_of_country: 'Hors de la zone',
   homonym: 'Homonyme',
   low_rating: 'Note Google trop basse',
   already_known: 'Déjà dans vos prospects',
@@ -208,6 +211,8 @@ export const PROSPECT_SEARCH_WEBSITE_WARNINGS: Record<string, StatusPresentation
 export const PROSPECT_SEARCH_EVIDENCE_FACT_LABELS: Record<string, string> = {
   email: 'Email',
   email_dropped: 'Email retiré',
+  email_domain_site: 'Site du domaine de son email',
+  privacy_proxied_domain: "Domaine caché par un service d'anonymat",
   phone: 'Téléphone',
   website: 'Site web',
   facebook: 'Page Facebook',

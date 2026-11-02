@@ -17,6 +17,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Searc
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
+from services.prospect_search.network_outlets import NetworkOutlets
 from services.prospect_search.search_judge import JudgedEmail, JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.website_liveness_service import website_liveness_service
@@ -26,6 +27,9 @@ _PLUMBER = TradeCatalog.resolve("plombier")
 _ELECTRICIAN = TradeCatalog.resolve("électricien")
 _GARAGE = TradeCatalog.resolve("garage")
 _EMAIL_ONLY = SearchCriteria(channel=ProspectSearchChannel.EMAIL, only_without_website=True, minimum_rating=None)
+_EMAIL_AND_MOBILE = SearchCriteria(
+    channel=ProspectSearchChannel.EMAIL_AND_SMS, only_without_website=True, minimum_rating=4.0
+)
 
 
 class _OnePageClient:
@@ -87,6 +91,12 @@ def _verify(
 
 def _result(link: str, title: str, description: str = "") -> dict[str, str]:
     return {"link": link, "title": title, "description": description}
+
+
+# A page that answers without saying anything about the business.
+_PAGE_ABOUT_ANOTHER_BUSINESS: dict[str, Any] = {
+    "organic": [_result("https://www.exemple-sans-rapport.fr/", "Une autre entreprise")]
+}
 
 
 def test_the_panel_gives_the_hidden_website_the_listing_did_not_show() -> None:
@@ -415,14 +425,14 @@ def test_a_same_name_panel_without_an_address_does_not_make_another_business() -
 def test_a_family_name_or_a_longer_word_is_not_taken_for_a_chain(business_name: str) -> None:
     facts = _facts(name=business_name, country="FR", city="Dijon")
 
-    _verify(facts, {"organic": []})
+    _verify(facts, _PAGE_ABOUT_ANOTHER_BUSINESS)
 
     assert facts.is_chain is False
     assert facts.is_verified is True
 
 
 def test_a_chain_written_with_a_hyphen_is_still_recognised() -> None:
-    assert CandidateVerifier.is_chain_name("Feu-Vert Dijon") is True
+    assert NetworkOutlets.names_network("Feu-Vert Dijon") is True
 
 
 def _serve_front_page(monkeypatch: pytest.MonkeyPatch, page_url: str, page_text: str) -> None:
@@ -658,7 +668,7 @@ def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
 def test_a_listing_named_after_its_website_has_that_website() -> None:
     facts = _facts(name="Brunet Dijon-Paysagiste.fr", city="Dijon", country="FR", phone="06 12 34 56 78")
 
-    _verify(facts, {"organic": []})
+    _verify(facts, _PAGE_ABOUT_ANOTHER_BUSINESS)
 
     assert facts.website == "https://dijon-paysagiste.fr/"
 
@@ -793,3 +803,296 @@ def test_an_email_domain_spelling_the_name_without_its_legal_form_is_its_website
     asyncio.run(CandidateVerifier.consider_email_domain(facts, TradeCatalog.resolve("garage")))
 
     assert facts.website == "https://adnauto.ch/"
+
+
+@pytest.mark.parametrize(
+    ("name", "city", "email", "front_page"),
+    [
+        # The domain hides its page behind a bot check: its name is all there is to read.
+        ("SARL Lucens Automobiles montluçon", "Montluçon", "contact@lucensautomobiles.fr", None),
+        # The page is a network's: it names « AG GARAGE », never « AG Automobiles ».
+        (
+            "AG Automobiles",
+            "Ingrandes",
+            "contact@ag-garage.fr",
+            (
+                "https://www.ag-garage.fr/",
+                "<title>Entretien voiture Multi-marques - Bosch Car Services - AG GARAGE</title>",
+            ),
+        ),
+    ],
+)
+def test_a_domain_spelling_the_business_s_own_words_beside_trade_words_is_its_website(
+    monkeypatch: pytest.MonkeyPatch, name: str, city: str, email: str, front_page: tuple[str, str] | None
+) -> None:
+    facts = _facts(
+        name=name,
+        city=city,
+        country="FR",
+        phone="06 00 00 00 31",
+        email=email,
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        is_verified=True,
+    )
+    if front_page is not None:
+        _serve_front_page(monkeypatch, *front_page)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_AND_MOBILE)
+
+    assert facts.website_status == WebsiteStatus.LIVE.value
+    assert verdict.reject_reason == CandidateRejectReason.HAS_WEBSITE
+
+
+@pytest.mark.parametrize(
+    ("name", "email"),
+    [
+        ("AG Automobiles", "contact@ag.fr"),
+        ("SARL Lucens Automobiles montluçon", "contact@lucens-immobilier.fr"),
+    ],
+)
+def test_initials_alone_or_a_word_the_business_does_not_carry_do_not_make_its_domain(name: str, email: str) -> None:
+    facts = _facts(name=name, city="Montluçon", country="FR", phone=None, email=email)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+
+    assert facts.website is None
+
+
+@pytest.mark.parametrize(
+    ("has_website_button", "expected_status"), [(None, CandidateStatus.KEPT), (True, CandidateStatus.TO_CONFIRM)]
+)
+def test_a_parked_domain_named_after_the_business_is_neither_a_website_nor_the_one_its_listing_declares(
+    monkeypatch: pytest.MonkeyPatch, has_website_button: bool | None, expected_status: CandidateStatus
+) -> None:
+    """
+    A parked email domain leaves the business without a working website; the website its Google listing declares
+    may sit at another address (Welington Automobiles writes from a parked « welington.fr » and runs
+    « welingtonautomobiles.fr »).
+    """
+    facts = _facts(
+        name="Wilmore Automobiles",
+        city="Montluçon",
+        country="FR",
+        phone="04 00 00 00 32",
+        email="contact@wilmore.fr",
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        has_website_button=has_website_button,
+        is_verified=True,
+    )
+    _serve_front_page(
+        monkeypatch,
+        "https://wilmore.fr",
+        '<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href="/lander"}</script>'
+        "</head></html>",
+    )
+
+    async def parked(website: str | None) -> WebsiteStatus | None:
+        return WebsiteStatus.DEAD
+
+    monkeypatch.setattr(website_liveness_service, "check_website_status", parked)
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website_status == WebsiteStatus.DEAD.value
+    assert verdict.status == expected_status
+
+
+def test_the_business_s_own_site_google_hides_behind_its_redirect_is_its_website() -> None:
+    """Search n° 17: the result giving Welington Automobiles' email was its own site, behind a « /goto » link."""
+    facts = _facts(name="Welington Automobiles", city="Montluçon", country="FR", phone="04 00 00 00 32")
+    page = {
+        "organic": [
+            {
+                **_result(
+                    "https://www.google.com/goto?url=CAEShAEB6zswFa15c_X0UKzJbxn7VHnYWp2tKcWgjAoOtcVo66UDknDMUTdhIlgc",
+                    "Acheter véhicule occasion multimarque petit budget",
+                    "03100 Montluçon. Contacts. Mail : contact@welington.fr. Téléphone : 04 00 00 00 32.",
+                ),
+                "display_link": "https://welingtonautomobiles.fr › vehicules",
+            }
+        ]
+    }
+
+    _verify(facts, page, trade=_GARAGE)
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website == "https://welingtonautomobiles.fr/"
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.HAS_WEBSITE)
+
+
+@pytest.mark.parametrize(
+    ("revealed_domain_front_page", "revealed_domain_status", "expected_website"),
+    [
+        (None, WebsiteStatus.DEAD, None),
+        (
+            ("https://abjautorepair.net/", "<title>Votre garage</title>"),
+            WebsiteStatus.LIVE,
+            "https://abjautorepair.net/",
+        ),
+    ],
+)
+def test_a_privacy_service_s_address_is_no_email_and_the_domain_it_hides_is_read_as_the_business_s(
+    monkeypatch: pytest.MonkeyPatch,
+    revealed_domain_front_page: tuple[str, str] | None,
+    revealed_domain_status: WebsiteStatus,
+    expected_website: str | None,
+) -> None:
+    facts = _facts(name="Abj Auto", city="Saint-Paul-lès-Dax", country="FR", phone="05 00 00 00 33")
+    company_page = _result(
+        "https://www.google.com/goto?url=abj",
+        "ABJ AUTO (ABJ) | Données juridiques, financières et légales",
+        "ABJ AUTO (ABJ). 1050 RUE EXEMPLE - 40990 SAINT-PAUL-LES-DAX. 05 00 00 00 33. "
+        "abjautorepair.net@domainsbyproxy.com. Télécharger le Kbis.",
+    )
+
+    async def front_page(domain: str) -> tuple[str, str] | None:
+        return revealed_domain_front_page if domain == "abjautorepair.net" else None
+
+    async def status(website: str | None) -> WebsiteStatus | None:
+        return revealed_domain_status
+
+    monkeypatch.setattr(CandidateVerifier, "_front_page_of", staticmethod(front_page))
+    monkeypatch.setattr(website_liveness_service, "check_website_status", status)
+
+    asyncio.run(
+        ContactFinder(_OnePageClient({"organic": [company_page]}), _ScriptedJudge()).find(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.email is None
+    assert facts.privacy_proxied_domains == ["abjautorepair.net"]
+    assert facts.website == expected_website
+
+
+@pytest.mark.parametrize(
+    ("name", "title", "email"),
+    [
+        (
+            "Garage Dyma",
+            "Garage Dyma, Châtellerault, FR | Informations sur l'entreprise",
+            "brd.auto.performance@gmail.com",
+        ),
+        ("Garage Millesime Auto", "Garage Millesime Auto à Mulhouse", "garageautohouse@gmail.com"),
+    ],
+)
+def test_an_email_naming_another_business_is_no_proof_and_leaves_the_business_to_confirm(
+    name: str, title: str, email: str
+) -> None:
+    facts = _facts(name=name, city="Châtellerault", country="FR", phone="05 00 00 00 34")
+
+    _verify(
+        facts,
+        {"organic": [_result("https://www.google.com/goto?url=entreprise", title, f"Achat et revente. email {email}")]},
+        trade=_GARAGE,
+    )
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert (facts.email, facts.email_proof_level) == (email, EmailProofLevel.GUESSED.value)
+    assert verdict.status == CandidateStatus.TO_CONFIRM
+    assert verdict.detail == f"Son email ({email}) porte le nom d'une autre affaire : à vérifier."
+
+
+def test_the_manager_s_own_address_given_by_a_directory_stays_a_proof() -> None:
+    facts = _facts(name="MJV Automobiles", city="Jardres", country="FR", phone="05 00 00 00 35")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.google.com/goto?url=entreprise",
+                    "MJV Automobiles, Jardres | Informations sur l'entreprise",
+                    "MJV Automobiles. 86800 Jardres. email claire.exemple@gmail.com",
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert (facts.email, facts.email_proof_level) == ("claire.exemple@gmail.com", EmailProofLevel.DIRECTORY.value)
+
+
+def test_an_email_spelling_the_business_name_is_a_proof_even_on_a_page_that_does_not_name_it() -> None:
+    facts = _facts(name="GLD Automobiles", city="Dax", country="FR", phone="05 00 00 00 36")
+    judge = _ScriptedJudge(
+        JudgeVerdict(emails=[JudgedEmail(email="gld-automobiles@orange.fr", result_index=0, belongs_to_business=True)])
+    )
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.google.com/goto?url=page",
+                    "Motrio | Dax",
+                    "Garage réparation automobile, entretien ... gld-automobiles@orange.fr. Contact info.",
+                )
+            ]
+        },
+        judge=judge,
+        trade=_GARAGE,
+    )
+
+    assert (facts.email, facts.email_proof_level) == ("gld-automobiles@orange.fr", EmailProofLevel.DIRECTORY.value)
+
+
+def test_a_page_of_a_network_s_site_declared_as_website_makes_an_outlet() -> None:
+    facts = _facts(name="GLD Automobiles", city="Dax", country="FR", phone="05 00 00 00 36")
+
+    CandidateVerifier.consider_website(
+        facts,
+        "https://www.motrio.fr/shop/GLD AUTOMOBILES/1234",
+        source="Bouton « Site Web » de la fiche Google",
+        proof_url="https://www.motrio.fr/shop/GLD AUTOMOBILES/1234",
+    )
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert facts.website is None
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+
+
+@pytest.mark.parametrize(("description", "is_outlet"), [("2794 Rue Nationale, 86220 Ingrandes", True), ("", False)])
+def test_a_network_s_page_naming_the_business_in_its_town_makes_an_outlet(description: str, is_outlet: bool) -> None:
+    facts = _facts(name="Garage Martinez Philippe BC", city="Ingrandes", country="FR", phone="05 00 00 00 37")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.autoprimo.com/storelocator/garage-martinez-philippe-bc",
+                    "Garage Martinez Philippe BC - Autoprimo",
+                    description,
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert facts.is_chain is is_outlet
+
+
+def test_an_email_on_a_network_s_domain_makes_an_outlet() -> None:
+    facts = _facts(
+        name="My Cars 03",
+        city="Montluçon",
+        country="FR",
+        phone="04 00 00 00 39",
+        email="mycars03@points.fr",
+        email_proof_level=EmailProofLevel.DIRECTORY.value,
+        is_verified=True,
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _GARAGE))
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_ONLY)
+
+    assert (verdict.status, verdict.reject_reason) == (CandidateStatus.REJECTED, CandidateRejectReason.CHAIN)
+
+
+def test_a_search_page_showing_nothing_leaves_the_candidate_unverified() -> None:
+    facts = _facts(name="DAC Automobiles", city="Narrosse", country="FR", phone="05 00 00 00 38")
+
+    _verify(facts, {"organic": []}, trade=_GARAGE)
+
+    assert facts.is_verified is False

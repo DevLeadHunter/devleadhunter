@@ -13,6 +13,8 @@ from services import demo_site_service as dss_mod
 from services import prospect_photo_storage_service as pps_mod
 from services.demo_site_service import demo_site_service
 from services.prospect_photo_storage_service import prospect_photo_storage
+from services.templates.default_images import DEFAULT_IMAGES
+from services.templates.site_content import storyblok_asset_key
 
 
 def test_is_fragile_image_url_targets_dying_hosts() -> None:
@@ -199,3 +201,21 @@ async def test_rehost_remote_image_leaves_non_fragile_untouched(monkeypatch) -> 
     url = "https://images.unsplash.com/photo-42?ixlib=rb"
 
     assert await prospect_photo_storage.rehost_remote_image(29, url) == url
+
+
+@pytest.mark.asyncio
+async def test_a_space_s_copy_of_a_template_default_image_gets_back_the_template_s_address(monkeypatch) -> None:
+    """The Verdure hero, heavier than a copy allows, is the same file at the template's own address: nothing to copy."""
+    monkeypatch.setattr(dss_mod.r2_storage, "is_configured", lambda: True)
+
+    async def no_download(prospect_id: int, url: str) -> str:
+        raise AssertionError(f"downloaded {url}")
+
+    monkeypatch.setattr(dss_mod.prospect_photo_storage, "rehost_remote_image", no_download)
+    default_hero = DEFAULT_IMAGES["landscaper-verdure"]["heroImage"]
+    copied_hero = f"https://a.storyblok.com/f/1/abc/{storyblok_asset_key(default_hero)}.jpg"
+    site = SimpleNamespace(prospect_id=29, slug="x", content_json={"heroImage": copied_hero})
+
+    assert await demo_site_service.persist_content_images_to_r2(site) == 1
+    assert site.content_json["heroImage"] == default_hero
+    assert demo_site_service.storyblok_asset_urls(site) == []

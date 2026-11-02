@@ -27,19 +27,20 @@ from core.config import settings
 from services.country_profiles import CountryProfiles
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
-from services.templates.default_images import apply_default_images, default_image_urls
+from services.templates.default_images import apply_default_images
 from services.templates.site_content import (
     SECTION_COMPONENT_NAMES,
     SITE_CONTENT_SCHEMAS,
     apply_country_conventions,
     apply_section_overrides,
+    is_stock_photo,
     storyblok_asset_key,
     storyblok_asset_stem,
 )
 
 logger = logging.getLogger(__name__)
 
-_STOCK_PHOTO_HOST: str = "images.unsplash.com"
+_SPACE_COUNT_TTL_SECONDS: float = 300.0
 
 
 @dataclass
@@ -58,7 +59,7 @@ class StoryblokProvisionResult:
 
 
 class StoryblokProvisionError(Exception):
-    """Raised when Storyblok provisioning fails after the space was created."""
+    """Raised when Storyblok provisioning fails: the space was refused (no ``space_id``) or created but not seeded."""
 
     def __init__(
         self,
@@ -101,6 +102,8 @@ class StoryblokService:
         self._rate_lock: asyncio.Lock = asyncio.Lock()
         self._min_request_interval: float = 0.18
         self._next_request_at: float = 0.0
+        self._token_owner_id: int | None = None
+        self._space_count_cache: tuple[float, int] | None = None
 
     @property
     def is_configured(self) -> bool:
@@ -465,12 +468,7 @@ class StoryblokService:
             True for a template's picture, False for a photo of the business or one its owner uploaded.
         """
         host: str = urlparse(url).netloc.lower()
-        if host in {_STOCK_PHOTO_HOST, urlparse(settings.demo_host_base_url).netloc.lower()}:
-            return True
-        stock_urls: frozenset[str] = default_image_urls()
-        if url in stock_urls:
-            return True
-        return storyblok_asset_stem(url) in {storyblok_asset_key(stock_url) for stock_url in stock_urls}
+        return host == urlparse(settings.demo_host_base_url).netloc.lower() or is_stock_photo(url)
 
     async def _list_space_assets(self, client: httpx.AsyncClient, space_id: int) -> dict[str, dict[str, Any]]:
         """Map each already-uploaded asset's filename stem to ``{id, filename}`` so a re-publish reuses it.
@@ -711,6 +709,63 @@ class StoryblokService:
         )
         return "not_invited"
 
+    async def get_token_owner_id(self) -> int | None:
+        """
+        The Storyblok account the Management token belongs to, read once then kept.
+
+        Returns:
+            The account id, or None when Storyblok is unconfigured or does not answer.
+        """
+        if self._token_owner_id is not None or not self.is_configured:
+            return self._token_owner_id
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(client, "GET", f"{self._base_url}/users/me")
+            response.raise_for_status()
+            owner_id: Any = response.json().get("user", {}).get("id")
+        except (httpx.HTTPError, ValueError, AttributeError) as exc:
+            logger.warning("Storyblok token owner lookup failed: %s", exc)
+            return None
+        if isinstance(owner_id, int):
+            self._token_owner_id = owner_id
+        return self._token_owner_id
+
+    async def get_recent_story_publisher_id(self, space_id: int, published_after: datetime) -> int | None:
+        """
+        The Storyblok account behind the latest story publication of a space, when it is recent enough.
+
+        Reads the space's activity feed, newest first, where each publication is a ``story.publish`` entry. The feed
+        may not list a publication yet when its webhook arrives, so an older one is never taken for it.
+
+        Args:
+            space_id: The space.
+            published_after: The time before which a publication is too old to be the one just made.
+
+        Returns:
+            The publisher's account id, or None when no recent publication is listed or Storyblok does not answer.
+        """
+        if not self.is_configured or not space_id:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(
+                    client, "GET", f"{self._base_url}/spaces/{space_id}/activities/", params={"per_page": 25}
+                )
+            response.raise_for_status()
+            entries: list[Any] = response.json().get("activities", [])
+            for entry in entries:
+                activity: Any = entry.get("activity") if isinstance(entry, dict) else None
+                if not isinstance(activity, dict) or activity.get("key") != "story.publish":
+                    continue
+                published_at: datetime = datetime.fromisoformat(str(activity.get("created_at")))
+                owner_id: Any = activity.get("owner_id")
+                if published_at < published_after or not isinstance(owner_id, int):
+                    return None
+                return owner_id
+        except (httpx.HTTPError, ValueError, AttributeError, TypeError) as exc:
+            logger.warning("Storyblok activity feed unreadable for space %s: %s", space_id, exc)
+        return None
+
     async def provision_space(
         self,
         *,
@@ -773,12 +828,18 @@ class StoryblokService:
         invite_client: bool = False,
         rehost_all_assets: bool = False,
         country: str = "FR",
+        sync_seed_publication: bool = True,
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story from an existing ``content_json``.
 
         Used for initial provisioning and for outreach swaps that must preserve published edits.
         ``country`` is the prospect's: it decides whether the editor gets the licence fields.
+
+        ``sync_seed_publication`` False registers the publish webhook only once the story is seeded, so that
+        publication is not synced back into ``content_json``: a round trip through Storyblok's blocks rewrites
+        what the site shows (the photos' hosts, the legacy garage FAQ photo), and a site given a space back
+        must not move.
         """
         if not self.is_configured:
             mock_password: str = self._generate_password()
@@ -804,18 +865,22 @@ class StoryblokService:
             try:
                 space_resp.raise_for_status()
             except httpx.HTTPStatusError as exc:
-                raise ValueError(self._storyblok_error_message(exc)) from exc
+                # A refused space (the daily limit's 429 included) leaves the site live from its content: the
+                # missing-space pass creates the space later.
+                raise StoryblokProvisionError(self._storyblok_error_message(exc), content_json=content_json) from exc
 
             space_data: dict[str, Any] = space_resp.json()["space"]
             space_id: int = int(space_data["id"])
             editor_url: str = f"https://app.storyblok.com/#/me/spaces/{space_id}/dashboard"
 
             try:
-                await asyncio.gather(
+                setup_calls = [
                     self._configure_preview_url(client, space_id, preview_url),
                     self._ensure_template_components(client, space_id, template_id, country),
-                    self._register_publish_webhook(client, space_id),
-                )
+                ]
+                if sync_seed_publication:
+                    setup_calls.append(self._register_publish_webhook(client, space_id))
+                await asyncio.gather(*setup_calls)
                 await self._publish_home_story(
                     client,
                     space_id,
@@ -823,6 +888,8 @@ class StoryblokService:
                     template_id=template_id,
                     rehost_all_assets=rehost_all_assets,
                 )
+                if not sync_seed_publication:
+                    await self._register_publish_webhook(client, space_id)
 
                 space_detail = await client.get(
                     f"{self._base_url}/spaces/{space_id}",
@@ -957,6 +1024,29 @@ class StoryblokService:
 
         await self.delete_space(resolved_space_id)
         return resolved_space_id
+
+    async def count_spaces(self) -> int | None:
+        """
+        How many spaces the account holds (its plan caps them), read at most every five minutes.
+
+        Returns:
+            The count, or None when Storyblok is not configured or does not answer.
+        """
+        if not self.is_configured:
+            return None
+        cached: tuple[float, int] | None = self._space_count_cache
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await self._storyblok_request(client, "GET", f"{self._base_url}/spaces/")
+            response.raise_for_status()
+            count: int = len(response.json().get("spaces", []))
+        except Exception:
+            logger.warning("Storyblok space count could not be read", exc_info=True)
+            return None
+        self._space_count_cache = (time.monotonic() + _SPACE_COUNT_TTL_SECONDS, count)
+        return count
 
     async def delete_space(self, space_id: int) -> None:
         """Delete a Storyblok space by id."""

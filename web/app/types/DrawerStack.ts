@@ -1,4 +1,4 @@
-import type { EmailLog, EmailTemplate, Prospect, ProspectCountry, User } from '~/types'
+import type { EmailLog, EmailTemplate, Prospect, ProspectZone, User } from '~/types'
 import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
@@ -187,7 +187,7 @@ export type CoverageZone = {
   label: string
   cities: string[]
   prefillCity?: string
-  country?: ProspectCountry
+  country?: ProspectZone
 }
 
 /** Coverage-map filters drawer entry (trades + zones to attack). */

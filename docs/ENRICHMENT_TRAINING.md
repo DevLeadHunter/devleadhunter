@@ -283,3 +283,208 @@ Même lot, après correction :
   prospects : un seul autre cas, une annonce autoscout24 enregistrée comme site (n° 339), corrigé.
 - Reste à faire : la recherche française ne lit pas l'état du registre d'un candidat trouvé par son nom ;
   deux garages fermés sont passés (n° 302 et un candidat de la réserve). La Suisse le fait déjà (Zefix).
+
+## Manche 4 — les 17 garages français de la vague 5 (31 octobre, nuit)
+
+Lot : les 17 garages validés à la main dans la manche 12 de la recherche (prospects n° 373 à 389), enrichis
+par `enrich_cli.py` sur le PC de Léo. Contrôle : registre des entreprises (dirigeant, activité), fiche
+Google lue dans le navigateur ou par Bright Data quand il répondait, sites déclarés ouverts à la main.
+Limite assumée : la passe « à la main d'abord » n'a pas été complète (photos, horaires et avis non relevés
+à la main) : la clé Bright Data du poste avait expiré, le Web Unlocker échouait une partie de la nuit, et
+Google Maps s'affiche en vue limitée dans le navigateur intégré.
+
+### Ce que l'app a trouvé
+
+- 17 enrichissements terminés. Photos : médiane 25 (de 1 à 38) ; 4 garages sous 5 photos (GARAGE CS AUTO 2,
+  Garage Bel Air 1, Montluçon Automobiles 4, Garage Norville 5). Note et nombre d'avis repris pour 16 sur
+  17, horaires pour 16, logo pour 11, description pour 14.
+- Patron : 15 sur 17 validés seuls par le registre, tous conformes au registre là où il répond. Auto Expert
+  laissé vide (trois gérants au registre : juste). Tourlan et Fils : rien de validé, « Patrick Tourlan »
+  proposé alors que le gérant au registre est Marc Tourlan.
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| DAC Automobiles (n° 384) | a enregistré `www.dacautomobiles-narrosse.fr` comme site, sans état | site en ligne (offre Solocal « Essentiel ») : le garage a un site, il sort de la campagne (écarté à la main) | un site trouvé à l'enrichissement est contrôlé (en ligne, mort, page d'attente) ; s'il est en ligne, le prospect est signalé « a déjà un site » |
+| Garage des Marais (n° 380) | a lu la fiche « Garage des Marais - Motrio » sans rien en tirer | garage du réseau Motrio (écarté à la main, comme AD et Garage Expert) | le titre de la fiche lu à l'enrichissement sert aussi à reconnaître un réseau |
+| Tourlan et Fils (n° 389) | propose « Patrick Tourlan » | gérant au registre : Marc Tourlan | une proposition qui contredit le gérant inscrit au registre est signalée comme conflit, pas proposée seule |
+| 12 des 14 garages dont la recherche avait trouvé la page Facebook (dont Aquitaine Négoce Auto, Carprog86, Dax Carrosserie) | `social_links` vide alors que le prospect a son `facebook_url` | la page existe | la page Facebook connue du prospect entre dans les réseaux sociaux du site |
+| Garage Norville (n° 381) | aucune fiche Google trouvée, pas de note ni d'horaires | la recherche avait vu une note de 5,0 sur 4 avis ; le candidat n'avait ni code postal ni lien Maps | voir la recherche : un candidat doit avoir sa commune et son code postal avant d'être gardé |
+| Aquitaine Négoce Auto (n° 373) | site `aquitainenegoceauto.fr` enregistré, état « mort » | juste (HTTPS en échec, HTTP en 404) | rien : c'est l'accroche « votre site ne répond plus » ; la recherche, elle, ne l'avait pas noté |
+
+### Remplacements
+
+DAC Automobiles et Garage des Marais écartés ; la réserve a été repassée sur Google : GLD Automobiles
+(Motrio), Garage du Paradis (AD), SARL Verge (Bosch Car Service), Garage Martinez Philippe BC (Autoprimo)
+et Garage Aurillac Électro Diesel (site Wix en ligne) refusés ; GARAGE SERV'AUTO (n° 390) et Léon Motors
+(n° 391) validés. La case des garages français reste à 17.
+
+### Résultat
+
+Enrichissement corrigé dans la nuit du 31 octobre au 1er novembre (`d2477016`). Aucun prospect n'a été
+réenrichi ni aucun site régénéré : les quatre règles ont été rejouées hors ligne sur ce que l'enrichissement
+avait enregistré pour les garages n° 373 à 391 (lecture seule), le site de DAC relu en direct.
+
+| Règle | Avant | Après, sur les 19 garages |
+|---|---|---|
+| Un site trouvé à l'enrichissement est contrôlé (en ligne, mort, page d'attente) ; en ligne, le prospect affiche « a déjà un site » | `www.dacautomobiles-narrosse.fr` enregistré sans état | DAC (n° 384) : site en ligne ; Aquitaine Négoce Auto garde son site mort, déjà contrôlé |
+| Le titre de la fiche Google lu à l'enrichissement reconnaît un réseau ou une marque, avec la liste de la recherche, et écarte le prospect avec la raison | Garage des Marais gardé | Garage des Marais (n° 380) écarté : « Sa fiche Google « Garage des Marais - Motrio » est celle d'un réseau ou d'une marque » ; aucun autre garage touché |
+| La page Facebook connue du prospect entre dans les réseaux sociaux du site | 3 garages sur 17 qui en ont une | les 17 ; les 2 sans page (GARAGE CS AUTO, Garage Bel Air) n'en reçoivent pas |
+| Une personne inscrite au registre à l'adresse du garage, autre que le nom retenu, marque la proposition « conflit » avec les deux noms | Tourlan et Fils : le nom proposé seul | Tourlan et Fils (n° 389) : conflit, « … est proposé, mais le registre inscrit … (GARAGE TOURLAN ET FILS, SIREN 323789370) : à vérifier avant de l'utiliser » ; aucun autre garage touché |
+
+- Le cas Tourlan n'était pas celui d'un nom venu d'ailleurs que du registre : le nom proposé est celui du
+  patron d'une autre société du registre (à son nom, SIREN 381 844 505), et la société au nom du garage
+  (SIREN 323 789 370) inscrit une autre personne. La règle joue donc aussi entre deux personnes du registre,
+  sauf quand le nom retenu vient de la société liée au garage par son numéro.
+- Garage Aurillac Électro Diesel : un site Wix gratuit reste un mini-site, le prospect est gardé (décision
+  du 1er novembre, voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12). Validé ensuite (n° 393), il a été
+  écarté dès son enrichissement par la règle du titre : sa fiche s'appelle « Garage Aurillac Electro Diesel
+  - Bosch Car Service ».
+- Garage Norville (absence de fiche Google à l'enrichissement) : corrigé côté recherche, qui complète
+  maintenant une adresse sans code postal par le registre (« 38 Rue Denis Papin, 03100 Montluçon ») ; voir
+  `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
+- En prod, le 1er novembre au matin, le contrôle du site a trouvé `welingtonautomobiles.fr` en ligne pour
+  Welington Automobiles (prospect n° 392, écarté depuis), qu'on croyait sans site : son email est sur
+  `welington.fr`, un domaine parqué. La recherche l'avait manqué parce que Google cachait l'adresse du
+  résultat derrière sa redirection ; voir `docs/PROSPECT_SEARCH_TRAINING.md`, manche 12.
+
+## Manche 5 — 15 paysagistes et électriciens français de la vague 5 (1er novembre, nuit)
+
+Lot : les prospects n° 394 à 408 (7 paysagistes, 8 électriciens), validés à la main dans la manche 13 de la
+recherche, enrichis par `enrich_cli.py` avec le moteur corrigé de la manche 4. Contrôle : registre des
+entreprises et preuves de la recherche.
+
+### Ce qui marche
+
+- La page Facebook connue rejoint les réseaux sociaux pour les 14 qui en ont une (correction de la manche 4).
+- Patron validé seul par le registre pour 9 sur 14, tous conformes. Bost Électricité : son ancien site
+  `electricitebost.com` est noté « mort », l'accroche « votre site ne répond plus » est disponible.
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| KR Électricité Générale (n° 404) | patron laissé vide | au registre : Rachid Khalfi, entrepreneur individuel ; « KR » = ses initiales | une enseigne faite des initiales du gérant inscrit (KR = Khalfi Rachid) relie le registre au prospect |
+| LDBM Élec (n° 408) | patron laissé vide | au registre : Ludovic Diego Barthélemy Martinez ; « LDBM » = ses initiales | idem |
+| Medina Paysage, Oh Joli Jardin, Vulcan'Paysage, Jardin Authentique, Bost Électricité, Le Petit Élec, KR Électricité (7 sur 14) | adresse vide, ville = la ville cherchée | artisans sans adresse publique (zone desservie sur Google) ; le registre donne leur siège (Jardin Authentique : 63430 Pont-du-Château, pas Clermont-Ferrand ; Medina : 24380 ; KR : 54510) | quand la fiche n'a pas d'adresse et que le registre identifie l'entreprise, sa commune et son code postal viennent du siège inscrit |
+| Alex'Élec (n° 403) | « persist_failed » : l'API répondait 502 pendant un déploiement | rien n'a été enregistré | `enrich_cli.py` réessaie l'enregistrement sur une erreur passagère (5xx), comme `prospect_search_cli.py` |
+
+- Photos : 3 prospects sous 3 photos (Medina 0, Ticheur 0, Le Petit Élec 2) : leurs sites prendront des
+  images de secours de la template ; rien de faux.
+
+### Résultat
+
+Enrichissement corrigé le 1er novembre (`06b469e9`). Aucun prospect n'a été réenrichi ni aucun site
+régénéré : la recherche corrigée dans le registre a été rejouée en lecture seule sur les prospects n° 394 à 408.
+
+| Règle | Avant | Après, sur les 15 |
+|---|---|---|
+| Une enseigne faite des initiales du dirigeant inscrit (prénoms puis nom, ou nom puis prénom) relie la société au prospect, quand elle déclare le métier : une autre activité aux mêmes initiales ne relie rien | KR Électricité Générale et LDBM Élec : patron vide | les deux trouvent leur gérant (confiance 0,95, « enseigne aux initiales de son dirigeant ») ; LT Services et BM Elec, déjà justes, portent la même mention |
+| Un prospect sans adresse dont le registre a identifié l'entreprise (patron validé) prend la commune et le code postal de son siège, jamais sa rue ; la commune est écrite comme dans la liste officielle (« Pont-du-Château », pas « PONT-DU-CHATEAU ») | 7 sans adresse, la ville cherchée pour commune | 4 placés au prochain enrichissement : Medina Paysage (24380 Sanilhac), Jardin Authentique (63430 Pont-du-Château), Le Petit Élec (79230 Brûlain), KR Électricité Générale (54510 Tomblaine). Oh Joli Jardin, Vulcan'Paysage et Bost Électricité restent sans adresse : le registre ne les trouve pas à leur nom |
+| `enrich_cli.py` réessaie l'enregistrement toutes les 10 secondes, 5 minutes au plus, sur une erreur passagère (5xx, coupure), comme `prospect_search_cli.py` ; un refus (4xx) n'est pas réessayé | Alex'Élec : « persist_failed » sur un 502 | enregistré une fois l'API redémarrée |
+
+- Une adresse publique, avec sa rue, n'est jamais remplacée par le siège : LDBM Élec garde la sienne.
+- La recherche applique la même règle depuis sa manche 13 : une fiche sans adresse prend la commune de la seule
+  société ouverte de son nom exact (voir `docs/PROSPECT_SEARCH_TRAINING.md`). Les communes y sont maintenant
+  écrites comme dans la liste officielle, elles aussi.
+
+### Ajouts du 1er novembre, nuit (Claude, campagne)
+
+- Les prospects déjà enrichis ne bénéficient pas seuls des nouvelles règles : patron posé à la main d'après le
+  registre pour KR Électricité Générale (Rachid Khalfi, n° 404) et LDBM Élec (Ludovic Martinez, n° 408).
+- **Écart nouveau, Alex'Élec (n° 403)** : patron laissé vide alors que son nom est dans le titre de sa propre
+  fiche Google (« Alex'Elec Alexandre Fraudeau ») ; absent du registre des Deux-Sèvres (seules des homonymes
+  sans rapport). Posé à la main : Alexandre Fraudeau. Règle à écrire : un prénom et un nom complets dans le
+  titre de la fiche du pro, après l'enseigne, sont une proposition de patron publiée par le pro lui-même.
+- Écrit le 1er novembre (`f2f4d321`, `e2dd5200`) : un prénom connu puis un nom, qui ferment le titre de la
+  fiche après une enseigne qui lui est propre, sont une proposition de patron, jamais un patron validé seul. Le
+  titre d'Alex'Élec propose son patron. Ne proposent rien : « Garage Jules Exemple », où seul un mot de métier
+  précède le nom (une entreprise au nom d'une personne, peut-être partie) ; « Jean Pierre Exemple », qui nomme
+  une seule personne ; un titre dont un avis appelle ce prénom « M. … », car c'est alors un nom de famille.
+- **Écart nouveau, À Votre Service Martinique (n° 414)** : patron validé seul (« registre_gouv », statut auto),
+  pris dans MARTINIQUE ÉLAGAGE, une société d'un autre nom que le seul mot « martinique » avait trouvée parmi les
+  paysagistes de l'île ; ni le site ni la page Facebook du prospect ne la citent. Effacé à la main.
+- Écrit le 1er novembre (`0329c28a`) : une société du registre qui ne porte pas le nom de l'enseigne (aucun de
+  ses noms n'est contenu en entier dans l'enseigne, aucun ne porte tous les mots qui la distinguent) ne donne
+  jamais un patron validé seul.
+  - Trouvée par un mot de l'enseigne, elle ne donne rien, sauf si un indice la relie à l'entreprise : un
+    établissement ouvert du métier à son adresse exacte, ou son nom ou celui de son dirigeant écrit en entier par
+    l'entreprise (présentation, réponses aux avis, adresse mail). Son dirigeant est alors proposé (0,6).
+  - Trouvée par l'adresse exacte (recherche par numéro et rue, manche 3 de `docs/DECISION_MAKER_TRAINING.md`), son
+    dirigeant n'est plus que proposé.
+  - Le patron que nomment l'adresse mail ou les avis (« M. … ») et que le registre inscrit dans le métier reste
+    validé seul, même quand l'adresse proposait la même société.
+  - Le registre ne donne aucun numéro de téléphone : l'indice « même téléphone » n'est pas écrit.
+- Rejeu en lecture seule, registre interrogé en direct, sur les 98 prospects français que ces deux recherches
+  peuvent toucher (aucun réenrichi) :
+
+| Prospect | Avant (registre seul) | Après |
+|---|---|---|
+| À Votre Service Martinique (n° 414) | gérant de MARTINIQUE ÉLAGAGE, validé seul | personne |
+| Bel Jaden Matinik (n° 418) | gérant de MATINIK ESPACES VERTS, trouvé par « matinik » (la Martinique en créole), validé seul ; en prod, ses deux emails l'ont fait retomber en proposition | personne |
+| Barber shop by Emrah (n° 188) | patron d'une autre société, trouvée par « emrah », validé seul, alors que les avis disent qui tient le salon | personne |
+| Street Coiffure (n° 37), Système D jardin (n° 236) | validés seuls par l'adresse | toujours validés seuls : l'adresse mail ou les avis nomment la même personne |
+| Barbier d'Antan (n° 14), Garage German Legend's (n° 45), Garage LP services (n° 306), L'Élégance Barber (n° 40) | validés seuls par l'adresse | proposés |
+
+- Coût : pour Barbier d'Antan, German Legend's et LP services, la main avait posé le même patron que la recherche
+  par adresse. Celle-ci avait vu juste ; la règle (« même adresse » donne au plus une proposition) les fait
+  confirmer à la main. Pour lui rendre sa validation seule, il suffit de ne plus passer par `_proposed` dans
+  `RegistreGouvStrategy._search_by_address`.
+- Vu en passant, non corrigé : l'adresse « bel.jaden@… » de Bel Jaden Matinik est lue comme une personne
+  (« Jaden Bel »), parce que le nom de l'entreprise répète ses deux mots ; un nouvel enrichissement la proposerait.
+
+## Manche 6 — les 13 suisses et 6 français de plus de la vague 5 (1er novembre, matin)
+
+Lot : les prospects n° 425 à 443, validés à la main dans la manche 15 de la recherche, enrichis par
+`enrich_cli.py`. Contrôle : Zefix (détail et publications FOSC), extraits cantonaux, registre français.
+
+### Ce qui marche
+
+- Suisse : patron trouvé seul par Zefix pour 5 sur 11 (Garage 2S, Paratte Carrosserie, Garage Gambin, LML
+  Jardin, Shuti Arcenciel Arrosage), tous conformes. Flo Jardinier (n° 441) : Florim Iseni, titulaire inscrit.
+- Francis Caron (n° 440), que j'avais repris à tort dans la recherche : écarté seul à la création du prospect,
+  « Entreprise radiée au registre du commerce (Zefix) ». Juste : radié, et un site en ligne
+  (`caron-francis-jardinier-paysagiste.ch`).
+- France : patron validé seul par le registre pour Aubane Paysage (Christophe Maroto), Les Jardins de Tistou
+  (Maxime Berjaud Milot) et Hibiscus Garden (Chemsdine Mehadji).
+
+### Écarts
+
+| Prospect | Ce que l'app a fait | Vérité | Correction à faire |
+|---|---|---|---|
+| Rapin Telecom-Électricité Sàrl (n° 434), J.-C. Berger SA (n° 435), Garage R. Marques (n° 429) | patron vide : la société est trouvée, mais Zefix ne donne aucune publication FOSC (`shabPub` vide, sociétés anciennes) | l'extrait cantonal liste les personnes inscrites : Claude Rapin (associé gérant) ; Pierre Berger (président) et Jean-Claude Berger (secrétaire) ; Rafael Gomes Marques dos Reis (titulaire) | lire l'extrait cantonal quand la FOSC ne nomme personne. VD, GE, FR et NE ont le même logiciel (`<base>/api/public/hrcexcerpts/`, cookie `XSRF-TOKEN`, liste `adms`), testé sur VD ; VS et JU passent par `chregister.ch/cr-portal`, pas encore testé |
+| Garage YP services Sàrl (n° 426) | patron vide : la recherche Zefix par le nom Google ne trouve rien | « YP Services Sàrl », même adresse (Chemin de Ruchili 5, Grimisuat) ; FOSC du 16.11.2018 : Yann Pillonel, associé et gérant | relancer la recherche sans le mot de métier (« Garage ») et valider par la rue et le numéro |
+| Cano François (n° 425) | patron vide, prospect gardé | « Garage Cano François », siège Belmont-Broye (commune fusionnée qui comprend Domdidier), même adresse ; radié d'office le 02.10.2026 (art. 934a CO) | ajouter le mot de métier au nom cherché, comparer l'adresse plutôt que la ville ; une radiation récente écarte le prospect |
+| Jardins Grégory (n° 437) | patron vide (registre muet) | 2 réponses sur 3 aux avis signées « Grégory. », enseigne et adresse mail à ce prénom | un prénom qui signe les réponses du propriétaire et figure dans l'enseigne ou l'adresse mail est un prénom validé, sans nom |
+| Les Jardins de Tistou (n° 438) | « Maxime Berjaud Milot » | registre : « MAXIME BERJAUD MILOT (BERJAUD) » ; le nom entre parenthèses est le nom d'usage | prendre le nom d'usage quand le registre en donne un (« Maxime Berjaud ») |
+
+- Posés à la main (manuel) : Yann Pillonel (n° 426), Claude Rapin (n° 434), Rafael Gomes Marques dos Reis
+  (n° 429), « Berger » sans prénom (n° 435, deux Berger au conseil ; le `PATCH` ignore la civilité, la salutation
+  reste neutre), Grégory (n° 437). Cano François (n° 425) écarté à la main.
+- Photos : 8 Suisses sur 11 ont 0 à 4 photos (Google Maps suisse en montre peu) ; leurs sites prendront des images
+  de secours de la template.
+- Envoyé à la session de corrections le 1er novembre vers 5 h, avec la recette de l'extrait cantonal.
+
+### Résultat
+
+- Écrit le 1er novembre (`d4151782`) : un prénom qui signe au moins deux réponses du propriétaire aux avis, point
+  final compris (« Jules. »), et que l'enseigne ou l'adresse mail écrivent aussi, est validé seul, sans nom de
+  famille ; écrit nulle part ailleurs, il reste une proposition. La cause : la lecture des signatures refusait un
+  nom suivi d'un point, et une signature seule n'était jamais qu'une proposition.
+- Rejoué en lecture seule sur les réponses de Jardins Grégory (n° 437) : le prénom de l'enseigne, signé dans 2
+  réponses sur 3, est validé (« … dans 2 réponses du propriétaire aux avis Google, et le nom de l'entreprise »).
+  Aucun prospect réenrichi.
+- Les autres écarts de cette manche, reçus ensuite, sont écrits (`d7dec829`) et rejoués en lecture seule sur
+  les registres (aucun prospect réenrichi) :
+
+| Règle | Rejoué |
+|---|---|
+| Quand la FOSC ne nomme personne, l'extrait du registre cantonal donne les personnes inscrites (Vaud, Genève, Fribourg, Neuchâtel : le même logiciel ; le catalogue pose un jeton anti-falsification, l'extrait est demandé avec lui, avec les en-têtes `Origin` et `Referer`, sans lesquels Fribourg répond 403) | Rapin Telecom-Électricité (n° 434) : l'associé gérant ; Garage R. Marques (n° 429) : le titulaire ; J.-C. Berger SA (n° 435) : le président du conseil, seul dirigeant au sens de l'app (l'autre administrateur de la famille y est secrétaire, avec signature individuelle lui aussi) |
+| Le registre suisse est aussi cherché sans le mot de métier que Google ajoute, la société validée par l'adresse | Garage YP services (n° 426) : la société de la même adresse, et son associé gérant par la FOSC |
+| Une commune fusionnée se compare par le code postal de l'adresse inscrite, pas par le nom du siège | le garage de Domdidier (n° 425), inscrit à Belmont-Broye : trouvé, radié le 2 octobre 2026, donc écarté |
+| Le nom d'usage que le registre français écrit entre parenthèses après le nom de naissance est celui du patron | Les Jardins de Tistou (n° 438) : le nom d'usage, sans le second nom de naissance |
+
+- Non lus : l'extrait du Valais et du Jura (`chregister.ch`, un autre logiciel).
+- J.-C. Berger SA : la pose à la main (le nom sans prénom) reste : l'app ne touche jamais un contact posé à la main.
+  Si une famille de signataires doit rester en proposition, c'est une règle de plus.

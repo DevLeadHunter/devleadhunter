@@ -1,6 +1,6 @@
-"""The campaign queue hands the scheduler each prospect's timezone, read from its country.
+"""The campaign queue hands the scheduler each prospect's calendar, read from its country.
 
-``_schedule_slots`` passes one zone per prospect (in send order) and ``_schedule_follow_ups`` counts
+``_schedule_slots`` passes one calendar per prospect (in send order) and ``_schedule_follow_ups`` counts
 the follow-up on the J1 prospect's clock. The legacy spacing path (no SendPolicy, no campaign cap)
 has no window, so it has no zone to honour and stays as it was.
 """
@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 from services.campaign_queue_service import CampaignQueueService
+from services.prospect_calendar import ProspectCalendar
 from services.send_policy_service import send_policy_service
 
 
@@ -53,7 +54,7 @@ def test_prospect_timezone_reads_the_country_profile() -> None:
     assert CampaignQueueService.prospect_timezone(_prospect(4, "ZZ")) == "Europe/Paris"
 
 
-def test_schedule_slots_passes_one_zone_per_prospect_in_send_order(monkeypatch) -> None:
+def test_schedule_slots_passes_one_calendar_per_prospect_in_send_order(monkeypatch) -> None:
     campaign = SimpleNamespace(id=6, user_id=1, max_emails_per_day=1, send_delay_minutes=20)
     monkeypatch.setattr(send_policy_service, "get_policy", lambda db, user_id: object())
     monkeypatch.setattr(send_policy_service, "resolve", lambda db, user_id: SimpleNamespace(spacing_minutes=20))
@@ -63,7 +64,7 @@ def test_schedule_slots_passes_one_zone_per_prospect_in_send_order(monkeypatch) 
 
     def _fake_next_send_slots(policy: object, count: int, **kwargs: object) -> list[datetime]:
         captured["count"] = count
-        captured["slot_timezones"] = list(kwargs["slot_timezones"])
+        captured["slot_calendars"] = list(kwargs["slot_calendars"])
         return [datetime(2026, 10, 5, 12, 0) + timedelta(days=index) for index in range(count)]
 
     monkeypatch.setattr(send_policy_service, "next_send_slots", _fake_next_send_slots)
@@ -73,7 +74,11 @@ def test_schedule_slots_passes_one_zone_per_prospect_in_send_order(monkeypatch) 
 
     assert len(slots) == 3
     assert captured["count"] == 3
-    assert captured["slot_timezones"] == ["Europe/Paris", "Europe/Zurich", "Europe/Brussels"]
+    assert captured["slot_calendars"] == [
+        ProspectCalendar(timezone_name="Europe/Paris", country="FR"),
+        ProspectCalendar(timezone_name="Europe/Zurich", country="CH"),
+        ProspectCalendar(timezone_name="Europe/Brussels", country="BE"),
+    ]
 
 
 def test_legacy_spacing_ignores_the_window_and_the_zones(monkeypatch) -> None:
@@ -112,16 +117,19 @@ def test_follow_ups_are_counted_on_the_j1_prospect_clock(monkeypatch) -> None:
     service = CampaignQueueService(db)
     service._offer_link_outlives = lambda item, scheduled_at, **template: True  # type: ignore[method-assign]
     monkeypatch.setattr(send_policy_service, "resolve", lambda db, user_id: "resolved-policy")
-    captured: list[tuple[int, str]] = []
+    captured: list[tuple[int, ProspectCalendar]] = []
 
-    def _fake_follow_up_slot(policy: object, sent_at: datetime, delay_days: int, *, timezone_name: str) -> datetime:
-        captured.append((delay_days, timezone_name))
+    def _fake_follow_up_slot(
+        policy: object, sent_at: datetime, delay_days: int, *, calendar: ProspectCalendar
+    ) -> datetime:
+        captured.append((delay_days, calendar))
         return sent_at + timedelta(days=delay_days)
 
     monkeypatch.setattr(send_policy_service, "follow_up_slot", _fake_follow_up_slot)
 
     service._schedule_follow_ups(j1_item)
 
-    assert captured == [(3, "Europe/Zurich"), (5, "Europe/Zurich")]
+    zurich = ProspectCalendar(timezone_name="Europe/Zurich", country="CH")
+    assert captured == [(3, zurich), (5, zurich)]
     assert [row.template_id for row in db.added] == [42, 43]
     assert db.commits == 1

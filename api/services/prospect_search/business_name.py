@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from services.decision_maker.normalize import company_tokens, join_dotted_initials
+from services.decision_maker.normalize import company_tokens, fold, join_dotted_initials
 from services.prospect_search.trade_catalog import TradeCatalog
 
 _PARENTHESES_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
@@ -102,6 +102,52 @@ NAME_LINK_WORDS: frozenset[str] = frozenset(
     }
 )
 _STEMMED_WORD_MIN_CHARS: int = 5
+REGION_NAMES: frozenset[str] = frozenset(
+    {
+        "grandest",
+        "occitanie",
+        "bretagne",
+        "breizh",
+        "normandie",
+        "alsace",
+        "lorraine",
+        "champagne",
+        "picardie",
+        "bourgogne",
+        "franchecomte",
+        "auvergne",
+        "limousin",
+        "aquitaine",
+        "nouvelleaquitaine",
+        "provence",
+        "paca",
+        "cotedazur",
+        "savoie",
+        "vendee",
+        "perigord",
+        "gascogne",
+        "languedoc",
+        "roussillon",
+        "camargue",
+        "corse",
+        "iledefrance",
+        "hautsdefrance",
+        "paysdelaloire",
+        "centrevaldeloire",
+        "martinique",
+        "matinik",
+        "madinina",
+        "guadeloupe",
+        "gwadloup",
+        "guyane",
+        "reunion",
+        "mayotte",
+        "romandie",
+        "wallonie",
+        "quebec",
+    }
+)
+_MAX_REGION_NAME_WORDS: int = 4
 
 
 def _stem(word: str) -> str:
@@ -226,13 +272,41 @@ class BusinessName:
         Returns:
             True when both names have the same words, legal form, accents and dotted initials aside.
         """
-        business_stems = {_stem(word) for word in cls._name_words(business_name)}
-        return bool(business_stems) and {_stem(word) for word in cls._name_words(cls.clean(name))} == business_stems
+        business_stems = cls.name_stems(business_name)
+        return bool(business_stems) and cls.name_stems(cls.clean(name)) == business_stems
+
+    @classmethod
+    def name_stems(cls, name: str) -> set[str]:
+        """The stems of a name's words, its legal form left out and its dotted initials joined (« EX PAYSAGES »: ex, paysage)."""
+        return {_stem(word) for word in cls._name_words(name)}
+
+    @classmethod
+    def is_within_name(cls, name: str, business_name: str) -> bool:
+        """
+        Whether every word of a name is a word of the business's name, legal form, accents and plurals aside.
+
+        « EXEMPLEAUTO21 » is within « Garage des Tilleuls exempleauto21 »; « EXEMPLE ELAGAGE » is not within « A Votre
+        Service Exemple », whose one word it shares.
+
+        Args:
+            name: A registry company's name, or one of its trade names.
+            business_name: The prospect's business name.
+
+        Returns:
+            True when the business's name holds the whole name.
+        """
+        words = cls.name_stems(cls.clean(name))
+        return bool(words) and words <= cls.name_stems(business_name)
 
     @classmethod
     def _words_beside_trade(cls, name: str) -> set[str]:
-        """The stems of a name's words without its legal form and its trade words."""
-        return {_stem(word) for word in cls._name_words(name) if not TradeCatalog.is_trade_word(word)}
+        """The stems of a name's words without its legal form, its trade words and the regions it names."""
+        region_words = cls.region_words(name)
+        return {
+            _stem(word)
+            for word in cls._name_words(name)
+            if not TradeCatalog.is_trade_word(word) and word not in region_words
+        }
 
     @classmethod
     def distinctive_words(cls, name: str, *, town: str | None = None) -> set[str]:
@@ -246,7 +320,28 @@ class BusinessName:
         Returns:
             The distinctive words, folded (« Exemple & Fils Électricité » gives « exemple », « fils »).
         """
-        return cls._distinctive(cls._name_words(name)) - company_tokens(town or "")
+        return cls._distinctive(cls._name_words(name)) - company_tokens(town or "") - cls.region_words(name)
+
+    @staticmethod
+    def region_words(name: str) -> set[str]:
+        """
+        The words of a name that spell a region, glued or not: a place many businesses name, never theirs alone.
+
+        « E.X.E Grand Est Énergie » gives « grand », « est »; « Exemple Jaden Matinik » gives « matinik ».
+
+        Args:
+            name: A business name.
+
+        Returns:
+            The folded words spelling a region.
+        """
+        words = re.findall(r"[a-z0-9]+", fold(name or ""))
+        found: set[str] = set()
+        for size in range(1, _MAX_REGION_NAME_WORDS + 1):
+            for start in range(len(words) - size + 1):
+                if "".join(words[start : start + size]) in REGION_NAMES:
+                    found.update(words[start : start + size])
+        return found
 
     @classmethod
     def distinctive_stems(cls, name: str, *, town: str | None = None) -> set[str]:

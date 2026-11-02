@@ -36,6 +36,7 @@ from services import push_service
 from services.activity_log_service import (
     CATEGORY_ASSISTANT,
     CATEGORY_DEMO,
+    CATEGORY_DEMO_SITE,
     CATEGORY_EMAIL,
     CATEGORY_SALE,
     CATEGORY_SMS,
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 # Deep links opened when a notification is tapped.
 _PROSPECTS_URL = "/dashboard/my-prospects"
+_DEMO_SITES_URL = "/dashboard/demo-sites"
 _ORDERS_URL = "/dashboard/orders"
 _SMS_URL = "/dashboard/sms"
 _ASSISTANTS_URL = "/dashboard/ai-assistants"
@@ -94,8 +96,11 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_cta_banner_abandoned": ("🕓", "info", "A ouvert le formulaire mais est reparti sans envoyer"),
     "demo_engaged": ("🔥", "success", "Visite qualifiée — prospect engagé"),
     "demo_cta_click": ("👉", "success", "A cliqué « {label} »"),
+    # The owner's own contact (banner chip, withdrawn page) apart from the site's links, which are the prospect's.
     "demo_phone_click": ("📞", "success", "A cliqué ton numéro"),
     "demo_contact_click": ("✉️", "success", "A cliqué ton mail de contact"),
+    "demo_site_phone_click": ("📞", "success", "A cliqué le numéro de son site"),
+    "demo_site_contact_click": ("✉️", "success", "A cliqué l'email de son site"),
     "demo_outbound_click": ("🔗", "info", "A cliqué un lien externe : {host}"),
     "demo_time_on_page": ("👀", "info", "Visite : {seconds}s · {max_scroll}% lu"),
     "demo_returned": ("↩️", "success", "Est revenu sur sa démo"),
@@ -270,6 +275,90 @@ class NotificationService:
             title=f"{emoji} {prospect_name}",
             body=f"{_MODULE_TAG_SITE} · {body}",
             url=self._prospect_url(prospect_id),
+        )
+
+    async def notify_cms_joined(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        demo_site_id: int,
+    ) -> None:
+        """
+        Raise a notification when a client accepts the invitation to their site's editing space.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the site, the notification recipient.
+            prospect_id: Prospect the site was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved (the site's business name).
+            demo_site_id: The site the client joined, tags the push.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        body = "A rejoint son espace d'édition"
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="cms_joined",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · {body}",
+            user_id=user_id,
+            entity_type="prospect" if prospect_id else None,
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="demo",
+            level="success",
+            title=f"🔑 {prospect_name}",
+            body=f"{_MODULE_TAG_SITE} · {body}",
+            url=self._prospect_url(prospect_id),
+            tag=f"cms-joined-{demo_site_id}",
+        )
+
+    async def notify_cms_published(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        demo_site_id: int,
+        changed_section_labels: list[str],
+    ) -> None:
+        """
+        Raise a notification when a client publishes changes to their site from their editing space.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the site, the notification recipient.
+            prospect_id: Prospect the site was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved (the site's business name).
+            demo_site_id: The site, opened on tap; its pushes replace each other on the phone.
+            changed_section_labels: The editor labels of the sections the publication changed, in page order.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        body = "A modifié son site dans son espace"
+        if changed_section_labels:
+            body = f"{body} : {', '.join(changed_section_labels)}"
+        activity_log_service.record(
+            category=CATEGORY_DEMO_SITE,
+            action="cms_client_published",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · {body}",
+            user_id=user_id,
+            entity_type="demo_site",
+            entity_id=demo_site_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="demo_site",
+            level="success",
+            title=f"✏️ {prospect_name}",
+            body=f"{_MODULE_TAG_SITE} · {body}",
+            url=f"{_DEMO_SITES_URL}/{demo_site_id}",
+            tag=f"cms-published-{demo_site_id}",
         )
 
     async def notify_assistant_video_event(

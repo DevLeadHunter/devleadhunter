@@ -7,6 +7,8 @@ reads the waiting Facebook pages with the Chrome of this machine, then hands the
 Usage:
     python prospect_search_cli.py --trades paysagiste "électricien" --country CH --count 5 --channel email_and_sms
     python prospect_search_cli.py --trades garage --cities Annecy Chambéry --count 3
+    python prospect_search_cli.py --trades garage paysagiste "électricien" --region MQ --count 7
+    python prospect_search_cli.py --trades "électricien" --count 5 --no-registries
     python prospect_search_cli.py --trades garage --count 3 --validation manual
     python prospect_search_cli.py --follow 12
     python prospect_search_cli.py --resume 12
@@ -43,7 +45,6 @@ _FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled", "faile
 _REPORTED_STATUSES: tuple[str, ...] = ("kept", "set_aside", "to_confirm")
 _CHANNELS: tuple[str, ...] = ("email", "sms", "email_and_sms")
 _VALIDATION_MODES: tuple[str, ...] = ("manual", "automatic")
-_API_TRANSIENT_STATUSES: frozenset[int] = frozenset({500, 502, 503, 504})
 _API_RETRY_WAIT_SECONDS: float = 10.0
 _API_RETRY_MAXIMUM_WAITS: int = 30
 
@@ -77,11 +78,13 @@ class ProspectSearchCli:
             json={
                 "trades": args.trades,
                 "country": args.country.upper(),
+                "region": args.region.upper() if args.region else None,
                 "cities": args.cities or [],
                 "count_per_trade": args.count,
                 "channel": args.channel,
                 "only_without_website": not args.with_website,
                 "minimum_rating": args.minimum_rating,
+                "use_registries": not args.no_registries,
                 "validation_mode": args.validation,
             },
         )
@@ -117,7 +120,7 @@ class ProspectSearchCli:
                     return detail
                 read_count = await self._read_waiting_pages(search_id) if self._reads_facebook_pages else 0
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-                if not self.is_transient_api_error(exc) or failed_polls >= _API_RETRY_MAXIMUM_WAITS:
+                if not OperatorApi.is_transient_error(exc) or failed_polls >= _API_RETRY_MAXIMUM_WAITS:
                     raise
                 failed_polls += 1
                 print(f"  the API does not answer ({exc}): new try in a moment…", file=sys.stderr, flush=True)
@@ -128,13 +131,6 @@ class ProspectSearchCli:
                 # Nothing left this machine can read: the search stays as it is for the desktop app.
                 return detail
             await asyncio.sleep(_POLL_SECONDS)
-
-    @staticmethod
-    def is_transient_api_error(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
-        """Whether an API error is passing (a deployment restarting it, a database that times out), worth a new try."""
-        if isinstance(exc, httpx.RequestError):
-            return True
-        return exc.response.status_code in _API_TRANSIENT_STATUSES
 
     async def _detail(self, search_id: int) -> dict[str, Any]:
         """The search with its journal and candidates."""
@@ -328,11 +324,22 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     target.add_argument("--follow", type=int, metavar="ID", help="Follow an existing search.")
     target.add_argument("--resume", type=int, metavar="ID", help="Carry on a stopped search, then follow it.")
     parser.add_argument("--country", type=str, default="FR", help="ISO country of the search (default FR).")
+    parser.add_argument(
+        "--region",
+        type=str,
+        default=None,
+        help="French overseas department to search instead of mainland France (MQ for Martinique), with --country FR.",
+    )
     parser.add_argument("--cities", type=str, nargs="*", metavar="CITY", help="Towns to search (default: chosen).")
     parser.add_argument("--count", type=int, default=5, help="Prospects wanted for each trade (default 5).")
     parser.add_argument("--channel", choices=_CHANNELS, default="email", help="Contact the prospects must allow.")
     parser.add_argument("--with-website", action="store_true", help="Also keep businesses with a working website.")
     parser.add_argument("--minimum-rating", type=float, default=None, help="Google rating floor (e.g. 4.0).")
+    parser.add_argument(
+        "--no-registries",
+        action="store_true",
+        help="Skip the public registries (RGE, RBQ): Google Maps and Facebook only.",
+    )
     parser.add_argument(
         "--validation",
         choices=_VALIDATION_MODES,

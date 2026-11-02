@@ -28,6 +28,7 @@ from models.prospect_enrichment import ProspectEnrichment
 from models.user import User
 from services.ai_assistant.photo_service import RETENTION as PHOTO_RETENTION
 from services.auth_service import require_admin
+from services.demo_site_service import DemoSiteService
 from services.manual_upload_service import manual_upload_service
 from services.r2_storage_service import r2_storage
 
@@ -56,6 +57,7 @@ class _DemoTtl(Protocol):
     status: str
     demo_link_sent_at: datetime | None
     expires_at: datetime
+    storyblok_collaborator_status: str | None
 
 
 def _expiry_state(demo: _DemoTtl | None, now: datetime) -> tuple[bool, int | None, bool]:
@@ -80,6 +82,9 @@ def _expiry_state(demo: _DemoTtl | None, now: datetime) -> tuple[bool, int | Non
     if demo.status == DemoSiteStatus.DELIVERED.value:
         # Démo vendue : site permanent, exclu du TTL.
         return False, None, False
+    if DemoSiteService.is_kept_alive_by_client(demo):
+        # Le client modifie son site dans son espace CMS : la démo ne s'éteint pas sous lui, ses fichiers non plus.
+        return False, None, False
     if demo.demo_link_sent_at is None:
         # Lien pas encore envoyé : le compte à rebours n'a pas démarré.
         return False, None, True
@@ -99,12 +104,19 @@ def _demo_ttl_by_slug(db: Session, slugs: set[str]) -> dict[str, Any]:
         slugs: Demo slugs to look up.
 
     Returns:
-        A ``slug -> row`` map exposing ``status``, ``demo_link_sent_at`` and ``expires_at``.
+        A ``slug -> row`` map exposing ``status``, ``demo_link_sent_at``, ``expires_at`` and
+        ``storyblok_collaborator_status``.
     """
     if not slugs:
         return {}
     rows = (
-        db.query(DemoSite.slug, DemoSite.status, DemoSite.demo_link_sent_at, DemoSite.expires_at)
+        db.query(
+            DemoSite.slug,
+            DemoSite.status,
+            DemoSite.demo_link_sent_at,
+            DemoSite.expires_at,
+            DemoSite.storyblok_collaborator_status,
+        )
         .filter(DemoSite.slug.in_(slugs))
         .all()
     )
@@ -363,6 +375,7 @@ async def list_storage_objects(
                 DemoSite.status,
                 DemoSite.demo_link_sent_at,
                 DemoSite.expires_at,
+                DemoSite.storyblok_collaborator_status,
                 ProspectDB.name,
             )
             .outerjoin(ProspectDB, ProspectDB.id == DemoSite.prospect_id)

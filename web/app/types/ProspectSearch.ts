@@ -1,4 +1,4 @@
-import type { ProspectCountry, ProspectWebsiteStatus } from '~/types'
+import type { ProspectCountry, ProspectRegion, ProspectWebsiteStatus, ProspectZone } from '~/types'
 
 export type ProspectSearchChannel = 'email' | 'sms' | 'email_and_sms'
 
@@ -52,11 +52,13 @@ export type ProspectSearchTradeOption = {
 export type ProspectSearchCreatePayload = {
   trades: string[]
   country: ProspectCountry
+  region: ProspectRegion | null
   cities: string[]
   count_per_trade: number
   channel: ProspectSearchChannel
   only_without_website: boolean
   minimum_rating: number | null
+  use_registries: boolean
   validation_mode: ProspectSearchValidationMode
 }
 
@@ -78,11 +80,13 @@ export type ProspectSearchSummary = {
   id: number
   trades: string[]
   country: string
+  region: ProspectRegion | null
   cities: string[]
   count_per_trade: number
   channel: ProspectSearchChannel
   only_without_website: boolean
   minimum_rating: number | null
+  use_registries: boolean
   validation_mode: ProspectSearchValidationMode
   status: ProspectSearchStatus
   request_count: number
@@ -112,6 +116,7 @@ export type ProspectSearchCandidate = {
   address: string | null
   city: string | null
   country: string
+  region: ProspectRegion | null
   phone: string | null
   phone_is_mobile: boolean
   email: string | null
@@ -209,7 +214,7 @@ export type ProspectSearchValidationOption = {
 export type ProspectSearchPrefill = {
   category?: string
   city?: string
-  country?: ProspectCountry
+  zone?: ProspectZone
 }
 
 export type ProspectSearchPageLocation = {

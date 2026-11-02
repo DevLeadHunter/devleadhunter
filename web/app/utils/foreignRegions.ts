@@ -1,13 +1,14 @@
 /**
- * Region choropleth outside France — cantons (CH), provinces (BE), districts (LU) and Québec's 17 administrative
- * regions (CA): static contours + point-in-region lookup.
+ * Region choropleth outside mainland France — cantons (CH), provinces (BE), districts (LU), Québec's 17
+ * administrative regions (CA) and the 34 communes of Martinique (MQ): static contours + point-in-region lookup.
  */
 
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import type { CityGeo } from '~/composables/useFranceGeo'
 import type { RegionContourFeature } from '~/utils/regionContours'
 import { RegionContours } from '~/utils/regionContours'
 
-/** Properties carried by each foreign region feature (region code, display name, ISO alpha-2 country). */
+/** Properties carried by each foreign region feature (region code, display name, ISO alpha-2 country or « MQ »). */
 export type ForeignRegionProperties = {
   code: string
   name: string
@@ -22,9 +23,10 @@ export type ForeignRegionCollection = FeatureCollection<Polygon | MultiPolygon, 
 
 /**
  * Contour files, matched on `code`: ISO 3166-2 for CH/BE/LU (Natural Earth), `CA-QC-01` to `CA-QC-17` for the
- * Québec regions (Découpages administratifs, © Gouvernement du Québec, CC BY 4.0, simplified).
+ * Québec regions (Découpages administratifs, © Gouvernement du Québec, CC BY 4.0, simplified), `MQ-` and the INSEE
+ * code for the communes of Martinique (Admin Express, © IGN, through geo.api.gouv.fr, simplified).
  */
-const FOREIGN_REGION_FILES: string[] = ['/regions-ch-be-lu.geojson', '/regions-ca-qc.geojson']
+const FOREIGN_REGION_FILES: string[] = ['/regions-ch-be-lu.geojson', '/regions-ca-qc.geojson', '/regions-mq.geojson']
 
 /**
  * Whether a contour carries what a foreign region needs: its display name and its country.
@@ -102,6 +104,27 @@ export function foreignRegionAt(
     if (hit) return feature.properties
   }
   return null
+}
+
+/**
+ * Resolve the foreign region a placed city belongs to: its own commune by INSEE code where the zone is divided into
+ * communes (Martinique, whose coastal town centres can sit outside a simplified contour), else by its centre.
+ * @param collection - The region contours from `fetchForeignRegions`.
+ * @param country - Zone of the city, upper-cased (ISO alpha-2 country, or « MQ »).
+ * @param geo - Where the city lies, with its INSEE code when it is a French commune.
+ * @returns The region's properties, or null when outside every region.
+ */
+export function foreignRegionOfCity(
+  collection: ForeignRegionCollection,
+  country: string,
+  geo: Pick<CityGeo, 'lng' | 'lat' | 'insee'>,
+): ForeignRegionProperties | null {
+  const commune: ForeignRegionFeature | undefined = geo.insee
+    ? collection.features.find(
+        (feature: ForeignRegionFeature): boolean => feature.properties.code === `${country}-${geo.insee}`,
+      )
+    : undefined
+  return commune?.properties ?? foreignRegionAt(collection, geo.lng, geo.lat)
 }
 
 /**
