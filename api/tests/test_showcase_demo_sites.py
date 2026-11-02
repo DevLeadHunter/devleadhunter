@@ -6,12 +6,17 @@ ends a prospect's demo (expiry pass, withdrawn page, TTL start, CMS space swap, 
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from types import ModuleType
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 import services.demo_site_service as demo_module
 import services.showcase_demo_service as showcase_module
@@ -83,6 +88,16 @@ def _client(db: Session) -> TestClient:
     application.include_router(demo_sites_router)
     application.dependency_overrides[get_db] = lambda: db
     return TestClient(application)
+
+
+def _load_script() -> ModuleType:
+    """The production command (``scripts/`` is no package), loaded from its file."""
+    script_path = Path(__file__).resolve().parent.parent / "scripts" / "create_showcase_demos.py"
+    spec = importlib.util.spec_from_file_location("create_showcase_demos", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestCatalogue:
@@ -178,6 +193,30 @@ class TestEnsureAll:
 
         with pytest.raises(ShowcaseSlugTakenError):
             showcase_demo_service.ensure_one(db, owner, SHOWCASE_DEMO_SITES[0])
+
+
+class TestCommandLine:
+    def test_the_command_lists_every_demo_it_created_then_kept(
+        self, engine: Engine, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        monkeypatch.setattr("dotenv.load_dotenv", lambda *_args, **_kwargs: False)
+        script = _load_script()
+        session_factory = sessionmaker(bind=engine)
+        with session_factory() as db:
+            _owner(db)
+        monkeypatch.setattr(script, "SessionLocal", session_factory)
+        monkeypatch.setattr(sys, "argv", ["create_showcase_demos.py", "--owner-email", "leo@example.com"])
+
+        assert script.main() == 0
+        assert script.main() == 0
+
+        lines = capsys.readouterr().out.splitlines()
+        demo_count = len(SHOWCASE_DEMO_SITES)
+        assert lines[0] == f"{demo_count} showroom demos ensured, {demo_count} created, owner leo@example.com."
+        assert [line.split()[0] for line in lines[1 : demo_count + 1]] == ["created"] * demo_count
+        assert lines[demo_count + 1] == f"{demo_count} showroom demos ensured, 0 created, owner leo@example.com."
+        assert [line.split()[0] for line in lines[demo_count + 2 :]] == ["kept"] * demo_count
+        assert lines[1].endswith("/exemple-plombier-signature")
 
 
 class TestNothingEndsAShowroomDemo:

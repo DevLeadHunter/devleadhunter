@@ -84,13 +84,12 @@ def main() -> int:
         results: list[tuple[DemoSite, bool]] = showcase_demo_service.ensure_all(
             db, owner, rebuild_content=arguments.rebuild_content
         )
+        created_count: int = sum(1 for _site, created in results if created)
+        print(f"{len(SHOWCASE_DEMO_SITES)} showroom demos ensured, {created_count} created, owner {owner.email}.")
+        for site, created in results:
+            print(f"  {'created ' if created else 'kept    '} {site.template_id:<20} {site.demo_url}")
     finally:
         db.close()
-
-    created_count: int = sum(1 for _site, created in results if created)
-    print(f"{len(SHOWCASE_DEMO_SITES)} showroom demos ensured, {created_count} created, owner {owner.email}.")
-    for site, created in results:
-        print(f"  {'created ' if created else 'kept    '} {site.template_id:<20} {site.demo_url}")
     return 0
 
 
