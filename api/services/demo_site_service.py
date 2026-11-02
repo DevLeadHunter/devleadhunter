@@ -649,6 +649,7 @@ class DemoSiteService:
         services_heading: str | None = None,
         services_lead: str | None = None,
         about_heading: str | None = None,
+        steps_lead: str | None = None,
         steps: list[dict] | None = None,
         cta_title: str | None = None,
         cta_lead: str | None = None,
@@ -668,7 +669,8 @@ class DemoSiteService:
         (``[]`` goes back to the generated ones). ``about_text`` replaces the « À propos » text, ``hero_title`` and
         ``hero_subtitle`` the title and the sentence under it (over ``description``), ``cta_quote_label`` the quote
         button, ``services_heading`` and ``services_lead`` the services title and the paragraph under it,
-        ``about_heading`` the « À propos » title, ``cta_title`` and ``cta_lead`` the banner above the contact,
+        ``about_heading`` the « À propos » title, ``steps_lead`` the paragraph under the « Notre méthode » title,
+        ``cta_title`` and ``cta_lead`` the banner above the contact,
         ``contact_heading`` and ``contact_lead`` the contact title and the paragraph under it (``""`` goes back to the
         generated one), ``portfolio`` the realizations with photos of the pool (``[]`` goes back to the template's),
         ``tax_credit`` the « crédit d'impôt » section (an empty heading removes it).
@@ -707,6 +709,7 @@ class DemoSiteService:
             or services_heading is not None
             or services_lead is not None
             or about_heading is not None
+            or steps_lead is not None
             or steps is not None
             or cta_title is not None
             or cta_lead is not None
@@ -746,6 +749,8 @@ class DemoSiteService:
                 self._store_written_section(overrides, "strengths", clean_strength_items(strengths))
             if steps is not None:
                 self._store_written_section(overrides, "steps", clean_step_items(steps))
+            if steps_lead is not None:
+                self._store_written_text(overrides, "stepsLead", steps_lead)
             if about_text is not None:
                 self._store_written_text(overrides, "about", about_text)
             if about_heading is not None:

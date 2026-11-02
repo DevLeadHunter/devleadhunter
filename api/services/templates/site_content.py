@@ -899,6 +899,7 @@ _WRITTEN_TEXT_KEYS: tuple[str, ...] = (
     "aboutHeading",
     "servicesHeading",
     "servicesLead",
+    "stepsLead",
     "ctaTitle",
     "ctaLead",
     "contactHeading",
@@ -958,8 +959,9 @@ def apply_section_overrides(
     (any of its slots), ``heroBadge`` and ``heroPoints`` the label above the title and the facts under it,
     ``heroTitle`` and ``subtitle`` the title and the sentence under it, ``ctaQuoteLabel`` the quote button,
     ``aboutHeading`` the « À propos » title, ``servicesHeading`` and ``servicesLead`` the services title and the
-    paragraph under it, ``steps`` the « Notre méthode » steps, ``ctaTitle`` and ``ctaLead`` the banner above
-    the contact, ``contactHeading`` and ``contactLead`` the contact title and the paragraph under it,
+    paragraph under it, ``stepsLead`` and ``steps`` the « Notre méthode » paragraph and steps, ``ctaTitle`` and
+    ``ctaLead`` the banner above the contact, ``contactHeading`` and ``contactLead`` the contact title and the
+    paragraph under it,
     ``trustItems`` the trust markers, ``faq`` the questions and answers, ``strengths`` the « Pourquoi nous
     choisir » section, ``taxCredit`` the « crédit d'impôt » section (and its FAQ entry) of a « services à la
     personne » provider. A template that never shows one of them just ignores its key.
@@ -1054,6 +1056,7 @@ _OVERRIDE_SECTIONS: dict[str, str] = {
     "servicesLead": "services",
     "services": "services",
     "strengths": "strengths",
+    "stepsLead": "method",
     "steps": "method",
     "faq": "faq",
     "portfolio": "portfolio",
@@ -1490,6 +1493,11 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "component_whitelist": ["site_content_service"],
     },
     "stepsHeading": {"type": "text", "display_name": "Titre de la section"},
+    "stepsLead": {
+        "type": "textarea",
+        "display_name": "Description de la section",
+        "description": "Le paragraphe sous le titre de la section méthode",
+    },
     "steps": {
         "type": "bloks",
         "display_name": "Étapes",
@@ -1944,6 +1952,7 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "servicesHeading": site_content.get("servicesHeading", ""),
         "servicesLead": site_content.get("servicesLead", ""),
         "stepsHeading": site_content.get("stepsHeading", ""),
+        "stepsLead": site_content.get("stepsLead", ""),
         "steps": _items_to_bloks(site_content.get("steps"), "site_content_step", ("title", "description")),
         "strengthsHeading": site_content.get("strengthsHeading", ""),
         "strengths": _items_to_bloks(site_content.get("strengths"), "site_content_strength", ("title", "description")),
@@ -2227,6 +2236,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
         "servicesHeading": _clean_str(blok.get("servicesHeading")),
         "servicesLead": _clean_str(blok.get("servicesLead")),
         "stepsHeading": _clean_str(blok.get("stepsHeading")),
+        "stepsLead": _clean_str(blok.get("stepsLead")),
         "steps": [
             {"title": _clean_str(item.get("title")), "description": _clean_str(item.get("description"))}
             for item in _blok_list(blok.get("steps"))

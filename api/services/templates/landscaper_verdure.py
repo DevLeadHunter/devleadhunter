@@ -103,6 +103,8 @@ SECTION_FIELDS: dict[str, list[str]] = {
     "services": ["servicesHeading", "servicesLead", "services"],
     # Strengths: the layer shows their titles as the « À propos » ticks, under its own heading.
     "strengths": ["strengths"],
+    # Méthode: add the paragraph under the title (``stepsLead``) on top of the shared title + steps.
+    "method": ["stepsHeading", "stepsLead", "steps"],
     # Réalisations: add the section intro paragraph (``portfolioLead``) on top of the shared title + cards.
     "portfolio": ["portfolioHeading", "portfolioLead", "portfolio"],
     # Contact: the shared default fields + the editable section intro (``contactLead``), the CTA banner

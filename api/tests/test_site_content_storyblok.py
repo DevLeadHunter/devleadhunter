@@ -185,13 +185,13 @@ def test_field_schema_override_relabels_without_mutating_shared() -> None:
 
 
 def test_landscaper_schema_reflects_its_overrides() -> None:
-    """The landscaper template exposes servicesLead, steps and its « À propos » ticks, and moves ctaCallLabel."""
+    """The landscaper template exposes its leads, steps and « À propos » ticks, and moves ctaCallLabel."""
     from services.templates import registry
 
     by_name = {component["name"]: component for component in registry.content_schemas("landscaper-verdure", "FR")}
 
     assert "servicesLead" in by_name["section_services"]["schema"]
-    assert "steps" in by_name["section_method"]["schema"]
+    assert list(by_name["section_method"]["schema"]) == ["stepsHeading", "stepsLead", "steps"]
     assert list(by_name["section_strengths"]["schema"]) == ["strengths"]
     assert "ctaCallLabel" not in by_name["section_hero"]["schema"]
     assert by_name["section_contact"]["schema"]["ctaCallLabel"]["display_name"] == "Bouton de la bannière contact"

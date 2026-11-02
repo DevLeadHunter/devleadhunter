@@ -160,6 +160,7 @@ class DemoSiteUpdateRequest(BaseModel):
     services_heading: str | None = Field(default=None, max_length=90)
     services_lead: str | None = Field(default=None, max_length=300)
     about_heading: str | None = Field(default=None, max_length=90)
+    steps_lead: str | None = Field(default=None, max_length=300)
     steps: list[DemoSiteMethodStep] | None = Field(default=None, max_length=6)
     cta_title: str | None = Field(default=None, max_length=90)
     cta_lead: str | None = Field(default=None, max_length=300)
