@@ -499,7 +499,7 @@
             </p>
           </div>
 
-          <div v-else-if="!site.storyblok_space_id && site.status === 'active'" class="card p-5">
+          <div v-else-if="!site.storyblok_space_id && site.status === 'active' && !site.is_showcase" class="card p-5">
             <h2 class="text-sm font-semibold text-[var(--app-ink)]">Espace d'administration du client</h2>
             <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
               Ce site n'a pas d'espace Storyblok : la démo s'affiche normalement depuis ses données. Un espace sert à

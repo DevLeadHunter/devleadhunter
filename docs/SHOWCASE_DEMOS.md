@@ -17,7 +17,7 @@ Une démo vitrine est un `DemoSite` ordinaire (rendu par `demo-host` depuis `con
 | `status` | `active`, `demo_url_live = true`, pas d'espace Storyblok (inutile avant une vente) |
 | `expires_at` | `2099-12-31`, `demo_link_sent_at = NULL` |
 | Retrait | **jamais** : `expire_due_sites` et la page « démo retirée » (`/public/{slug}/withdrawn`, `/revive`) l'ignorent, `start_demo_ttl` / `restart_demo_ttl` refusent de lancer un compte à rebours, la boucle des espaces Storyblok (`next_site_without_space`) la saute |
-| Tableau de bord | étiquette « Vitrine · jamais retirée » sur la carte et la fiche ; exclue du compteur « Démos actives » de l'accueil |
+| Tableau de bord | étiquette « Vitrine · jamais retirée » sur la carte et la fiche, sans la carte « Créer l'espace » Storyblok ; exclue du compteur « Démos actives » de l'accueil |
 | Pages publiques | `noindex` comme toute démo ; **pas de tracking PostHog** (`DemoSiteView` ne l'initialise pas pour une vitrine) ; le bandeau « Ce site vous plaît ? » reste affiché en plein écran (jamais dans une iframe) |
 
 Catalogue (`api/services/showcase_demo_service.py`, `SHOWCASE_DEMO_SITES`) — entreprises **fictives**
