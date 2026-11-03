@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -77,3 +78,43 @@ def test_capture_source_ignores_machine_seed_after_logout(monkeypatch: pytest.Mo
     )
     seed, user_data_dir = service.resolve_capture_source()
     assert seed is None and user_data_dir is None  # explicit logout → needs a fresh in-app login
+
+
+def test_a_session_storyblok_refused_asks_for_a_reconnect_and_keeps_the_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = StoryblokSessionService(dedicated_profile_dir=tmp_path)
+    service.write_persisted_state(logged_in=True)
+    (tmp_path / "Default").mkdir()
+    monkeypatch.setattr(
+        service, "resolve_machine_seed", lambda: StoryblokSessionSeed(local_storage={"token": _jwt(3600)})
+    )
+    assert service.state() == "ready"
+
+    assert service.mark_session_expired(login_state_written_at=service.read_login_state_written_at()) is True
+
+    assert service.state() == "needs_login"
+    assert (tmp_path / "Default").is_dir()
+
+
+def test_a_sign_in_made_after_the_capture_picked_its_session_is_kept(tmp_path: Path) -> None:
+    service = StoryblokSessionService(dedicated_profile_dir=tmp_path)
+    service.write_persisted_state(logged_in=True)
+
+    assert service.mark_session_expired(login_state_written_at="2026-10-18T17:40:58.693302+00:00") is False
+
+    assert service.state() == "ready"
+
+
+def test_a_refused_browser_session_without_saved_login_asks_for_a_reconnect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = StoryblokSessionService(dedicated_profile_dir=tmp_path)
+    monkeypatch.setattr(
+        service, "resolve_machine_seed", lambda: StoryblokSessionSeed(local_storage={"token": "opaque-non-jwt-token"})
+    )
+    assert service.state() == "ready"
+
+    assert service.mark_session_expired(login_state_written_at=None) is True
+
+    assert service.state() == "needs_login"

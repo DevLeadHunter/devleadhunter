@@ -566,6 +566,7 @@ async def video_build_full(
     from services.storyblok_session_service import storyblok_session_service
 
     request = _parse_video_build_request(SiteVideoBuildRequest, payload)
+    login_state_written_at = storyblok_session_service.read_login_state_written_at()
     seed, user_data_dir = storyblok_session_service.resolve_capture_source()
     if seed is None and user_data_dir is None:
         return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
@@ -573,7 +574,9 @@ async def video_build_full(
         request,
         presenter,
         presenter_photo,
-        run_build=functools.partial(_run_video_build, request, seed, user_data_dir),
+        run_build=functools.partial(
+            _run_video_build, request, seed, user_data_dir, login_state_written_at=login_state_written_at
+        ),
     )
 
 
@@ -758,6 +761,8 @@ async def _run_video_build(
     user_data_dir: str | None,
     work_dir: Path,
     presenter_photo_path: Path | None = None,
+    *,
+    login_state_written_at: str | None,
 ) -> None:
     """
     Detached site build: the background (site scroll + Storyblok editor), then the shared montage.
@@ -768,6 +773,7 @@ async def _run_video_build(
         user_data_dir: The dedicated Storyblok profile, if any.
         work_dir: The build's folder, holding the presenter clip.
         presenter_photo_path: The profile photo of the thumbnail bubble, if any.
+        login_state_written_at: When the saved Storyblok login state was written as the session was picked, if any.
     """
     from services import video_montage
 
@@ -775,7 +781,9 @@ async def _run_video_build(
         request,
         work_dir,
         presenter_photo_path,
-        capture=functools.partial(_capture_site_background, request, seed, user_data_dir, work_dir),
+        capture=functools.partial(
+            _capture_site_background, request, seed, user_data_dir, work_dir, login_state_written_at
+        ),
         thumbnail_label=video_montage.THUMBNAIL_LABEL_SITE,
         pip_corner=video_montage.PIP_CORNER_LEFT,
     )
@@ -878,16 +886,23 @@ async def _run_desktop_video_build(
 
 
 async def _capture_site_background(
-    request: SiteVideoBuildRequest, seed: object, user_data_dir: str | None, work_dir: Path
+    request: SiteVideoBuildRequest,
+    seed: object,
+    user_data_dir: str | None,
+    work_dir: Path,
+    login_state_written_at: str | None,
 ) -> tuple[Path, Path]:
     """
     Film the middle of a site video (site scroll + Storyblok editor), with its first frame as the thumbnail still.
+
+    A session that Storyblok sends to its sign-in page is marked expired.
 
     Args:
         request: The validated build.
         seed: The machine's Storyblok session to inject, if any.
         user_data_dir: The dedicated Storyblok profile, if any.
         work_dir: The build's folder.
+        login_state_written_at: When the saved Storyblok login state was written as the session was picked, if any.
 
     Returns:
         The background mp4 and the still.
@@ -896,28 +911,34 @@ async def _capture_site_background(
         StoryblokEditorClipError: when the site or the editor cannot be filmed (``needs_login:`` for a lost session).
     """
     from services import video_montage
-    from services.storyblok_editor_clip_service import storyblok_editor_clip_service
+    from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
+    from services.storyblok_session_service import storyblok_session_service
 
     background_path = work_dir / "background.mp4"
     screenshot_path = work_dir / _SCREENSHOT_FILE_NAME
-    await asyncio.to_thread(
-        storyblok_editor_clip_service.build_background,
-        demo_url=request.demo_url,
-        space_id=request.space_id,
-        story_id=request.story_id,
-        output_path=background_path,
-        seed=seed,
-        user_data_dir=user_data_dir,
-        accroche=request.accroche,
-        executable_path=_chrome_path or find_installed_chrome(),
-        site_seconds=request.site_seconds,
-        hold_seconds=request.hold_seconds,
-        total_seconds=request.total_seconds,
-        out_width=request.out_width,
-        out_height=request.out_height,
-        fps=request.fps,
-        on_progress=functools.partial(_set_video_build_progress, request.slug),
-    )
+    try:
+        await asyncio.to_thread(
+            storyblok_editor_clip_service.build_background,
+            demo_url=request.demo_url,
+            space_id=request.space_id,
+            story_id=request.story_id,
+            output_path=background_path,
+            seed=seed,
+            user_data_dir=user_data_dir,
+            accroche=request.accroche,
+            executable_path=_chrome_path or find_installed_chrome(),
+            site_seconds=request.site_seconds,
+            hold_seconds=request.hold_seconds,
+            total_seconds=request.total_seconds,
+            out_width=request.out_width,
+            out_height=request.out_height,
+            fps=request.fps,
+            on_progress=functools.partial(_set_video_build_progress, request.slug),
+        )
+    except StoryblokEditorClipError as exc:
+        if str(exc).startswith("needs_login:"):
+            storyblok_session_service.mark_session_expired(login_state_written_at=login_state_written_at)
+        raise
     await asyncio.to_thread(
         video_montage.extract_first_frame,
         _FFMPEG_PATH,

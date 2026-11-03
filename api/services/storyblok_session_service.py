@@ -307,6 +307,28 @@ class StoryblokSessionService:
                     logger.debug("logout profile wipe (%s): %s", entry.name, exc)
         self.write_persisted_state(logged_in=False, ignore_machine_seed=True)
 
+    def read_login_state_written_at(self) -> str | None:
+        """The ``last_seen`` stamp of the saved login state, or ``None`` without one."""
+        persisted = self.read_persisted_state()
+        written_at = persisted.get("last_seen") if persisted else None
+        return str(written_at) if written_at else None
+
+    def mark_session_expired(self, *, login_state_written_at: str | None) -> bool:
+        """
+        Record that Storyblok refused the session a capture used, and set the browser session aside too.
+
+        Args:
+            login_state_written_at: ``read_login_state_written_at()`` as the capture picked its session.
+
+        Returns:
+            Whether the expiry was recorded: a sign-in saved since then is kept.
+        """
+        if self.read_login_state_written_at() != login_state_written_at:
+            return False
+        self.write_persisted_state(logged_in=False, ignore_machine_seed=True)
+        logger.info("Storyblok refused the capture session: saved login marked expired")
+        return True
+
     def resolve_capture_source(self) -> tuple[StoryblokSessionSeed | None, str | None]:
         """
         Pick the session a capture should use, or ``(None, None)`` when a login is needed.

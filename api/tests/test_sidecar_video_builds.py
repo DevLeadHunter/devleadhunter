@@ -18,6 +18,7 @@ import scraper_sidecar as sidecar
 from services import video_pipeline
 from services.assistant_widget_clip_service import AssistantWidgetClipError, assistant_widget_clip_service
 from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
+from services.storyblok_session_service import storyblok_session_service
 
 # The context the API sends for a site video (``GET /demo-sites/{id}/video-background-context``).
 _SITE_CONTEXT: dict[str, Any] = {
@@ -156,19 +157,58 @@ def test_a_build_longer_than_the_app_waits_is_stopped(monkeypatch: pytest.Monkey
     assert (progress["step"], progress["message"]) == ("error", video_pipeline.GENERATION_OVERRUN_MESSAGE)
 
 
+def _run_site_build_failing_with(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, error_message: str, saved_login_state_written_at: str
+) -> list[str | None]:
+    """Run a site build whose capture raises *error_message*; return the saved logins it marked expired."""
+
+    def capture(**kwargs: Any) -> None:
+        raise StoryblokEditorClipError(error_message)
+
+    marked_expired: list[str | None] = []
+
+    def mark_session_expired(*, login_state_written_at: str | None) -> bool:
+        marked_expired.append(login_state_written_at)
+        return True
+
+    monkeypatch.setattr(storyblok_editor_clip_service, "build_background", capture)
+    monkeypatch.setattr(storyblok_session_service, "mark_session_expired", mark_session_expired)
+    monkeypatch.setattr(sidecar, "_chrome_path", "chrome.exe")
+    request = sidecar.SiteVideoBuildRequest(**_SITE_CONTEXT)
+    asyncio.run(
+        sidecar._run_video_build(
+            request, None, "profile", tmp_path, login_state_written_at=saved_login_state_written_at
+        )
+    )
+    return marked_expired
+
+
 def test_a_storyblok_session_lost_during_the_site_build_asks_to_reconnect(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    def capture(**kwargs: Any) -> None:
-        raise StoryblokEditorClipError("needs_login: session Storyblok expirée ou absente — reconnecte-toi.")
-
-    monkeypatch.setattr(storyblok_editor_clip_service, "build_background", capture)
-    monkeypatch.setattr(sidecar, "_chrome_path", "chrome.exe")
-    request = sidecar.SiteVideoBuildRequest(**_SITE_CONTEXT)
-
-    asyncio.run(sidecar._run_video_build(request, None, "profile", tmp_path))
+    marked_expired = _run_site_build_failing_with(
+        monkeypatch,
+        tmp_path,
+        "needs_login: session Storyblok expirée ou absente — reconnecte-toi.",
+        saved_login_state_written_at="2026-10-18T17:40:58.693302+00:00",
+    )
 
     assert sidecar._VIDEO_BUILD_PROGRESS["garage-martin"]["reason"] == "needs_login"
+    assert marked_expired == ["2026-10-18T17:40:58.693302+00:00"]
+
+
+def test_another_editor_failure_leaves_the_storyblok_login_alone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    marked_expired = _run_site_build_failing_with(
+        monkeypatch,
+        tmp_path,
+        "L'éditeur Storyblok ne s'est pas ouvert.",
+        saved_login_state_written_at="2026-11-03T18:44:44+00:00",
+    )
+
+    assert sidecar._VIDEO_BUILD_PROGRESS["garage-martin"]["message"] == "L'éditeur Storyblok ne s'est pas ouvert."
+    assert marked_expired == []
 
 
 def test_the_start_saves_the_uploads_and_keeps_the_detached_build(
