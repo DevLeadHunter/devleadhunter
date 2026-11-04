@@ -352,7 +352,7 @@ class EmailVariables:
         prospect has no generated clip — the queue guards prevent sending a template needing them.
         `{lien_carte}` is empty, and the guards never send a template using it. The sender's active
         assistant is looked up once, for all the assistant variables. The prices are written as the
-        prospect reads them in his country (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »); `{prix_carte}` is the
+        prospect reads them in his country, without « ≈ » (« 500 € », « 470 CHF », « 800 $ CA »); `{prix_carte}` is the
         platform's monthly loyalty-card price (``WALLET_SUBSCRIPTION_PRICE_CENTS``).
 
         Args:
@@ -402,11 +402,15 @@ class EmailVariables:
             ),
             cls.CARD_LINK: "",
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
-            cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.PRICE: country.format_price_without_approximation(sale_price_cents)
+            if sale_price_cents is not None
+            else "",
             cls.PRICE_ASSISTANT: (
-                country.format_price(assistant_monthly_price_cents) if assistant_monthly_price_cents is not None else ""
+                country.format_price_without_approximation(assistant_monthly_price_cents)
+                if assistant_monthly_price_cents is not None
+                else ""
             ),
-            cls.CARD_PRICE: country.format_price(settings.wallet_subscription_price_cents),
+            cls.CARD_PRICE: country.format_price_without_approximation(settings.wallet_subscription_price_cents),
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, assistant),
             RegionalLexicon.COUNTRY_KEY: country.code,
         }

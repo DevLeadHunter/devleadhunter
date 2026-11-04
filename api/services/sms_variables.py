@@ -118,8 +118,7 @@ class SmsVariables:
 
         The receptionist's links take the SMS short form, as the callers give the site's. `{lien_carte}` is
         empty, and the guards never send a template using it. The prices are written as the prospect reads
-        them in his country (« 500 € », « ≈ 470 CHF », which the GSM-7 transliteration of the body turns into
-        « env. 470 CHF »); `{prix_carte}` is the platform's monthly loyalty-card price
+        them in his country, without « ≈ » (« 500 € », « 470 CHF »); `{prix_carte}` is the platform's monthly loyalty-card price
         (``WALLET_SUBSCRIPTION_PRICE_CENTS``).
 
         Args:
@@ -155,10 +154,14 @@ class SmsVariables:
             ),
             cls.CARD_LINK: "",
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
-            cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.PRICE: country.format_price_without_approximation(sale_price_cents)
+            if sale_price_cents is not None
+            else "",
             # Resolved from user_id (the assistant monthly price is per-user, like {prix}).
-            cls.PRICE_ASSISTANT: country.format_price(AssistantPricingService.monthly_price_cents(db, user_id)),
-            cls.CARD_PRICE: country.format_price(settings.wallet_subscription_price_cents),
+            cls.PRICE_ASSISTANT: country.format_price_without_approximation(
+                AssistantPricingService.monthly_price_cents(db, user_id)
+            ),
+            cls.CARD_PRICE: country.format_price_without_approximation(settings.wallet_subscription_price_cents),
             cls.PHONE: cls.phone_for(user.contact_phone if user else None, country.code),
             RegionalLexicon.COUNTRY_KEY: country.code,
             cls.SIGNATURE: cls.signature_for(user.name if user else None),

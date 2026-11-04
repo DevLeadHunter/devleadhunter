@@ -193,8 +193,8 @@ class CountryProfile:
     def format_price_without_approximation(self, cents: int) -> str:
         """Render a euro sale price as a plain amount, the converted one without its « ≈ » (« 470 CHF »).
 
-        For a price shown alone, where « ≈ » would read as a price that can still move: the demo's
-        banner card. An email keeps ``format_price``, next to the euro amount.
+        For a price the prospect reads alone, where « ≈ » would read as a price that can still move: the
+        demo's banner card, and ``{prix}`` in the emails and SMS.
 
         Args:
             cents: The sale price in euro cents.

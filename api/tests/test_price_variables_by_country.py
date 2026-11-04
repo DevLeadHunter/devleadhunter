@@ -45,8 +45,8 @@ def _no_assistant(monkeypatch: pytest.MonkeyPatch) -> None:
     ("country", "price", "assistant_price", "card_price"),
     [
         ("FR", "500 €", "29 €", "19 €"),
-        ("CH", "≈ 470 CHF", "≈ 27 CHF", "≈ 18 CHF"),
-        ("CA", "≈ 800 $ CA", "≈ 46 $ CA", "≈ 30 $ CA"),
+        ("CH", "470 CHF", "27 CHF", "18 CHF"),
+        ("CA", "800 $ CA", "46 $ CA", "30 $ CA"),
         ("BE", "500 €", "29 €", "19 €"),
     ],
 )
@@ -66,12 +66,12 @@ def test_email_prices_follow_the_prospect_country(
     ("country", "rendered_prices"),
     [
         ("FR", "500 € / 29 € / 19 €"),
-        ("CH", "env. 470 CHF / env. 27 CHF / env. 18 CHF"),
-        ("CA", "env. 800 $ CA / env. 46 $ CA / env. 30 $ CA"),
+        ("CH", "470 CHF / 27 CHF / 18 CHF"),
+        ("CA", "800 $ CA / 46 $ CA / 30 $ CA"),
     ],
 )
 def test_sms_prices_follow_the_prospect_country_in_gsm7(country: str, rendered_prices: str) -> None:
-    """« ≈ » is outside GSM-7: the SMS writes « env. » so it keeps its 160-character segments."""
+    """A converted price reads firm in an SMS too, and stays inside GSM-7."""
     variables = SmsVariables.build_for_prospect(
         _FakeDB(), user_id=7, prospect=_prospect(country), assistant=None, sale_price_cents=50000
     )
