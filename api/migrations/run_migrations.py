@@ -218,6 +218,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_prospect_search_region_and_registries", "migrations.add_prospect_search_region_and_registries"),
     ("add_prospect_region", "migrations.add_prospect_region"),
     ("add_demo_site_is_showcase", "migrations.add_demo_site_is_showcase"),
+    ("add_sms_auto_queue_revived_at", "migrations.add_sms_auto_queue_revived_at"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

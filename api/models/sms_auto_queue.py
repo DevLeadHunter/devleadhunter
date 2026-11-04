@@ -27,6 +27,7 @@ class SmsAutoQueue(Base):
         scheduled_at: Exact planned send time (naive UTC)
         emailed_at: First-email date anchoring a relance (``None`` for cold)
         skip_reason: Why a row was skipped (eligibility lost, send failure…)
+        revived_at: When the operator revived the skipped row; an email reply received before no longer skips it
         sent_at: When the SMS actually went out
         created_at: When the row was planned
         updated_at: Last status/schedule change
@@ -45,6 +46,7 @@ class SmsAutoQueue(Base):
     scheduled_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
     emailed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     skip_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    revived_at: Mapped[datetime | None] = mapped_column(nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # UTC (Python-side), like the SMS log — the MySQL clock is not UTC in prod.
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

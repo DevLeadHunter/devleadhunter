@@ -258,7 +258,7 @@ async def reschedule_auto_sms(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SmsAutoQueueActionResponse:
-    """Move one planned automated SMS to a new slot (also revives a skipped row).
+    """Move one planned automated SMS to a new slot, or revive a skipped one despite an earlier email reply.
 
     The requested time is snapped forward to the next legal window when it falls
     outside it (nights, Sundays, public holidays), and must land in the future.
@@ -278,6 +278,8 @@ async def reschedule_auto_sms(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="La nouvelle date doit être dans le futur."
         )
+    if row.status == "skipped":
+        row.revived_at = datetime.now(UTC).replace(tzinfo=None)
     row.scheduled_at = france_send_window.to_utc_naive(paris)
     row.status = "pending"
     row.skip_reason = None

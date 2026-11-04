@@ -21,6 +21,7 @@ from core.database import SessionLocal
 from enums.sms_message_kind import SmsMessageKind
 from models.campaign import Campaign
 from models.email_log import EmailLog
+from models.email_reply import EmailReply
 from models.prospect_db import ProspectDB
 from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
@@ -79,13 +80,16 @@ class SmsAutomationService:
         """Whether the automation behind *kind* is currently switched on."""
         return kind == "relance" and bool(config.auto_relance_enabled)
 
-    def _ineligibility_reason(self, db: Session, user_id: int, prospect: ProspectDB | None) -> str | None:
+    def _ineligibility_reason(
+        self, db: Session, user_id: int, prospect: ProspectDB | None, *, revived_at: datetime | None = None
+    ) -> str | None:
         """Why a planned SMS may no longer go out to *prospect*, or ``None`` when still fine.
 
         Args:
             db: Active database session.
             user_id: Owner of the automation.
             prospect: The recipient (``None`` when deleted since planning).
+            revived_at: When the operator revived the row by hand; only an email reply received after it bars the send.
 
         Returns:
             A short French reason shown on the forecast row, or ``None``.
@@ -113,19 +117,46 @@ class SmsAutomationService:
             return "Numéro non mobile"
         if sms_service.is_suppressed(db, user_id, to_e164):
             return "STOP reçu sur ce numéro"
-        if (
-            db.query(EmailLog.id)
-            .filter(
-                EmailLog.user_id == user_id,
-                EmailLog.prospect_id == prospect.id,
-                EmailLog.replied_at.isnot(None),
-            )
-            .first()
-        ):
+        if self._has_replied_by_email(db, user_id, prospect.id, since=revived_at):
             return "A répondu à l'email"
         if sms_relance_service.demo_for_prospect(db, user_id, prospect.id) is None:
             return "Démo injoignable"
         return None
+
+    def _has_replied_by_email(self, db: Session, user_id: int, prospect_id: int, *, since: datetime | None) -> bool:
+        """Whether the prospect answered one of the user's emails, counting only replies after ``since`` when set.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the emails.
+            prospect_id: The prospect.
+            since: Moment the operator revived the send (naive UTC); ``None`` counts every reply.
+
+        Returns:
+            True when such a reply exists; automatic replies such as out-of-office never count.
+        """
+        if since is None:
+            return (
+                db.query(EmailLog.id)
+                .filter(
+                    EmailLog.user_id == user_id,
+                    EmailLog.prospect_id == prospect_id,
+                    EmailLog.replied_at.isnot(None),
+                )
+                .first()
+                is not None
+            )
+        return (
+            db.query(EmailReply.id)
+            .filter(
+                EmailReply.user_id == user_id,
+                EmailReply.prospect_id == prospect_id,
+                EmailReply.is_auto_reply.is_(False),
+                EmailReply.received_at > since,
+            )
+            .first()
+            is not None
+        )
 
     def revalidate(self, db: Session) -> None:
         """Sweep pending rows: eligibility lost → skipped, automation switched off → cancelled."""
@@ -144,7 +175,7 @@ class SmsAutomationService:
                 changed = True
                 continue
             prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
-            reason = self._ineligibility_reason(db, row.user_id, prospect)
+            reason = self._ineligibility_reason(db, row.user_id, prospect, revived_at=row.revived_at)
             if reason:
                 row.status = "skipped"
                 row.skip_reason = reason
@@ -332,7 +363,7 @@ class SmsAutomationService:
                 if sent_for_user >= budget:
                     break
                 prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
-                reason = self._ineligibility_reason(db, config.user_id, prospect)
+                reason = self._ineligibility_reason(db, config.user_id, prospect, revived_at=row.revived_at)
                 candidate = None
                 if reason is None and prospect is not None:
                     candidate = sms_relance_service.candidate_for(
