@@ -20,6 +20,8 @@ from services.prospect_emails import sync_prospect_emails
 from services.sms.phone_normalizer import to_e164
 from services.validation_service import ValidationService
 
+SPAM_REPORT_REASON: str = "A signalé un mail comme spam"
+
 
 def _org_visibility_filter(user_id: int, organization_id: int | None):
     """SQLAlchemy filter: prospects owned by the user OR shared with their org.
@@ -477,6 +479,25 @@ class ProspectService:
         prospect = Prospect.model_validate(db_prospect)
         self._set_opt_out_flags(prospect, db_prospect, self._resolve_opt_outs(db, [db_prospect]))
         return prospect
+
+    async def stop_contact_after_spam_report(self, db: Session, prospect_id: int | None, *, user_id: int) -> bool:
+        """Mark a prospect « ne plus contacter » after they reported one of our emails as spam.
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect of the reported email; ``None`` for an email sent to no prospect.
+            user_id: Owner of the reported email, credited in the activity log.
+
+        Returns:
+            True when the prospect was just flagged; False when there is none or it already was, its first reason kept.
+        """
+        if prospect_id is None:
+            return False
+        db_prospect = db.get(ProspectDB, prospect_id)
+        if db_prospect is None or db_prospect.do_not_contact:
+            return False
+        await self.set_do_not_contact(db, prospect_id, user_id=user_id, enabled=True, reason=SPAM_REPORT_REASON)
+        return True
 
     def dismiss(
         self, db: Session, prospect_id: int, *, reason: str, dismissed_by_user_id: int | None

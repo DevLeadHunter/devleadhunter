@@ -72,7 +72,7 @@ _EMAIL_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "email_opened": ("👀", "success", "A ouvert ton mail"),
     "email_clicked": ("🖱️", "success", "A cliqué le lien du mail"),
     "email_bounced": ("⛔", "warning", "Mail rejeté (bounce) — bascule en cours"),
-    "email_complained": ("🚩", "warning", "T'a marqué en spam"),
+    "email_complained": ("🚩", "warning", "T'a marqué en spam · plus aucun mail ni SMS"),
     "email_failed": ("❌", "error", "Échec d'envoi"),
     "email_delivery_delayed": ("⏳", "warning", "Livraison retardée"),
     "email_suppressed": ("🚫", "warning", "Mail supprimé (suppression)"),

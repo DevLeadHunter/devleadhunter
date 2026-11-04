@@ -41,6 +41,7 @@ from services.demo_site_service import demo_site_service
 from services.encryption_service import encryption_service
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
+from services.prospect_service import prospect_service
 from services.storyblok_service import storyblok_service
 from services.templates.site_content import (
     apply_section_overrides,
@@ -553,6 +554,9 @@ async def resend_webhook(
             subject=email_log.subject,
             email_log_id=email_log.id,
         )
+
+    if event_type == "email.complained":
+        await prospect_service.stop_contact_after_spam_report(db, email_log.prospect_id, user_id=email_log.user_id)
 
 
 def _verify_storyblok_signature(body: bytes, signature: str) -> bool:

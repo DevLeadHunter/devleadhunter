@@ -34,6 +34,7 @@ from services.campaign_queue_service import CampaignQueueService
 from services.conversation_service import conversation_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 from services.email_sending_service import EmailSendingService
+from services.prospect_service import prospect_service
 from services.resend_status_sync import ResendStatusSync
 from services.scheduled_email_service import ScheduledEmailError, scheduled_email_service
 
@@ -107,6 +108,7 @@ async def sync_resend_status(
 
     updated: int = 0
     errors: list[str] = []
+    spam_reported_logs: list[EmailLog] = []
     now = datetime.now(UTC).replace(tzinfo=None)
 
     async with aiohttp.ClientSession() as session:
@@ -136,6 +138,8 @@ async def sync_resend_status(
                 last_event: str = data.get("last_event", "")
                 if ResendStatusSync.apply_last_event(log, last_event, now):
                     updated += 1
+                    if log.status == EmailStatus.COMPLAINED.value:
+                        spam_reported_logs.append(log)
 
             except Exception as exc:
                 errors.append(f"log={log.id} error={exc!r}")
@@ -143,6 +147,10 @@ async def sync_resend_status(
 
     if updated:
         db.commit()
+    for spam_reported_log in spam_reported_logs:
+        await prospect_service.stop_contact_after_spam_report(
+            db, spam_reported_log.prospect_id, user_id=spam_reported_log.user_id
+        )
 
     return {"updated": updated, "checked": len(logs), "errors": errors}
 
