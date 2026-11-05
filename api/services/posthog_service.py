@@ -174,6 +174,9 @@ class PostHogService:
         """
         Return aggregated behaviour counts per demo slug (one grouped query).
 
+        Only demo events count (``DEMO_EVENTS``): the email events mirrored under the same ``demo_slug``
+        would date ``last_seen`` at the last email, and a session holding only a page leave would make a visit.
+
         Each value: ``{pageviews, visits, phone_clicks, contact_clicks, cta_clicks,
         sections_viewed, outbound_clicks, last_seen}``.
         Empty dict when PostHog is not configured / no data.
@@ -183,6 +186,7 @@ class PostHogService:
             return {}
 
         in_list = ", ".join(f"'{s}'" for s in safe_slugs)
+        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
         query = (
             "SELECT properties.demo_slug AS slug, "
             "countIf(event = '$pageview') AS pageviews, "
@@ -195,6 +199,7 @@ class PostHogService:
             "max(timestamp) AS last_seen "
             "FROM events "
             f"WHERE properties.demo_slug IN ({in_list}) "
+            f"AND event IN ({demo_events_list}) "
             "GROUP BY slug"
         )
         rows = await self._run_query(query)
