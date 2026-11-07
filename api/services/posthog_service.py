@@ -82,6 +82,10 @@ class DemoSession:
         language: The browser's first language (``fr-FR``), None when it was not captured.
         pageview_count: Page views of the session.
         engaged_count: Times the session qualified as engaged (``demo_engaged``).
+        cta_click_count: Clicks on the site's buttons (``demo_cta_click``).
+        phone_click_count: Clicks on a phone number (``demo_phone_click``).
+        contact_click_count: Clicks on an email address (``demo_contact_click``).
+        last_event_at: Last event of the session (naive UTC), None when it was not read.
     """
 
     slug: str
@@ -96,6 +100,10 @@ class DemoSession:
     language: str | None = None
     pageview_count: int = 0
     engaged_count: int = 0
+    cta_click_count: int = 0
+    phone_click_count: int = 0
+    contact_click_count: int = 0
+    last_event_at: datetime | None = None
 
 
 class PostHogService:
@@ -174,73 +182,19 @@ class PostHogService:
         results = payload.get("results")
         return results if isinstance(results, list) else None
 
-    async def _run_query(self, query: str) -> list[Any]:
-        """Run a HogQL query and return the raw result rows ([] on error / not configured)."""
-        return await self._read_rows(query) or []
-
-    async def get_aggregate_by_slugs(self, slugs: list[str]) -> dict[str, dict[str, Any]]:
+    async def get_demo_sessions(self, slugs: list[str], since: datetime | None = None) -> list[DemoSession] | None:
         """
-        Return aggregated behaviour counts per demo slug (one grouped query).
+        Return every browsing session on the given demos, since a moment or ever, one grouped query.
 
         Only demo events count (``DEMO_EVENTS``): the email events mirrored under the same ``demo_slug``
-        would date ``last_seen`` at the last email, and a session holding only a page leave would make a visit.
-
-        Each value: ``{pageviews, visits, phone_clicks, contact_clicks, cta_clicks,
-        sections_viewed, outbound_clicks, last_seen}``.
-        Empty dict when PostHog is not configured / no data.
-        """
-        safe_slugs = [self._safe_slug(s) for s in slugs if self._safe_slug(s)]
-        if not self.is_configured or not safe_slugs:
-            return {}
-
-        in_list = ", ".join(f"'{s}'" for s in safe_slugs)
-        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
-        query = (
-            "SELECT properties.demo_slug AS slug, "
-            "countIf(event = '$pageview') AS pageviews, "
-            "count(DISTINCT properties.$session_id) AS visits, "
-            "countIf(event = 'demo_phone_click') AS phone_clicks, "
-            "countIf(event = 'demo_contact_click') AS contact_clicks, "
-            "countIf(event = 'demo_cta_click') AS cta_clicks, "
-            "uniqIf(properties.section, event = 'demo_section_view') AS sections_viewed, "
-            "countIf(event = 'demo_outbound_click') AS outbound_clicks, "
-            "max(timestamp) AS last_seen "
-            "FROM events "
-            f"WHERE properties.demo_slug IN ({in_list}) "
-            f"AND event IN ({demo_events_list}) "
-            "GROUP BY slug"
-        )
-        rows = await self._run_query(query)
-        result: dict[str, dict[str, Any]] = {}
-        for row in rows:
-            if not isinstance(row, (list, tuple)) or len(row) < 9:
-                continue
-            slug = str(row[0])
-            result[slug] = {
-                "pageviews": row[1],
-                "visits": row[2],
-                "phone_clicks": row[3],
-                "contact_clicks": row[4],
-                "cta_clicks": row[5],
-                "sections_viewed": row[6],
-                "outbound_clicks": row[7],
-                "last_seen": row[8],
-            }
-        return result
-
-    async def get_demo_sessions(self, slugs: list[str], since: datetime) -> list[DemoSession] | None:
-        """
-        Return every browsing session on the given demos since a moment, one grouped query.
-
-        Only demo events count (``DEMO_EVENTS``): the email events mirrored under the same
-        ``demo_slug`` are server-side and never make a visit.
+        are server-side, they would date a visit at the last email and never make one.
 
         Args:
             slugs: Demo slugs to read.
-            since: Earliest session start to keep (naive UTC).
+            since: Earliest event to keep (naive UTC), None to read the demos' whole history.
 
         Returns:
-            The sessions, oldest first (empty when no slug is given). None when PostHog is not configured or the
+            The sessions, newest first (empty when no slug is given). None when PostHog is not configured or the
             query failed: nobody was seen, but nobody could have been, which is not the same as nobody visiting.
         """
         safe_slugs = sorted({self._safe_slug(s) for s in slugs if self._safe_slug(s)})
@@ -248,7 +202,9 @@ class PostHogService:
             return []
         in_list = ", ".join(f"'{s}'" for s in safe_slugs)
         demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
-        since_str = since.strftime("%Y-%m-%d %H:%M:%S")
+        since_filter = ""
+        if since is not None:
+            since_filter = f"AND timestamp >= '{since.strftime('%Y-%m-%d %H:%M:%S')}' "
         query = (
             "SELECT properties.demo_slug AS slug, properties.$session_id AS session_id, "
             "min(timestamp) AS started_at, "
@@ -260,13 +216,17 @@ class PostHogService:
             "any(properties.$timezone) AS timezone_name, "
             "any(properties.$browser_language) AS language, "
             "countIf(event = '$pageview') AS pageview_count, "
-            "countIf(event = 'demo_engaged') AS engaged_count "
+            "countIf(event = 'demo_engaged') AS engaged_count, "
+            "countIf(event = 'demo_cta_click') AS cta_click_count, "
+            "countIf(event = 'demo_phone_click') AS phone_click_count, "
+            "countIf(event = 'demo_contact_click') AS contact_click_count, "
+            "max(timestamp) AS last_event_at "
             "FROM events "
             f"WHERE properties.demo_slug IN ({in_list}) "
             f"AND event IN ({demo_events_list}) "
-            f"AND timestamp >= '{since_str}' "
+            f"{since_filter}"
             "GROUP BY slug, session_id "
-            "ORDER BY started_at "
+            "ORDER BY started_at DESC "
             "LIMIT 10000"
         )
         rows = await self._read_rows(query)
@@ -274,7 +234,7 @@ class PostHogService:
             return None
         sessions: list[DemoSession] = []
         for row in rows:
-            if not isinstance(row, (list, tuple)) or len(row) < 12 or not row[0] or not row[1] or not row[2]:
+            if not isinstance(row, (list, tuple)) or len(row) < 16 or not row[0] or not row[1] or not row[2]:
                 continue
             sessions.append(
                 DemoSession(
@@ -290,6 +250,10 @@ class PostHogService:
                     language=str(row[9]) if row[9] else None,
                     pageview_count=int(row[10] or 0),
                     engaged_count=int(row[11] or 0),
+                    cta_click_count=int(row[12] or 0),
+                    phone_click_count=int(row[13] or 0),
+                    contact_click_count=int(row[14] or 0),
+                    last_event_at=self._to_naive_utc(str(row[15])) if row[15] else None,
                 )
             )
         return sessions

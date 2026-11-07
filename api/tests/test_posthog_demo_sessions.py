@@ -1,8 +1,11 @@
 """Reading the demo sessions tells "nobody visited" apart from "PostHog could not be read".
 
-A reader that takes an unreadable PostHog for an empty one would see every prospect as silent.
+A reader that takes an unreadable PostHog for an empty one would see every prospect as silent. Only the demo's
+own events make a session: the email events mirrored under the same ``demo_slug`` would date « vu le » at the
+last email sent.
 """
 
+import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -11,9 +14,10 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from services.posthog_service import PostHogService
+from services.posthog_service import DEMO_EVENTS, PostHogService
 
 SINCE = datetime(2026, 10, 1)
+EVENT_FILTER_PATTERN = re.compile(r"event IN \(([^)]*)\)")
 SESSION_ROW = [
     "garage-nomade",
     "session-1",
@@ -27,6 +31,10 @@ SESSION_ROW = [
     "fr-CH",
     2,
     1,
+    3,
+    1,
+    0,
+    "2026-10-02T08:19:30Z",
 ]
 
 
@@ -62,6 +70,21 @@ def _configured_service() -> PostHogService:
     service._project_id = "42"
     service._api_key = "phx_test"
     return service
+
+
+class _QueryRecordingClient:
+    def __init__(self, sent_queries: list[str]) -> None:
+        self._sent_queries = sent_queries
+
+    async def __aenter__(self) -> "_QueryRecordingClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+    async def post(self, *args: object, json: dict[str, Any], **kwargs: object) -> _FakeResponse:
+        self._sent_queries.append(json["query"]["query"])
+        return _FakeResponse({"results": [SESSION_ROW]})
 
 
 def _client_answering(outcome: _FakeResponse | Exception) -> Callable[..., _FakeClient]:
@@ -108,6 +131,26 @@ async def test_a_session_is_parsed_into_naive_utc() -> None:
     assert [
         (session.timezone_name, session.language, session.pageview_count, session.engaged_count) for session in sessions
     ] == [("Europe/Zurich", "fr-CH", 2, 1)]
+    assert [
+        (session.cta_click_count, session.phone_click_count, session.contact_click_count, session.last_event_at)
+        for session in sessions
+    ] == [(3, 1, 0, datetime(2026, 10, 2, 8, 19, 30))]
+
+
+@pytest.mark.asyncio
+async def test_the_whole_history_reads_only_the_demo_events_from_their_first_day() -> None:
+    """The hot leads read every session ever made on the demos, and only from the demo's own events."""
+    sent_queries: list[str] = []
+    with patch.object(httpx, "AsyncClient", lambda **_: _QueryRecordingClient(sent_queries)):
+        sessions = await _configured_service().get_demo_sessions(["garage-nomade"])
+
+    assert sessions is not None and len(sessions) == 1
+    assert len(sent_queries) == 1
+    assert "timestamp >=" not in sent_queries[0]
+    event_filter = EVENT_FILTER_PATTERN.search(sent_queries[0])
+    assert event_filter is not None
+    filtered_events = {event_name.strip(" '") for event_name in event_filter.group(1).split(",")}
+    assert filtered_events == set(DEMO_EVENTS)
 
 
 @pytest.mark.asyncio

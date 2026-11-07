@@ -11,6 +11,8 @@ Groq are not configured.
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import case, func, select
@@ -25,8 +27,10 @@ from models.email_reply import EmailReply
 from models.prospect_db import ProspectDB
 from services import lead_scoring
 from services.llm_service import llm_service
-from services.posthog_service import posthog_service
+from services.posthog_service import DemoSession, posthog_service
+from services.prospect_timezone import prospect_timezone
 from services.reply_intent_service import NEGATIVE_INTENTS
+from services.robot_visit_detector import RobotVisitDetector
 
 # Human labels for the timeline.
 _EVENT_LABELS: dict[str, str] = {
@@ -72,7 +76,43 @@ _EVENT_LABELS: dict[str, str] = {
     "email_clicked": "Lien de l'email cliqué",
     "email_replied": "A répondu à l'email",
     "demo_lead": "S'est déclaré intéressé depuis sa démo",
+    "robot_visit": "Visite d'un robot, ignorée",
 }
+
+
+@dataclass
+class _HumanDemoActivity:
+    """A prospect's demo activity summed over the sessions people made on his demos, as the lead score reads it."""
+
+    pageviews: int = 0
+    visits: int = 0
+    phone_clicks: int = 0
+    contact_clicks: int = 0
+    cta_clicks: int = 0
+    last_seen_at: datetime | None = None
+
+    def add_session(self, session: DemoSession) -> None:
+        """Count one more human session in the prospect's activity."""
+        self.pageviews += session.pageview_count
+        self.visits += 1
+        self.phone_clicks += session.phone_click_count
+        self.contact_clicks += session.contact_click_count
+        self.cta_clicks += session.cta_click_count
+        if session.last_event_at is not None and (
+            self.last_seen_at is None or session.last_event_at > self.last_seen_at
+        ):
+            self.last_seen_at = session.last_event_at
+
+    def to_aggregate(self) -> dict[str, Any]:
+        """The counts as ``lead_scoring.build_signals_from_aggregate`` reads them, the last visit in naive UTC ISO."""
+        return {
+            "pageviews": self.pageviews,
+            "visits": self.visits,
+            "phone_clicks": self.phone_clicks,
+            "contact_clicks": self.contact_clicks,
+            "cta_clicks": self.cta_clicks,
+            "last_seen": self.last_seen_at.isoformat() if self.last_seen_at is not None else None,
+        }
 
 
 class BehaviorService:
@@ -121,14 +161,58 @@ class BehaviorService:
         """Return the slugs of a prospect's demo sites and receptionists (owned by the user), each once."""
         return self.slugs_by_prospect(db, user_id, [prospect_id]).get(prospect_id, [])
 
-    async def _events_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[dict[str, Any]]:
-        """Fetch and merge behavioural events across all of a prospect's demos."""
-        slugs = self._slugs_for_prospect(db, user_id, prospect_id)
+    @staticmethod
+    async def _read_demo_events(slugs: list[str]) -> list[dict[str, Any]]:
+        """Fetch and merge behavioural events across all of a prospect's demos, newest first."""
         events: list[dict[str, Any]] = []
         for slug in slugs:
             events.extend(await posthog_service.get_events_for_slug(slug))
         events.sort(key=lambda e: str(e.get("timestamp", "")), reverse=True)
         return events
+
+    @staticmethod
+    async def _read_robot_sessions(slugs: list[str], prospect_timezone_name: str) -> list[DemoSession]:
+        """Read the sessions robots made on a prospect's demos, judged on his clock; none when PostHog is unreadable."""
+        sessions = await posthog_service.get_demo_sessions(slugs) or []
+        return [
+            session for session in sessions if not RobotVisitDetector.is_human_session(session, prospect_timezone_name)
+        ]
+
+    @staticmethod
+    def _extract_session_id(event: dict[str, Any]) -> str | None:
+        """The PostHog session a demo event belongs to, None when it carries none."""
+        properties = event.get("properties")
+        if not isinstance(properties, dict) or not properties.get("$session_id"):
+            return None
+        return str(properties["$session_id"])
+
+    @staticmethod
+    async def _read_human_demo_activity(
+        pid_to_slugs: dict[int, list[str]], timezone_by_pid: dict[int, str]
+    ) -> dict[int, _HumanDemoActivity]:
+        """
+        Read each prospect's demo activity over the sessions people made on his demos, robots left out.
+
+        Args:
+            pid_to_slugs: The demo and receptionist slugs of each prospect.
+            timezone_by_pid: The clock of each prospect, on which the sessions of his demos are judged.
+
+        Returns:
+            The activity of each prospect with at least one human session.
+        """
+        prospect_ids_by_slug: dict[str, list[int]] = defaultdict(list)
+        for prospect_id, slugs in pid_to_slugs.items():
+            for slug in slugs:
+                prospect_ids_by_slug[slug].append(prospect_id)
+        sessions = await posthog_service.get_demo_sessions(list(prospect_ids_by_slug)) or []
+        unknown_prospect_timezone = prospect_timezone(None)
+        activity_by_pid: dict[int, _HumanDemoActivity] = {}
+        for session in sessions:
+            for prospect_id in prospect_ids_by_slug.get(session.slug, []):
+                timezone_name = timezone_by_pid.get(prospect_id, unknown_prospect_timezone)
+                if RobotVisitDetector.is_human_session(session, timezone_name):
+                    activity_by_pid.setdefault(prospect_id, _HumanDemoActivity()).add_session(session)
+        return activity_by_pid
 
     # ------------------------------------------------------------------ #
     # Email engagement (EmailLog)
@@ -266,6 +350,16 @@ class BehaviorService:
         return {int(pid): int(count or 0) for pid, count in rows if pid is not None}
 
     @staticmethod
+    def _build_robot_session_entry(session: DemoSession) -> dict[str, Any]:
+        """Build the one timeline line that stands for a robot's session on the demo."""
+        return {
+            "type": "robot_visit",
+            "label": _EVENT_LABELS["robot_visit"],
+            "timestamp": session.started_at.isoformat(),
+            "properties": {},
+        }
+
+    @staticmethod
     def _email_entry(event_type: str, when: Any, count: int = 1) -> dict[str, Any]:
         """Build a timeline entry for an email event (open count folds into the open label)."""
         ts = when.isoformat() if hasattr(when, "isoformat") else str(when)
@@ -312,8 +406,18 @@ class BehaviorService:
         return bool(audit.get("is_improvable")) if isinstance(audit, dict) else False
 
     async def get_behavior(self, db: Session, user_id: int, prospect_id: int) -> dict[str, Any]:
-        """Return combined (demo + email + banner leads) temperature, score, signals and timeline."""
-        events = await self._events_for_prospect(db, user_id, prospect_id)
+        """
+        Return combined (demo + email + banner leads) temperature, score, signals and timeline.
+
+        A robot's session on the demo (a mail scanner running the link) is left out of the score and shows
+        in the timeline as one line, in place of its events.
+        """
+        slugs = self._slugs_for_prospect(db, user_id, prospect_id)
+        events = await self._read_demo_events(slugs)
+        robot_sessions = await self._read_robot_sessions(slugs, prospect_timezone(db.get(ProspectDB, prospect_id)))
+        robot_session_ids = {session.session_id for session in robot_sessions}
+        human_events = [event for event in events if self._extract_session_id(event) not in robot_session_ids]
+        robot_entries = [self._build_robot_session_entry(session) for session in robot_sessions]
         email = self._email_engagement(db, user_id, prospect_id)
         leads = self._demo_leads(db, user_id, prospect_id)
         lead_entries = [
@@ -326,13 +430,13 @@ class BehaviorService:
             for lead in leads
         ]
         site_improvable = self._site_improvable(db, prospect_id)
-        score = lead_scoring.compute(events, email=email, site_improvable=site_improvable, demo_leads=len(leads))
+        score = lead_scoring.compute(human_events, email=email, site_improvable=site_improvable, demo_leads=len(leads))
         return {
             "temperature": score["temperature"],
             "score": score["score"],
             "signals": score["signals"],
             "site_improvable": score["site_improvable"],
-            "timeline": self._build_timeline(events, email["timeline"] + lead_entries),
+            "timeline": self._build_timeline(human_events, email["timeline"] + lead_entries + robot_entries),
             # The prospect's own words — shown prominently in the drawer, newest first.
             "leads": [
                 {
@@ -390,28 +494,29 @@ class BehaviorService:
         """
         Return the user's hottest leads (demo + email), newest-strongest first.
 
-        One grouped PostHog query for all demo slugs (sites and receptionists) + one grouped email
-        query — efficient enough for a dashboard widget. Excludes leads with no activity.
+        One grouped PostHog query for the sessions of all demo slugs (sites and receptionists), robots
+        left out, + one grouped email query — efficient enough for a dashboard widget. Excludes leads
+        with no activity.
         """
         pid_to_slugs: dict[int, list[str]] = self.slugs_by_prospect(db, user_id)
         if not pid_to_slugs:
             return []
 
-        all_slugs = [slug for slugs in pid_to_slugs.values() for slug in slugs]
-        aggregate = await posthog_service.get_aggregate_by_slugs(all_slugs)
         prospect_ids = list(pid_to_slugs.keys())
         email_by_pid = self._email_engagement_bulk(db, user_id, prospect_ids)
         demo_leads_by_pid = self._demo_leads_count_bulk(db, user_id, prospect_ids)
 
         prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
         prospect_by_id = {p.id: p for p in prospects}
+        timezone_by_pid = {prospect.id: prospect_timezone(prospect) for prospect in prospects}
+        activity_by_pid = await self._read_human_demo_activity(pid_to_slugs, timezone_by_pid)
 
         leads: list[dict[str, Any]] = []
-        for pid, slugs in pid_to_slugs.items():
+        for pid in pid_to_slugs:
             prospect = prospect_by_id.get(pid)
             if not prospect:
                 continue
-            combined = self._combine_slug_aggregates(aggregate, slugs)
+            combined = activity_by_pid.get(pid, _HumanDemoActivity()).to_aggregate()
             signals = lead_scoring.build_signals_from_aggregate(
                 combined, email_by_pid.get(pid), demo_leads=demo_leads_by_pid.get(pid, 0)
             )
@@ -438,31 +543,8 @@ class BehaviorService:
         return leads[:limit]
 
     @staticmethod
-    def _combine_slug_aggregates(aggregate: dict[str, Any], slugs: list[str]) -> dict[str, Any]:
-        """Sum a prospect's demo aggregate across all its slugs (keeping the latest last_seen)."""
-        combined: dict[str, Any] = {
-            "pageviews": 0,
-            "visits": 0,
-            "phone_clicks": 0,
-            "contact_clicks": 0,
-            "cta_clicks": 0,
-            "last_seen": None,
-        }
-        for slug in slugs:
-            agg = aggregate.get(slug)
-            if not agg:
-                continue
-            for key in ("pageviews", "visits", "phone_clicks", "contact_clicks", "cta_clicks"):
-                combined[key] += int(agg.get(key, 0) or 0)
-            last = agg.get("last_seen")
-            if last and (combined["last_seen"] is None or str(last) > str(combined["last_seen"])):
-                combined["last_seen"] = last
-        return combined
-
-    @staticmethod
-    def _improvable_by_prospect(db: Session, user_id: int, prospect_ids: list[int]) -> dict[int, bool]:
+    def _improvable_by_prospect(prospects: list[ProspectDB]) -> dict[int, bool]:
         """Map each prospect id to its Lighthouse 'improvable website' verdict (False when unaudited)."""
-        prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
         result: dict[int, bool] = {}
         for prospect in prospects:
             audit = prospect.lighthouse_json if isinstance(prospect.lighthouse_json, dict) else None
@@ -473,8 +555,9 @@ class BehaviorService:
         """
         Return the hot/warm/cold temperature + score for each given prospect (demo + email).
 
-        One grouped PostHog query (their sites and receptionists) + one grouped email query, whatever
-        the number of prospects. Prospects with no activity get temperature "unknown".
+        One grouped PostHog query for the sessions of their sites and receptionists, robots left out,
+        + one grouped email query, whatever the number of prospects. Prospects with no activity get
+        temperature "unknown".
 
         Args:
             db: Active database session.
@@ -488,15 +571,16 @@ class BehaviorService:
             return {}
         pid_to_slugs: dict[int, list[str]] = self.slugs_by_prospect(db, user_id, prospect_ids)
 
-        all_slugs = [slug for slugs in pid_to_slugs.values() for slug in slugs]
-        aggregate = await posthog_service.get_aggregate_by_slugs(all_slugs) if all_slugs else {}
         email_by_pid = self._email_engagement_bulk(db, user_id, prospect_ids)
         demo_leads_by_pid = self._demo_leads_count_bulk(db, user_id, prospect_ids)
-        improvable_by_pid = self._improvable_by_prospect(db, user_id, prospect_ids)
+        prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
+        improvable_by_pid = self._improvable_by_prospect(prospects)
+        timezone_by_pid = {prospect.id: prospect_timezone(prospect) for prospect in prospects}
+        activity_by_pid = await self._read_human_demo_activity(pid_to_slugs, timezone_by_pid)
 
         result: dict[int, dict[str, Any]] = {}
         for pid in prospect_ids:
-            combined = self._combine_slug_aggregates(aggregate, pid_to_slugs.get(pid, []))
+            combined = activity_by_pid.get(pid, _HumanDemoActivity()).to_aggregate()
             signals = lead_scoring.build_signals_from_aggregate(
                 combined, email_by_pid.get(pid), demo_leads=demo_leads_by_pid.get(pid, 0)
             )
