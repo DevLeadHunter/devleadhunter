@@ -78,7 +78,15 @@ def _send(
     return email_log
 
 
-def _session(slug: str, started_at: datetime, *, interactions: int = 6, seconds: float | None = 40.0) -> DemoSession:
+def _session(
+    slug: str,
+    started_at: datetime,
+    *,
+    interactions: int = 6,
+    seconds: float | None = 40.0,
+    timezone_name: str | None = None,
+    language: str | None = None,
+) -> DemoSession:
     return DemoSession(
         slug=slug,
         session_id=f"{slug}-{started_at.isoformat()}",
@@ -88,6 +96,8 @@ def _session(slug: str, started_at: datetime, *, interactions: int = 6, seconds:
         interaction_count=interactions,
         time_on_page_seconds=seconds,
         engaged_seconds=20.0,
+        timezone_name=timezone_name,
+        language=language,
     )
 
 
@@ -112,11 +122,43 @@ def fake_sessions(monkeypatch: pytest.MonkeyPatch) -> list[DemoSession]:
     return sessions
 
 
-def test_a_scanner_prefetch_is_not_a_visit() -> None:
-    scanner = DemoSession("garage", "s1", LAUNCH, "Desktop", None, 0, None, None)
-    reader_without_city = DemoSession("garage", "s2", LAUNCH, "Mobile", None, 0, None, None)
-    assert not CampaignResultsService.is_human_session(scanner)
-    assert CampaignResultsService.is_human_session(reader_without_city)
+@pytest.mark.asyncio
+async def test_a_link_scanner_is_not_a_visit_while_prospects_everywhere_are(
+    db: Session, campaign: Campaign, fake_sessions: list[DemoSession]
+) -> None:
+    """The scanner ran Perrier Élec's demo 24 s after him, on an American clock in English: only he visited."""
+    perrier = _prospect(db, "Perrier Élec", "perrierelec")
+    caribbean = _prospect(db, "Élec Caraïbes", "elec-caraibes")
+    caribbean.address = "Rue Victor Hugo, 97200 Fort-de-France"
+    swiss = _prospect(db, "Jardins Dos Santos", "jardins-dos-santos")
+    swiss.country = "CH"
+    campaign.prospects = [perrier, caribbean, swiss]
+    db.flush()
+    for prospect in (perrier, caribbean, swiss):
+        _send(db, campaign, prospect, at=LAUNCH)
+    db.commit()
+    opened = LAUNCH + timedelta(hours=5)
+    fake_sessions.extend(
+        [
+            _session("perrierelec", opened, timezone_name="Europe/Paris", language="fr"),
+            _session(
+                "perrierelec",
+                opened + timedelta(seconds=24),
+                seconds=25.0,
+                timezone_name="America/Los_Angeles",
+                language="en-US",
+            ),
+            _session("elec-caraibes", opened, timezone_name="America/Martinique", language="fr-FR"),
+            _session("jardins-dos-santos", opened, timezone_name="Europe/Zurich", language="pt-PT"),
+        ]
+    )
+
+    results = await CampaignResultsService().build(db, USER_ID, campaign.id)
+
+    assert results is not None
+    visits = {prospect.name: [visit.active_seconds for visit in prospect.visits] for prospect in results.prospects}
+    assert visits == {"Perrier Élec": [40], "Élec Caraïbes": [40], "Jardins Dos Santos": [40]}
+    assert results.totals.visited == 3
 
 
 @pytest.mark.asyncio

@@ -13,7 +13,7 @@ body, so the essential info stays visible on iOS without expanding the notificat
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -42,11 +42,14 @@ from services.activity_log_service import (
     CATEGORY_SMS,
     CATEGORY_SYSTEM,
     STATUS_ERROR,
+    STATUS_INFO,
     STATUS_SUCCESS,
     STATUS_WARNING,
     activity_log_service,
 )
 from services.posthog_service import posthog_service
+from services.prospect_timezone import prospect_timezone
+from services.robot_visit_detector import RobotVisitDetector, VisitorBrowser
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +126,8 @@ _ASSISTANT_VIDEO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
 # Demo events that carry the prospect's own words — a submitted lead or an unsent
 # draft (typed then collapsed/abandoned); their notification appends the excerpt.
 _DEMO_MESSAGE_EVENTS: frozenset[str] = frozenset({"demo_lead", "demo_cta_banner_collapse", "demo_cta_banner_abandoned"})
+
+_ROBOT_VISIT_ACTION = "robot_visit_ignored"
 
 # Marketing channel that brought a demo visit → short label appended to the body
 # (so the push and the activity log say « via SMS » / « via Email »); 'direct' shows nothing.
@@ -220,9 +225,13 @@ class NotificationService:
         max_scroll: int | None = None,
         message: str | None = None,
         channel: str | None = None,
+        browser: VisitorBrowser | None = None,
     ) -> None:
         """
         Raise a notification for a live demo/video behavioural event.
+
+        An event a robot's browser beaconed (a mail scanner running the link) is only logged in the
+        activity feed. A lead or the prospect's typed words are never taken for a robot's.
 
         Args:
             db: Active database session (to resolve the prospect's name).
@@ -236,6 +245,7 @@ class NotificationService:
             max_scroll: Max scroll depth (%), for the end-of-visit summary.
             message: Free text left by the prospect, for ``demo_lead``.
             channel: Marketing channel that brought the visit ('email' / 'sms' / 'direct').
+            browser: What the visitor's browser told of itself, None when the beacon said nothing.
         """
         mapping = _DEMO_EVENT_NOTIFS.get(event_name)
         if mapping is None:
@@ -259,6 +269,17 @@ class NotificationService:
         channel_label = _DEMO_CHANNEL_LABELS.get((channel or "").lower())
         if channel_label:
             body = f"{body} · {channel_label}"
+        has_prospect_words = event_name == "demo_lead" or bool((message or "").strip())
+        if browser is not None and not has_prospect_words and self._is_robot_visit(db, prospect_id, browser):
+            self._record_robot_visit(
+                category=CATEGORY_DEMO,
+                event_name=event_name,
+                summary=f"{prospect_name} · {body}",
+                browser=browser,
+                user_id=user_id,
+                prospect_id=prospect_id,
+            )
+            return
         activity_log_service.record(
             category=CATEGORY_DEMO,
             action=event_name,
@@ -370,9 +391,12 @@ class NotificationService:
         event_name: str,
         fallback_name: str,
         channel: str | None = None,
+        browser: VisitorBrowser | None = None,
     ) -> None:
         """
         Raise a notification for a behavioural event on a receptionist's prospection video page (/va).
+
+        An event a robot's browser beaconed is only logged in the activity feed, like on a demo.
 
         Args:
             db: Active database session (to resolve the prospect's name).
@@ -381,6 +405,7 @@ class NotificationService:
             event_name: Beaconed event name (e.g. ``assistant_video_play``).
             fallback_name: Name shown when the prospect can't be resolved (e.g. the slug).
             channel: Marketing channel that brought the visit ('email' / 'sms' / 'direct').
+            browser: What the visitor's browser told of itself, None when the beacon said nothing.
         """
         mapping = _ASSISTANT_VIDEO_EVENT_NOTIFS.get(event_name)
         if mapping is None:
@@ -390,6 +415,16 @@ class NotificationService:
         channel_label = _DEMO_CHANNEL_LABELS.get((channel or "").lower())
         if channel_label:
             body = f"{body} · {channel_label}"
+        if browser is not None and self._is_robot_visit(db, prospect_id, browser):
+            self._record_robot_visit(
+                category=CATEGORY_ASSISTANT,
+                event_name=event_name,
+                summary=f"{prospect_name} · {body}",
+                browser=browser,
+                user_id=user_id,
+                prospect_id=prospect_id,
+            )
+            return
         activity_log_service.record(
             category=CATEGORY_ASSISTANT,
             action=event_name,
@@ -921,29 +956,31 @@ class NotificationService:
                     .filter(Order.user_id == user_id, Order.paid_at >= day_start, Order.deleted_at.is_(None))
                     .count()
                 )
-                site_slugs = [
-                    row[0]
-                    for row in db.query(DemoSite.slug)
+                site_rows = (
+                    db.query(DemoSite.slug, DemoSite.prospect_id)
                     .filter(
                         DemoSite.user_id == user_id,
                         DemoSite.status != DemoSiteStatus.DELETED.value,
                         DemoSite.slug.is_not(None),
                     )
                     .all()
-                ]
-                receptionist_slugs = [
-                    row[0]
-                    for row in db.query(AiAssistant.slug)
+                )
+                receptionist_rows = (
+                    db.query(AiAssistant.slug, AiAssistant.prospect_id)
                     .filter(AiAssistant.user_id == user_id, AiAssistant.deleted_at.is_(None))
                     .all()
-                ]
+                )
                 # A site and a receptionist of the same prospect may share a slug: its visits count once.
-                slugs = list(dict.fromkeys(site_slugs + receptionist_slugs))
-                visits = await posthog_service.count_demo_visits_since(slugs, day_start)
+                prospect_id_by_slug: dict[str, int | None] = {}
+                for slug, prospect_id in [*site_rows, *receptionist_rows]:
+                    if slug:
+                        prospect_id_by_slug.setdefault(slug, prospect_id)
+                timezone_by_slug = self._read_prospect_timezones_by_slug(db, prospect_id_by_slug)
+                pageviews, engaged = await self._count_human_visits(timezone_by_slug, day_start)
                 body = (
                     f"{sent} mails · {delivered} livrés · {opened} ouverts · {clicked} clics · "
                     f"{sms_sent} SMS ({sms_delivered} livrés) · "
-                    f"{visits['pageviews']} visites ({visits['engaged']} qualifiées) · {sales} vente(s)"
+                    f"{pageviews} visites ({engaged} qualifiées) · {sales} vente(s)"
                 )
                 await self._dispatch(
                     user_id=user_id,
@@ -958,6 +995,108 @@ class NotificationService:
             logger.warning("send_daily_recap failed: %s", exc)
         finally:
             db.close()
+
+    @staticmethod
+    def _read_prospect_timezones_by_slug(db: Session, prospect_id_by_slug: dict[str, int | None]) -> dict[str, str]:
+        """
+        Read the clock of the prospect behind each demo slug, on which the visits of that demo are judged.
+
+        Args:
+            db: Active database session.
+            prospect_id_by_slug: The prospect each demo or receptionist slug was made for, None when unknown.
+
+        Returns:
+            The IANA zone of each slug's prospect, France's when the prospect is unknown.
+        """
+        prospect_ids = {prospect_id for prospect_id in prospect_id_by_slug.values() if prospect_id}
+        prospects_by_id: dict[int, ProspectDB] = {}
+        if prospect_ids:
+            for prospect in db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids)).all():
+                prospects_by_id[prospect.id] = prospect
+        return {
+            slug: prospect_timezone(prospects_by_id.get(prospect_id) if prospect_id else None)
+            for slug, prospect_id in prospect_id_by_slug.items()
+        }
+
+    @staticmethod
+    async def _count_human_visits(timezone_by_slug: dict[str, str], since: datetime) -> tuple[int, int]:
+        """
+        Count the page views and the qualified visits people made on the demos since a moment, robots left out.
+
+        Args:
+            timezone_by_slug: The clock of the prospect behind each demo slug.
+            since: Earliest moment counted (naive UTC).
+
+        Returns:
+            The page views, then the qualified visits; both 0 when PostHog could not be read.
+        """
+        sessions = await posthog_service.get_demo_sessions(list(timezone_by_slug), since)
+        unknown_prospect_timezone = prospect_timezone(None)
+        human_sessions = [
+            session
+            for session in sessions or []
+            if RobotVisitDetector.is_human_session(
+                session, timezone_by_slug.get(session.slug, unknown_prospect_timezone)
+            )
+        ]
+        return (
+            sum(session.pageview_count for session in human_sessions),
+            sum(session.engaged_count for session in human_sessions),
+        )
+
+    @staticmethod
+    def _is_robot_visit(db: Session, prospect_id: int | None, browser: VisitorBrowser) -> bool:
+        """
+        Whether a beaconed event comes from a robot's browser, judged on the clock of the prospect it was sent to.
+
+        Args:
+            db: Active database session (to read where the prospect works).
+            prospect_id: Prospect the visited page was made for, when known.
+            browser: What the visitor's browser told of itself.
+
+        Returns:
+            True when the browser is taken for a robot's.
+        """
+        prospect = db.get(ProspectDB, prospect_id) if prospect_id else None
+        now = datetime.now(UTC).replace(tzinfo=None)
+        return RobotVisitDetector.is_robot_browser(browser, prospect_timezone(prospect), now)
+
+    @staticmethod
+    def _record_robot_visit(
+        *,
+        category: str,
+        event_name: str,
+        summary: str,
+        browser: VisitorBrowser,
+        user_id: int,
+        prospect_id: int | None,
+    ) -> None:
+        """
+        Log a robot's event in the activity feed only: neither pushed nor listed, but kept to audit the filter.
+
+        Args:
+            category: Activity feed domain of the event (demo or assistant).
+            event_name: Beaconed event name (e.g. ``demo_opened``).
+            summary: What the event would have said, « {prospect} · {action} ».
+            browser: What the robot's browser told of itself.
+            user_id: Owner of the visited page.
+            prospect_id: Prospect the visited page was made for, when known.
+        """
+        signals = (
+            "navigateur piloté par un automate"
+            if browser.is_automated
+            else f"fuseau {browser.timezone_name} · langue {browser.language}"
+        )
+        activity_log_service.record(
+            category=category,
+            action=_ROBOT_VISIT_ACTION,
+            status=STATUS_INFO,
+            title=f"🤖 Robot ignoré · {summary}",
+            detail=f"{event_name} · {signals}",
+            user_id=user_id,
+            entity_type="prospect" if prospect_id else None,
+            entity_id=prospect_id,
+        )
 
     async def _dispatch(
         self,

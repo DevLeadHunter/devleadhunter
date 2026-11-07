@@ -14,7 +14,20 @@ import pytest
 from services.posthog_service import PostHogService
 
 SINCE = datetime(2026, 10, 1)
-SESSION_ROW = ["garage-nomade", "session-1", "2026-10-02T08:15:00Z", "Mobile", "Lausanne", 6, 40.0, 20.0]
+SESSION_ROW = [
+    "garage-nomade",
+    "session-1",
+    "2026-10-02T08:15:00Z",
+    "Mobile",
+    "Lausanne",
+    6,
+    40.0,
+    20.0,
+    "Europe/Zurich",
+    "fr-CH",
+    2,
+    1,
+]
 
 
 class _FakeResponse:
@@ -92,6 +105,9 @@ async def test_a_session_is_parsed_into_naive_utc() -> None:
     assert [(session.slug, session.started_at, session.city) for session in sessions] == [
         ("garage-nomade", datetime(2026, 10, 2, 8, 15), "Lausanne")
     ]
+    assert [
+        (session.timezone_name, session.language, session.pageview_count, session.engaged_count) for session in sessions
+    ] == [("Europe/Zurich", "fr-CH", 2, 1)]
 
 
 @pytest.mark.asyncio

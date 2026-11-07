@@ -78,6 +78,10 @@ class DemoSession:
         interaction_count: Events other than page views (scroll, section, click, time…).
         time_on_page_seconds: Visible time reported when the visitor left, None when it never arrived.
         engaged_seconds: Visible time when the visit qualified as engaged, None when it never did.
+        timezone_name: IANA zone of the browser's clock, None when it was not captured.
+        language: The browser's first language (``fr-FR``), None when it was not captured.
+        pageview_count: Page views of the session.
+        engaged_count: Times the session qualified as engaged (``demo_engaged``).
     """
 
     slug: str
@@ -88,6 +92,10 @@ class DemoSession:
     interaction_count: int
     time_on_page_seconds: float | None
     engaged_seconds: float | None
+    timezone_name: str | None = None
+    language: str | None = None
+    pageview_count: int = 0
+    engaged_count: int = 0
 
 
 class PostHogService:
@@ -248,7 +256,11 @@ class PostHogService:
             "any(properties.$geoip_city_name) AS city, "
             "countIf(event != '$pageview') AS interaction_count, "
             "maxIf(toFloat(properties.seconds), event = 'demo_time_on_page') AS time_on_page_seconds, "
-            "maxIf(toFloat(properties.engaged_seconds), event = 'demo_engaged') AS engaged_seconds "
+            "maxIf(toFloat(properties.engaged_seconds), event = 'demo_engaged') AS engaged_seconds, "
+            "any(properties.$timezone) AS timezone_name, "
+            "any(properties.$browser_language) AS language, "
+            "countIf(event = '$pageview') AS pageview_count, "
+            "countIf(event = 'demo_engaged') AS engaged_count "
             "FROM events "
             f"WHERE properties.demo_slug IN ({in_list}) "
             f"AND event IN ({demo_events_list}) "
@@ -262,7 +274,7 @@ class PostHogService:
             return None
         sessions: list[DemoSession] = []
         for row in rows:
-            if not isinstance(row, (list, tuple)) or len(row) < 8 or not row[0] or not row[1] or not row[2]:
+            if not isinstance(row, (list, tuple)) or len(row) < 12 or not row[0] or not row[1] or not row[2]:
                 continue
             sessions.append(
                 DemoSession(
@@ -274,6 +286,10 @@ class PostHogService:
                     interaction_count=int(row[5] or 0),
                     time_on_page_seconds=float(row[6]) if row[6] is not None else None,
                     engaged_seconds=float(row[7]) if row[7] is not None else None,
+                    timezone_name=str(row[8]) if row[8] else None,
+                    language=str(row[9]) if row[9] else None,
+                    pageview_count=int(row[10] or 0),
+                    engaged_count=int(row[11] or 0),
                 )
             )
         return sessions
@@ -349,31 +365,6 @@ class PostHogService:
                 }
             )
         return events
-
-    async def count_demo_visits_since(self, slugs: list[str], since: datetime) -> dict[str, int]:
-        """
-        Count demo pageviews and qualified visits for the given slugs since a timestamp.
-
-        Used by the daily recap so it never persists demo events itself. Returns
-        ``{"pageviews": int, "engaged": int}`` — zeros when PostHog is not configured,
-        no slugs are given, or the query fails.
-        """
-        safe_slugs = [self._safe_slug(s) for s in slugs if self._safe_slug(s)]
-        if not self.is_configured or not safe_slugs:
-            return {"pageviews": 0, "engaged": 0}
-        in_list = ", ".join(f"'{s}'" for s in safe_slugs)
-        since_str = since.strftime("%Y-%m-%d %H:%M:%S")
-        query = (
-            "SELECT countIf(event = '$pageview') AS pageviews, "
-            "countIf(event = 'demo_engaged') AS engaged "
-            "FROM events "
-            f"WHERE properties.demo_slug IN ({in_list}) "
-            f"AND timestamp >= '{since_str}'"
-        )
-        rows = await self._run_query(query)
-        if rows and isinstance(rows[0], (list, tuple)) and len(rows[0]) >= 2:
-            return {"pageviews": int(rows[0][0] or 0), "engaged": int(rows[0][1] or 0)}
-        return {"pageviews": 0, "engaged": 0}
 
 
 posthog_service = PostHogService()

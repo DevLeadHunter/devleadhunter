@@ -20,6 +20,7 @@ from models.demo_site_lead import LEAD_STATUS_DRAFT, LEAD_STATUS_SUBMITTED, Demo
 from schemas.notification import DemoEventIn
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.notification_service import notification_service
+from services.robot_visit_detector import VisitorBrowser
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,15 @@ _DRAFT_EVENTS: frozenset[str] = frozenset({"demo_cta_banner_collapse", "demo_cta
 
 # The receptionist's video page (/va) beacons under its own prefix: its slug names an assistant, not a demo site.
 _ASSISTANT_VIDEO_EVENT_PREFIX = "assistant_video_"
+
+
+def _read_visitor_browser(payload: DemoEventIn) -> VisitorBrowser:
+    """Read what the beacon's browser told of itself, for the notifications to leave a robot's events out."""
+    return VisitorBrowser(
+        timezone_name=payload.browser_timezone,
+        language=payload.browser_language,
+        is_automated=payload.is_automated_browser,
+    )
 
 
 def _persist_submitted_lead(db: Session, site: DemoSite, message: str | None) -> None:
@@ -99,6 +109,7 @@ async def _notify_assistant_video_event(db: Session, payload: DemoEventIn) -> No
         event_name=payload.event,
         fallback_name=assistant.slug,
         channel=payload.channel,
+        browser=_read_visitor_browser(payload),
     )
 
 
@@ -144,4 +155,5 @@ async def ingest_demo_event(payload: DemoEventIn, db: Session = Depends(get_db))
         max_scroll=payload.max_scroll,
         message=payload.message,
         channel=payload.channel,
+        browser=_read_visitor_browser(payload),
     )

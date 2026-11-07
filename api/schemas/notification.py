@@ -59,6 +59,9 @@ class DemoEventIn(BaseModel):
     message: str | None = Field(default=None, max_length=1000)
     # Marketing channel that brought the visit ('email' / 'sms' / 'direct'), from the ``?src=`` link.
     channel: str | None = Field(default=None, max_length=16)
+    browser_timezone: str | None = Field(default=None, max_length=64)
+    browser_language: str | None = Field(default=None, max_length=35)
+    is_automated_browser: bool = False
 
 
 class NotificationOut(BaseModel):

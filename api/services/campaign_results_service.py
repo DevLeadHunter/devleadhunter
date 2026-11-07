@@ -55,7 +55,9 @@ from schemas.campaign_results import (
 from services.behavior_service import BehaviorService
 from services.conversation_service import reply_display_text
 from services.posthog_service import DemoSession, posthog_service
+from services.prospect_timezone import prospect_timezone
 from services.reply_intent_service import NEGATIVE_INTENTS
+from services.robot_visit_detector import RobotVisitDetector
 
 _EXCERPT_LENGTH = 280
 _INTENT_BY_VERDICT: dict[str, str] = {"interested": "interested", "refused": "not_interested", "other": "other"}
@@ -71,6 +73,7 @@ class _ProspectFacts:
     category: str
     city: str | None
     is_email_undeliverable: bool
+    timezone_name: str
     sends: list[CampaignResultsSend] = field(default_factory=list)
     visits: list[CampaignResultsVisit] = field(default_factory=list)
     replies: list[CampaignResultsReply] = field(default_factory=list)
@@ -88,6 +91,7 @@ class _ProspectFacts:
             category=prospect.category,
             city=prospect.city,
             is_email_undeliverable=bool(prospect.email_undeliverable) and not is_sms_campaign,
+            timezone_name=prospect_timezone(prospect),
         )
 
     @property
@@ -351,24 +355,6 @@ class CampaignResultsService:
         if moment is None or moment.tzinfo is None:
             return moment
         return moment.astimezone(UTC).replace(tzinfo=None)
-
-    @staticmethod
-    def is_human_session(session: DemoSession) -> bool:
-        """
-        Tell a person's visit from a mail scanner's prefetch.
-
-        Link scanners load the page once, from a data centre: a desktop or unknown device, no
-        city, and nothing but page views. A person scrolls, reads a section or stays long
-        enough to send a time event, wherever they are.
-
-        Args:
-            session: The session to judge.
-
-        Returns:
-            False only for a session that looks like a scanner.
-        """
-        looks_like_datacenter = session.city is None and session.device_type in (None, "Desktop")
-        return not (looks_like_datacenter and session.interaction_count == 0)
 
     @staticmethod
     def active_seconds(session: DemoSession) -> int:
@@ -722,7 +708,9 @@ class CampaignResultsService:
             for session in sessions:
                 if facts.prospect_id not in prospect_ids_by_slug.get(session.slug, set()):
                     continue
-                if session.started_at < first_sent_at or not self.is_human_session(session):
+                if session.started_at < first_sent_at:
+                    continue
+                if not RobotVisitDetector.is_human_session(session, facts.timezone_name):
                     continue
                 if facts.window_end is not None and session.started_at >= facts.window_end:
                     continue

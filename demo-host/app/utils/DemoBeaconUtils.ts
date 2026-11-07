@@ -1,3 +1,5 @@
+import type { DemoBeaconBrowserSignals } from '~/types/demoTracking'
+
 /**
  * Fire-and-forget beacons to the DevLeadHunter API for notify-worthy demo events,
  * plus the owner-visit guard shared by the demo and video trackers.
@@ -54,6 +56,18 @@ export class DemoBeaconUtils {
   }
 
   /**
+   * The browser's clock zone, first language and automation flag, for the API to leave a link scanner's beacons out.
+   * @returns The browser's signals, null where the browser does not tell.
+   */
+  static browserSignals(): DemoBeaconBrowserSignals {
+    return {
+      browser_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+      browser_language: navigator.language || null,
+      is_automated_browser: navigator.webdriver === true,
+    }
+  }
+
+  /**
    * Beacon a demo/video behavioural event to the notifications endpoint (best-effort).
    * @param apiBase - DevLeadHunter API base URL.
    * @param slug - Demo slug identifying the prospect.
@@ -68,7 +82,7 @@ export class DemoBeaconUtils {
     fetch(`${apiBase}/api/v1/demo-events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ demo_slug: slug, event, channel, ...extra }),
+      body: JSON.stringify({ demo_slug: slug, event, channel, ...DemoBeaconUtils.browserSignals(), ...extra }),
       keepalive: true,
     }).catch((): void => {})
   }

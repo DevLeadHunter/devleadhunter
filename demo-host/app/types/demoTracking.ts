@@ -4,6 +4,12 @@ export type DemoEventCapturedBeforeInit = {
   properties: Record<string, unknown>
 }
 
+export type DemoBeaconBrowserSignals = {
+  browser_timezone: string | null
+  browser_language: string | null
+  is_automated_browser: boolean
+}
+
 export type DemoPageTrackingOptions = {
   shouldCapturePageViews: boolean
   shouldSendEachEventAtOnce: boolean
