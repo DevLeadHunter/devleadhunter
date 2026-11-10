@@ -24,8 +24,10 @@ Website templates live in **separate GitHub repos** (`devleadhunter-template-<id
 consumed by `demo-host` via `extends` pinned by tag — see
 [`docs/TEMPLATES_ARCHITECTURE.md`](./docs/TEMPLATES_ARCHITECTURE.md).
 
-The second sellable product, the per-prospect multilingual **AI assistant**, is documented in
-[`docs/ASSISTANT_MODULE.md`](./docs/ASSISTANT_MODULE.md).
+The optional **product modules** (the per-prospect multilingual AI receptionist, the Apple Wallet loyalty
+cards) live in their own repositories, pinned in `product-modules.json`, and the super admin switches each
+one on or off — see [`docs/PRODUCT_MODULES.md`](./docs/PRODUCT_MODULES.md). The receptionist is documented
+in its repository: [`docs/ASSISTANT_MODULE.md`](https://github.com/DevLeadHunter/devleadhunter-module-receptionist/blob/main/docs/ASSISTANT_MODULE.md).
 
 ## Stack
 

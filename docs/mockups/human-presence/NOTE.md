@@ -9,7 +9,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derr
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
 - `banner-card.html` : la carte dans le bandeau, 3 variantes (C retenue, A, B) × 3 états (pastille, ouvert bureau, ouvert mobile 375), site clair ou sombre derrière, vue scène ou planche.
-- `banner-receptionist.html` : la réceptionniste Léa dans le bandeau, 2 positions × entrée/conversation × bureau/mobile, planche.
+- `banner-receptionist.html` (rangée avec le module réceptionniste, dépôt `DevLeadHunter/devleadhunter-module-receptionist`, même chemin) : la réceptionniste Léa dans le bandeau, 2 positions × entrée/conversation × bureau/mobile, planche.
 - `email-frank-finalistes.html` (avec `email-vignette-exemple.jpg` et `email-capture-exemple.jpg` à côté) : la maquette à regarder pour trancher le choix 6. Ce qui part aujourd'hui (vérifié en prod), le mail de dibodev.fr en référence, et trois propositions sans logo, sur quatre textes lus en prod, avec ou sans l'image du site, code affiché.
 - `email-frank.html` : l'email du modèle 30 en HTML, référence actuelle + 2 variantes côte à côte, signature réelle ou allégée, compteurs (images, poids, liens) et grille de contrôle délivrabilité.
 

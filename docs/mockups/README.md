@@ -11,7 +11,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
 | `human-presence/banner-card.html` | La carte « Qui est derrière ce site » dans le bandeau démo : variantes C, A, B ; pastille, bureau, mobile ; site clair ou sombre | **Codée et en ligne le 03/10** (variante C, bouton « Me répondre », prix et date de retrait) |
-| `human-presence/banner-receptionist.html` | La réceptionniste Léa dans le bandeau : onglet dans la carte (position 1) ou panneau séparé (position 2) | En attente |
+| `human-presence/banner-receptionist.html`, rangée avec le module réceptionniste ([son dépôt](https://github.com/DevLeadHunter/devleadhunter-module-receptionist/tree/main/docs/mockups/human-presence), même chemin) | La réceptionniste Léa dans le bandeau : onglet dans la carte (position 1) ou panneau séparé (position 2) | En attente |
 | `human-presence/email-frank.html` | L'email franc en HTML : référence, variante (a) texte + signature, variante (b) avec une carte « Votre site, déjà en ligne » ; signature réelle ou allégée | En attente |
 | `human-presence/email-frank-finalistes.html` (+ `email-vignette-exemple.jpg`, `email-capture-exemple.jpg`) | **Tranchée le 04/10 et codée** : proposition 1 sans titre ni image, réglage « Habillage » par modèle |
 | `human-presence/email-frank-declinaisons.html` | Cinq déclinaisons du mail franc dans le gabarit de dibodev.fr, compatibles avec les modèles actuels (habillage, encadré du site, récapitulatif, photo du commerce, en-tête personnel) ; ordinateur et téléphone | En attente |
@@ -36,7 +36,9 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | `demo-site-page/captures-v1/` | L'état d'aujourd'hui (Résumé, Configuration, téléphone) et deux captures de la première proposition en onglets | **v1 refusée le 06/10** (« ça ressemble à ce que j'ai déjà ») |
 | `demo-site-page/NOTE.md` | Le pourquoi, les trois directions, ce que l'atelier garde de l'existant, le code touché sur la branche `mockup/demo-site-page`, les points à trancher | À jour |
 
-### Page d'une réceptionniste (`receptionist-page/`)
+### Page d'une réceptionniste (`receptionist-page/`), rangée avec le module réceptionniste
+
+Le dossier vit dans [le dépôt du module](https://github.com/DevLeadHunter/devleadhunter-module-receptionist/tree/main/docs/mockups/receptionist-page) (même chemin, index dans son `docs/mockups/README.md`) :
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
