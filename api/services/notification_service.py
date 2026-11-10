@@ -13,6 +13,7 @@ body, so the essential info stays visible on iOS without expanding the notificat
 
 import asyncio
 import logging
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
@@ -23,7 +24,6 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from enums.user_role import is_platform_admin
-from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.notification import Notification
@@ -34,7 +34,6 @@ from models.sms_message import SmsMessage
 from models.user import User
 from services import push_service
 from services.activity_log_service import (
-    CATEGORY_ASSISTANT,
     CATEGORY_DEMO,
     CATEGORY_DEMO_SITE,
     CATEGORY_EMAIL,
@@ -44,10 +43,10 @@ from services.activity_log_service import (
     STATUS_ERROR,
     STATUS_INFO,
     STATUS_SUCCESS,
-    STATUS_WARNING,
     activity_log_service,
 )
 from services.posthog_service import posthog_service
+from services.product_module_service import product_module_service
 from services.prospect_timezone import prospect_timezone
 from services.robot_visit_detector import RobotVisitDetector, VisitorBrowser
 
@@ -58,8 +57,6 @@ _PROSPECTS_URL = "/dashboard/my-prospects"
 _DEMO_SITES_URL = "/dashboard/demo-sites"
 _ORDERS_URL = "/dashboard/orders"
 _SMS_URL = "/dashboard/sms"
-_ASSISTANTS_URL = "/dashboard/ai-assistants"
-_SUBSCRIPTIONS_URL = "/dashboard/subscriptions"
 _DASHBOARD_URL = "/dashboard"
 
 # In-app notification log retention.
@@ -115,14 +112,6 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_video_replay": ("🔁", "success", "Revoit ta vidéo"),
 }
 
-# Receptionist video page (/va) events, as (emoji, level, body): the site video's pushes, under the assistant module.
-_ASSISTANT_VIDEO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
-    "assistant_video_opened": ("🎬", "success", "A ouvert ta vidéo"),
-    "assistant_video_play": ("▶️", "success", "Lance ta vidéo"),
-    "assistant_video_complete": ("✅", "success", "A vu ta vidéo en entier"),
-    "assistant_video_replay": ("🔁", "success", "Revoit ta vidéo"),
-}
-
 # Demo events that carry the prospect's own words — a submitted lead or an unsent
 # draft (typed then collapsed/abandoned); their notification appends the excerpt.
 _DEMO_MESSAGE_EVENTS: frozenset[str] = frozenset({"demo_lead", "demo_cta_banner_collapse", "demo_cta_banner_abandoned"})
@@ -134,9 +123,8 @@ _ROBOT_VISIT_ACTION = "robot_visit_ignored"
 _DEMO_CHANNEL_LABELS: dict[str, str] = {"sms": "SMS", "email": "Email"}
 
 # Which product a notification belongs to, shown first in the body so it is legible at a glance
-# on a phone (the two modules — websites and AI assistants — otherwise look identical in a push).
+# on a phone (the modules otherwise look identical in a push); a product module brings its own tag.
 _MODULE_TAG_SITE = "🌐 Site web"
-_MODULE_TAG_ASSISTANT = "🤖 Assistant IA"
 
 # SMS lifecycle event → (emoji, level, body). Same title convention as emails.
 _SMS_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
@@ -382,10 +370,38 @@ class NotificationService:
             tag=f"cms-published-{demo_site_id}",
         )
 
-    async def notify_assistant_video_event(
+    async def notify_module_event(
+        self,
+        *,
+        user_id: int,
+        category: str,
+        level: str,
+        title: str,
+        body: str,
+        url: str,
+        tag: str | None = None,
+    ) -> None:
+        """
+        Persist and push a notification a product module composed (its wording, its tag, its deep link).
+
+        Args:
+            user_id: Recipient.
+            category: Domain of the notification (the module's own, e.g. ``assistant``).
+            level: Visual level (info / success / warning / error).
+            title: Notification title.
+            body: Notification body, the module's tag included.
+            url: In-app deep link opened on tap.
+            tag: Optional push tag (collapses same-tag notifications on the device).
+        """
+        await self._dispatch(user_id=user_id, category=category, level=level, title=title, body=body, url=url, tag=tag)
+
+    async def notify_module_page_event(
         self,
         db: Session,
         *,
+        module_key: str,
+        page_events: Mapping[str, tuple[str, str, str]],
+        activity_category: str,
         user_id: int,
         prospect_id: int | None,
         event_name: str,
@@ -394,20 +410,24 @@ class NotificationService:
         browser: VisitorBrowser | None = None,
     ) -> None:
         """
-        Raise a notification for a behavioural event on a receptionist's prospection video page (/va).
+        Raise a notification for a behavioural event on one of a product module's own demo pages.
 
-        An event a robot's browser beaconed is only logged in the activity feed, like on a demo.
+        The same pipeline as a demo site's: the channel that brought the visit is named, and an event a robot's
+        browser beaconed is only logged in the activity feed.
 
         Args:
             db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant, the notification recipient.
-            prospect_id: Prospect the assistant was generated for, when known.
-            event_name: Beaconed event name (e.g. ``assistant_video_play``).
+            module_key: The module whose page beaconed (its push carries the module's tag).
+            page_events: The module's notified events, as (emoji, level, body) by event name.
+            activity_category: Activity feed domain of the module's events.
+            user_id: Owner of the page, the notification recipient.
+            prospect_id: Prospect the page was made for, when known.
+            event_name: Beaconed event name.
             fallback_name: Name shown when the prospect can't be resolved (e.g. the slug).
             channel: Marketing channel that brought the visit ('email' / 'sms' / 'direct').
             browser: What the visitor's browser told of itself, None when the beacon said nothing.
         """
-        mapping = _ASSISTANT_VIDEO_EVENT_NOTIFS.get(event_name)
+        mapping = page_events.get(event_name)
         if mapping is None:
             return
         emoji, level, body = mapping
@@ -417,7 +437,7 @@ class NotificationService:
             body = f"{body} · {channel_label}"
         if browser is not None and self._is_robot_visit(db, prospect_id, browser):
             self._record_robot_visit(
-                category=CATEGORY_ASSISTANT,
+                category=activity_category,
                 event_name=event_name,
                 summary=f"{prospect_name} · {body}",
                 browser=browser,
@@ -426,7 +446,7 @@ class NotificationService:
             )
             return
         activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
+            category=activity_category,
             action=event_name,
             status=level,
             title=f"{prospect_name} · {body}",
@@ -436,12 +456,50 @@ class NotificationService:
         )
         await self._dispatch(
             user_id=user_id,
-            category="assistant",
+            category=activity_category,
             level=level,
             title=f"{emoji} {prospect_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · {body}",
+            body=self._tagged_for_module(body, module_key),
             url=self._prospect_url(prospect_id),
         )
+
+    @classmethod
+    def prospect_display_name(cls, db: Session, prospect_id: int | None, fallback: str) -> str:
+        """
+        The prospect's business name for a module's notification, falling back to a provided label.
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect id, when known.
+            fallback: Name used when no prospect name is found.
+
+        Returns:
+            A non-empty display name.
+        """
+        return cls._resolve_prospect_name(db, prospect_id, fallback)
+
+    @classmethod
+    def prospect_page_url(cls, prospect_id: int | None) -> str:
+        """
+        Deep link opening the prospect's drawer, for a module's notification.
+
+        Args:
+            prospect_id: The prospect, when known.
+
+        Returns:
+            The dashboard link.
+        """
+        return cls._prospect_url(prospect_id)
+
+    @staticmethod
+    def _tagged_for_module(body: str, module_key: str | None) -> str:
+        """The body behind the product module's tag (« 🤖 Assistant IA · … »), unchanged for the websites module."""
+        from core.product_modules.registry import product_module_registry
+
+        module = product_module_registry.get(module_key) if module_key else None
+        if module is None or not module.notification_tag:
+            return body
+        return f"{module.notification_tag} · {body}"
 
     async def notify_sms_event(
         self,
@@ -452,7 +510,7 @@ class NotificationService:
         prospect_id: int | None = None,
         fallback_name: str = "",
         detail: str | None = None,
-        is_assistant_module: bool = False,
+        module_key: str | None = None,
     ) -> None:
         """
         Raise a notification for an SMS lifecycle event.
@@ -464,7 +522,8 @@ class NotificationService:
             prospect_id: Prospect the SMS targets, when it is a saved prospect.
             fallback_name: Name shown when no prospect is known (the raw number for a manual send).
             detail: Detail appended to the body: a failure reason (e.g. ``Spam``), or what a sent SMS cost.
-            is_assistant_module: The SMS belongs to the receptionist module: its push says so, like the module's others.
+            module_key: The product module the SMS belongs to (None for the websites module): its push says so,
+                like the module's others.
         """
         mapping = _SMS_EVENT_NOTIFS.get(event_name)
         if mapping is None:
@@ -489,7 +548,7 @@ class NotificationService:
             category="sms",
             level=level,
             title=f"{emoji} {recipient_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · {body}" if is_assistant_module else body,
+            body=self._tagged_for_module(body, module_key),
             url=url,
         )
 
@@ -535,301 +594,6 @@ class NotificationService:
             body=f"{_MODULE_TAG_SITE} · A payé {amount}",
             url=f"{_ORDERS_URL}?open={order_id}",
             tag=f"sale-{order_id}",
-        )
-
-    async def notify_assistant_subscription(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        amount_cents: int,
-        interval: str,
-    ) -> None:
-        """
-        Raise a notification when a client subscribes to their AI assistant — the sale's final step.
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was sold to, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            amount_cents: The locked subscription amount in cents.
-            interval: ``"month"`` or ``"year"``.
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        plan = f"{self._format_amount(amount_cents, 'eur')}{'/an' if interval == 'year' else '/mois'}"
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_subscribed",
-            status=STATUS_SUCCESS,
-            title=f"{prospect_name} · Abonné à l'assistant {plan}",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="success",
-            title=f"🎉 {prospect_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · S'est abonné — {plan}",
-            url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
-            tag=f"assistant-sub-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_payment_failed(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        invoice_id: str,
-    ) -> None:
-        """
-        Warn the operator that Stripe could not charge a subscriber: the subscription is now past due.
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was sold to, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            invoice_id: The Stripe invoice whose payment failed.
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_payment_failed",
-            status=STATUS_WARNING,
-            title=f"{prospect_name} · Paiement refusé (abonnement réceptionniste)",
-            detail=f"Facture Stripe {invoice_id}",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="warning",
-            title=f"💳 {prospect_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · Paiement refusé : {prospect_name} (abonnement réceptionniste)",
-            url=_SUBSCRIPTIONS_URL,
-            tag=f"assistant-payment-failed-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_lead(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        lead_name: str,
-        need: str,
-        request_label: str | None = None,
-        received_outside_hours: bool | None = None,
-    ) -> None:
-        """
-        Raise a notification when a visitor leaves their details through an AI assistant.
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was generated for, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            lead_name: Name the visitor gave.
-            need: What the visitor is after (may be empty).
-            request_label: The request type in French (« Demande de devis »…), when typed.
-            received_outside_hours: True when it came in while the business was closed.
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        summary = need.strip() or "Demande de rappel"
-        label = request_label or "Nouvelle demande"
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_lead",
-            status=STATUS_SUCCESS,
-            title=f"{prospect_name} · {label} via l'assistant IA",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        outside_hours = " (hors horaires)" if received_outside_hours else ""
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="success",
-            title=f"🙋 {lead_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · {label}{outside_hours} pour {prospect_name} — {summary}",
-            url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
-            tag=f"assistant-lead-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_requests_waiting(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        waiting_count: int,
-    ) -> None:
-        """
-        Warn the operator that a subscriber leaves requests unanswered for 48 h (a churn signal).
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was sold to, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            waiting_count: How many of its requests have waited 48 h or more without being handled.
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        waiting = "1 demande non traitée" if waiting_count == 1 else f"{waiting_count} demandes non traitées"
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_requests_waiting",
-            status=STATUS_WARNING,
-            title=f"{prospect_name} · {waiting} depuis 48 h",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="warning",
-            title=f"⏳ {prospect_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · Abonné {prospect_name} : {waiting} depuis 48 h (risque de désabonnement)",
-            url=_ASSISTANTS_URL,
-            tag=f"assistant-waiting-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_inactive(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        month_label: str,
-    ) -> None:
-        """
-        Warn the operator that a subscriber's assistant had no visit at all over a month (a churn signal).
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was sold to, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            month_label: The silent month, in French (« septembre 2026 »).
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_month_inactive",
-            status=STATUS_WARNING,
-            title=f"{prospect_name} · aucune activité en {month_label}",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="warning",
-            title=f"💤 {prospect_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · Abonné {prospect_name} : aucune visite en {month_label} (risque de désabonnement)",
-            url=_ASSISTANTS_URL,
-            tag=f"assistant-inactive-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_daily_cap_reached(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        cap: int,
-    ) -> None:
-        """
-        Warn the operator that an assistant answered its daily cap of visitor messages (fixed replies until midnight).
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was generated for, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            cap: The visitor messages a day the model answers.
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_daily_cap_reached",
-            status=STATUS_WARNING,
-            title=f"{prospect_name} · plafond de {cap} messages atteint aujourd'hui",
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="warning",
-            title=f"🧯 {prospect_name}",
-            body=(
-                f"{_MODULE_TAG_ASSISTANT} · {cap} messages de visiteurs aujourd'hui : "
-                "la réceptionniste propose le rappel jusqu'à minuit"
-            ),
-            url=_ASSISTANTS_URL,
-            tag=f"assistant-daily-cap-{prospect_id}" if prospect_id else None,
-        )
-
-    async def notify_assistant_interest(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        prospect_id: int | None,
-        fallback_name: str,
-        message: str,
-    ) -> None:
-        """
-        Raise a notification when a prospect raises their hand on their assistant sales page.
-
-        This is the business owner asking to be contacted — the strongest buy signal for the
-        AI-assistant module, distinct from a customer lead captured inside the widget.
-
-        Args:
-            db: Active database session (to resolve the prospect's name).
-            user_id: Owner of the assistant — the notification recipient.
-            prospect_id: Prospect the assistant was generated for, when known.
-            fallback_name: Name shown when the prospect can't be resolved.
-            message: The prospect's optional message (may be empty).
-        """
-        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        summary = message.strip() or "veut être recontacté"
-        activity_log_service.record(
-            category=CATEGORY_ASSISTANT,
-            action="assistant_interest",
-            status=STATUS_SUCCESS,
-            title=f"{prospect_name} · Intéressé par l'assistant IA",
-            detail=message.strip() or None,
-            user_id=user_id,
-            entity_type="prospect" if prospect_id else None,
-            entity_id=prospect_id,
-        )
-        await self._dispatch(
-            user_id=user_id,
-            category="assistant",
-            level="success",
-            title=f"🔥 {prospect_name} veut son assistant",
-            body=f"{_MODULE_TAG_ASSISTANT} · Depuis la page démo — {summary}",
-            url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
-            tag=f"assistant-interest-{prospect_id}" if prospect_id else None,
         )
 
     async def notify_go_live_step(
@@ -934,7 +698,7 @@ class NotificationService:
                     db.query(EmailLog).filter(EmailLog.user_id == user_id, EmailLog.clicked_at >= day_start).count()
                 )
                 # Sent SMS = prospecting SMS that reached the provider today (SENT/DELIVERED); excludes
-                # stuck PENDING and failed rows, and the owner alerts of sold assistants (service SMS).
+                # stuck PENDING and failed rows, and the alerts the product modules send their clients (service SMS).
                 prospecting = SmsMessage.kind.is_distinct_from(SmsMessageKind.SERVICE.value)
                 sms_sent = (
                     db.query(SmsMessage)
@@ -965,14 +729,14 @@ class NotificationService:
                     )
                     .all()
                 )
-                receptionist_rows = (
-                    db.query(AiAssistant.slug, AiAssistant.prospect_id)
-                    .filter(AiAssistant.user_id == user_id, AiAssistant.deleted_at.is_(None))
-                    .all()
-                )
-                # A site and a receptionist of the same prospect may share a slug: its visits count once.
+                module_rows: list[tuple[str, int | None]] = [
+                    row
+                    for module in product_module_service.enabled_modules(db)
+                    for row in module.demo_slugs(db, user_id=user_id)
+                ]
+                # A site and a module demo of the same prospect may share a slug: its visits count once.
                 prospect_id_by_slug: dict[str, int | None] = {}
-                for slug, prospect_id in [*site_rows, *receptionist_rows]:
+                for slug, prospect_id in [*site_rows, *module_rows]:
                     if slug:
                         prospect_id_by_slug.setdefault(slug, prospect_id)
                 timezone_by_slug = self._read_prospect_timezones_by_slug(db, prospect_id_by_slug)
@@ -1003,7 +767,7 @@ class NotificationService:
 
         Args:
             db: Active database session.
-            prospect_id_by_slug: The prospect each demo or receptionist slug was made for, None when unknown.
+            prospect_id_by_slug: The prospect each demo slug (a site's or a module demo's) was made for, None when unknown.
 
         Returns:
             The IANA zone of each slug's prospect, France's when the prospect is unknown.
@@ -1075,7 +839,7 @@ class NotificationService:
         Log a robot's event in the activity feed only: neither pushed nor listed, but kept to audit the filter.
 
         Args:
-            category: Activity feed domain of the event (demo or assistant).
+            category: Activity feed domain of the event (demo, or a product module's own).
             event_name: Beaconed event name (e.g. ``demo_opened``).
             summary: What the event would have said, « {prospect} · {action} ».
             browser: What the robot's browser told of itself.

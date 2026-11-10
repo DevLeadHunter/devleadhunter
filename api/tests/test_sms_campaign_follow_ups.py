@@ -7,12 +7,17 @@ leaves only with the prospect's video: its fallback recalls an email the prospec
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 
 import pytest
 from sqlalchemy.orm import Session
 
 import services.sms_service as sms_service_module
+from core.product_modules.campaign_offer import CampaignOffer
+from core.product_modules.contract import ProductModule
+from core.product_modules.registry import product_module_registry
 from enums.sms_message_kind import SmsMessageKind
+from enums.sms_template_category import SmsTemplateCategory
 from models.campaign import Campaign, CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
 from models.demo_site import DemoSite
@@ -27,12 +32,46 @@ from services.campaign_follow_up_rules import CampaignFollowUpRules
 from services.campaign_queue_service import CampaignQueueService
 from services.prospect_calendar import ProspectCalendar
 from services.send_policy_service import send_policy_service
+from services.sms.templates import SmsTemplate
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
 from services.sms_service import sms_service
-from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
+from tests.sms_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
 _USER_ID = 7
 _VIDEO_RELANCE_KEY = "offre-a-vie-video"
+_ANOTHER_MODULE_RELANCE = SmsTemplate(
+    key="autre-relance",
+    name="Autre module - relance",
+    category=SmsTemplateCategory.FOLLOW_UP,
+    body="{salutation}, votre démo de l'autre module est toujours en ligne : {lien_autre} {signature}",
+)
+
+
+class _AnotherModuleOffer(CampaignOffer):
+    """Another module's demo, linked by ``{lien_autre}``, relanced by its own SMS."""
+
+    module_key: ClassVar[str] = "another-module"
+    offer_label: ClassVar[str] = "other module demo"
+    expired_offer_skip_reason: ClassVar[str] = "Démo de l'autre module expirée avant la relance"
+    sms_link_variables: ClassVar[tuple[str, ...]] = ("lien_autre",)
+    sms_offer_variables: ClassVar[tuple[str, ...]] = ("lien_autre",)
+    missing_offer_skip_reason: ClassVar[str] = "Pas de démo de l'autre module"
+    missing_offer_launch_summary: ClassVar[str] = "faute de démo de l'autre module"
+
+    def sms_templates(self) -> list[SmsTemplate]:
+        """The other module's relance."""
+        return [_ANOTHER_MODULE_RELANCE]
+
+
+class _AnotherModule(ProductModule):
+    """A product module installed next to the websites module, selling by SMS."""
+
+    key: ClassVar[str] = "another-module"
+    label: ClassVar[str] = "Autre module"
+
+    def campaign_offer(self) -> CampaignOffer:
+        """The other module's demo."""
+        return _AnotherModuleOffer()
 
 
 @pytest.fixture
@@ -264,7 +303,8 @@ class TestRules:
         assert refusal == "Une campagne SMS envoie un premier SMS puis une seule relance."
 
     def test_the_relance_sells_the_offer_of_the_first_sms(self) -> None:
-        steps = [self._step(sms_template_key="assistant-prix-cash")]
+        product_module_registry.use([_AnotherModule()])
+        steps = [self._step(sms_template_key=_ANOTHER_MODULE_RELANCE.key)]
 
         refusal = CampaignFollowUpRules.refusal(self._sms_campaign(), steps, first_contact_key="direct")
 

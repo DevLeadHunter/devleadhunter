@@ -13,7 +13,6 @@ country expects, so we only reserve its characters in the segment budget.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -23,16 +22,14 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
-from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
 from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
-from services.ai_assistant.assistant_service import ai_assistant_service
+from services.campaign_offers import CampaignOffers, OfferRefusal
 from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
-from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.llm_service import llm_service
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
@@ -63,8 +60,6 @@ SERVICE_SMS_MAXIMUM_SEGMENTS: int = 1
 _GREETING_WITHOUT_FIRST_NAME: str = "Bonjour"
 CONTACT_PHONE_VARIABLE: str = "telephone"
 CONTACT_PHONE_MISSING_REFUSAL: str = "Renseignez votre téléphone de contact dans votre profil"
-# The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
-_ASSISTANT_PAGE_LINK: re.Pattern[str] = re.compile(r"/(?:s/)?(?:ia|va)/[\w-]+")
 
 
 @dataclass(frozen=True)
@@ -313,8 +308,8 @@ class SmsService:
         relance after a first contact (an email, or a first-contact SMS), nothing once the relance went.
         A relance asked for a prospect never contacted is refused. Without an explicit ``template_key``,
         a first contact renders the default first-contact template and a relance renders the template
-        chosen in the user's SMS config. A template linking the loyalty-card demo (``{lien_carte}``) is
-        refused. The greeting loses the first name whenever that saves a segment (see
+        chosen in the user's SMS config. A template selling a product module's offer the prospect lacks
+        (or a module switched off) is refused. The greeting loses the first name whenever that saves a segment (see
         :meth:`compose_within_budget`); a message that still does not fit two segments is refused: it would
         be billed thrice.
 
@@ -360,35 +355,25 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
-        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
-            db, prospect_id=prospect.id, user_id=user_id
-        )
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(
             template,
             video_ready=bool(video_url),
-            assistant_video_ready=bool(EmailVariables.assistant_video_urls(assistant)[0]),
-        )
-        # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
-        needs_assistant: bool = any(
-            template.uses(name)
-            for name in (
-                SmsVariables.ASSISTANT_LINK,
-                SmsVariables.ASSISTANT_VIDEO_LINK,
-                SmsVariables.RECEPTIONIST_FIRST_NAME,
-                SmsVariables.RECEPTIONIST,
-                SmsVariables.VIRTUAL_ASSISTANT,
+            is_module_video_missing=CampaignOffers.sms_missing_video_refusal(
+                db, template, prospect_id=prospect.id, user_id=user_id
             )
+            is not None,
         )
-        if needs_assistant and assistant is None:
-            return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")
-        if template.uses(SmsVariables.CARD_LINK):
-            return SmsSendOutcome(sent=False, reason=LOYALTY_CARD_DEMO_MISSING_REFUSAL)
+        # A module template needs the prospect's demo of that module, or the SMS would ship a hole.
+        refusal: OfferRefusal | None = CampaignOffers.sms_enqueue_refusal(
+            db, template, prospect_id=prospect.id, user_id=user_id
+        )
+        if refusal is not None:
+            return SmsSendOutcome(sent=False, reason=refusal.reason)
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,
             prospect=prospect,
-            assistant=assistant,
             demo_url=demo_url,
             video_url=video_url,
             sale_price_cents=PricingService.sale_price_cents(db, user_id),
@@ -422,7 +407,9 @@ class SmsService:
         )
         outcome = await self._send_and_log(db, message=message, opt_out_mention=True)
         if outcome.sent:
-            self._start_assistant_ttl(db, assistant, body=body)
+            CampaignOffers.record_message_sent(
+                db, prospect_id=prospect.id, user_id=user_id, sent_at=datetime.now(UTC).replace(tzinfo=None), body=body
+            )
         return outcome
 
     async def send_manual(
@@ -499,7 +486,9 @@ class SmsService:
         # A manual contact supersedes the campaigns: nothing automated may double it.
         if outcome.sent and prospect_id is not None:
             self._hold_back_campaign_sends(db, prospect_id, label="Contacté manuellement (SMS)")
-            self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect_id, body=body)
+            CampaignOffers.record_message_sent(
+                db, prospect_id=prospect_id, user_id=user_id, sent_at=datetime.now(UTC).replace(tzinfo=None), body=body
+            )
         return outcome
 
     async def send_service_message(
@@ -622,42 +611,17 @@ class SmsService:
         return None
 
     @staticmethod
-    def is_assistant_message(message: SmsMessage) -> bool:
+    def module_key_of(message: SmsMessage) -> str | None:
         """
-        Whether an SMS belongs to the receptionist module: a service message, or one linking its demo or video.
+        The product module an SMS belongs to (its links, its service messages), None for a websites SMS.
 
         Args:
             message: The SMS row.
 
         Returns:
-            ``True`` for a receptionist SMS (its alerts, confirmations and reminders included).
+            The module key.
         """
-        return message.kind == SmsMessageKind.SERVICE.value or bool(_ASSISTANT_PAGE_LINK.search(message.body or ""))
-
-    @classmethod
-    def _start_assistant_ttl_if_linked(cls, db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
-        """Start the countdown of the prospect's active assistant when a sent SMS carries its link; never raises."""
-        try:
-            assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
-        except Exception:
-            logger.warning("Failed to start assistant demo TTL after SMS to prospect %s", prospect_id, exc_info=True)
-            return
-        cls._start_assistant_ttl(db, assistant, body=body)
-
-    @staticmethod
-    def _start_assistant_ttl(db: Session, assistant: AiAssistant | None, *, body: str) -> None:
-        """Start an assistant's demo countdown when a sent SMS carries its link (idempotent); never raises."""
-        from services.ai_assistant.assistant_service import ai_assistant_service
-
-        if assistant is None:
-            return
-        try:
-            if ai_assistant_service.body_contains_assistant_link(assistant, body):
-                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
-        except Exception:
-            logger.warning(
-                "Failed to start assistant demo TTL after SMS to prospect %s", assistant.prospect_id, exc_info=True
-            )
+        return CampaignOffers.module_key_of_sms(message)
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage, opt_out_mention: bool) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome and its cost, notify.
@@ -762,7 +726,7 @@ class SmsService:
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
             detail=self._segments_and_cost_label(message) if success else None,
-            is_assistant_module=self.is_assistant_message(message),
+            module_key=self.module_key_of(message),
         )
 
     @staticmethod

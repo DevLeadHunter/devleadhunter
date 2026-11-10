@@ -28,6 +28,7 @@ from schemas.campaign import (
     CampaignFollowUpUpdate,
     CampaignForecastResponse,
     CampaignListResponse,
+    CampaignOfferSkip,
     CampaignProspectAdd,
     CampaignProspectReorder,
     CampaignProspectResponse,
@@ -47,7 +48,7 @@ from schemas.campaign_storyblok_spaces import CampaignStoryblokSpacesResponse
 from schemas.campaign_videos import CampaignVideoRequestsCreate, CampaignVideoRequestsResponse, CampaignVideosResponse
 from services.auth_service import get_current_user
 from services.campaign_follow_up_rules import CampaignFollowUpRules
-from services.campaign_queue_service import CampaignQueueService
+from services.campaign_queue_service import CampaignQueueService, EnqueueResult
 from services.campaign_results_service import campaign_results_service
 from services.campaign_service import campaign_service
 from services.campaign_storyblok_spaces_service import CampaignStoryblokSpacesService
@@ -235,6 +236,41 @@ def _refuse_system_management() -> None:
             "et son automatisation dans Paramètres → Relance SMS."
         ),
     )
+
+
+def _offer_skips(result: EnqueueResult) -> list[CampaignOfferSkip]:
+    """The prospects each product module's offer left out of the queue, with the module's name."""
+    from core.product_modules.registry import product_module_registry
+
+    skips: list[CampaignOfferSkip] = []
+    for module_key, entries in result.skipped_without_offer.items():
+        module = product_module_registry.get(module_key)
+        skips.append(
+            CampaignOfferSkip(
+                module_key=module_key,
+                module_label=module.label if module is not None else module_key,
+                prospects=[CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"])) for entry in entries],
+            )
+        )
+    return skips
+
+
+def _offer_skip_message(db: Session, result: EnqueueResult) -> str:
+    """The end of the launch message for the prospects the product modules' offers left out."""
+    from services.campaign_offers import CampaignOffers
+    from services.product_module_service import product_module_service
+
+    offers = {offer.module_key: offer for offer in CampaignOffers.installed()}
+    message: str = ""
+    for module_key, entries in result.skipped_without_offer.items():
+        offer = offers.get(module_key)
+        if offer is not None and product_module_service.is_enabled(db, module_key):
+            reason: str = offer.missing_offer_launch_summary
+        else:
+            label: str = CampaignOffers.module_label(offer) if offer is not None else module_key
+            reason = f"car le module « {label} » est désactivé"
+        message += f" · {len(entries)} prospect(s) ignoré(s) {reason}"
+    return message
 
 
 @router.post("", response_model=CampaignDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -488,14 +524,7 @@ async def add_prospects_to_campaign(
                 CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
                 for entry in enqueue_result.skipped_no_video
             ],
-            skipped_no_assistant=[
-                CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
-                for entry in enqueue_result.skipped_no_assistant
-            ],
-            skipped_no_loyalty_card_demo=[
-                CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
-                for entry in enqueue_result.skipped_no_loyalty_card_demo
-            ],
+            skipped_without_offer=_offer_skips(enqueue_result),
             skipped_locked=[
                 CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
                 for entry in enqueue_result.skipped_locked
@@ -659,10 +688,7 @@ async def launch_campaign(
         message = f"{result.enqueued} SMS mis en file"
         if result.skipped_no_demo:
             message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
-        if result.skipped_no_assistant:
-            message += f" · {len(result.skipped_no_assistant)} prospect(s) ignoré(s) faute d'assistant IA actif"
-        if result.skipped_no_loyalty_card_demo:
-            message += f" · {len(result.skipped_no_loyalty_card_demo)} prospect(s) ignoré(s) faute de démo de carte de fidélité"
+        message += _offer_skip_message(db, result)
         if result.skipped_locked:
             message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
         return {
@@ -670,8 +696,7 @@ async def launch_campaign(
             "enqueued": result.enqueued,
             "skipped_no_demo": result.skipped_no_demo,
             "skipped_no_video": [],
-            "skipped_no_assistant": result.skipped_no_assistant,
-            "skipped_no_loyalty_card_demo": result.skipped_no_loyalty_card_demo,
+            "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
             "skipped_locked": result.skipped_locked,
             "message": message,
         }
@@ -717,12 +742,7 @@ async def launch_campaign(
         message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
     if result.skipped_no_video:
         message += f" · {len(result.skipped_no_video)} prospect(s) ignoré(s) faute de vidéo de prospection"
-    if result.skipped_no_assistant:
-        message += f" · {len(result.skipped_no_assistant)} prospect(s) ignoré(s) faute d'assistant IA actif"
-    if result.skipped_no_loyalty_card_demo:
-        message += (
-            f" · {len(result.skipped_no_loyalty_card_demo)} prospect(s) ignoré(s) faute de démo de carte de fidélité"
-        )
+    message += _offer_skip_message(db, result)
     if result.skipped_locked:
         message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
     return {
@@ -730,8 +750,7 @@ async def launch_campaign(
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
         "skipped_no_video": result.skipped_no_video,
-        "skipped_no_assistant": result.skipped_no_assistant,
-        "skipped_no_loyalty_card_demo": result.skipped_no_loyalty_card_demo,
+        "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
         "skipped_locked": result.skipped_locked,
         "message": message,
     }
@@ -839,8 +858,7 @@ async def resume_campaign(
             "enqueued": result.enqueued,
             "skipped_no_demo": result.skipped_no_demo,
             "skipped_no_video": [],
-            "skipped_no_assistant": result.skipped_no_assistant,
-            "skipped_no_loyalty_card_demo": result.skipped_no_loyalty_card_demo,
+            "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
         }
 
     if not campaign.template_id:
@@ -868,8 +886,7 @@ async def resume_campaign(
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
         "skipped_no_video": result.skipped_no_video,
-        "skipped_no_assistant": result.skipped_no_assistant,
-        "skipped_no_loyalty_card_demo": result.skipped_no_loyalty_card_demo,
+        "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
     }
 
 

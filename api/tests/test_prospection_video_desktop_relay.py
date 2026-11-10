@@ -1,4 +1,4 @@
-"""Every prospection video waits for the owner's desktop app, which takes it, builds it and closes it: sites and receptionists alike."""
+"""A site's prospection video waits for the owner's desktop app, which takes it, builds it and closes it."""
 
 from __future__ import annotations
 
@@ -12,19 +12,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-import api.v1.routes.ai_assistants as ai_assistants_routes
 import api.v1.routes.demo_sites as demo_sites_routes
-from api.v1.routes.ai_assistants import router as ai_assistants_router
 from api.v1.routes.demo_sites import router as demo_sites_router
 from core.database import get_db
-from enums.ai_assistant_status import AiAssistantStatus
 from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
-from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from services import video_pipeline
-from services.ai_assistant.assistant_service import ai_assistant_service
-from services.assistant_video_service import assistant_video_service
 from services.auth_service import get_current_active_user
 from services.demo_site_service import DemoSiteService, demo_site_service
 from services.demo_site_verification_service import DemoSiteVerificationResult, demo_site_verification_service
@@ -49,7 +43,7 @@ def _presenter_clip(*, auto_generate: bool = False) -> SimpleNamespace:
 
 @pytest.fixture(autouse=True)
 def presenter_clip(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every user has a presenter clip long enough to show a site or a receptionist."""
+    """Every user has a presenter clip long enough to show a site."""
     monkeypatch.setattr(
         "services.presenter_video_service.presenter_video_service.get_for_user",
         lambda *args, **kwargs: _presenter_clip(),
@@ -92,21 +86,8 @@ def _site(
     return site
 
 
-def _assistant(db: Session, user_id: int = _USER_ID, video_status: str | None = None) -> AiAssistant:
-    assistant = ai_assistant_service.create(
-        db, user_id=user_id, business_name="Toitures Morel", prospect_id=None, country="FR", use_brand_color=False
-    )
-    assistant.video_status = video_status
-    db.commit()
-    return assistant
-
-
 def _site_relay() -> ProspectionVideoDesktopRelay[DemoSite]:
     return ProspectionVideoDesktopRelay(demo_video_service)
-
-
-def _assistant_relay() -> ProspectionVideoDesktopRelay[AiAssistant]:
-    return ProspectionVideoDesktopRelay(assistant_video_service)
 
 
 def test_a_request_waits_for_the_desktop_app_and_leaves_a_published_video_online(db: Session) -> None:
@@ -268,51 +249,6 @@ def test_a_failure_needs_a_request(db: Session) -> None:
         _site_relay().record_failure(db, site, "Échec")
 
 
-def test_the_builds_of_a_site_and_a_receptionist_with_the_same_id_stay_apart(db: Session) -> None:
-    site = _site(db, "garage-martin")
-    assistant = _assistant(db)
-    assert assistant.id == site.id
-    _site_relay().request(db, site, _USER_ID)
-    _assistant_relay().request(db, assistant, _USER_ID)
-
-    _site_relay().claim(site)
-
-    assert demo_video_service.is_desktop_build_started(site) is True
-    assert assistant_video_service.is_desktop_build_started(assistant) is False
-
-
-def test_a_receptionist_request_waits_then_the_desktop_app_takes_and_fails_it(db: Session) -> None:
-    relay = _assistant_relay()
-    assistant = _assistant(db, video_status=DemoVideoStatus.READY.value)
-
-    relay.request(db, assistant, _USER_ID)
-    waiting = relay.waiting_subjects(db, _USER_ID)
-    relay.claim(assistant)
-    waiting_while_built = relay.waiting_subjects(db, _USER_ID)
-    relay.record_failure(db, assistant, "Le widget ne s'est pas ouvert.")
-
-    assert [subject.id for subject in waiting] == [assistant.id]
-    assert waiting_while_built == []
-    assert (assistant.video_status, assistant.video_error) == (
-        DemoVideoStatus.READY.value,
-        "Le widget ne s'est pas ouvert.",
-    )
-    assert assistant.video_desktop_requested_at is None
-
-
-def test_an_inactive_receptionist_is_neither_asked_nor_handed_over(db: Session) -> None:
-    relay = _assistant_relay()
-    assistant = _assistant(db)
-    relay.request(db, assistant, _USER_ID)
-
-    assistant.status = AiAssistantStatus.EXPIRED.value
-    db.commit()
-
-    assert relay.waiting_subjects(db, _USER_ID) == []
-    with pytest.raises(ValueError, match="réceptionniste active"):
-        relay.request(db, assistant, _USER_ID)
-
-
 def test_a_new_site_asks_the_pc_for_its_video_when_its_clip_generates_on_its_own(
     db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -330,14 +266,13 @@ def test_no_request_is_left_when_the_clip_does_not_generate_on_its_own_or_is_mis
     db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     site = _site(db, "garage-martin")
-    assistant = _assistant(db)
 
     assert _site_relay().request_if_auto_generating(db, site, _USER_ID) is False
     monkeypatch.setattr(
         "services.presenter_video_service.presenter_video_service.get_for_user", lambda *args, **kwargs: None
     )
-    assert _assistant_relay().request_if_auto_generating(db, assistant, _USER_ID) is False
-    assert (site.video_desktop_requested_at, assistant.video_desktop_requested_at) == (None, None)
+    assert _site_relay().request_if_auto_generating(db, site, _USER_ID) is False
+    assert site.video_desktop_requested_at is None
 
 
 def test_a_video_that_cannot_be_asked_never_fails_the_creation(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -392,20 +327,6 @@ def test_a_site_created_without_its_storyblok_space_still_asks_the_pc_for_its_vi
     assert _site_relay().waiting_subjects(db, _USER_ID) == []
 
 
-def test_a_new_receptionist_asks_the_pc_for_its_video_when_its_clip_generates_on_its_own(
-    db: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        "services.presenter_video_service.presenter_video_service.get_for_user",
-        lambda *args, **kwargs: _presenter_clip(auto_generate=True),
-    )
-
-    assistant = _assistant(db)
-
-    assert assistant.video_desktop_requested_at is not None
-    assert [subject.id for subject in _assistant_relay().waiting_subjects(db, _USER_ID)] == [assistant.id]
-
-
 def _client(db: Session, router: Any, user_id: int = _USER_ID) -> TestClient:
     """The given routes, called by a signed-in user on the test database."""
     application = FastAPI()
@@ -418,10 +339,9 @@ def _client(db: Session, router: Any, user_id: int = _USER_ID) -> TestClient:
 
 @pytest.fixture
 def presence(monkeypatch: pytest.MonkeyPatch) -> DesktopAppPresence:
-    """A fresh desktop presence behind the site and receptionist routes."""
+    """A fresh desktop presence behind the site routes."""
     fresh_presence = DesktopAppPresence()
     monkeypatch.setattr(demo_sites_routes, "desktop_app_presence", fresh_presence)
-    monkeypatch.setattr(ai_assistants_routes, "desktop_app_presence", fresh_presence)
     return fresh_presence
 
 
@@ -552,53 +472,3 @@ def test_another_account_cannot_reach_the_request(db: Session, presence: Desktop
 
     assert stranger.get(f"{prefix}/video/desktop-requests").json() == []
     assert stranger.post(f"{prefix}/{site.id}/video/desktop-claim").status_code == 404
-
-
-def test_a_receptionist_video_goes_through_the_same_relay_routes(db: Session, presence: DesktopAppPresence) -> None:
-    assistant = _assistant(db)
-    prefix = ai_assistants_router.prefix
-    client = _client(db, ai_assistants_router)
-
-    asked = client.post(f"{prefix}/{assistant.id}/video/desktop-request")
-    waiting = client.get(f"{prefix}/video/desktop-requests")
-    claimed = client.post(f"{prefix}/{assistant.id}/video/desktop-claim")
-    building = client.get(f"{prefix}/{assistant.id}/video/state")
-    failed = client.post(
-        f"{prefix}/{assistant.id}/video/desktop-failure", json={"message": "Le widget ne s'est pas ouvert."}
-    )
-
-    assert asked.status_code == 202
-    assert asked.json()["video_desktop_requested_at"] is not None
-    assert [request["assistant_id"] for request in waiting.json()] == [assistant.id]
-    assert presence.is_online(_USER_ID) is True
-    assert claimed.json()["is_video_desktop_build_started"] is True
-    assert building.json()["is_video_desktop_build_started"] is True
-    assert failed.json()["video_status"] == DemoVideoStatus.FAILED.value
-    assert failed.json()["video_error"] == "Le widget ne s'est pas ouvert."
-    assert client.post(f"{prefix}/{assistant.id}/video").status_code == 405
-
-
-def test_a_receptionist_request_is_withdrawn_but_never_while_it_is_built(
-    db: Session, presence: DesktopAppPresence
-) -> None:
-    withdrawn_assistant = _assistant(db)
-    built_assistant = _assistant(db)
-    prefix = ai_assistants_router.prefix
-    client = _client(db, ai_assistants_router)
-    client.post(f"{prefix}/{withdrawn_assistant.id}/video/desktop-request")
-    client.post(f"{prefix}/{built_assistant.id}/video/desktop-request")
-    client.post(f"{prefix}/{built_assistant.id}/video/desktop-claim")
-
-    withdrawn = client.delete(f"{prefix}/{withdrawn_assistant.id}/video/desktop-request")
-    refused = client.delete(f"{prefix}/{built_assistant.id}/video/desktop-request")
-    deleted = client.delete(f"{prefix}/{built_assistant.id}/video")
-
-    assert withdrawn.status_code == 200
-    assert withdrawn.json()["video_desktop_requested_at"] is None
-    assert [refused.status_code, deleted.status_code] == [409, 409]
-    assert (
-        _client(db, ai_assistants_router, user_id=_OTHER_USER_ID)
-        .get(f"{prefix}/{built_assistant.id}/video/state")
-        .status_code
-        == 404
-    )

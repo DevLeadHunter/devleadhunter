@@ -158,27 +158,6 @@ def test_a_browser_driven_by_automation_pushes_nothing(
     assert feed[0]["detail"] == "demo_opened · navigateur piloté par un automate"
 
 
-def test_the_scanner_on_the_receptionist_video_page_pushes_nothing(
-    db: Session, pushes: list[dict[str, Any]], feed: list[dict[str, Any]]
-) -> None:
-    prospect = _prospect(db, "Perrier Élec")
-
-    for browser in (HOTMAIL_SCANNER, VisitorBrowser("Europe/Paris", "fr-FR")):
-        asyncio.run(
-            notification_service.notify_assistant_video_event(
-                db,
-                user_id=USER_ID,
-                prospect_id=prospect.id,
-                event_name="assistant_video_opened",
-                fallback_name="perrierelec",
-                browser=browser,
-            )
-        )
-
-    assert [push["body"] for push in pushes] == ["🤖 Assistant IA · A ouvert ta vidéo"]
-    assert [entry["action"] for entry in feed] == ["robot_visit_ignored", "assistant_video_opened"]
-
-
 def test_the_beacon_hands_its_browser_to_the_notification(
     db: Session, pushes: list[dict[str, Any]], feed: list[dict[str, Any]]
 ) -> None:

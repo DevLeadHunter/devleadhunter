@@ -35,33 +35,23 @@ class R2StorageService:
     differ, resolved from `ENV`. The key layout is known here and nowhere else::
 
         videos/websites/{slug}.mp4               generated prospection video
-        videos/assistant/{slug}.mp4              receptionist prospection video
         videos/presenter/takes/{user_id}/{uuid}.mp4      webcam takes, several per module
         videos/presenter/examples/{user_id}/{uuid}.mp4   a take's example video, to compare the takes
         images/websites/{slug}.jpg               email thumbnail ({vignette_video})
-        images/assistant/{slug}.jpg              receptionist email thumbnail ({vignette_video_assistant})
         images/profile/{user_id}.jpg             profile photo, the bubble on the email thumbnails
         images/support/{yyyy}/{mm}/{uuid}.{ext}  support ticket attachments
         images/prospects/{prospect_id}/{hash}.jpg   rehosted enrichment photos (Facebook/Google)
-        images/assistant-photos/{yyyy}/{mm}/{uuid}.jpg   photos visitors send an assistant for a quote (90 days)
-        documents/assistant/{assistant_id}/{uuid}.pdf    documents a business gives its assistant (price list, terms…)
-        images/assistant-avatars/{assistant_id}/{uuid}.webp   a receptionist's own portrait (photo or logo)
         uploads/manual/{yyyy}/{mm}/{uuid}.{ext}  files uploaded by hand from the storage page
 
     boto3 calls block, so async callers must go through the `*_async` methods.
     """
 
     VIDEOS_WEBSITES_PREFIX = "videos/websites"
-    VIDEOS_ASSISTANT_PREFIX = "videos/assistant"
     VIDEOS_PRESENTER_PREFIX = "videos/presenter"
     IMAGES_WEBSITES_PREFIX = "images/websites"
-    IMAGES_ASSISTANT_PREFIX = "images/assistant"
     IMAGES_PROFILE_PREFIX = "images/profile"
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
-    IMAGES_ASSISTANT_PHOTOS_PREFIX = "images/assistant-photos"
-    DOCUMENTS_ASSISTANT_PREFIX = "documents/assistant"
-    IMAGES_ASSISTANT_AVATARS_PREFIX = "images/assistant-avatars"
     MANUAL_UPLOADS_PREFIX = "uploads/manual"
 
     def __init__(self) -> None:
@@ -175,21 +165,6 @@ class R2StorageService:
         return f"{cls.IMAGES_WEBSITES_PREFIX}/{slug}.jpg"
 
     @classmethod
-    def assistant_video_key(cls, slug: str) -> str:
-        """Build the key of an assistant's prospection video."""
-        return f"{cls.VIDEOS_ASSISTANT_PREFIX}/{slug}.mp4"
-
-    @classmethod
-    def assistant_background_key(cls, slug: str) -> str:
-        """Build the key of an assistant's video *background* (the recorded widget answering)."""
-        return f"{cls.VIDEOS_ASSISTANT_PREFIX}/{slug}-background.mp4"
-
-    @classmethod
-    def assistant_thumbnail_key(cls, slug: str) -> str:
-        """Build the key of an assistant's email thumbnail."""
-        return f"{cls.IMAGES_ASSISTANT_PREFIX}/{slug}.jpg"
-
-    @classmethod
     def presenter_take_key(cls, user_id: int) -> str:
         """
         Build the key of a new presenter take, unique so a new recording never overwrites an older take.
@@ -247,43 +222,6 @@ class R2StorageService:
             extension = f".{extension}"
         now = datetime.now(UTC)
         return f"{cls.IMAGES_SUPPORT_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}{extension}"
-
-    @classmethod
-    def assistant_photo_key(cls) -> str:
-        """
-        Build the key of a photo a visitor sent an assistant, unguessable (its URL is public).
-
-        Returns:
-            A unique JPEG object key under the assistant-photos prefix, filed by year and month.
-        """
-        now = datetime.now(UTC)
-        return f"{cls.IMAGES_ASSISTANT_PHOTOS_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}.jpg"
-
-    @classmethod
-    def assistant_document_key(cls, assistant_id: int) -> str:
-        """
-        Build the key of a document a business gave its assistant, unguessable (its URL is public).
-
-        Args:
-            assistant_id: The assistant it belongs to.
-
-        Returns:
-            A unique PDF object key under the assistant-documents prefix, filed by assistant.
-        """
-        return f"{cls.DOCUMENTS_ASSISTANT_PREFIX}/{assistant_id}/{uuid.uuid4().hex}.pdf"
-
-    @classmethod
-    def assistant_avatar_key(cls, assistant_id: int) -> str:
-        """
-        Build the key of a receptionist's own portrait, new at each upload so no cache serves the previous one.
-
-        Args:
-            assistant_id: The assistant it belongs to.
-
-        Returns:
-            A unique WebP object key under the assistant-avatars prefix, filed by assistant.
-        """
-        return f"{cls.IMAGES_ASSISTANT_AVATARS_PREFIX}/{assistant_id}/{uuid.uuid4().hex}.webp"
 
     @classmethod
     def manual_upload_key(cls, extension: str) -> str:

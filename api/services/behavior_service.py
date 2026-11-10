@@ -19,7 +19,6 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from enums.demo_site_status import DemoSiteStatus
-from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.demo_site_lead import LEAD_STATUS_SUBMITTED, DemoSiteLead
 from models.email_log import EmailLog
@@ -28,6 +27,7 @@ from models.prospect_db import ProspectDB
 from services import lead_scoring
 from services.llm_service import llm_service
 from services.posthog_service import DemoSession, posthog_service
+from services.product_module_service import product_module_service
 from services.prospect_timezone import prospect_timezone
 from services.reply_intent_service import NEGATIVE_INTENTS
 from services.robot_visit_detector import RobotVisitDetector
@@ -60,17 +60,6 @@ _EVENT_LABELS: dict[str, str] = {
     "demo_video_fullscreen": "Vidéo en plein écran",
     "demo_video_mute": "A coupé / remis le son",
     "demo_video_cta_click": "Clic « Découvrir le site » depuis la vidéo",
-    "assistant_video_play": "Lecture de la vidéo réceptionniste",
-    "assistant_video_resume": "Reprise de la vidéo réceptionniste",
-    "assistant_video_pause": "Vidéo réceptionniste mise en pause",
-    "assistant_video_replay": "A revu la vidéo réceptionniste",
-    "assistant_video_progress": "Vidéo réceptionniste regardée en partie",
-    "assistant_video_complete": "Vidéo réceptionniste regardée en entier",
-    "assistant_video_watch_time": "Temps de visionnage de la vidéo réceptionniste",
-    "assistant_video_seek": "A avancé / reculé dans la vidéo réceptionniste",
-    "assistant_video_fullscreen": "Vidéo réceptionniste en plein écran",
-    "assistant_video_mute": "A coupé / remis le son de la vidéo réceptionniste",
-    "assistant_video_cta_click": "Clic vers la démo depuis la vidéo réceptionniste",
     "email_sent": "Email envoyé",
     "email_opened": "Email ouvert",
     "email_clicked": "Lien de l'email cliqué",
@@ -115,6 +104,17 @@ class _HumanDemoActivity:
         }
 
 
+def _event_labels() -> dict[str, str]:
+    """The timeline label of every tracked event: the sites', then those of the installed product modules."""
+    from core.product_modules.registry import product_module_registry
+
+    labels: dict[str, str] = dict(_EVENT_LABELS)
+    for module in product_module_registry.installed():
+        for event_name, label in module.tracking_event_labels().items():
+            labels.setdefault(event_name, label)
+    return labels
+
+
 class BehaviorService:
     """Aggregates demo behaviour + email engagement for a prospect."""
 
@@ -125,9 +125,10 @@ class BehaviorService:
     @staticmethod
     def slugs_by_prospect(db: Session, user_id: int, prospect_ids: list[int] | None = None) -> dict[int, list[str]]:
         """
-        Map each prospect to the slugs of its demo sites and receptionists (owned by the user), each once.
+        Map each prospect to the slugs of its demo sites and of its product-module demos (its receptionist…),
+        owned by the user, each once.
 
-        A site and a receptionist of the same prospect named after its business share their slug: its
+        A site and a module demo of the same prospect named after its business share their slug: its
         events are read once.
 
         Args:
@@ -143,22 +144,23 @@ class BehaviorService:
             DemoSite.prospect_id.isnot(None),
             DemoSite.status != DemoSiteStatus.DELETED.value,
         )
-        assistants = db.query(AiAssistant.prospect_id, AiAssistant.slug).filter(
-            AiAssistant.user_id == user_id,
-            AiAssistant.prospect_id.isnot(None),
-            AiAssistant.deleted_at.is_(None),
-        )
         if prospect_ids is not None:
             sites = sites.filter(DemoSite.prospect_id.in_(prospect_ids))
-            assistants = assistants.filter(AiAssistant.prospect_id.in_(prospect_ids))
+        wanted_prospect_ids: set[int] | None = set(prospect_ids) if prospect_ids is not None else None
+        module_demos: list[tuple[int, str]] = [
+            (prospect_id, slug)
+            for module in product_module_service.enabled_modules(db)
+            for slug, prospect_id in module.demo_slugs(db, user_id=user_id)
+            if prospect_id is not None and (wanted_prospect_ids is None or prospect_id in wanted_prospect_ids)
+        ]
         pid_to_slugs: dict[int, list[str]] = defaultdict(list)
-        for prospect_id, slug in [*sites.all(), *assistants.all()]:
+        for prospect_id, slug in [*sites.all(), *module_demos]:
             if slug and slug not in pid_to_slugs[prospect_id]:
                 pid_to_slugs[prospect_id].append(slug)
         return dict(pid_to_slugs)
 
     def _slugs_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[str]:
-        """Return the slugs of a prospect's demo sites and receptionists (owned by the user), each once."""
+        """Return the slugs of a prospect's demo sites and module demos (owned by the user), each once."""
         return self.slugs_by_prospect(db, user_id, [prospect_id]).get(prospect_id, [])
 
     @staticmethod
@@ -194,7 +196,7 @@ class BehaviorService:
         Read each prospect's demo activity over the sessions people made on his demos, robots left out.
 
         Args:
-            pid_to_slugs: The demo and receptionist slugs of each prospect.
+            pid_to_slugs: The demo slugs of each prospect (its sites and module demos).
             timezone_by_pid: The clock of each prospect, on which the sessions of his demos are judged.
 
         Returns:
@@ -363,7 +365,7 @@ class BehaviorService:
     def _email_entry(event_type: str, when: Any, count: int = 1) -> dict[str, Any]:
         """Build a timeline entry for an email event (open count folds into the open label)."""
         ts = when.isoformat() if hasattr(when, "isoformat") else str(when)
-        label = _EVENT_LABELS.get(event_type, event_type)
+        label = _event_labels().get(event_type, event_type)
         if event_type == "email_opened" and count > 1:
             label = f"{label} ({count}×)"
         return {
@@ -384,7 +386,7 @@ class BehaviorService:
         demo: list[dict[str, Any]] = [
             {
                 "type": ev.get("event", ""),
-                "label": _EVENT_LABELS.get(ev.get("event", ""), ev.get("event", "")),
+                "label": _event_labels().get(ev.get("event", ""), ev.get("event", "")),
                 "timestamp": ev.get("timestamp"),
                 "properties": ev.get("properties", {}),
             }
@@ -494,7 +496,7 @@ class BehaviorService:
         """
         Return the user's hottest leads (demo + email), newest-strongest first.
 
-        One grouped PostHog query for the sessions of all demo slugs (sites and receptionists), robots
+        One grouped PostHog query for the sessions of all demo slugs (sites and module demos), robots
         left out, + one grouped email query — efficient enough for a dashboard widget. Excludes leads
         with no activity.
         """
@@ -555,7 +557,7 @@ class BehaviorService:
         """
         Return the hot/warm/cold temperature + score for each given prospect (demo + email).
 
-        One grouped PostHog query for the sessions of their sites and receptionists, robots left out,
+        One grouped PostHog query for the sessions of their sites and module demos, robots left out,
         + one grouped email query, whatever the number of prospects. Prospects with no activity get
         temperature "unknown".
 

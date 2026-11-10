@@ -4,18 +4,12 @@ Main API v1 router.
 
 from fastapi import APIRouter
 
+from .product_module_mounting import include_product_module_routers
 from .routes import (
     accounting,
     admin_monitoring,
     admin_storage,
     admin_storyblok,
-    ai_assistant_client_space,
-    ai_assistant_faq,
-    ai_assistant_requests,
-    ai_assistant_sources,
-    ai_assistant_subscriptions,
-    ai_assistant_widget,
-    ai_assistants,
     auth,
     automations,
     behavior,
@@ -42,6 +36,7 @@ from .routes import (
     organizations,
     payment_accounts,
     payments,
+    product_modules,
     prospect_searches,
     prospects,
     send_policy,
@@ -84,15 +79,9 @@ router.include_router(interactions.router)
 router.include_router(notifications.router)
 router.include_router(demo_events.router)
 router.include_router(demo_sites.router)
-# Same prefix for all: the order keeps two-segment paths unambiguous (an assistant's own routes before
-# /public/{slug}, which comes before /{assistant_id}/sources).
-router.include_router(ai_assistants.router)
-router.include_router(ai_assistant_requests.router)
-router.include_router(ai_assistant_subscriptions.router)
-router.include_router(ai_assistant_widget.router)
-router.include_router(ai_assistant_client_space.router)
-router.include_router(ai_assistant_sources.router)
-router.include_router(ai_assistant_faq.router)
+# The installed product modules (the receptionist, the Apple Wallet cards…), each behind its switch, mounted here
+# where the receptionist's routers always were.
+include_product_module_routers(router)
 router.include_router(domains.router)
 router.include_router(enrichment.router)
 router.include_router(orders.router)
@@ -111,3 +100,4 @@ router.include_router(automations.router)
 router.include_router(send_policy.router)
 router.include_router(sms.router)
 router.include_router(site_contact.router)
+router.include_router(product_modules.router)

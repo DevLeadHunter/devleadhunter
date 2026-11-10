@@ -1,22 +1,17 @@
-"""The desktop video builds of the sidecar: a checked payload, one detached build for both videos, and its failures."""
+"""The desktop video builds of the sidecar: a checked payload, the detached site build, and its failures."""
 
 from __future__ import annotations
 
 import asyncio
-import io
 import json
-import logging
-import time
 from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 from pydantic import ValidationError
 
 import scraper_sidecar as sidecar
-from services import video_pipeline
-from services.assistant_widget_clip_service import AssistantWidgetClipError, assistant_widget_clip_service
 from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
 from services.storyblok_session_service import storyblok_session_service
 
@@ -38,8 +33,9 @@ _SITE_CONTEXT: dict[str, Any] = {
     "out_height": 720,
     "fps": 30,
 }
-# The context the API sends for a receptionist video, with the calibration preview's extras.
-_RECEPTIONIST_CONTEXT: dict[str, Any] = {
+# The context a product module's API sends for its own video (the receptionist's), with the calibration preview's
+# extras.
+_MODULE_CONTEXT: dict[str, Any] = {
     "slug": "toitures-morel",
     "demo_url": "https://demo.dibodev.fr/ia/toitures-morel",
     "first_name": None,
@@ -63,17 +59,15 @@ def _invalid_fields(request_model: type[sidecar.DesktopVideoBuildRequest], paylo
 
 def test_the_contexts_the_api_sends_are_accepted() -> None:
     site = sidecar._parse_video_build_request(sidecar.SiteVideoBuildRequest, json.dumps(_SITE_CONTEXT))
-    receptionist = sidecar._parse_video_build_request(
-        sidecar.DesktopVideoBuildRequest, json.dumps(_RECEPTIONIST_CONTEXT)
-    )
+    module_video = sidecar._parse_video_build_request(sidecar.DesktopVideoBuildRequest, json.dumps(_MODULE_CONTEXT))
 
     assert (site.story_id, site.total_seconds, site.preview) == ("61234567", 28.5, False)
-    assert (receptionist.slug, receptionist.presenter_intro, receptionist.preview) == ("toitures-morel", 5.0, True)
+    assert (module_video.slug, module_video.presenter_intro, module_video.preview) == ("toitures-morel", 5.0, True)
 
 
 @pytest.mark.parametrize("slug", ["../../Windows/Temp/x", "garage martin", "", "-garage", "a" * 121])
 def test_a_slug_that_could_leave_the_build_folder_is_refused(slug: str) -> None:
-    assert _invalid_fields(sidecar.DesktopVideoBuildRequest, {**_RECEPTIONIST_CONTEXT, "slug": slug}) == (
+    assert _invalid_fields(sidecar.DesktopVideoBuildRequest, {**_MODULE_CONTEXT, "slug": slug}) == (
         "Demande de génération invalide (slug)."
     )
 
@@ -106,55 +100,6 @@ def test_the_site_build_request_checks_its_slug_and_story() -> None:
     with pytest.raises(ValidationError):
         sidecar.SiteVideoBuildRequest(**{**_SITE_CONTEXT, "space_id": "287465/../1"})
     assert sidecar.SiteVideoBuildRequest(**_SITE_CONTEXT).site_seconds == 11.5
-
-
-def _receptionist_request(slug: str) -> sidecar.DesktopVideoBuildRequest:
-    return sidecar.DesktopVideoBuildRequest(**{**_RECEPTIONIST_CONTEXT, "slug": slug, "preview": False})
-
-
-def _run_receptionist_build(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, slug: str, capture: Any) -> None:
-    async def montage(**kwargs: Any) -> None:
-        Path(kwargs["output_video"]).write_bytes(b"video")
-        Path(kwargs["output_thumb"]).write_bytes(b"thumbnail")
-
-    monkeypatch.setattr(assistant_widget_clip_service, "build_widget_clip", capture)
-    monkeypatch.setattr(sidecar, "_compose_desktop_montage", montage)
-    monkeypatch.setattr(sidecar, "_chrome_path", "chrome.exe")
-    asyncio.run(sidecar._run_assistant_video_build(_receptionist_request(slug), tmp_path))
-
-
-def test_a_capture_error_ends_the_build_with_its_message(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    def capture(**kwargs: Any) -> None:
-        raise AssistantWidgetClipError("L'exemple ne s'est pas joué pendant la capture.")
-
-    _run_receptionist_build(monkeypatch, tmp_path, "garage-echec", capture)
-
-    progress = sidecar._VIDEO_BUILD_PROGRESS["garage-echec"]
-    assert (progress["step"], progress["message"]) == ("error", "L'exemple ne s'est pas joué pendant la capture.")
-    assert not tmp_path.exists()
-    assert "garage-echec" not in sidecar._VIDEO_BUILD_RESULTS
-
-
-def test_an_unexpected_crash_still_ends_the_build(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    def capture(**kwargs: Any) -> None:
-        raise KeyError("total_seconds")
-
-    _run_receptionist_build(monkeypatch, tmp_path, "garage-crash", capture)
-
-    progress = sidecar._VIDEO_BUILD_PROGRESS["garage-crash"]
-    assert (progress["step"], progress["message"]) == ("error", "Erreur inattendue : 'total_seconds'")
-
-
-def test_a_build_longer_than_the_app_waits_is_stopped(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(video_pipeline, "MAXIMUM_GENERATION_SECONDS", 0.05)
-
-    def capture(**kwargs: Any) -> None:
-        time.sleep(0.5)
-
-    _run_receptionist_build(monkeypatch, tmp_path, "garage-lent", capture)
-
-    progress = sidecar._VIDEO_BUILD_PROGRESS["garage-lent"]
-    assert (progress["step"], progress["message"]) == ("error", video_pipeline.GENERATION_OVERRUN_MESSAGE)
 
 
 def _run_site_build_failing_with(
@@ -209,55 +154,3 @@ def test_another_editor_failure_leaves_the_storyblok_login_alone(
 
     assert sidecar._VIDEO_BUILD_PROGRESS["garage-martin"]["message"] == "L'éditeur Storyblok ne s'est pas ouvert."
     assert marked_expired == []
-
-
-def test_the_start_saves_the_uploads_and_keeps_the_detached_build(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    builds: list[tuple[str, Path, Path | None]] = []
-
-    async def build(request: sidecar.DesktopVideoBuildRequest, work_dir: Path, photo_path: Path | None) -> None:
-        builds.append((request.slug, work_dir, photo_path))
-        assert (work_dir / "presenter.mp4").read_bytes() == b"clip"
-        raise RuntimeError("bug after the start")
-
-    monkeypatch.setattr(sidecar, "_run_assistant_video_build", build)
-
-    async def start() -> dict[str, object]:
-        response = await sidecar.video_build_assistant_full(
-            payload=json.dumps(_RECEPTIONIST_CONTEXT),
-            presenter=UploadFile(file=io.BytesIO(b"clip"), filename="presenter.mp4"),
-            presenter_photo=None,
-        )
-        assert len(sidecar._VIDEO_BUILD_TASKS) == 1
-        await asyncio.sleep(0.01)
-        return response
-
-    with caplog.at_level(logging.ERROR, logger="scraper_sidecar"):
-        response = asyncio.run(start())
-
-    assert response == {"started": True, "slug": "toitures-morel"}
-    [(slug, work_dir, photo_path)] = builds
-    assert (slug, photo_path) == ("toitures-morel", None)
-    assert not sidecar._VIDEO_BUILD_TASKS
-    assert any(record.getMessage() == "Detached video build died" for record in caplog.records)
-    sidecar._discard_video_build_result(slug)
-    sidecar._VIDEO_BUILD_PROGRESS.pop(slug, None)
-    for leftover in work_dir.iterdir():
-        leftover.unlink()
-    work_dir.rmdir()
-
-
-def test_an_invalid_payload_starts_nothing() -> None:
-    async def start() -> None:
-        await sidecar.video_build_assistant_full(
-            payload=json.dumps({**_RECEPTIONIST_CONTEXT, "slug": "../../x"}),
-            presenter=UploadFile(file=io.BytesIO(b"clip"), filename="presenter.mp4"),
-            presenter_photo=None,
-        )
-
-    with pytest.raises(HTTPException) as refusal:
-        asyncio.run(start())
-
-    assert refusal.value.status_code == 422
-    assert "../../x" not in sidecar._VIDEO_BUILD_PROGRESS

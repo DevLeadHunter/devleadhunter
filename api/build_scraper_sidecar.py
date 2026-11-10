@@ -44,6 +44,21 @@ def target_triple() -> str:
     raise RuntimeError("Impossible de lire la cible depuis `rustc -vV`.")
 
 
+def installed_product_module_packages() -> list[tuple[str, str]]:
+    """The installed product modules, as (distribution name, top-level package).
+
+    Returns:
+        One pair per entry point of the ``devleadhunter.product_modules`` group.
+    """
+    from importlib.metadata import entry_points
+
+    packages: list[tuple[str, str]] = []
+    for entry_point in entry_points(group="devleadhunter.product_modules"):
+        distribution_name: str = entry_point.dist.name if entry_point.dist is not None else entry_point.name
+        packages.append((distribution_name, entry_point.value.split(":", 1)[0].split(".", 1)[0]))
+    return packages
+
+
 def main() -> None:
     """Build the one-file binary and drop it where Tauri looks for it."""
     triple = target_triple()
@@ -97,6 +112,12 @@ def main() -> None:
             print(f"Bundling {label}: {bundle}")
         else:
             print(f"{env_name} unset/missing — sidecar relies on PATH {label} (not plug-and-play).")
+
+    # The installed product modules are found through their entry points: bundle each one's package and its
+    # metadata, or the frozen sidecar would neither find nor import them.
+    for distribution_name, package_name in installed_product_module_packages():
+        command[-1:-1] = ["--collect-submodules", package_name, "--copy-metadata", distribution_name]
+        print(f"Bundling product module: {distribution_name} ({package_name})")
 
     subprocess.run(command, check=True, cwd=API_DIR)
 

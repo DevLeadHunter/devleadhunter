@@ -27,7 +27,7 @@ from services.sms_auto_campaign_service import sms_auto_campaign_service
 from services.sms_automation_service import sms_automation_service
 from services.sms_relance_service import sms_relance_service
 from services.sms_service import sms_service
-from tests.assistant_fakes import AsyncCallRecorder
+from tests.sms_fakes import AsyncCallRecorder
 
 _USER_ID = 7
 _REPLY_REASON = "A répondu à l'email"

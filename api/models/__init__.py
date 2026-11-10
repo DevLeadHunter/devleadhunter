@@ -5,19 +5,6 @@ Models package for Prospect Tool API.
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
 from models.activity_log import ActivityLog
-from models.ai_assistant import AiAssistant
-from models.ai_assistant_appointment import AiAssistantAppointment
-from models.ai_assistant_calendar import AiAssistantCalendar
-from models.ai_assistant_conversation import AiAssistantConversation
-from models.ai_assistant_document import AiAssistantDocument
-from models.ai_assistant_lead import AiAssistantLead
-from models.ai_assistant_mailbox import AiAssistantMailbox
-from models.ai_assistant_mailbox_message import AiAssistantMailboxMessage
-from models.ai_assistant_message import AiAssistantMessage
-from models.ai_assistant_photo import AiAssistantPhoto
-from models.ai_assistant_report import AiAssistantReport
-from models.ai_assistant_request import AiAssistantRequest
-from models.ai_assistant_subscription import AiAssistantSubscription
 from models.campaign import Campaign, CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
 from models.credit_settings import CreditSettings
@@ -41,6 +28,7 @@ from models.order import Order
 from models.organization import Organization, OrganizationMember
 from models.payment_account import PaymentAccount
 from models.presenter_video import PresenterVideo
+from models.product_module_state import ProductModuleState
 from models.prospect import Prospect
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
@@ -66,19 +54,6 @@ __all__ = [
     "AcquisitionRun",
     "AcquisitionRunItem",
     "ActivityLog",
-    "AiAssistant",
-    "AiAssistantAppointment",
-    "AiAssistantCalendar",
-    "AiAssistantConversation",
-    "AiAssistantDocument",
-    "AiAssistantLead",
-    "AiAssistantMailbox",
-    "AiAssistantMailboxMessage",
-    "AiAssistantMessage",
-    "AiAssistantPhoto",
-    "AiAssistantReport",
-    "AiAssistantRequest",
-    "AiAssistantSubscription",
     "Campaign",
     "CampaignFollowUp",
     "CampaignStatus",
@@ -104,6 +79,7 @@ __all__ = [
     "OrganizationMember",
     "PaymentAccount",
     "PresenterVideo",
+    "ProductModuleState",
     "Prospect",
     "ProspectDB",
     "ProspectEnrichment",

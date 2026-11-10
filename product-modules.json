@@ -1,0 +1,19 @@
+{
+  "$comment": "Optional product modules installed next to the core, one repository each, pinned by tag. The API installs each module's api/ package, web/ and demo-host/ extend its Nuxt layers. Being installed is not being switched on: the super admin switches each module in Paramètres → Administration → Modules.",
+  "modules": [
+    {
+      "key": "ai-assistant",
+      "repository": "DevLeadHunter/devleadhunter-module-receptionist",
+      "ref": "v1.0.0",
+      "python_distribution": "devleadhunter-receptionist",
+      "layers": ["web", "demo-host"]
+    },
+    {
+      "key": "apple-wallet",
+      "repository": "DevLeadHunter/devleadhunter-module-apple-wallet",
+      "ref": "v1.0.0",
+      "python_distribution": "devleadhunter-apple-wallet",
+      "layers": ["web"]
+    }
+  ]
+}

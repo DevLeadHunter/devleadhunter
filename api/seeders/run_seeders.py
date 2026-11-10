@@ -54,7 +54,21 @@ def main() -> None:
         _run_seeder(module_name, function_name)
         print()
 
+    _run_product_module_seeders()
     print("All seeders complete.")
+
+
+def _run_product_module_seeders() -> None:
+    """Seed each installed product module's reference data, after the core's (a failure never stops the others)."""
+    from core.product_modules.registry import product_module_registry
+
+    for product_module in product_module_registry.installed():
+        print(f"Seeding: module {product_module.key}")
+        try:
+            product_module.seed()
+        except Exception as exc:
+            print(f"[ERROR] Seeder of module {product_module.key} failed: {exc}")
+        print()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Cross-module contact lock — never approach the same prospect for two offers at once.
 
-When a sellable module (a website campaign, an AI-assistant campaign, a cold SMS…) reserves a
+When a sellable module (a website campaign, a product module's campaign, a cold SMS…) reserves a
 prospect, it stamps ``prospect.contacted_by_module`` / ``contacted_by_module_at``, and every message it
 actually sends refreshes that stamp. For ``LOCK_DAYS`` days after the module's last message the *other*
 modules skip that prospect. A module is never blocked by its own stamp — its own follow-ups run.
@@ -12,17 +12,11 @@ from datetime import datetime, timedelta
 
 from models.prospect_db import ProspectDB
 
-# The sellable modules. Values match the web's ``DlhModuleKey`` so the two sides agree.
+# The core's own sellable module; a product module locks under its own key (« ai-assistant »…).
 MODULE_WEBSITES = "websites"
-MODULE_AI_ASSISTANT = "ai-assistant"
 
 # Days of silence owed after one module's last message before another module may write.
 LOCK_DAYS = 45
-
-_MODULE_LABELS: dict[str, str] = {
-    MODULE_WEBSITES: "Sites web",
-    MODULE_AI_ASSISTANT: "Assistant IA",
-}
 
 
 class ContactLockService:
@@ -77,8 +71,14 @@ class ContactLockService:
 
     @staticmethod
     def module_label(module: str | None) -> str:
-        """A human label for a module key (``'websites'`` -> ``'Sites web'``)."""
-        return _MODULE_LABELS.get(module or "", module or "")
+        """A human label for a module key (``'websites'`` -> ``'Sites web'``, a product module's own label)."""
+        from core.product_modules.contract import WEBSITES_MODULE_KEY, WEBSITES_MODULE_LABEL
+        from core.product_modules.registry import product_module_registry
+
+        if module == WEBSITES_MODULE_KEY:
+            return WEBSITES_MODULE_LABEL
+        product_module = product_module_registry.get(module or "")
+        return product_module.label if product_module is not None else module or ""
 
 
 contact_lock_service = ContactLockService()

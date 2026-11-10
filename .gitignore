@@ -105,3 +105,6 @@ web/src-tauri/binaries/
 
 # Notes de travail perso de Léo (handoffs, plans, suivis) — non versionné
 notes-perso/
+
+# Generated in CI from product-modules.json (api/scripts/product_module_requirements.py)
+api/product-module-requirements.txt

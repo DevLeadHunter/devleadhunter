@@ -13,7 +13,6 @@ from enums.sending_provider import SendingProvider
 from enums.user_role import UserRole
 
 if TYPE_CHECKING:
-    from models.ai_assistant import AiAssistant
     from models.campaign import Campaign
     from models.credit_transaction import CreditTransaction
     from models.demo_site import DemoSite
@@ -65,11 +64,6 @@ class User(Base):
     # Website sale price in cents (default 500 €): per-user default for {prix},
     # new orders, and the sale drawer.
     site_sale_price_cents: Mapped[int] = mapped_column(default=50000, nullable=False)
-    # AI-assistant subscription: monthly price in cents (default 79 €) and the number of
-    # months offered on the annual plan (default 2 → 790 €/an). This is the CURRENT price for NEW
-    # subscriptions; existing subscriptions keep the price locked on their own row (grandfathering).
-    assistant_monthly_price_cents: Mapped[int] = mapped_column(default=7900, nullable=False)
-    assistant_annual_free_months: Mapped[int] = mapped_column(default=2, nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Optional public website of the user's business — linked from the prospection
     # video page signature (« Site réalisé par {company_name} »).
@@ -117,11 +111,6 @@ class User(Base):
     campaigns: Mapped[list["Campaign"]] = relationship("Campaign", back_populates="user", cascade="all, delete-orphan")
     demo_sites: Mapped[list["DemoSite"]] = relationship(
         "DemoSite",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-    ai_assistants: Mapped[list["AiAssistant"]] = relationship(
-        "AiAssistant",
         back_populates="user",
         cascade="all, delete-orphan",
     )

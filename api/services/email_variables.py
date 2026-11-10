@@ -8,20 +8,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
-from services.ai_assistant.assistant_service import ai_assistant_service
-from services.ai_assistant.receptionist_wording import ReceptionistWording
+from services.campaign_offers import CampaignOffers
 from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
 from services.regional_lexicon import RegionalLexicon
-from services.tracking_links import email_tracked_link
 from services.trade_normalizer import TradeNormalizer
-
-LOYALTY_CARD_DEMO_MISSING_REFUSAL: str = "Pas de démo de carte de fidélité pour ce prospect"
 
 
 class EmailVariables:
@@ -31,7 +26,9 @@ class EmailVariables:
     Used by the campaign queue (dispatch and preview) and by the behaviour follow-up, so every
     send resolves the SAME trusted contact. `{prenom}` and `{nom}` come from the decision-maker
     resolution stored on the enrichment and stay EMPTY when unknown — never a word of the company
-    name, which used to produce greetings like "Bonjour Plomberie,".
+    name, which used to produce greetings like "Bonjour Plomberie,". The variables of the product
+    modules (the receptionist's `{lien_assistant}`, the loyalty card's `{lien_carte}`…) come from their
+    offers (:class:`CampaignOffers`).
     """
 
     SALUTATION = "salutation"
@@ -43,19 +40,10 @@ class EmailVariables:
     PHONE = "phone"
     TRADE = "metier"
     DEMO_LINK = "lien_demo"
-    ASSISTANT_LINK = "lien_assistant"
-    RECEPTIONIST_FIRST_NAME = "prenom_receptionniste"
-    RECEPTIONIST = "receptionniste"
-    VIRTUAL_ASSISTANT = "assistant_virtuel"
     VIDEO_LINK = "lien_video"
     VIDEO_THUMBNAIL = "vignette_video"
-    ASSISTANT_VIDEO_LINK = "lien_video_assistant"
-    ASSISTANT_VIDEO_THUMBNAIL = "vignette_video_assistant"
-    CARD_LINK = "lien_carte"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
-    PRICE_ASSISTANT = "prix_assistant"
-    CARD_PRICE = "prix_carte"
     EXPIRY_DATE = "date_expiration"
 
     LINK_STYLE = "color:#111;text-decoration:underline;"
@@ -67,7 +55,7 @@ class EmailVariables:
     @staticmethod
     def build_video_thumbnail_html(video_link: str, thumbnail_url: str, alt_text: str = "Votre site en vidéo") -> str:
         """
-        Build the email-safe clickable thumbnail block for `{vignette_video}` / `{vignette_video_assistant}`.
+        Build the email-safe clickable thumbnail block of a video (`{vignette_video}`, or a module's own).
 
         Emails cannot embed a playable video, so the proven pattern is a personalised thumbnail
         (his site plus a play button) linking to the player page. Inline styles only, since email
@@ -142,14 +130,15 @@ class EmailVariables:
             The map with the link and thumbnail variables in their sent form.
         """
         values: dict[str, str] = {key: str(value) for key, value in sample_values.items()}
-        for key in (cls.DEMO_LINK, cls.ASSISTANT_LINK, cls.CARD_LINK):
+        for key in (cls.DEMO_LINK, *CampaignOffers.preview_link_variables()):
             link: str = values.get(key, "")
             if link and "<" not in link:
                 values[key] = cls.build_demo_link_html(link)
         thumbnail_url: str = f"{settings.frontend_url.rstrip('/')}{cls.PREVIEW_THUMBNAIL_PATH}"
-        thumbnails: tuple[tuple[str, str, str], ...] = (
-            (cls.VIDEO_THUMBNAIL, cls.VIDEO_LINK, "Votre site en vidéo"),
-            (cls.ASSISTANT_VIDEO_THUMBNAIL, cls.ASSISTANT_VIDEO_LINK, "Votre réceptionniste en vidéo"),
+        thumbnails: list[tuple[str, str, str]] = [(cls.VIDEO_THUMBNAIL, cls.VIDEO_LINK, "Votre site en vidéo")]
+        thumbnails.extend(
+            (thumbnail.thumbnail_variable, thumbnail.link_variable, thumbnail.alt_text)
+            for thumbnail in CampaignOffers.preview_thumbnails()
         )
         for thumbnail_key, link_key, alt_text in thumbnails:
             if thumbnail_key in values:
@@ -203,19 +192,19 @@ class EmailVariables:
         return label.split("/", 1)[1].split("/", 1)[0]
 
     @classmethod
-    def resolve_expiry_date(cls, db: Session, demo_link: str, assistant: AiAssistant | None) -> str:
+    def resolve_expiry_date(cls, db: Session, prospect: ProspectDB, demo_link: str, *, user_id: int) -> str:
         """
-        Resolve `{date_expiration}`: the day the linked demo — site or assistant — goes offline.
+        Resolve `{date_expiration}`: the day the linked demo — the site, or a module's — goes offline.
 
         A demo site is looked up by the slug of the link actually rendered in the email, so the
         announced date always matches the site the prospect will visit. Without a demo link, the
-        date is the one of the sender's active assistant demo for this prospect.
+        date is the one of the sender's module demo for this prospect (its receptionist…).
 
         Args:
             db: Active database session.
+            prospect: The prospect being emailed.
             demo_link: The `{lien_demo}` URL of this send, or "" when the prospect has none.
-            assistant: The sender's active assistant for this prospect
-                (``ai_assistant_service.get_active_for_prospect``), or None.
+            user_id: The sending user.
 
         Returns:
             The French expiry date ("12 octobre"), or "" without a resolvable demo.
@@ -225,60 +214,25 @@ class EmailVariables:
             site: DemoSite | None = db.execute(select(DemoSite).where(DemoSite.slug == slug)).scalar_one_or_none()
             if site is None:
                 return ""
-            return cls._expiry_label(site.demo_link_sent_at, site.expires_at)
-        if assistant is None:
-            return ""
-        return cls._expiry_label(assistant.demo_link_sent_at, assistant.expires_at)
+            return cls.expiry_label(site.demo_link_sent_at, site.expires_at)
+        return CampaignOffers.expiry_date_without_demo_link(db, prospect, user_id=user_id)
 
     @classmethod
-    def _expiry_label(cls, demo_link_sent_at: datetime | None, expires_at: datetime | None) -> str:
-        # Countdown not started (unsent demo): this very send starts the clock.
+    def expiry_label(cls, demo_link_sent_at: datetime | None, expires_at: datetime | None) -> str:
+        """
+        The French date a demo goes offline, as an email announces it.
+
+        Args:
+            demo_link_sent_at: When the demo's link was first sent, or None.
+            expires_at: When the demo expires, or None.
+
+        Returns:
+            The date (« 12 octobre »); a demo whose countdown has not started yet is announced
+            ``DEMO_SITE_TTL_DAYS`` from now, since this very send starts the clock.
+        """
         if demo_link_sent_at is None or expires_at is None:
             return cls.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
         return cls.format_expiry_date(expires_at)
-
-    @classmethod
-    def assistant_link_html(cls, assistant: AiAssistant | None, variant: str | None = None) -> str:
-        """
-        Resolve `{lien_assistant}`: a trackable link to the prospect's AI assistant demo.
-
-        Rendered as a real anchor (like `{lien_demo}`) so the click is tracked, its URL stamped with the
-        email channel and the A/B variant like the site's links; empty without an active assistant, so a
-        template using it simply renders nothing there.
-
-        Args:
-            assistant: The sender's active assistant for the prospect, or None.
-            variant: The send's A/B variant, or None outside an A/B campaign.
-
-        Returns:
-            The inline anchor HTML, or "" without an active assistant.
-        """
-        if assistant is None:
-            return ""
-        return cls.build_demo_link_html(email_tracked_link(ai_assistant_service.page_url(assistant.slug), variant))
-
-    @staticmethod
-    def assistant_video_urls(assistant: AiAssistant | None) -> tuple[str, str]:
-        """
-        An assistant's prospection video: (player page URL, thumbnail URL).
-
-        Empty strings without an active assistant or while its video is not ready — a template
-        pairing ``{vignette_video_assistant}`` with ``{lien_assistant}`` then degrades to that live
-        link, while a template with the video as its only door is held back by the queue guard until
-        the video exists.
-
-        Args:
-            assistant: The sender's active assistant for the prospect, or None.
-
-        Returns:
-            The (video page URL, thumbnail URL) pair, or ("", "").
-        """
-        from enums.demo_video_status import DemoVideoStatus
-        from services.assistant_video_service import public_thumbnail_url, video_page_url
-
-        if assistant is None or assistant.video_status != DemoVideoStatus.READY.value:
-            return "", ""
-        return video_page_url(assistant.slug), public_thumbnail_url(assistant.slug, assistant.video_generated_at)
 
     @staticmethod
     def display_website(url: str | None) -> str:
@@ -338,10 +292,9 @@ class EmailVariables:
         video_link: str = "",
         video_thumbnail_url: str = "",
         sale_price_cents: int | None = None,
-        assistant_monthly_price_cents: int | None = None,
         *,
         user_id: int,
-        include_assistant_video: bool = True,
+        include_video: bool = True,
         variant: str | None = None,
     ) -> dict[str, str]:
         """
@@ -350,10 +303,8 @@ class EmailVariables:
         `{salutation}` is always safe ("Bonjour" / "Bonjour Léo" / "Bonjour M. Guillaume"), while
         `{prenom}` and `{nom}` are empty when unknown. The video variables stay empty when the
         prospect has no generated clip — the queue guards prevent sending a template needing them.
-        `{lien_carte}` is empty, and the guards never send a template using it. The sender's active
-        assistant is looked up once, for all the assistant variables. The prices are written as the
-        prospect reads them in his country, without « ≈ » (« 500 € », « 470 CHF », « 800 $ CA »); `{prix_carte}` is the
-        platform's monthly loyalty-card price (``WALLET_SUBSCRIPTION_PRICE_CENTS``).
+        The price is written as the prospect reads it in his country, without « ≈ » (« 500 € »,
+        « 470 CHF », « 800 $ CA »). The product modules add their own variables after the core's.
 
         Args:
             db: Active database session.
@@ -362,25 +313,16 @@ class EmailVariables:
             video_link: URL of the tracked video player page.
             video_thumbnail_url: Absolute URL of the personalised thumbnail.
             sale_price_cents: The sender's website sale price in euro cents, rendered into {prix}; empty when unset.
-            assistant_monthly_price_cents: The sender's assistant price in euro cents, rendered into {prix_assistant}.
-            user_id: The sending user, whose own assistant the assistant variables resolve to.
-            include_assistant_video: The campaign's video toggle; off, the receptionist's video stays out.
-            variant: The send's A/B variant, stamped on the receptionist's links (the caller stamps the site's).
+            user_id: The sending user, whose own module demos the module variables resolve to.
+            include_video: The campaign's video toggle; off, the modules' videos stay out.
+            variant: The send's A/B variant, stamped on the modules' links (the caller stamps the site's).
 
         Returns:
             The variable name to value map, ready for template substitution.
         """
         first, last, gender = cls.resolved_contact(db, prospect.id)
-        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
-            db, prospect_id=prospect.id, user_id=user_id
-        )
-        assistant_video_link, assistant_video_thumbnail = (
-            cls.assistant_video_urls(assistant) if include_assistant_video else ("", "")
-        )
-        if assistant_video_link:
-            assistant_video_link = email_tracked_link(assistant_video_link, variant)
         country: CountryProfile = CountryProfiles.get(prospect.country)
-        return {
+        values: dict[str, str] = {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
             cls.LAST_NAME: last or "",
@@ -390,27 +332,18 @@ class EmailVariables:
             cls.PHONE: prospect.phone or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
-            cls.ASSISTANT_LINK: cls.assistant_link_html(assistant, variant),
-            cls.RECEPTIONIST_FIRST_NAME: assistant.assistant_name if assistant is not None else "",
-            cls.RECEPTIONIST: ReceptionistWording.receptionist(assistant),
-            cls.VIRTUAL_ASSISTANT: ReceptionistWording.virtual_assistant(assistant),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
-            cls.ASSISTANT_VIDEO_LINK: assistant_video_link,
-            cls.ASSISTANT_VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(
-                assistant_video_link, assistant_video_thumbnail, "Votre réceptionniste en vidéo"
-            ),
-            cls.CARD_LINK: "",
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: country.format_price_without_approximation(sale_price_cents)
             if sale_price_cents is not None
             else "",
-            cls.PRICE_ASSISTANT: (
-                country.format_price_without_approximation(assistant_monthly_price_cents)
-                if assistant_monthly_price_cents is not None
-                else ""
-            ),
-            cls.CARD_PRICE: country.format_price_without_approximation(settings.wallet_subscription_price_cents),
-            cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, assistant),
-            RegionalLexicon.COUNTRY_KEY: country.code,
         }
+        module_values: dict[str, str] = CampaignOffers.email_variables(
+            db, prospect, user_id=user_id, include_video=include_video, variant=variant
+        )
+        for name, value in module_values.items():
+            values.setdefault(name, value)
+        values[cls.EXPIRY_DATE] = cls.resolve_expiry_date(db, prospect, demo_link, user_id=user_id)
+        values[RegionalLexicon.COUNTRY_KEY] = country.code
+        return values

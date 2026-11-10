@@ -15,19 +15,17 @@ import services.sms_service as sms_module
 from core.config import settings
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_template_category import SmsTemplateCategory
-from models.ai_assistant import AiAssistant
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
-from services.ai_assistant.assistant_service import ai_assistant_service
 from services.sms.send_window import SmsSendWindow
 from services.sms.sms_provider import SmsSendResult
 from services.sms.templates import SmsTemplate
 from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_service import SmsService
 from services.sms_variables import SmsVariables
-from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
+from tests.sms_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
 _USER_ID = 7
 _FIXTURE_TEMPLATES: dict[str, SmsTemplate] = {
@@ -42,12 +40,6 @@ _FIXTURE_TEMPLATES: dict[str, SmsTemplate] = {
         name="Rappel court",
         category=SmsTemplateCategory.FOLLOW_UP,
         body="{salutation}, le site envoyé par email est toujours en ligne : {lien_demo} {signature}",
-    ),
-    "assistant-24-7": SmsTemplate(
-        key="assistant-24-7",
-        name="Réceptionniste",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, votre réceptionniste répond à vos clients : {lien_assistant} {signature}",
     ),
 }
 # Rendered with the « direct » fixture, a slug of this length bills one French segment and two Swiss ones.
@@ -614,42 +606,3 @@ def test_the_service_sms_refuses_a_missing_sender_a_second_segment_and_an_empty_
 
     assert (outcome.sent, outcome.reason) == (False, reason)
     assert provider.texts == []
-
-
-def test_a_receptionist_sms_looks_its_assistant_up_once(
-    db: Session, provider: AcceptingSmsProvider, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The template's fallback, the guard, the link and the countdown all read the same lookup."""
-    prospect = _prospect(db)
-    assistant = ai_assistant_service.create(
-        db,
-        user_id=_USER_ID,
-        business_name="Garage Martin",
-        prospect_id=prospect.id,
-        country="FR",
-        use_brand_color=False,
-    )
-    lookups: list[tuple[int, int]] = []
-
-    def counting_lookup(db: Session, *, prospect_id: int, user_id: int) -> AiAssistant | None:
-        lookups.append((prospect_id, user_id))
-        return assistant
-
-    monkeypatch.setattr(ai_assistant_service, "get_active_for_prospect", counting_lookup)
-
-    outcome = asyncio.run(
-        SmsService(provider=provider).send_to_prospect(
-            db,
-            user_id=_USER_ID,
-            prospect=prospect,
-            config=_config(db),
-            demo_url="",
-            cold=True,
-            template_key="assistant-24-7",
-        )
-    )
-
-    assert outcome.sent
-    assert lookups == [(prospect.id, _USER_ID)]
-    assert provider.texts[0].endswith("/s/ia/garage-martin")
-    assert assistant.demo_link_sent_at is not None

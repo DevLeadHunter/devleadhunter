@@ -74,7 +74,9 @@ class SmsTemplateResponse(BaseModel):
     recalls_an_email: bool = Field(
         default=False, description="Relance written as a reminder of an email: it cannot follow a first SMS"
     )
-    module: str = Field(default="websites", description="The module the template sells: websites or ai-assistant")
+    module: str = Field(
+        default="websites", description="The module the template sells: websites, or a product module's key"
+    )
 
 
 class SmsTemplatePreviewResponse(BaseModel):

@@ -61,8 +61,11 @@ def init_db():
     """
     Create the table of every model that has none yet; an existing table is never altered.
 
-    The ``models`` package imports every model, which registers its table.
+    The ``models`` package imports every core model, which registers its table; loading the installed product
+    modules registers theirs.
     """
     import models  # noqa: F401
+    from core.product_modules.registry import product_module_registry
 
+    product_module_registry.installed()
     Base.metadata.create_all(bind=engine)

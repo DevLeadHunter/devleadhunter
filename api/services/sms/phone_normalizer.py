@@ -521,7 +521,7 @@ class PhoneNumberPlans:
 
 
 def to_served_mobile(raw: str | None, *, country: str = "FR") -> str | None:
-    """E.164 form of a mobile the receptionist may text: France, Belgium, Luxembourg, Switzerland or Germany.
+    """E.164 form of a mobile a service alert may text: France, Belgium, Luxembourg, Switzerland or Germany.
 
     A landline of those countries (``+32 2 …``, ``+41 22 …``) and any number of another country are refused:
     an alert would either never arrive or be billed as international.

@@ -1,4 +1,4 @@
-"""Schemas shared by the prospection videos of the demo sites and of the receptionists."""
+"""Schemas shared by the prospection videos of the demo sites and of the product modules' demos."""
 
 from datetime import datetime
 

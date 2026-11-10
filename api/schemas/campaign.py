@@ -217,6 +217,14 @@ class CampaignSkippedProspect(BaseModel):
     name: str
 
 
+class CampaignOfferSkip(BaseModel):
+    """The prospects a product module's offer left out of the send queue."""
+
+    module_key: str
+    module_label: str
+    prospects: list[CampaignSkippedProspect] = Field(default_factory=list)
+
+
 class CampaignEnqueueOutcome(BaseModel):
     """What pushing newly added prospects into a launched campaign's send queue did."""
 
@@ -225,9 +233,8 @@ class CampaignEnqueueOutcome(BaseModel):
     skipped_no_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
     # Left out because their template is video-only and no prospection video is ready yet.
     skipped_no_video: list[CampaignSkippedProspect] = Field(default_factory=list)
-    # Left out because their template needs the prospect's AI assistant and none is active yet.
-    skipped_no_assistant: list[CampaignSkippedProspect] = Field(default_factory=list)
-    skipped_no_loyalty_card_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
+    # Left out because their template sells a product module's offer they lack (or the module is off).
+    skipped_without_offer: list[CampaignOfferSkip] = Field(default_factory=list)
     # Left out because another sellable module contacted them inside the cross-module lock window.
     skipped_locked: list[CampaignSkippedProspect] = Field(default_factory=list)
 

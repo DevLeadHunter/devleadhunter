@@ -78,18 +78,6 @@ async def create_checkout_session(
         )
 
 
-async def _welcome_assistant_client(db: Session, assistant_id: int | None) -> None:
-    """Email the business that just subscribed its install line and its client-space link; never fails the webhook."""
-    from models.ai_assistant import AiAssistant
-    from services.ai_assistant.client_space_service import ai_assistant_client_space_service
-
-    if assistant_id is None:
-        return
-    assistant = db.get(AiAssistant, assistant_id)
-    if assistant is not None:
-        await ai_assistant_client_space_service.try_send_welcome(db, assistant)
-
-
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,
@@ -153,42 +141,14 @@ async def stripe_webhook(
         if refunded_order_id is not None:
             return {"status": "success", "message": "Order refund processed"}
 
-        # AI-assistant subscription? Activate the local row on checkout, sync status on lifecycle events.
-        from services.assistant_subscription_service import assistant_subscription_service
+        # A product module's own subscriptions (the receptionist, the loyalty cards…), whether it is on or off:
+        # billing follows Stripe in every case.
+        from core.product_modules.registry import product_module_registry
 
-        event_type = event.get("type", "")
-        event_obj = (event.get("data") or {}).get("object") or {}
-        if event_type == "checkout.session.completed" and event_obj.get("mode") == "subscription":
-            activated = assistant_subscription_service.activate_from_session(db, event_obj)
-            if activated is not None:
-                from services.notification_service import notification_service
-
-                await notification_service.notify_assistant_subscription(
-                    db,
-                    user_id=activated.user_id,
-                    prospect_id=activated.prospect_id,
-                    fallback_name=activated.client_name or "Un client",
-                    amount_cents=activated.amount_cents,
-                    interval=activated.interval,
-                )
-                await _welcome_assistant_client(db, activated.ai_assistant_id)
-            return {"status": "success", "message": "Assistant subscription activated"}
-        if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
-            assistant_subscription_service.update_from_stripe_subscription(db, event_obj)
-            return {"status": "success", "message": "Assistant subscription synced"}
-        if event_type == "invoice.payment_failed":
-            past_due_subscription = assistant_subscription_service.record_payment_failure(db, event_obj)
-            if past_due_subscription is not None:
-                from services.notification_service import notification_service
-
-                await notification_service.notify_assistant_payment_failed(
-                    db,
-                    user_id=past_due_subscription.user_id,
-                    prospect_id=past_due_subscription.prospect_id,
-                    fallback_name=past_due_subscription.client_name or "Un client",
-                    invoice_id=event_obj["id"],
-                )
-                return {"status": "success", "message": "Assistant subscription payment failure recorded"}
+        for product_module in product_module_registry.installed():
+            module_message: str | None = await product_module.handle_stripe_event(db, event)
+            if module_message is not None:
+                return {"status": "success", "message": module_message}
 
         # Otherwise fall back to the credits purchase handler.
         success = payment_service.handle_webhook_event(db, event)

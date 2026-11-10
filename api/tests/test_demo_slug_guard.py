@@ -1,14 +1,27 @@
-"""Two prospects never share a demo slug across the site and receptionist modules; one prospect's site and
-receptionist may."""
+"""Two prospects never share a demo slug across the site and another module; one prospect's site and module demo
+may."""
 
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 
 from sqlalchemy.orm import Session
 
+from core.product_modules.contract import ProductModule
+from core.product_modules.registry import product_module_registry
 from models.demo_site import DemoSite
-from services.ai_assistant.assistant_service import ai_assistant_service
 from services.demo_site_service import demo_site_service
 from services.demo_slug_guard import DemoSlugGuard
+
+
+class _AnotherModule(ProductModule):
+    """A product module holding the « toitures-morel » demo of prospect 1."""
+
+    key: ClassVar[str] = "another-module"
+    label: ClassVar[str] = "Autre module"
+
+    def is_demo_slug_taken(self, db: Session, slug: str, *, prospect_id: int | None) -> bool:
+        """Whether the slug is « toitures-morel » and the new demo is not prospect 1's."""
+        return slug == "toitures-morel" and prospect_id != 1
 
 
 def _site(db: Session, *, slug: str, prospect_id: int | None) -> DemoSite:
@@ -25,24 +38,8 @@ def _site(db: Session, *, slug: str, prospect_id: int | None) -> DemoSite:
     return site
 
 
-def test_a_receptionist_shares_its_own_prospects_site_slug_never_another_prospects(db: Session) -> None:
-    _site(db, slug="garage-martin", prospect_id=1)
-
-    own = ai_assistant_service.create(
-        db, user_id=7, business_name="Garage Martin", prospect_id=1, country="FR", use_brand_color=False
-    )
-    another = ai_assistant_service.create(
-        db, user_id=7, business_name="Garage Martin", prospect_id=2, country="FR", use_brand_color=False
-    )
-
-    assert own.slug == "garage-martin"
-    assert another.slug == "garage-martin-2"
-
-
-def test_a_site_never_takes_another_prospects_receptionist_slug(db: Session) -> None:
-    ai_assistant_service.create(
-        db, user_id=7, business_name="Toitures Morel", prospect_id=1, country="FR", use_brand_color=False
-    )
+def test_a_site_never_takes_another_prospects_module_demo_slug(db: Session) -> None:
+    product_module_registry.use([_AnotherModule()])
 
     assert demo_site_service.unique_slug(db, "Toitures Morel", 1) == "toitures-morel"
     assert demo_site_service.unique_slug(db, "Toitures Morel", 2) == "toitures-morel-2"

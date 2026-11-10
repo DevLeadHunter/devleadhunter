@@ -1,9 +1,9 @@
-"""Shared building blocks for the prospection-video pipelines (site + assistant).
+"""Shared building blocks for the prospection-video pipelines (the site's, and a product module's own).
 
-Both :mod:`services.demo_video_service` and :mod:`services.assistant_video_service` are built by the owner's desktop
-app the same way — the same limits on the middle a capture fills and on the time a build may take, the same record of
-the builds under way — and differ only in *what* they capture and *where* they store it. Those common mechanics live
-here so neither module reaches into the other's privates.
+:mod:`services.demo_video_service` and a product module's video service (its receptionist's…) are built by the
+owner's desktop app the same way — the same limits on the middle a capture fills and on the time a build may take,
+the same record of the builds under way — and differ only in *what* they capture and *where* they store it. Those
+common mechanics live here so no module reaches into another's privates.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import TypeAlias
 
 from core.clock import naive_utc_now
 
-# Minimum duration of the "middle" segment (site scroll / assistant answering) for a capture to mean something.
+# Minimum duration of the "middle" segment (site scroll, a module's own scene) for a capture to mean something.
 MIN_SCROLL_SECONDS = 6.0
 
 # A render taking longer is stuck: it is abandoned and marked failed (the desktop app stops waiting at the same point).
@@ -27,12 +27,17 @@ GENERATION_OVERRUN_MESSAGE = (
 # taken for closed mid-build, and the request is offered again.
 _DESKTOP_BUILD_LIFETIME: timedelta = timedelta(minutes=25)
 
-# A generation is known by its kind of video and the id of the demo site or receptionist it presents.
+# A generation is known by its kind of video and the id of the demo site (or module demo) it presents.
 GenerationKey: TypeAlias = tuple[str, int]
 
 
 class VideoGenerationError(Exception):
     """Raised when a step of a video pipeline fails (message shown in-app)."""
+
+
+class VideoCaptureError(Exception):
+    """Raised when the middle of a prospection video cannot be filmed (message shown in-app); a module's own
+    capture raises a subclass."""
 
 
 class DesktopVideoBuilds:

@@ -29,7 +29,7 @@ from services.sms_automation_service import sms_automation_service
 from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_relance_service import sms_relance_service
 from services.sms_service import sms_service
-from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
+from tests.sms_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
 _USER_ID = 7
 _NOW: datetime = datetime.now(UTC).replace(tzinfo=None)

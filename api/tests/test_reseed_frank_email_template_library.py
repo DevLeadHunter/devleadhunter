@@ -132,20 +132,6 @@ def test_the_kept_angles_are_rewritten_in_place_and_the_frank_templates_are_adde
     assert active_library_names >= set(_LIBRARY_BY_NAME)
 
 
-def test_the_receptionist_templates_are_renamed_on_their_own_row(
-    engine: Engine, db: Session, seeded_admin: dict[str, int]
-) -> None:
-    _run_twice(engine)
-
-    rows = _rows_by_id(db)
-    renamed = rows[seeded_admin["old_receptionist"]]
-    assert renamed.name == "Réceptionniste IA - le soir, personne ne répond"
-    assert renamed.body_html == _LIBRARY_BY_NAME[renamed.name]["body_html"]
-    assert renamed.is_active is True
-    assert db.execute(select(Campaign.ab_template_id_b)).scalar_one() == seeded_admin["old_receptionist"]
-    assert not any(row.name.startswith("Assistant IA") for row in rows.values())
-
-
 def test_only_the_never_used_leftovers_are_deactivated(
     engine: Engine, db: Session, seeded_admin: dict[str, int]
 ) -> None:

@@ -20,8 +20,10 @@ class Settings(BaseSettings):
         cors_origins_str: Comma-separated string of allowed CORS origins
     """
 
+    # ``extra="ignore"``: the product modules read their own keys from the same .env (each with its own settings
+    # class), so a key the core does not know is a module's, not a typo to refuse.
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, populate_by_name=True
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, populate_by_name=True, extra="ignore"
     )
 
     env: str = "development"
@@ -264,37 +266,26 @@ class Settings(BaseSettings):
         description="Preferred Groq vision model id for photo labelling (verified against the live model list)",
     )
 
-    # Mistral (La Plateforme) — the AI assistant module's chat, quote photos and request analysis.
-    # Without a key those calls stay on Groq; an assistant flagged « EU only » then gets no model answer.
+    # Mistral (La Plateforme) — the EU model provider tried first (photo labels, site texts, and the product modules'
+    # own calls); without a key those calls stay on Groq.
     mistral_api_key: str | None = Field(
         default=None,
         alias="MISTRAL_API_KEY",
-        description="Mistral La Plateforme API key, used first by the AI assistant module (Groq is the fallback)",
+        description="Mistral La Plateforme API key, the provider tried first (Groq is the fallback)",
     )
     # Ministral 3 14B is what La Plateforme's free plan serves (30 requests and 937k tokens a minute, verified
-    # 27/09/2026): Mistral Small, Medium and Large answer 429 or 403 there. It follows the receptionist's markers
-    # and reads photos. Once pay-as-you-go is enabled, MISTRAL_CHAT_MODEL=mistral-small-latest is the upgrade.
+    # 27/09/2026): Mistral Small, Medium and Large answer 429 or 403 there. It follows instructions closely and reads
+    # photos. Once pay-as-you-go is enabled, MISTRAL_CHAT_MODEL=mistral-small-latest is the upgrade.
     mistral_chat_model: str = Field(
         default="ministral-14b-2512",
         alias="MISTRAL_CHAT_MODEL",
-        description="Mistral model answering the assistant visitors and analysing their requests",
+        description="Mistral chat model (site texts, and the product modules' conversations)",
     )
     mistral_vision_model: str = Field(
         default="ministral-14b-2512",
         alias="MISTRAL_VISION_MODEL",
-        description="Mistral multimodal model describing the quote photos (Ministral 3 reads images)",
+        description="Mistral multimodal model describing photos (Ministral 3 reads images)",
     )
-    # Estimated prices, in EUR per million tokens, to log the cost of each assistant model call.
-    mistral_eur_per_mtok_in: float = Field(default=0.1, alias="MISTRAL_EUR_PER_MTOK_IN")
-    mistral_eur_per_mtok_out: float = Field(default=0.3, alias="MISTRAL_EUR_PER_MTOK_OUT")
-    groq_eur_per_mtok_in: float = Field(default=0.15, alias="GROQ_EUR_PER_MTOK_IN")
-    groq_eur_per_mtok_out: float = Field(default=0.75, alias="GROQ_EUR_PER_MTOK_OUT")
-    assistant_daily_visitor_message_cap: int = Field(
-        default=400,
-        alias="ASSISTANT_DAILY_VISITOR_MESSAGE_CAP",
-        description="Visitor messages an assistant answers with the model per business day, before a fixed reply",
-    )
-
     # Fallback .fr first-year price (HT, EUR) shown before purchase when the live OVH public
     # catalog is unreachable. The catalog (services/domain/ovh_catalog.py) is the source of truth.
     domain_fr_price_eur: float = Field(
@@ -499,18 +490,6 @@ class Settings(BaseSettings):
         alias="GOOGLE_POSTMASTER_REDIRECT_URI",
         description="Google OAuth redirect URI for Postmaster Tools (Santé email)",
     )
-    google_calendar_redirect_uri: str = Field(
-        default="http://localhost:8000/api/v1/ai-assistants/calendar/google/callback",
-        alias="GOOGLE_CALENDAR_REDIRECT_URI",
-        description="Google OAuth redirect URI of the assistants' agendas (connected from the client space)",
-    )
-    # Empty: no receptionist can connect a Gmail mailbox.
-    google_mailbox_redirect_uri: str = Field(
-        default="",
-        alias="GOOGLE_MAILBOX_REDIRECT_URI",
-        description="Google OAuth redirect URI of the receptionists' Gmail mailboxes (connected from the client space)",
-    )
-
     # Encryption settings (for OAuth tokens)
     encryption_key: str | None = Field(
         default=None,
@@ -536,12 +515,6 @@ class Settings(BaseSettings):
         alias="QONTO_ENVIRONMENT",
         description="Qonto environment ('sandbox' | 'production'). Never inferred — declared, so a "
         "missing staging token in sandbox fails loudly instead of hitting the real organization.",
-    )
-
-    wallet_subscription_price_cents: int = Field(
-        default=1900,
-        alias="WALLET_SUBSCRIPTION_PRICE_CENTS",
-        description="Monthly Apple Wallet subscription price in cents (editable)",
     )
 
     @property

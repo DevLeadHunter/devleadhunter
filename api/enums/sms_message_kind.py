@@ -12,7 +12,7 @@ class SmsMessageKind(str, Enum):
         PROSPECTING: A manual composer SMS — it ends the prospect's automated sequence.
         FIRST_CONTACT: The first prospecting message a prospect ever receives (cold SMS, first SMS campaign).
         FOLLOW_UP: The one SMS relance after a first contact (email or SMS) — it ends the sequence.
-        SERVICE: An alert the recipient subscribed to (a sold assistant's owner) — none of the above.
+        SERVICE: An alert the recipient subscribed to (the client of a product module) — none of the above.
     """
 
     PROSPECTING = "prospecting"

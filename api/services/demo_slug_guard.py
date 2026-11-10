@@ -1,9 +1,8 @@
-"""One tracking key per prospect across the two modules' demo pages.
+"""One tracking key per prospect across the demo pages of every module.
 
-The demo host tracks both modules' pages (a site, a receptionist and their videos) by slug, and the
-API reads a prospect's behaviour back by that slug. Each module keeps its slugs unique on its own
-table, so without this guard a new receptionist could take the slug of another prospect's site
-(and the reverse) and mix their visits.
+The demo host tracks every module's pages (a site and its video, a receptionist…) by slug, and the API reads a
+prospect's behaviour back by that slug. Each module keeps its slugs unique on its own table, so without this guard a
+new module demo could take the slug of another prospect's site (and the reverse) and mix their visits.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from models.ai_assistant import AiAssistant
+from core.product_modules.registry import product_module_registry
 from models.demo_site import DemoSite
 
 
@@ -21,9 +20,9 @@ class DemoSlugGuard:
     @staticmethod
     def is_used_by_another_prospect(db: Session, slug: str, prospect_id: int | None) -> bool:
         """
-        Whether a site or a receptionist of another prospect already holds this slug.
+        Whether a site or a product-module demo of another prospect already holds this slug.
 
-        A site and a receptionist of the same prospect may share it: their visits are that prospect's either way.
+        A site and a module demo of the same prospect may share it: their visits are that prospect's either way.
 
         Args:
             db: Active database session.
@@ -33,10 +32,12 @@ class DemoSlugGuard:
         Returns:
             True when a demo of another prospect, or of no prospect, holds the slug.
         """
-        for model in (DemoSite, AiAssistant):
-            holders = db.query(model.id).filter(model.slug == slug)
-            if prospect_id is not None:
-                holders = holders.filter(or_(model.prospect_id.is_(None), model.prospect_id != prospect_id))
-            if holders.first() is not None:
-                return True
-        return False
+        holders = db.query(DemoSite.id).filter(DemoSite.slug == slug)
+        if prospect_id is not None:
+            holders = holders.filter(or_(DemoSite.prospect_id.is_(None), DemoSite.prospect_id != prospect_id))
+        if holders.first() is not None:
+            return True
+        return any(
+            module.is_demo_slug_taken(db, slug, prospect_id=prospect_id)
+            for module in product_module_registry.installed()
+        )

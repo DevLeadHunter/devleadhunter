@@ -21,9 +21,8 @@ HEIGHT = 720
 FPS = 30
 
 # Email-thumbnail pill label, per module (« Bonjour {Prénom} — {label} »). The montage is shared, so
-# each caller passes its own; the default keeps the site wording for callers that don't.
+# each caller passes its own (a product module its own wording); the default keeps the site wording.
 THUMBNAIL_LABEL_SITE = "votre site en vidéo"
-THUMBNAIL_LABEL_ASSISTANT = "votre réceptionniste en vidéo"
 # The thumbnail pill shrinks from the first size down to the second until it fits a long first name.
 _THUMBNAIL_FONT_SIZE = 44
 _THUMBNAIL_MIN_FONT_SIZE = 28
@@ -31,7 +30,7 @@ _THUMBNAIL_MIN_FONT_SIZE = 28
 # Webcam picture-in-picture bubble during the captured segment.
 PIP_SIZE = 260
 PIP_MARGIN = 24
-# Bottom corner of the webcam and photo bubbles: the receptionist video takes the right one, clear of its chat.
+# Bottom corner of the webcam and photo bubbles: a module's video may take the right one, clear of its scene.
 PIP_CORNER_LEFT = "left"
 PIP_CORNER_RIGHT = "right"
 
@@ -72,7 +71,7 @@ def as_background_priority_process(command: list[str]) -> tuple[list[str], dict[
 
 
 def x264_encode_flags(fps: int) -> list[str]:
-    """Shared x264 flags for assembling a frame sequence into an mp4 (site + assistant captures)."""
+    """Shared x264 flags for assembling a frame sequence into an mp4 (site and product-module captures)."""
     return ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-r", str(fps)]
 
 
@@ -475,7 +474,7 @@ def compose_final(
 
     Blocking (ffmpeg + Pillow) — callers run it in a worker thread. Reused by the
     VPS and the desktop sidecar, which passes its own bundled ``ffmpeg_path``.
-    ``thumbnail_label`` sets the email pill wording per module (site vs assistant) and
+    ``thumbnail_label`` sets the email pill wording per module (the site's, a product module's) and
     ``pip_corner`` the bottom corner of the webcam and photo bubbles.
 
     Raises:

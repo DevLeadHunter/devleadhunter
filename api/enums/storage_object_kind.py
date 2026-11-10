@@ -4,18 +4,13 @@ from enum import Enum
 
 
 class StorageObjectKind(str, Enum):
-    """What an object of the bucket is, as the storage page files and filters it."""
+    """What an object of the bucket is, as the storage page files and filters it (a product module adds its own)."""
 
     WEBSITE_VIDEO = "website_video"
     WEBSITE_THUMBNAIL = "website_thumbnail"
     WEBSITE_BACKGROUND = "website_background"
-    ASSISTANT_VIDEO = "assistant_video"
-    ASSISTANT_THUMBNAIL = "assistant_thumbnail"
     PRESENTER = "presenter"
     SUPPORT = "support"
     PROSPECT_PHOTO = "prospect_photo"
-    ASSISTANT_PHOTO = "assistant_photo"
-    ASSISTANT_DOCUMENT = "assistant_document"
-    ASSISTANT_AVATAR = "assistant_avatar"
     MANUAL = "manual"
     OTHER = "other"

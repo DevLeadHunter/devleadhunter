@@ -24,10 +24,7 @@ from services.email_variables import EmailVariables
 from services.unsubscribe_service import unsubscribe_service
 
 _DEMO_URL = "https://demo.example/menuiserie-lefort?src=email"
-_ASSISTANT_URL = "https://demo.example/ia/menuiserie-lefort?src=email"
-_CARD_URL = "https://demo.example/c/menuiserie-lefort?src=email"
 _VIDEO_URL = "https://demo.example/v/menuiserie-lefort?src=email"
-_ASSISTANT_VIDEO_URL = "https://demo.example/va/menuiserie-lefort?src=email"
 _SIGNATURE = (
     '<div style="margin-top:16px;"><!--StartFragment--><table><tr><td>Léo Guillaume</td></tr></table><br></div>'
 )
@@ -44,22 +41,11 @@ def _variables() -> dict[str, str]:
         EmailVariables.TRADE: "menuisier",
         EmailVariables.OLD_WEBSITE: "menuiserie-lefort.example",
         EmailVariables.DEMO_LINK: EmailVariables.build_demo_link_html(_DEMO_URL),
-        EmailVariables.ASSISTANT_LINK: EmailVariables.build_demo_link_html(_ASSISTANT_URL),
-        EmailVariables.CARD_LINK: EmailVariables.build_demo_link_html(_CARD_URL),
-        EmailVariables.RECEPTIONIST_FIRST_NAME: "Léa",
-        EmailVariables.RECEPTIONIST: "une réceptionniste",
-        EmailVariables.VIRTUAL_ASSISTANT: "une assistante virtuelle",
         EmailVariables.VIDEO_LINK: _VIDEO_URL,
         EmailVariables.VIDEO_THUMBNAIL: EmailVariables.build_video_thumbnail_html(
             _VIDEO_URL, "https://cdn.example/t.jpg"
         ),
-        EmailVariables.ASSISTANT_VIDEO_LINK: _ASSISTANT_VIDEO_URL,
-        EmailVariables.ASSISTANT_VIDEO_THUMBNAIL: EmailVariables.build_video_thumbnail_html(
-            _ASSISTANT_VIDEO_URL, "https://cdn.example/ta.jpg", "Votre réceptionniste en vidéo"
-        ),
         EmailVariables.PRICE: "500 €",
-        EmailVariables.PRICE_ASSISTANT: "29 €",
-        EmailVariables.CARD_PRICE: "19 €",
         EmailVariables.EXPIRY_DATE: "2 novembre",
     }
 
@@ -121,34 +107,12 @@ def test_a_follow_up_without_a_closing_question_gets_price_and_date() -> None:
     assert _row_labels(_dressed("Franc - relance")) == ["Prix", "Date"]
 
 
-def test_a_price_written_before_the_link_keeps_the_email_as_text() -> None:
-    html = _dressed("Réceptionniste IA - le prix, sans détour")
-    assert _row_labels(html) == []
-    assert '<strong style="font-weight:600;color:#141414;">29 €</strong>' in html
-    assert ">Parler à Léa</a>" in html
-
-
-def test_the_table_starts_after_the_last_demo_link() -> None:
-    html = _dressed("Réceptionniste IA - le soir, personne ne répond")
-    assert _row_labels(html) == ["Prix", "Date", "Réponse"]
-    button_at = html.index(">Parler à Léa</a>")
-    thumbnail_at = html.index("<img ")
-    table_at = html.index("L'essentiel")
-    assert button_at < thumbnail_at < table_at
-
-
 def test_a_video_email_keeps_its_thumbnail_and_gets_no_button() -> None:
     html = _dressed("Vidéo - je vous montre")
     assert _row_labels(html) == ["Prix", "Date", "Réponse"]
     assert 'width="520"' in html and "max-width:520px" in html
     assert "La vidéo : <a" in html
     assert "border-radius:8px" not in html
-
-
-def test_a_loyalty_card_email_gets_its_own_button() -> None:
-    html = _dressed("Carte fidélité - premier contact franc")
-    assert ">Voir ma carte</a>" in html
-    assert _row_labels(html)[0] == "Prix"
 
 
 def test_the_card_layout_keeps_the_text_and_emphasises_price_and_date() -> None:

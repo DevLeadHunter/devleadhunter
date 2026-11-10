@@ -6,29 +6,24 @@ follow-up family for prospects who ignored the first message. Every template fit
 GSM-7 segment in France (160 characters, opt-out mention included), billed as one SMS.
 The sending service (``services/sms_service.py``) drops the first name when that saves a
 segment, and allows two segments for what still overflows (a long business name, the
-longer Swiss price and opt-out mention); the service messages (receptionist alerts) keep
+longer Swiss price and opt-out mention); the service messages (a module's alerts) keep
 one. Every template gives:
-  - what was prepared, through ONE short link (``{lien_demo}``, ``{lien_video}``,
-    ``{lien_assistant}``, ``{lien_video_assistant}``, ``{lien_carte}``, already in the
-    branded ``demo.dibodev.fr/s/…`` form without scheme, handled by the callers);
-  - the price (``{prix}`` once; ``{prix_assistant}`` or ``{prix_carte}`` a month);
+  - what was prepared, through ONE short link (``{lien_demo}``, ``{lien_video}``, already
+    in the branded ``demo.dibodev.fr/s/…`` form without scheme, handled by the callers);
+  - the price (``{prix}``, once);
   - how to answer: the alphanumeric sender (« Dibodev ») receives no reply, so the
     message ends on the sender's first name and public phone, « {signature}, {telephone} »
     (``users.contact_phone``, the one shown on the demo banner). A template using it needs
     that phone to be set.
-The receptionist goes by its first name and « réceptionniste IA »: no word agrees with its
-gender. The loyalty-card family (``carte-…``) names the iPhone (the card lives in Apple
-Wallet) and never leaves without the prospect's card demo. No withdrawal day: the email
-gives it.
+No withdrawal day: the email gives it. A product module adds its own family and variables
+(its ``CampaignOffer``), held to the same rules.
 Trust rules kept from the first library: an action at the first person, no imperative
 (« voici », « cliquez », « ici »), no artificial urgency, GSM-7 transliteration at send
 time. smsmode appends the opt-out mention at send time (``body.stop``), never written
 here; the budget tests reserve its room in France (14 characters) and Switzerland (25).
 
-Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {lien_video_assistant} {lien_carte} {prenom_receptionniste} {receptionniste}
-{assistant_virtuel} {ancien_site} {prix} {prix_assistant} {prix_carte} {date_expiration}
-{telephone} {signature}.
+Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_video}
+{ancien_site} {prix} {telephone} {signature}, plus those of the installed product modules.
 """
 
 from __future__ import annotations
@@ -55,7 +50,7 @@ _SIGN_OFF: str = "{signature}, {telephone}"
 class SmsTemplate:
     """One library template: a stable key, a display name, its touch and its body.
 
-    A template built around ``{lien_video}`` or ``{lien_video_assistant}`` names a
+    A template built around ``{lien_video}`` (or a module's video link) names a
     ``fallback_key``: the template actually rendered for a prospect whose video is not
     generated (a video body with an empty link would send a broken message).
 
@@ -120,61 +115,6 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body="{salutation}, j'ai refait votre site en plus moderne : {lien_demo} {prix} une fois. " + _SIGN_OFF,
     ),
     SmsTemplate(
-        key="assistant-24-7",
-        name="Réceptionniste IA - le soir, personne ne répond",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, {prenom_receptionniste}, votre réceptionniste IA, répond le soir : {lien_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
-        key="assistant-langues",
-        name="Réceptionniste IA - dans leur langue",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, {prenom_receptionniste}, votre réceptionniste IA multilingue : {lien_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
-        key="assistant-demandes",
-        name="Réceptionniste IA - devis par photo",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, {prenom_receptionniste}, réceptionniste IA, prend vos demandes par photo : {lien_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
-        key="assistant-video",
-        name="Réceptionniste IA - en vidéo",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, {prenom_receptionniste}, votre réceptionniste IA, en 30 s de vidéo : {lien_video_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-        fallback_key="assistant-24-7",
-    ),
-    SmsTemplate(
-        key="carte-direct",
-        name="Carte fidélité - premier contact franc",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, j'ai créé votre carte fidélité iPhone : {lien_carte} {prix_carte}/mois, 1er mois offert. "
-            + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
-        key="carte-sans-appli",
-        name="Carte fidélité - sans appli",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, votre carte fidélité iPhone sans appli : {lien_carte} {prix_carte}/mois, essai 1 mois. "
-            + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
         key="rappel-court",
         name="Rappel court",
         category=SmsTemplateCategory.FOLLOW_UP,
@@ -208,54 +148,6 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         category=SmsTemplateCategory.FOLLOW_UP,
         body="{salutation}, votre nouveau site est toujours en ligne : {lien_demo} {prix} une fois. " + _SIGN_OFF,
     ),
-    SmsTemplate(
-        key="assistant-relance",
-        name="Réceptionniste IA - relance",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, après mon email, {prenom_receptionniste} (IA) répond toujours : {lien_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-        recalls_an_email=True,
-    ),
-    SmsTemplate(
-        key="assistant-relance-video",
-        name="Réceptionniste IA - relance vidéo",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, la vidéo de mon email : {prenom_receptionniste}, réceptionniste IA : {lien_video_assistant} "
-            "{prix_assistant}/mois. " + _SIGN_OFF
-        ),
-        fallback_key="assistant-relance",
-        recalls_an_email=True,
-    ),
-    SmsTemplate(
-        key="assistant-prix-cash",
-        name="Réceptionniste IA - le prix, sans détour",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, {prenom_receptionniste}, votre réceptionniste IA : {prix_assistant}/mois, 1er mois "
-            "remboursé. {lien_assistant} " + _SIGN_OFF
-        ),
-    ),
-    SmsTemplate(
-        key="carte-relance",
-        name="Carte fidélité - relance franche",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, la carte fidélité iPhone de mon email : {lien_carte} {prix_carte}/mois, 1er mois offert. "
-            + _SIGN_OFF
-        ),
-        recalls_an_email=True,
-    ),
-    SmsTemplate(
-        key="carte-rappel-court",
-        name="Carte fidélité - rappel court",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, votre carte fidélité iPhone : {lien_carte} {prix_carte}/mois sans engagement. " + _SIGN_OFF
-        ),
-    ),
 ]
 
 
@@ -268,9 +160,10 @@ def list_sms_templates(category: SmsTemplateCategory | None = None) -> list[SmsT
     Returns:
         The templates, in library order.
     """
+    library: list[SmsTemplate] = _library_with_modules()
     if category is None:
-        return list(SMS_TEMPLATE_LIBRARY)
-    return [template for template in SMS_TEMPLATE_LIBRARY if template.category == category]
+        return library
+    return [template for template in library if template.category == category]
 
 
 def find_sms_template(key: str) -> SmsTemplate | None:
@@ -282,26 +175,32 @@ def find_sms_template(key: str) -> SmsTemplate | None:
     Returns:
         The template, or ``None`` when unknown.
     """
-    return next((template for template in SMS_TEMPLATE_LIBRARY if template.key == key), None)
+    return next((template for template in _library_with_modules() if template.key == key), None)
+
+
+def _library_with_modules() -> list[SmsTemplate]:
+    """The core library followed by the templates of the installed product modules."""
+    from services.campaign_offers import CampaignOffers
+
+    return [*SMS_TEMPLATE_LIBRARY, *CampaignOffers.sms_templates()]
 
 
 def resolve_sms_template(
-    template: SmsTemplate, *, video_ready: bool, assistant_video_ready: bool = False
+    template: SmsTemplate, *, video_ready: bool, is_module_video_missing: bool = False
 ) -> SmsTemplate:
     """The template to actually render: its fallback when it links a video the prospect lacks.
 
     Args:
         template: The template the user picked.
         video_ready: Whether the prospect's site prospection video is generated.
-        assistant_video_ready: Whether the prospect's receptionist video is generated.
+        is_module_video_missing: Whether it links a product module's video the prospect lacks.
 
     Returns:
-        *template* itself, or its declared fallback when the body needs ``{lien_video}`` or
-        ``{lien_video_assistant}`` and that video does not exist (the original when no fallback is declared).
+        *template* itself, or its declared fallback when the body needs ``{lien_video}`` or a module video
+        that does not exist (the original when no fallback is declared).
     """
     is_site_video_missing = template.uses("lien_video") and not video_ready
-    is_assistant_video_missing = template.uses("lien_video_assistant") and not assistant_video_ready
-    if template.fallback_key is None or not (is_site_video_missing or is_assistant_video_missing):
+    if template.fallback_key is None or not (is_site_video_missing or is_module_video_missing):
         return template
     return find_sms_template(template.fallback_key) or template
 

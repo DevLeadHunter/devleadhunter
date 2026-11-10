@@ -10,7 +10,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from api.v1.routes.ai_assistant_common import client_ip
+from core.client_ip import client_ip
 from core.database import get_db
 from schemas.site_contact import SiteContactRequest, SiteContactResponse
 from services.rate_limiter import site_contact_limiter

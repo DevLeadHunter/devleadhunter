@@ -14,19 +14,18 @@ from typing import Any, Protocol
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
+from core.product_modules.contract import DeliverableExpiry, ProductModule, StorageKind
+from core.product_modules.registry import product_module_registry
 from enums.demo_site_status import DemoSiteStatus
 from enums.storage_object_kind import StorageObjectKind
-from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from models.user import User
-from services.ai_assistant.photo_service import RETENTION as PHOTO_RETENTION
 from services.auth_service import require_admin
 from services.demo_site_service import DemoSiteService
 from services.manual_upload_service import manual_upload_service
@@ -44,11 +43,28 @@ _DEMO_DELIVERABLE_KINDS: tuple[StorageObjectKind, ...] = (
     StorageObjectKind.WEBSITE_THUMBNAIL,
     StorageObjectKind.WEBSITE_BACKGROUND,
 )
-# Same for the receptionist's video and thumbnail, anchored on the receptionist demo they belong to.
-_ASSISTANT_DELIVERABLE_KINDS: tuple[StorageObjectKind, ...] = (
-    StorageObjectKind.ASSISTANT_VIDEO,
-    StorageObjectKind.ASSISTANT_THUMBNAIL,
-)
+# What the storage page shows of each category of the core (the product modules declare their own).
+_CORE_KIND_DISPLAY: dict[StorageObjectKind, tuple[str, str | None, str, str]] = {
+    # kind: (label, filter prefix, filter label, media)
+    StorageObjectKind.WEBSITE_VIDEO: ("Vidéo", "videos/websites/", "Vidéos", "video"),
+    StorageObjectKind.WEBSITE_THUMBNAIL: ("Vignette", "images/websites/", "Vignettes", "image"),
+    StorageObjectKind.WEBSITE_BACKGROUND: ("Fond de montage", None, "", "video"),
+    StorageObjectKind.PRESENTER: ("Clip webcam", "videos/presenter/", "Clips webcam", "video"),
+    StorageObjectKind.PROSPECT_PHOTO: ("Photo prospect", "images/prospects/", "Photos prospects", "image"),
+    StorageObjectKind.SUPPORT: ("Pièce jointe", "images/support/", "Support", "image"),
+    StorageObjectKind.MANUAL: ("Import manuel", "uploads/manual/", "Imports manuels", "file"),
+    StorageObjectKind.OTHER: ("Fichier", None, "", "file"),
+}
+
+
+def _module_storage_kinds() -> list[tuple[ProductModule, StorageKind]]:
+    """Every kind of object the installed product modules store, in module order."""
+    return [(module, kind) for module in product_module_registry.installed() for kind in module.storage_kinds()]
+
+
+def _module_kind_of(key: str) -> tuple[ProductModule, StorageKind] | None:
+    """The product-module kind an object key belongs to, or None for a core object."""
+    return next(((module, kind) for module, kind in _module_storage_kinds() if key.startswith(kind.prefix)), None)
 
 
 class _DemoTtl(Protocol):
@@ -123,59 +139,43 @@ def _demo_ttl_by_slug(db: Session, slugs: set[str]) -> dict[str, Any]:
     return {row.slug: row for row in rows}
 
 
-def _assistant_ttl_by_slug(db: Session, slugs: set[str]) -> dict[str, Any]:
-    """Load the TTL-relevant columns and display name of the receptionists behind a set of slugs.
-
-    A deleted receptionist is left out, so its files read as leftovers the purge should have removed.
-
-    Args:
-        db: Active database session.
-        slugs: Receptionist slugs to look up.
-
-    Returns:
-        A ``slug -> row`` map exposing ``status``, ``demo_link_sent_at``, ``expires_at`` and ``name``.
-    """
-    if not slugs:
-        return {}
-    rows = (
-        db.query(
-            AiAssistant.slug,
-            AiAssistant.status,
-            AiAssistant.demo_link_sent_at,
-            AiAssistant.expires_at,
-            func.coalesce(ProspectDB.name, AiAssistant.business_name).label("name"),
-        )
-        .outerjoin(ProspectDB, ProspectDB.id == AiAssistant.prospect_id)
-        .filter(AiAssistant.slug.in_(slugs), AiAssistant.deleted_at.is_(None))
-        .all()
-    )
-    return {row.slug: row for row in rows}
-
-
-def _deliverable_slugs(objects: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
-    """Split the slugs of a listing's deliverables between the site demos and the receptionists.
+def _deliverable_slugs(objects: list[dict[str, Any]]) -> tuple[set[str], dict[str, set[str]]]:
+    """Split the slugs of a listing's deliverables between the site demos and each product module's demos.
 
     Args:
         objects: Raw R2 listing entries.
 
     Returns:
-        The site slugs and the receptionist slugs (one slug may name both, for the same prospect).
+        The site slugs, and the slugs of each module by module key (one slug may name both, for the same
+        prospect).
     """
     site_slugs: set[str] = set()
-    assistant_slugs: set[str] = set()
+    module_slugs: dict[str, set[str]] = {}
     for item in objects:
         slug = _slug_from_key(item["key"])
         if slug is None:
             continue
-        if _classify(item["key"]) in _ASSISTANT_DELIVERABLE_KINDS:
-            assistant_slugs.add(slug)
+        module_kind = _module_kind_of(item["key"])
+        if module_kind is not None:
+            module_slugs.setdefault(module_kind[0].key, set()).add(slug)
         else:
             site_slugs.add(slug)
-    return site_slugs, assistant_slugs
+    return site_slugs, module_slugs
+
+
+def _module_deliverable_expiries(
+    db: Session, module_slugs: dict[str, set[str]], now: datetime
+) -> dict[str, dict[str, DeliverableExpiry]]:
+    """Ask each product module when its demo deliverables expire, by module key then slug."""
+    expiries: dict[str, dict[str, DeliverableExpiry]] = {}
+    for module_key, slugs in module_slugs.items():
+        module = product_module_registry.get(module_key)
+        expiries[module_key] = module.deliverable_expiries(db, slugs, now) if module is not None else {}
+    return expiries
 
 
 def _expired_deliverable_keys(db: Session, objects: list[dict[str, Any]], now: datetime) -> list[str]:
-    """Pick the site and receptionist deliverable keys whose demo has expired (or vanished), for health and purge.
+    """Pick the site and module deliverable keys whose demo has expired (or vanished), for health and purge.
 
     Args:
         db: Active database session.
@@ -185,26 +185,40 @@ def _expired_deliverable_keys(db: Session, objects: list[dict[str, Any]], now: d
     Returns:
         The object keys that should no longer exist.
     """
-    site_slugs, assistant_slugs = _deliverable_slugs(objects)
+    site_slugs, module_slugs = _deliverable_slugs(objects)
     demo_by_slug = _demo_ttl_by_slug(db, site_slugs)
-    assistant_by_slug = _assistant_ttl_by_slug(db, assistant_slugs)
+    module_expiries = _module_deliverable_expiries(db, module_slugs, now)
     expired: list[str] = []
     for item in objects:
         slug = _slug_from_key(item["key"])
         if slug is None:
             continue
-        owners = assistant_by_slug if _classify(item["key"]) in _ASSISTANT_DELIVERABLE_KINDS else demo_by_slug
-        is_expired, _, _ = _expiry_state(owners.get(slug), now)
+        module_kind = _module_kind_of(item["key"])
+        if module_kind is not None:
+            expiry = module_expiries.get(module_kind[0].key, {}).get(slug)
+            is_expired = expiry is None or expiry.is_expired
+        else:
+            is_expired, _, _ = _expiry_state(demo_by_slug.get(slug), now)
         if is_expired:
             expired.append(item["key"])
     return expired
+
+
+class StorageKindResponse(BaseModel):
+    """How the storage page names, filters and previews one category of objects (core or module)."""
+
+    kind: str
+    label: str
+    filter_prefix: str | None = None
+    filter_label: str = ""
+    media: str = "file"
 
 
 class StorageObject(BaseModel):
     """One object of the bucket, enriched with business context."""
 
     key: str
-    kind: StorageObjectKind
+    kind: str
     size: int
     last_modified: datetime | None = None
     url: str
@@ -220,6 +234,7 @@ class StorageListResponse(BaseModel):
 
     bucket: str
     public_base_url: str
+    kinds: list[StorageKindResponse]
     items: list[StorageObject]
     total: int
     total_size: int
@@ -265,45 +280,61 @@ class DeleteObjectsRequest(BaseModel):
     keys: list[str]
 
 
-def _classify(key: str) -> StorageObjectKind:
-    """Map an object key to its category."""
+def _classify(key: str) -> str:
+    """Map an object key to its category: a core one, or one a product module declares."""
     if key.startswith(r2_storage.VIDEOS_WEBSITES_PREFIX):
         return (
-            StorageObjectKind.WEBSITE_BACKGROUND
+            StorageObjectKind.WEBSITE_BACKGROUND.value
             if key.endswith(_BACKGROUND_SUFFIX)
-            else StorageObjectKind.WEBSITE_VIDEO
+            else StorageObjectKind.WEBSITE_VIDEO.value
         )
     if key.startswith(r2_storage.IMAGES_WEBSITES_PREFIX):
-        return StorageObjectKind.WEBSITE_THUMBNAIL
-    if key.startswith(f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/"):
-        return StorageObjectKind.ASSISTANT_VIDEO
-    # The trailing slash keeps the quote photos (``images/assistant-photos/``) out.
-    if key.startswith(f"{r2_storage.IMAGES_ASSISTANT_PREFIX}/"):
-        return StorageObjectKind.ASSISTANT_THUMBNAIL
+        return StorageObjectKind.WEBSITE_THUMBNAIL.value
+    module_kind = _module_kind_of(key)
+    if module_kind is not None:
+        return module_kind[1].kind
     if key.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
-        return StorageObjectKind.PRESENTER
+        return StorageObjectKind.PRESENTER.value
     if key.startswith(r2_storage.IMAGES_SUPPORT_PREFIX):
-        return StorageObjectKind.SUPPORT
+        return StorageObjectKind.SUPPORT.value
     if key.startswith(r2_storage.IMAGES_PROSPECTS_PREFIX):
-        return StorageObjectKind.PROSPECT_PHOTO
-    if key.startswith(r2_storage.IMAGES_ASSISTANT_PHOTOS_PREFIX):
-        return StorageObjectKind.ASSISTANT_PHOTO
-    if key.startswith(r2_storage.DOCUMENTS_ASSISTANT_PREFIX):
-        return StorageObjectKind.ASSISTANT_DOCUMENT
-    if key.startswith(f"{r2_storage.IMAGES_ASSISTANT_AVATARS_PREFIX}/"):
-        return StorageObjectKind.ASSISTANT_AVATAR
+        return StorageObjectKind.PROSPECT_PHOTO.value
     if key.startswith(r2_storage.MANUAL_UPLOADS_PREFIX):
-        return StorageObjectKind.MANUAL
-    return StorageObjectKind.OTHER
+        return StorageObjectKind.MANUAL.value
+    return StorageObjectKind.OTHER.value
+
+
+def _storage_kinds() -> list[StorageKindResponse]:
+    """Every category the storage page knows, the core's then each product module's."""
+    kinds: list[StorageKindResponse] = [
+        StorageKindResponse(kind=kind.value, label=label, filter_prefix=prefix, filter_label=filter_label, media=media)
+        for kind, (label, prefix, filter_label, media) in _CORE_KIND_DISPLAY.items()
+    ]
+    kinds.extend(
+        StorageKindResponse(
+            kind=kind.kind,
+            label=kind.label,
+            filter_prefix=kind.prefix,
+            filter_label=kind.filter_label,
+            media=kind.media,
+        )
+        for _module, kind in _module_storage_kinds()
+    )
+    return kinds
 
 
 def _slug_from_key(key: str) -> str | None:
-    """Extract the demo slug carried by a site or receptionist video / thumbnail / montage-background key.
+    """Extract the demo slug carried by a site or module video / thumbnail / montage-background key.
 
     The ``{slug}-background.mp4`` montage artifact resolves to its base slug so its expiry anchors on
     the same demo as the final video (they are purged together).
     """
-    if _classify(key) not in (*_DEMO_DELIVERABLE_KINDS, *_ASSISTANT_DELIVERABLE_KINDS):
+    module_kind = _module_kind_of(key)
+    is_module_deliverable: bool = module_kind is not None and module_kind[1].is_demo_deliverable
+    is_site_deliverable: bool = module_kind is None and _classify(key) in {
+        kind.value for kind in _DEMO_DELIVERABLE_KINDS
+    }
+    if not (is_module_deliverable or is_site_deliverable):
         return None
     base: str = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
     if base.endswith("-background"):
@@ -364,8 +395,9 @@ async def list_storage_objects(
     _ensure_configured()
     raw = await _list_async(prefix)
 
-    slugs, assistant_slugs = _deliverable_slugs(raw)
-    assistant_by_slug = _assistant_ttl_by_slug(db, assistant_slugs)
+    now = datetime.now(UTC)
+    slugs, module_slugs = _deliverable_slugs(raw)
+    module_expiries = _module_deliverable_expiries(db, module_slugs, now)
     names_by_slug: dict[str, str] = {}
     demo_by_slug: dict[str, Any] = {}
     if slugs:
@@ -391,7 +423,6 @@ async def list_storage_objects(
         prospect_rows = db.query(ProspectDB.id, ProspectDB.name).filter(ProspectDB.id.in_(prospect_ids)).all()
         names_by_prospect_id = {pid: name for pid, name in prospect_rows if name}
 
-    now = datetime.now(UTC)
     items: list[StorageObject] = []
     for entry in raw:
         key = entry["key"]
@@ -400,20 +431,25 @@ async def list_storage_objects(
         expires_in: int | None = None
         is_expired = False
         ttl_pending = False
-        # Les livrables liés à une démo expirent (ancrés sur le TTL réel de LEUR démo), les photos de devis
-        # au bout de 90 jours ; le clip presenter, les pièces jointes support, les photos de prospect et les
-        # imports manuels sont permanents.
-        if kind in _DEMO_DELIVERABLE_KINDS:
-            is_expired, expires_in, ttl_pending = _expiry_state(demo_by_slug.get(slug or ""), now)
-        elif kind in _ASSISTANT_DELIVERABLE_KINDS:
-            is_expired, expires_in, ttl_pending = _expiry_state(assistant_by_slug.get(slug or ""), now)
-        elif kind == StorageObjectKind.ASSISTANT_PHOTO and entry["last_modified"] is not None:
-            expires_in = max(PHOTO_RETENTION.days - (now - entry["last_modified"]).days, 0)
+        # Les livrables liés à une démo expirent (ancrés sur le TTL réel de LEUR démo), ceux d'un module selon
+        # ce que le module en dit ; un module peut aussi garder ses fichiers N jours (ses photos de devis…).
+        # Le clip presenter, les pièces jointes support, les photos de prospect et les imports manuels sont
+        # permanents.
+        module_kind = _module_kind_of(key)
         prospect_name = names_by_slug.get(slug or "")
-        if kind in _ASSISTANT_DELIVERABLE_KINDS:
-            assistant_row = assistant_by_slug.get(slug or "")
-            prospect_name = assistant_row.name if assistant_row is not None else None
-        if kind == StorageObjectKind.PROSPECT_PHOTO:
+        if module_kind is not None:
+            module, storage_kind = module_kind
+            if storage_kind.is_demo_deliverable:
+                expiry = module_expiries.get(module.key, {}).get(slug or "")
+                is_expired = expiry is None or expiry.is_expired
+                expires_in = expiry.expires_in_days if expiry is not None else None
+                ttl_pending = expiry.ttl_pending if expiry is not None else False
+                prospect_name = expiry.name if expiry is not None else None
+            elif storage_kind.retention_days is not None and entry["last_modified"] is not None:
+                expires_in = max(storage_kind.retention_days - (now - entry["last_modified"]).days, 0)
+        elif kind in {deliverable.value for deliverable in _DEMO_DELIVERABLE_KINDS}:
+            is_expired, expires_in, ttl_pending = _expiry_state(demo_by_slug.get(slug or ""), now)
+        if kind == StorageObjectKind.PROSPECT_PHOTO.value:
             prospect_name = names_by_prospect_id.get(_prospect_id_from_key(key) or 0)
         items.append(
             StorageObject(
@@ -434,6 +470,7 @@ async def list_storage_objects(
     return StorageListResponse(
         bucket=r2_storage.bucket_name(),
         public_base_url=settings.r2_public_base_url or "",
+        kinds=_storage_kinds(),
         items=items,
         total=len(items),
         total_size=sum(o.size for o in items),
@@ -455,8 +492,12 @@ async def storage_health(
     _ensure_configured()
     from enums.demo_video_status import DemoVideoStatus
 
+    video_kinds: list[tuple[ProductModule, StorageKind]] = [
+        (module, kind) for module, kind in _module_storage_kinds() if kind.is_prospection_video
+    ]
     objects = await _list_async(r2_storage.VIDEOS_WEBSITES_PREFIX)
-    objects.extend(await _list_async(f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/"))
+    for _module, kind in video_kinds:
+        objects.extend(await _list_async(kind.prefix))
     # Les fonds de montage ``-background.mp4`` ne sont pas des livrables autonomes : hors comparaison
     # orphelins/manquants (sinon ils apparaîtraient toujours comme orphelins).
     keys = {item["key"] for item in objects if not item["key"].endswith(_BACKGROUND_SUFFIX)}
@@ -466,16 +507,9 @@ async def storage_health(
         for (slug,) in db.query(DemoSite.slug).filter(DemoSite.video_status == DemoVideoStatus.READY.value).all()
         if slug
     }
-    ready_assistant_slugs = {
-        slug
-        for (slug,) in db.query(AiAssistant.slug)
-        .filter(AiAssistant.video_status == DemoVideoStatus.READY.value, AiAssistant.deleted_at.is_(None))
-        .all()
-        if slug
-    }
-    expected = {r2_storage.website_video_key(slug) for slug in ready_slugs} | {
-        r2_storage.assistant_video_key(slug) for slug in ready_assistant_slugs
-    }
+    expected = {r2_storage.website_video_key(slug) for slug in ready_slugs}
+    for module, kind in video_kinds:
+        expected |= {f"{kind.prefix}{slug}.mp4" for slug in module.ready_video_slugs(db)}
 
     now = datetime.now(UTC)
     expired = _expired_deliverable_keys(db, objects, now)
@@ -538,7 +572,7 @@ async def purge_expired_objects(
     db: Session = Depends(get_db),
 ) -> StorageActionResponse:
     """
-    Delete every site or receptionist deliverable whose demo has expired or vanished (video, thumbnail, background).
+    Delete every site or module deliverable whose demo has expired or vanished (video, thumbnail, background).
 
     Anchored on the same demo lifecycle as the listing's expiry badge, so this removes exactly what the
     page flags — never a file still tied to a live or not-yet-sent demo.
@@ -549,12 +583,9 @@ async def purge_expired_objects(
     _ensure_configured()
     now = datetime.now(UTC)
     objects: list[dict[str, Any]] = []
-    for prefix in (
-        r2_storage.VIDEOS_WEBSITES_PREFIX,
-        r2_storage.IMAGES_WEBSITES_PREFIX,
-        f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/",
-        f"{r2_storage.IMAGES_ASSISTANT_PREFIX}/",
-    ):
+    deliverable_prefixes: list[str] = [r2_storage.VIDEOS_WEBSITES_PREFIX, r2_storage.IMAGES_WEBSITES_PREFIX]
+    deliverable_prefixes.extend(kind.prefix for _module, kind in _module_storage_kinds() if kind.is_demo_deliverable)
+    for prefix in deliverable_prefixes:
         objects.extend(await _list_async(prefix))
     stale = _expired_deliverable_keys(db, objects, now)
 

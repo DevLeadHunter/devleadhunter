@@ -49,19 +49,22 @@ DEMO_EVENTS: tuple[str, ...] = (
     "demo_video_fullscreen",
     "demo_video_mute",
     "demo_video_cta_click",
-    # The receptionist's video page (/va) emits the same events under its own prefix.
-    "assistant_video_play",
-    "assistant_video_resume",
-    "assistant_video_pause",
-    "assistant_video_replay",
-    "assistant_video_progress",
-    "assistant_video_complete",
-    "assistant_video_watch_time",
-    "assistant_video_seek",
-    "assistant_video_fullscreen",
-    "assistant_video_mute",
-    "assistant_video_cta_click",
 )
+
+
+def demo_event_names() -> tuple[str, ...]:
+    """
+    The demo events the behaviour queries read: the sites' (``DEMO_EVENTS``), then the product modules' own.
+
+    Returns:
+        The event names, each once.
+    """
+    from core.product_modules.registry import product_module_registry
+
+    names: list[str] = list(DEMO_EVENTS)
+    for module in product_module_registry.installed():
+        names.extend(name for name in module.posthog_event_names() if name not in names)
+    return tuple(names)
 
 
 @dataclass(frozen=True)
@@ -201,7 +204,7 @@ class PostHogService:
         if not safe_slugs:
             return []
         in_list = ", ".join(f"'{s}'" for s in safe_slugs)
-        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
+        demo_events_list = ", ".join(f"'{e}'" for e in demo_event_names())
         since_filter = ""
         if since is not None:
             since_filter = f"AND timestamp >= '{since.strftime('%Y-%m-%d %H:%M:%S')}' "
@@ -285,7 +288,7 @@ class PostHogService:
         if not safe_slug:
             return []
 
-        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
+        demo_events_list = ", ".join(f"'{e}'" for e in demo_event_names())
         query = (
             "SELECT event, timestamp, properties "
             "FROM events "

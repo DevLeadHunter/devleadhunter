@@ -503,7 +503,7 @@ class DemoSiteService:
         return slug or "demo-site"
 
     def unique_slug(self, db: Session, business_name: str, prospect_id: int | None = None) -> str:
-        """Generate a unique slug for a new demo site, never one another prospect's receptionist holds."""
+        """Generate a unique slug for a new demo site, never one another prospect's module demo holds."""
         base_slug: str = self.slugify(business_name)[:80]
         candidate: str = base_slug
         suffix: int = 1
@@ -516,7 +516,7 @@ class DemoSiteService:
 
     @staticmethod
     def _is_slug_taken(db: Session, slug: str, prospect_id: int | None) -> bool:
-        """Whether a new demo site can't take this slug: another site holds it, or another prospect's receptionist."""
+        """Whether a new demo site can't take this slug: another site holds it, or another prospect's module demo."""
         is_held_by_a_site: bool = db.query(DemoSite.id).filter(DemoSite.slug == slug).first() is not None
         return is_held_by_a_site or DemoSlugGuard.is_used_by_another_prospect(db, slug, prospect_id)
 

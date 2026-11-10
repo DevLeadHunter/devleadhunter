@@ -7,35 +7,83 @@ actually sent refreshes its own module's stamp, so the lock counts from the modu
 import asyncio
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from sqlalchemy.orm import Session
 
 import services.campaign_queue_service as cqs
 import services.email_signatures as email_signatures
+from core.product_modules.campaign_offer import CampaignOffer
+from core.product_modules.contract import ProductModule
+from core.product_modules.registry import product_module_registry
+from enums.sms_template_category import SmsTemplateCategory
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from services.campaign_queue_service import CampaignQueueService
-from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES
+from services.contact_lock_service import MODULE_WEBSITES
 from services.demo_site_service import demo_site_service
+from services.sms.templates import SmsTemplate
 from services.sms_config_service import sms_config_service
 from services.sms_relance_service import SmsRelanceCandidate, sms_relance_service
 from services.sms_service import sms_service
 
 _USER_ID = 7
 _NOW: datetime = datetime.now(UTC).replace(tzinfo=None)
+# The key a product module stamps its prospects with.
+_ANOTHER_MODULE = "another-module"
+_ANOTHER_MODULE_SMS = SmsTemplate(
+    key="autre-premier-contact",
+    name="Autre module - premier contact",
+    category=SmsTemplateCategory.FIRST_CONTACT,
+    body="{salutation}, votre démo de l'autre module : {lien_autre} {signature}",
+)
+
+
+class _AnotherModuleOffer(CampaignOffer):
+    """The other module's demo, linked by ``{lien_autre}``, which every prospect has."""
+
+    module_key: ClassVar[str] = _ANOTHER_MODULE
+    offer_label: ClassVar[str] = "other module demo"
+    expired_offer_skip_reason: ClassVar[str] = "Démo de l'autre module expirée avant la relance"
+    sms_link_variables: ClassVar[tuple[str, ...]] = ("lien_autre",)
+    sms_offer_variables: ClassVar[tuple[str, ...]] = ("lien_autre",)
+    missing_offer_skip_reason: ClassVar[str] = "Pas de démo de l'autre module"
+    missing_offer_launch_summary: ClassVar[str] = "faute de démo de l'autre module"
+
+    def has_active_offer(self, db: Session, *, prospect_id: int, user_id: int) -> bool:
+        """Every prospect has the other module's demo."""
+        return True
+
+    def sms_templates(self) -> list[SmsTemplate]:
+        """The other module's first-contact SMS."""
+        return [_ANOTHER_MODULE_SMS]
+
+
+class _AnotherModule(ProductModule):
+    """A product module installed and switched on next to the websites module, selling by SMS."""
+
+    key: ClassVar[str] = _ANOTHER_MODULE
+    label: ClassVar[str] = "Autre module"
+    enabled_by_default: ClassVar[bool] = True
+
+    def campaign_offer(self) -> CampaignOffer:
+        """The other module's demo."""
+        return _AnotherModuleOffer()
 
 
 class _FakeDB:
-    """Counts commits, the only database call left once the dispatch helpers are stubbed."""
+    """Counts commits, the only database write left once the dispatch helpers are stubbed; no module switch stored."""
 
     def __init__(self) -> None:
         self.commits = 0
 
     def commit(self) -> None:
         self.commits += 1
+
+    def get(self, _model: object, _key: object) -> None:
+        return None
 
 
 def _stamped_prospect(module: str | None, days_ago: int) -> SimpleNamespace:
@@ -95,9 +143,9 @@ def _emailed_prospect(db: Session, *, name: str, slug: str, reserved_by: str | N
 
 
 def test_the_manual_relance_leaves_out_a_prospect_another_module_reserved(db: Session) -> None:
-    """The SMS page never offers a website relance to a prospect the receptionist module just approached."""
+    """The SMS page never offers a website relance to a prospect another module just approached."""
     free = _emailed_prospect(db, name="Garage Martin", slug="garage-martin", reserved_by=None)
-    reserved = _emailed_prospect(db, name="Plomberie Vidal", slug="plomberie-vidal", reserved_by=MODULE_AI_ASSISTANT)
+    reserved = _emailed_prospect(db, name="Plomberie Vidal", slug="plomberie-vidal", reserved_by=_ANOTHER_MODULE)
 
     manual = sms_relance_service.find_candidates(db, _USER_ID)
     planned = sms_relance_service.find_relance_projection_candidates(db, _USER_ID)
@@ -125,7 +173,7 @@ def _stub_relance_send(monkeypatch: pytest.MonkeyPatch, *, sent: bool) -> None:
 
 
 def test_a_relance_sms_sent_stamps_the_websites_module(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Manual or automated, the relance is a website contact: the receptionist module waits from here."""
+    """Manual or automated, the relance is a website contact: the other modules wait from here."""
     _stub_relance_send(monkeypatch, sent=True)
     prospect = _stamped_prospect(None, 0)
 
@@ -145,8 +193,8 @@ def test_a_refused_relance_sms_leaves_the_lock_untouched(monkeypatch: pytest.Mon
 
 
 def _sms_item(prospect: SimpleNamespace) -> SimpleNamespace:
-    """A queued receptionist SMS."""
-    campaign = SimpleNamespace(user_id=_USER_ID, channel="sms", sms_template_key="assistant-24-7")
+    """A queued SMS of the other module."""
+    campaign = SimpleNamespace(user_id=_USER_ID, channel="sms", sms_template_key=_ANOTHER_MODULE_SMS.key)
     return SimpleNamespace(
         prospect=prospect,
         campaign=campaign,
@@ -166,10 +214,10 @@ def _stub_sms_dispatch(monkeypatch: pytest.MonkeyPatch) -> list[int]:
         texted.append(kwargs["prospect"].id)
         return SimpleNamespace(sent=True, reason=None, message=None)
 
+    product_module_registry.use([_AnotherModule()])
     monkeypatch.setattr(sms_config_service, "get", lambda _db, _user_id: SimpleNamespace(sender="GarageMartin"))
     monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
     monkeypatch.setattr(sms_service, "send_to_prospect", send_to_prospect)
-    monkeypatch.setattr(CampaignQueueService, "_has_active_assistant", lambda _self, _pid, _uid: True)
     monkeypatch.setattr(CampaignQueueService, "_active_demo_for_prospect", lambda _self, _pid, _uid: None)
     monkeypatch.setattr(CampaignQueueService, "_schedule_follow_ups", lambda _self, _item: None)
     return texted
@@ -193,7 +241,7 @@ def test_a_campaign_sms_skips_a_prospect_another_module_took_since_the_enqueue(
 def test_a_campaign_sms_sent_refreshes_the_lock_of_its_module(monkeypatch: pytest.MonkeyPatch) -> None:
     """The reservation made at the enqueue moves to the actual send."""
     texted = _stub_sms_dispatch(monkeypatch)
-    prospect = _stamped_prospect(MODULE_AI_ASSISTANT, 20)
+    prospect = _stamped_prospect(_ANOTHER_MODULE, 20)
     reserved_at: datetime = prospect.contacted_by_module_at
     item = _sms_item(prospect)
 
@@ -201,7 +249,7 @@ def test_a_campaign_sms_sent_refreshes_the_lock_of_its_module(monkeypatch: pytes
 
     assert texted == [42]
     assert item.status == "sent"
-    assert prospect.contacted_by_module == MODULE_AI_ASSISTANT
+    assert prospect.contacted_by_module == _ANOTHER_MODULE
     assert prospect.contacted_by_module_at > reserved_at
 
 
@@ -244,7 +292,6 @@ def _stub_email_dispatch(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr(CampaignQueueService, "_demo_link_for_prospect", lambda _self, _pid, _uid, _variant: "")
     monkeypatch.setattr(CampaignQueueService, "_schedule_follow_ups", lambda _self, _item: None)
     monkeypatch.setattr(cqs.PricingService, "sale_price_cents", lambda _db, _uid: 50000)
-    monkeypatch.setattr(cqs.AssistantPricingService, "monthly_price_cents", lambda _db, _uid: 2900)
     monkeypatch.setattr(cqs.EmailVariables, "build_for_prospect", lambda *_args, **_kwargs: {})
     monkeypatch.setattr(cqs, "EmailSendingService", _Sender)
     monkeypatch.setattr(email_signatures, "render_signature_html", lambda *_args, **_kwargs: "")
@@ -255,7 +302,7 @@ def test_a_campaign_email_skips_a_prospect_another_module_took_since_the_enqueue
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     emailed = _stub_email_dispatch(monkeypatch)
-    item = _email_item(_stamped_prospect(MODULE_AI_ASSISTANT, 3))
+    item = _email_item(_stamped_prospect(_ANOTHER_MODULE, 3))
     db = _FakeDB()
 
     asyncio.run(CampaignQueueService(db)._dispatch(item))

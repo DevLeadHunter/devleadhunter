@@ -2,7 +2,6 @@
 
 from sqlalchemy.orm import Session
 
-from core.config import settings
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
 from models.user import User
@@ -28,18 +27,10 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "ville": "Poitiers",
     "metier": "garagiste",
     "lien_demo": "demo.dibodev.fr/s/garage-martin-auto",
-    "lien_assistant": "demo.dibodev.fr/s/ia/garage-martin-auto",
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
-    "lien_video_assistant": "demo.dibodev.fr/s/va/garage-martin-auto",
-    "lien_carte": "demo.dibodev.fr/s/c/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
-    "prix_assistant": "79 €",
-    "prix_carte": "19 €",
     "date_expiration": "12 novembre",
-    "prenom_receptionniste": "Sofia",
-    "receptionniste": "une réceptionniste",
-    "assistant_virtuel": "une assistante virtuelle",
     "telephone": "06 12 34 56 78",
     "signature": "Léo",
 }
@@ -48,10 +39,7 @@ _LONG_SLUG_VARIABLES: dict[str, str] = {
     **_TYPICAL_VARIABLES,
     "entreprise": "Plomberie Chauffage Dupont",
     "lien_demo": "demo.dibodev.fr/s/plomberie-chauffage-dupont",
-    "lien_assistant": "demo.dibodev.fr/s/ia/plomberie-chauffage-dupont",
     "lien_video": "demo.dibodev.fr/s/v/plomberie-chauffage-dupont",
-    "lien_video_assistant": "demo.dibodev.fr/s/va/plomberie-chauffage-dupont",
-    "lien_carte": "demo.dibodev.fr/s/c/plomberie-chauffage-dupont",
     "date_expiration": "30 septembre",
 }
 _PROSPECTING_SEGMENT_BUDGET = 2
@@ -63,8 +51,6 @@ def _as_read_in(country: str, variables: dict[str, str]) -> dict[str, str]:
     return {
         **variables,
         "prix": profile.format_price(50000),
-        "prix_assistant": profile.format_price(7900),
-        "prix_carte": profile.format_price(settings.wallet_subscription_price_cents),
         "telephone": SmsVariables.phone_for(variables["telephone"], country),
     }
 
@@ -127,19 +113,6 @@ class TestResolveFallback:
         template = find_sms_template("offre-a-vie")
         assert template is not None
         assert resolve_sms_template(template, video_ready=False) is template
-
-    def test_receptionist_video_template_waits_for_the_receptionist_video(self) -> None:
-        template = find_sms_template("assistant-video")
-        assert template is not None
-        # The site video says nothing about the receptionist's: only its own video keeps the template.
-        assert resolve_sms_template(template, video_ready=True).key == "assistant-24-7"
-        assert resolve_sms_template(template, video_ready=False, assistant_video_ready=True) is template
-
-    def test_receptionist_video_follow_up_falls_back_to_the_receptionist_follow_up(self) -> None:
-        template = find_sms_template("assistant-relance-video")
-        assert template is not None and template.category is SmsTemplateCategory.FOLLOW_UP
-        assert resolve_sms_template(template, video_ready=True).key == "assistant-relance"
-        assert resolve_sms_template(template, video_ready=False, assistant_video_ready=True) is template
 
 
 class TestRender:
@@ -272,11 +245,11 @@ class TestSmsVariables:
         db.add_all([with_phone, without_phone, prospect])
         db.commit()
 
-        variables = SmsVariables.build_for_prospect(db, user_id=with_phone.id, prospect=prospect, assistant=None)
+        variables = SmsVariables.build_for_prospect(db, user_id=with_phone.id, prospect=prospect)
         assert variables[SmsVariables.PHONE] == "06 12 34 56 78"
         assert variables[SmsVariables.SIGNATURE] == "Marc"
 
-        variables = SmsVariables.build_for_prospect(db, user_id=without_phone.id, prospect=prospect, assistant=None)
+        variables = SmsVariables.build_for_prospect(db, user_id=without_phone.id, prospect=prospect)
         assert variables[SmsVariables.PHONE] == ""
 
     def test_a_swiss_prospect_reads_the_sender_phone_in_international_form(self, db: Session) -> None:
@@ -287,37 +260,5 @@ class TestSmsVariables:
         db.add_all([sender, swiss_prospect])
         db.commit()
 
-        variables = SmsVariables.build_for_prospect(db, user_id=sender.id, prospect=swiss_prospect, assistant=None)
+        variables = SmsVariables.build_for_prospect(db, user_id=sender.id, prospect=swiss_prospect)
         assert variables[SmsVariables.PHONE] == "+33 6 12 34 56 78"
-
-
-class TestAssistantTemplates:
-    """The receptionist SMS family links `{lien_assistant}`, not the website demo."""
-
-    _KEYS = ("assistant-24-7", "assistant-langues", "assistant-demandes", "assistant-relance", "assistant-prix-cash")
-
-    def test_assistant_templates_exist_and_link_the_assistant(self) -> None:
-        for key in self._KEYS:
-            template = find_sms_template(key)
-            assert template is not None, key
-            assert template.uses("lien_assistant"), key
-            assert not template.uses("lien_demo"), key
-
-    def test_assistant_first_contacts_do_not_claim_a_prior_email(self) -> None:
-        for key in ("assistant-24-7", "assistant-langues", "assistant-demandes"):
-            template = find_sms_template(key)
-            assert template is not None and template.category is SmsTemplateCategory.FIRST_CONTACT
-            assert "email" not in template.body, key
-
-    def test_assistant_relance_is_a_follow_up_recalling_the_email(self) -> None:
-        template = find_sms_template("assistant-relance")
-        assert template is not None
-        assert template.category is SmsTemplateCategory.FOLLOW_UP
-        assert "email" in template.body
-
-    def test_assistant_template_renders_the_assistant_link(self) -> None:
-        template = find_sms_template("assistant-24-7")
-        assert template is not None
-        body = render_sms_template(template.body, _TYPICAL_VARIABLES)
-        assert "demo.dibodev.fr/s/ia/garage-martin-auto" in body
-        assert _TYPICAL_VARIABLES["lien_demo"] not in body

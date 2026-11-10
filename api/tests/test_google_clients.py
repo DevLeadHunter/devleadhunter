@@ -8,52 +8,10 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
-import services.ai_assistant.google_calendar_client as google_module
 import services.google_oauth_client as oauth_module
-from services.ai_assistant.google_calendar_client import CalendarEventState, GoogleCalendarClient
 from services.gmail_oauth_service import GmailOAuthService
 from services.google_oauth_client import GoogleOAuthError, google_oauth_client
 from services.postmaster_oauth_service import POSTMASTER_SCOPE, USERINFO_EMAIL_SCOPE, PostmasterOAuthService
-
-
-def _calendar_client_with(handler: Any, monkeypatch: pytest.MonkeyPatch) -> GoogleCalendarClient:
-    transport = httpx.MockTransport(handler)
-    original = httpx.AsyncClient
-
-    def patched_client(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
-        kwargs["transport"] = transport
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(google_module.httpx, "AsyncClient", patched_client)
-    monkeypatch.setattr(google_module.settings, "google_client_id", "client-id")
-    monkeypatch.setattr(google_module.settings, "google_client_secret", "client-secret")
-    return GoogleCalendarClient()
-
-
-def test_the_calendar_client_reads_back_an_event_it_created(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The reminder and the booking recovery read our event: still there, moved, cancelled or gone."""
-    requested: list[str] = []
-    answers = iter(
-        [
-            httpx.Response(200, json={"status": "confirmed", "start": {"dateTime": "2026-09-24T14:00:00+02:00"}}),
-            httpx.Response(200, json={"status": "cancelled"}),
-            httpx.Response(410, json={"error": {"message": "Resource has been deleted"}}),
-        ]
-    )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requested.append(request.url.raw_path.decode())
-        return next(answers)
-
-    client = _calendar_client_with(handler, monkeypatch)
-    standing = asyncio.run(client.get_event("a", "agenda du garage@group.calendar.google.com", "dlh1abc"))
-    cancelled = asyncio.run(client.get_event("a", "primary", "dlh1abc"))
-    deleted = asyncio.run(client.get_event("a", "primary", "dlh1abc"))
-
-    assert standing == CalendarEventState(cancelled=False, start=datetime(2026, 9, 24, 12, 0))
-    assert cancelled == CalendarEventState(cancelled=True, start=None)
-    assert deleted is None
-    assert requested[0] == "/calendar/v3/calendars/agenda%20du%20garage%40group.calendar.google.com/events/dlh1abc"
 
 
 @pytest.fixture
@@ -63,7 +21,6 @@ def google_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(oauth_module.settings, "google_client_secret", "client-secret")
     monkeypatch.setattr(oauth_module.settings, "google_redirect_uri", "https://api.test/gmail/callback")
     monkeypatch.setattr(oauth_module.settings, "google_postmaster_redirect_uri", "https://api.test/postmaster/callback")
-    monkeypatch.setattr(oauth_module.settings, "google_calendar_redirect_uri", "https://api.test/calendar/callback")
 
 
 def _serve_google(handler: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -86,15 +43,13 @@ def _query(url: str) -> dict[str, list[str]]:
 def test_each_integration_asks_its_own_scopes_and_redirect_address() -> None:
     gmail = _query(GmailOAuthService().get_authorization_url(state="user_7"))
     postmaster = _query(PostmasterOAuthService().get_authorization_url("postmaster_user_7"))
-    calendar = _query(GoogleCalendarClient.authorization_url("7.123.sig"))
 
     assert gmail["scope"] == ["https://www.googleapis.com/auth/gmail.send"]
     assert gmail["redirect_uri"] == ["https://api.test/gmail/callback"] and gmail["state"] == ["user_7"]
     assert postmaster["scope"] == [f"openid {USERINFO_EMAIL_SCOPE} {POSTMASTER_SCOPE}"]
     assert postmaster["redirect_uri"] == ["https://api.test/postmaster/callback"]
-    assert calendar["redirect_uri"] == ["https://api.test/calendar/callback"]
-    assert calendar["include_granted_scopes"] == ["true"] and "include_granted_scopes" not in gmail
-    for query in (gmail, postmaster, calendar):
+    assert "include_granted_scopes" not in gmail
+    for query in (gmail, postmaster):
         assert query["client_id"] == ["client-id"]
         assert (query["access_type"], query["prompt"], query["response_type"]) == (["offline"], ["consent"], ["code"])
 
@@ -153,9 +108,7 @@ def test_the_account_profile_is_read_once_for_every_integration(monkeypatch: pyt
     _serve_google(handler, monkeypatch)
     gmail = asyncio.run(GmailOAuthService().get_user_info("gmail-token"))
     postmaster = asyncio.run(PostmasterOAuthService().get_user_info("postmaster-token"))
-    calendar_email = asyncio.run(GoogleCalendarClient().account_email("calendar-token"))
 
     assert gmail == {"email": "garage@gmail.com", "name": "Garage", "verified_email": True}
     assert postmaster["email"] == "garage@gmail.com" and postmaster["verified_email"] is True
-    assert calendar_email == "garage@gmail.com"
-    assert authorizations == ["Bearer gmail-token", "Bearer postmaster-token", "Bearer calendar-token"]
+    assert authorizations == ["Bearer gmail-token", "Bearer postmaster-token"]

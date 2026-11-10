@@ -10,16 +10,6 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-# The receptionist's video page (/va) emits the site video's events under its own prefix: both score as the video.
-_ASSISTANT_VIDEO_EVENT_ALIASES: dict[str, str] = {
-    "assistant_video_play": "demo_video_play",
-    "assistant_video_complete": "demo_video_complete",
-    "assistant_video_replay": "demo_video_replay",
-    "assistant_video_fullscreen": "demo_video_fullscreen",
-    "assistant_video_progress": "demo_video_progress",
-    "assistant_video_watch_time": "demo_video_watch_time",
-}
-
 
 class BehaviorSignals(TypedDict):
     """Aggregated behavioural signals for a prospect (demo + email)."""
@@ -61,6 +51,16 @@ class BehaviorScore(TypedDict):
     # Lighthouse → a redesign pitch has real ammunition. Orthogonal to the
     # engagement temperature but folded into the score as a bonus.
     site_improvable: bool
+
+
+def _module_event_aliases() -> dict[str, str]:
+    """Events of the product modules' pages that score as a site event (a receptionist's video, as the video)."""
+    from core.product_modules.registry import product_module_registry
+
+    aliases: dict[str, str] = {}
+    for module in product_module_registry.installed():
+        aliases.update(module.lead_score_event_aliases())
+    return aliases
 
 
 def empty_signals() -> BehaviorSignals:
@@ -235,10 +235,11 @@ def compute(
     signals["demo_leads"] = max(int(demo_leads or 0), 0)
     sessions: set[str] = set()
     section_names: set[str] = set()
+    module_event_aliases: dict[str, str] = _module_event_aliases()
 
     for ev in events:
         name = ev.get("event", "")
-        name = _ASSISTANT_VIDEO_EVENT_ALIASES.get(name, name)
+        name = module_event_aliases.get(name, name)
         props = ev.get("properties", {}) if isinstance(ev.get("properties"), dict) else {}
 
         session_id = props.get("$session_id") or props.get("session_id")

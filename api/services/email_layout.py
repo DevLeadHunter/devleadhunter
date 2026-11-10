@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from enums.email_template_layout import EmailTemplateLayout
+from services.campaign_offers import CampaignOffers
 from services.email_variables import EmailVariables
 from services.unsubscribe_service import UnsubscribeService
 
@@ -125,21 +126,24 @@ class EmailLayout:
     @classmethod
     def _collect_button_labels(cls, variables: dict[str, str]) -> dict[str, str]:
         """Each demo address of the send and the wording of its button; a video has none, its thumbnail is the link."""
-        receptionist_first_name: str = variables.get(EmailVariables.RECEPTIONIST_FIRST_NAME, "")
-        wordings: dict[str, str] = {
-            EmailVariables.DEMO_LINK: "Voir mon site",
-            EmailVariables.ASSISTANT_LINK: f"Parler à {receptionist_first_name}"
-            if receptionist_first_name
-            else "Voir la démo",
-            EmailVariables.CARD_LINK: "Voir ma carte",
-            EmailVariables.VIDEO_THUMBNAIL: "",
-            EmailVariables.ASSISTANT_VIDEO_THUMBNAIL: "",
-        }
+        wordings: dict[str, str] = {EmailVariables.DEMO_LINK: "Voir mon site"}
+        for offer in CampaignOffers.installed():
+            for key, wording in offer.email_button_labels(variables).items():
+                wordings.setdefault(key, wording)
+        wordings.setdefault(EmailVariables.VIDEO_THUMBNAIL, "")
         labels: dict[str, str] = {}
         for key, wording in wordings.items():
             for href in cls._HREF.findall(variables.get(key, "")):
                 labels.setdefault(href, wording)
         return labels
+
+    @staticmethod
+    def _price_variables() -> tuple[str, ...]:
+        """The price variables of a send: the site's, then each module offer's."""
+        return (
+            EmailVariables.PRICE,
+            *(name for offer in CampaignOffers.installed() for name in offer.email_price_variables),
+        )
 
     @staticmethod
     def _find_demo_href(block: str, button_labels: dict[str, str]) -> str | None:
@@ -158,10 +162,7 @@ class EmailLayout:
         Returns:
             The (label, paragraph text) rows and the blocks kept as text; no row when the table would be too thin.
         """
-        prices: list[str] = [
-            variables.get(key, "")
-            for key in (EmailVariables.PRICE, EmailVariables.PRICE_ASSISTANT, EmailVariables.CARD_PRICE)
-        ]
+        prices: list[str] = [variables.get(key, "") for key in cls._price_variables()]
         expiry_date: str = variables.get(EmailVariables.EXPIRY_DATE, "")
         rows: list[tuple[str, str]] = []
         for block in blocks:
@@ -192,12 +193,7 @@ class EmailLayout:
     @classmethod
     def _emphasise_offer_values(cls, html: str, variables: dict[str, str]) -> str:
         """The price and the withdrawal date in ink, so a skimming reader still meets both."""
-        keys: tuple[str, ...] = (
-            EmailVariables.PRICE,
-            EmailVariables.PRICE_ASSISTANT,
-            EmailVariables.CARD_PRICE,
-            EmailVariables.EXPIRY_DATE,
-        )
+        keys: tuple[str, ...] = (*cls._price_variables(), EmailVariables.EXPIRY_DATE)
         for value in dict.fromkeys(variables.get(key, "") for key in keys):
             if value:
                 html = re.sub(

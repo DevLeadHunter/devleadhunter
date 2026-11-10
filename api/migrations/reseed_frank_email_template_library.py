@@ -7,7 +7,8 @@ admin's LIBRARY rows only (``is_library = 1``):
 
   - rename in place the receptionist templates (« Assistant IA - … » becomes « Réceptionniste
     IA - … »), so the campaigns referencing them keep their row (same id);
-  - upsert every template of ``EMAIL_TEMPLATE_LIBRARY``: a kept angle gets the frank subject,
+  - upsert every template of the shared library (``full_email_template_library()``: the core's and
+    the installed product modules'): a kept angle gets the frank subject,
     body, variables, category and sort order, and the admin's preferred signature when it has
     none (its layout stays as chosen); a new frank template is inserted signed and in the card
     with the offer table;
@@ -41,11 +42,11 @@ if str(_ROOT) not in sys.path:
 from core.config import settings
 from core.database import engine
 from enums.email_template_layout import EmailTemplateLayout
-from seeders.email_template_seeder import EMAIL_TEMPLATE_LIBRARY, _extract_variables
+from seeders.email_template_seeder import _extract_variables, full_email_template_library
 
 
 class FrankEmailTemplateLibraryReseed:
-    """Rename, rewrite and prune the admin's library rows so they match ``EMAIL_TEMPLATE_LIBRARY``."""
+    """Rename, rewrite and prune the admin's library rows so they match the shared library."""
 
     RENAMED_TEMPLATES: ClassVar[dict[str, str]] = {
         "Assistant IA - réponses 24/7": "Réceptionniste IA - le soir, personne ne répond",
@@ -111,7 +112,7 @@ class FrankEmailTemplateLibraryReseed:
         rewritten = 0
         inserted = 0
         signature_id: int | None = self._preferred_signature_id(admin_id)
-        for template in EMAIL_TEMPLATE_LIBRARY:
+        for template in full_email_template_library():
             subject = str(template["subject"])
             body_html = str(template["body_html"])
             params = {
@@ -170,7 +171,7 @@ class FrankEmailTemplateLibraryReseed:
 
     def _deactivate_unused_dropped_templates(self, admin_id: int) -> tuple[int, list[str]]:
         """Deactivate the admin's library rows outside the canonical set that no campaign ever used."""
-        canonical_names = [str(template["name"]) for template in EMAIL_TEMPLATE_LIBRARY]
+        canonical_names = [str(template["name"]) for template in full_email_template_library()]
         dropped_rows = self._connection.execute(
             text(
                 "SELECT id, name, is_active FROM email_templates "

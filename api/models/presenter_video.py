@@ -2,9 +2,9 @@
 
 A take is the generic « Léo parle à la caméra » recording reused for every
 prospection video: intro full-screen, then shrunk to a picture-in-picture
-bubble while the prospect's generated site (or assistant) plays behind. Each
+bubble while the prospect's generated site (or module demo) plays behind. Each
 module carries its own takes, because the speech differs (a site pitch is not
-an assistant pitch) — see ``module``. A new take never replaces the previous
+a receptionist pitch) — see ``module``. A new take never replaces the previous
 ones: the user compares them and picks the one the videos use (``is_active``).
 """
 
@@ -24,7 +24,7 @@ class PresenterVideo(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    # The sellable module this clip belongs to ('websites' / 'ai-assistant').
+    # The sellable module this clip belongs to ('websites', or a product module's key).
     module: Mapped[str] = mapped_column(String(32), nullable=False, default="websites", server_default="websites")
     take_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     # Exactly one take per user and module: the one every prospection video is built with.

@@ -18,7 +18,7 @@ Timeline (D = presenter clip duration):
 The voice stays 100 % generic — personalisation is visual only (his site,
 his first name) so ONE recording works for every prospect.
 
-The checks, the publication and the statuses are shared with the receptionist's video in
+The checks, the publication and the statuses are shared with the product modules' videos in
 :class:`services.prospection_video_service.ProspectionVideoService`. The mp4 + jpg live on Cloudflare R2
 (``videos/websites/{slug}.mp4`` / ``images/websites/{slug}.jpg``), served straight from Cloudflare — the VPS
 never streams a byte. The player page lives on the demo host at ``/v/{slug}`` (PostHog-tracked, same identity

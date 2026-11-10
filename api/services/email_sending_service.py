@@ -365,20 +365,16 @@ class EmailSendingService:
                         prospect_id,
                         exc_info=True,
                     )
-                from services.ai_assistant.assistant_service import ai_assistant_service
+                # The product modules start the countdown of their own demo when the email links it.
+                from services.campaign_offers import CampaignOffers
 
-                try:
-                    ai_assistant_service.maybe_start_ttl_after_demo_email(
-                        self.db,
-                        user_id=user_id,
-                        prospect_id=int(prospect_id),
-                        sent_at=email_log.sent_at,
-                        body_html=body_html,
-                    )
-                except Exception:
-                    logger.warning(
-                        "Failed to start assistant demo TTL after email to prospect %s", prospect_id, exc_info=True
-                    )
+                CampaignOffers.record_message_sent(
+                    self.db,
+                    prospect_id=int(prospect_id),
+                    user_id=user_id,
+                    sent_at=email_log.sent_at,
+                    body=body_html,
+                )
             self._mark_prospect_contacted(prospect_id)
             if is_conversation_reply:
                 try:

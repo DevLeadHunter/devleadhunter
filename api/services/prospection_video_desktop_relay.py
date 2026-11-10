@@ -1,8 +1,8 @@
 """
-Desktop relay of the prospection videos — every video, of a demo site or a receptionist, is built by the owner's PC.
+Desktop relay of the prospection videos — every video, of a demo site or of a module demo, is built by the owner's PC.
 
 The server renders nothing: only the desktop app can film a site together with its Storyblok editor, and it montages
-the clips without loading the server. Any device leaves a request on the site or the receptionist; the desktop app,
+the clips without loading the server. Any device leaves a request on the site or the module demo; the desktop app,
 which looks for requests in the background, takes each one, builds the video and publishes it. A site waits for its
 Storyblok space before it is handed over.
 """
@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 
 from core.clock import naive_utc_now
 from enums.demo_video_status import DemoVideoStatus
-from services.assistant_video_service import assistant_video_service
 from services.demo_video_service import demo_video_service
 from services.presenter_video_service import presenter_video_service
 from services.prospection_video_service import (
@@ -32,7 +31,7 @@ NO_REQUEST_MESSAGE = "Aucune demande de vidéo n'attend l'ordinateur."
 
 
 class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
-    """Keeps the videos of one kind (demo sites or receptionists) waiting for the desktop app, and hands them over."""
+    """Keeps the videos of one kind (demo sites, or a module's demos) waiting for the desktop app, and hands them over."""
 
     def __init__(self, video_service: ProspectionVideoService[VideoSubjectT]) -> None:
         """
@@ -67,7 +66,7 @@ class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
 
     def request_if_auto_generating(self, db: Session, subject: VideoSubjectT, user_id: int) -> bool:
         """
-        Leave a request for a freshly created demo site or receptionist when its module's take generates on its own.
+        Leave a request for a freshly created demo site or module demo when its module's take generates on its own.
 
         Fires only when the user has a presenter clip for this kind of video with ``auto_generate`` enabled; never
         raises (a video problem must not fail the creation). A site without its Storyblok space yet still gets its
@@ -75,7 +74,7 @@ class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            subject: The freshly created demo site or receptionist.
+            subject: The freshly created demo site or module demo.
             user_id: Owner, whose presenter clip the video uses.
 
         Returns:
@@ -119,7 +118,7 @@ class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            user_id: Owner of the demo sites or receptionists.
+            user_id: Owner of the demo sites or module demos.
 
         Returns:
             The requested subjects ready to be filmed that no desktop app is building.
@@ -182,4 +181,3 @@ class ProspectionVideoDesktopRelay(Generic[VideoSubjectT]):
 
 
 demo_video_desktop_relay = ProspectionVideoDesktopRelay(demo_video_service)
-assistant_video_desktop_relay = ProspectionVideoDesktopRelay(assistant_video_service)

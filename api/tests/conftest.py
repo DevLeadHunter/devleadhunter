@@ -17,6 +17,7 @@ import services.email_sending_service as sending
 import services.prospect_search.swiss_directory as swiss_directory_module
 from core.config import settings
 from core.database import Base
+from core.product_modules.registry import product_module_registry
 from enums.sending_provider import SendingProvider
 from scrappers.google_website_button import google_website_button
 from services.city_geocoding_service import CityGeocodingService
@@ -127,6 +128,14 @@ def google_website_buttons_offline(monkeypatch: pytest.MonkeyPatch) -> None:
         return None
 
     monkeypatch.setattr(google_website_button, "destination", nowhere)
+
+
+@pytest.fixture(autouse=True)
+def no_product_module_installed() -> Iterator[None]:
+    """The core runs alone unless a test installs a module: a module pip-installed in the venv never leaks in."""
+    product_module_registry.use([])
+    yield
+    product_module_registry.reset()
 
 
 @pytest.fixture

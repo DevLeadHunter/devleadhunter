@@ -1,12 +1,12 @@
 """
-The prospection video, whatever it presents: a demo site or a receptionist.
+The prospection video, whatever it presents: a demo site, or the demo of a product module (its receptionist…).
 
 Both videos are made the same way, by the owner's PC: the owner's presenter clip full-screen for the intro and the
 outro, a capture of the product in the middle, the picture-in-picture montage of :mod:`services.video_montage`, an
 email thumbnail, and both files published on R2. :class:`ProspectionVideoService` runs that whole life on the server
 (the checks before the PC is asked, the builds it took, publication, failure, reset); its two subclasses only say what
 the capture needs, where the files live and how the dashboard names the video (:mod:`services.demo_video_service`,
-:mod:`services.assistant_video_service`).
+and a product module's own video service).
 """
 
 from __future__ import annotations
@@ -25,8 +25,6 @@ from sqlalchemy.orm import Session
 
 from core.clock import naive_utc_now
 from enums.demo_video_status import DemoVideoStatus
-from models.ai_assistant import AiAssistant
-from models.demo_site import DemoSite
 from models.presenter_video import PresenterVideo
 from services import video_pipeline
 from services.presenter_video_service import presenter_video_service
@@ -35,7 +33,9 @@ from services.video_pipeline import GenerationKey, VideoGenerationError
 
 logger = logging.getLogger(__name__)
 
-VideoSubjectT = TypeVar("VideoSubjectT", DemoSite, AiAssistant)
+# A demo site, or the demo of a product module that builds a prospection video (its receptionist…): anything
+# with the video columns of a demo site.
+VideoSubjectT = TypeVar("VideoSubjectT")
 
 VIDEO_UPLOAD_FAILED_MESSAGE = "L'envoi de la vidéo sur le stockage a échoué. Relancez la génération."
 THUMBNAIL_UPLOAD_FAILED_MESSAGE = (
@@ -81,11 +81,11 @@ def reenqueue_campaigns_after_video_ready(db: Session, prospect_id: int | None, 
 
 class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
     """
-    Checks, publishes and resets the prospection video of a demo site or a receptionist, which the owner's PC builds.
+    Checks, publishes and resets the prospection video of a demo site or a module demo, which the owner's PC builds.
 
     Attributes:
         subject_model: The model the video belongs to.
-        kind: The kind of video in logs and in the builds the desktop apps took (``site``, ``assistant``).
+        kind: The kind of video in logs and in the builds the desktop apps took (``site``, or a module's own).
         presenter_module: The module of the presenter clip the video uses.
         shown_subject: What the middle of the video shows, as the dashboard names it (« le site »).
         missing_presenter_message: The refusal when the owner has no presenter clip for this kind of video.
@@ -103,7 +103,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            subject: The demo site or receptionist, owned by the user.
+            subject: The demo site or module demo, owned by the user.
             user_id: Owner, whose presenter clip the video uses.
 
         Raises:
@@ -127,7 +127,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Whether the desktop app can film the subject now: the request on a subject that is not ready waits.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
 
         Returns:
             True when nothing the capture needs is missing.
@@ -143,7 +143,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Whether a desktop app took the subject's request recently enough to still be building its video.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
 
         Returns:
             True while the build is taken for running.
@@ -157,7 +157,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Record that a desktop app starts building the subject's video.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
         """
         video_pipeline.desktop_video_builds.start(self._build_key(subject.id))
 
@@ -166,7 +166,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Forget the build a desktop app took for the subject: published, given up, withdrawn or asked again.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
         """
         video_pipeline.desktop_video_builds.forget(self._build_key(subject.id))
 
@@ -190,7 +190,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Whether the subject's published video was made before the module's presenter clip in use was chosen.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
             clip_in_use_since: Since when the module's clip in use is the one (:meth:`clip_in_use_since`).
 
         Returns:
@@ -205,7 +205,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Delete the video's files and reset its state, left for the caller to commit.
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
         """
         self._delete_files(subject.slug)
         subject.video_status = None
@@ -218,7 +218,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
 
         Returns:
             The subject, without a video.
@@ -237,7 +237,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            subject: The demo site or receptionist, owned by the caller.
+            subject: The demo site or module demo, owned by the caller.
             archive: The uploaded zip.
 
         Returns:
@@ -267,7 +267,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Refuse a subject whose video cannot be made (not active, no public page…).
 
         Args:
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
 
         Raises:
             ValueError: with the reason the dashboard shows.
@@ -351,7 +351,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         The key of a video among the builds the desktop apps took.
 
         Args:
-            subject_id: The demo site or receptionist.
+            subject_id: The demo site or module demo.
 
         Returns:
             The kind of video and the subject's id.
@@ -378,7 +378,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
         Args:
             db: Active database session.
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
         """
         subject.video_status = DemoVideoStatus.READY.value
         subject.video_error = None
@@ -393,7 +393,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
         Args:
             db: Active database session, possibly left unusable by the failure.
-            subject: The demo site or receptionist.
+            subject: The demo site or module demo.
             message: The reason.
             slug: The subject's slug, for the log.
         """

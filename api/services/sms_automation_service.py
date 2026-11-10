@@ -62,7 +62,7 @@ class SmsAutomationService:
     def _sent_today(self, db: Session, user_id: int) -> int:
         """Number of prospecting SMS (any source) the user sent since midnight UTC — the daily-cap base.
 
-        Service messages (a sold assistant's owner alerts) are not prospecting: they never eat the cap.
+        Service messages (a product module's alerts to its clients) are not prospecting: they never eat the cap.
         """
         day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         return int(

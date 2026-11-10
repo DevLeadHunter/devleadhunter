@@ -142,58 +142,16 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("purge_duplicate_sms_auto_rows", "migrations.purge_duplicate_sms_auto_rows"),
     ("add_order_ovh_tracking", "migrations.add_order_ovh_tracking"),
     ("add_prospect_country", "migrations.add_prospect_country"),
-    ("add_ai_assistants_table", "migrations.add_ai_assistants_table"),
-    ("add_ai_assistant_leads_table", "migrations.add_ai_assistant_leads_table"),
     ("add_prospect_contact_lock", "migrations.add_prospect_contact_lock"),
-    ("add_ai_assistant_video", "migrations.add_ai_assistant_video"),
     ("add_presenter_video_module", "migrations.add_presenter_video_module"),
-    ("seed_assistant_email_templates", "migrations.seed_assistant_email_templates"),
-    ("seed_assistant_franc_email_template", "migrations.seed_assistant_franc_email_template"),
-    ("add_user_assistant_pricing", "migrations.add_user_assistant_pricing"),
-    ("fix_assistant_franc_price_variable", "migrations.fix_assistant_franc_price_variable"),
-    ("add_ai_assistant_subscriptions_table", "migrations.add_ai_assistant_subscriptions_table"),
-    ("rewrite_assistant_franc_emails", "migrations.rewrite_assistant_franc_emails"),
-    ("add_ai_assistant_conversation_tables", "migrations.add_ai_assistant_conversation_tables"),
-    ("add_ai_assistant_requests_table", "migrations.add_ai_assistant_requests_table"),
-    ("add_ai_assistant_alerts", "migrations.add_ai_assistant_alerts"),
-    ("add_ai_assistant_photos_table", "migrations.add_ai_assistant_photos_table"),
-    ("add_ai_assistant_eu_only", "migrations.add_ai_assistant_eu_only"),
-    ("raise_assistant_default_price", "migrations.raise_assistant_default_price"),
-    ("rewrite_assistant_emails_missed_requests", "migrations.rewrite_assistant_emails_missed_requests"),
-    ("add_ai_assistant_conversations_is_test", "migrations.add_ai_assistant_conversations_is_test"),
-    ("add_assistant_subscription_activated_at", "migrations.add_assistant_subscription_activated_at"),
-    ("add_ai_assistant_reports_table", "migrations.add_ai_assistant_reports_table"),
-    ("add_assistant_subscription_cancel_at_period_end", "migrations.add_assistant_subscription_cancel_at_period_end"),
-    ("add_ai_assistant_request_appointment_slots", "migrations.add_ai_assistant_request_appointment_slots"),
-    ("add_ai_assistant_calendars_tables", "migrations.add_ai_assistant_calendars_tables"),
-    ("add_ai_assistant_documents_table", "migrations.add_ai_assistant_documents_table"),
-    ("convert_ai_assistant_tables_to_utf8mb4", "migrations.convert_ai_assistant_tables_to_utf8mb4"),
-    ("add_ai_assistant_messages_photo_url", "migrations.add_ai_assistant_messages_photo_url"),
     ("add_prospect_website_equipment", "migrations.add_prospect_website_equipment"),
     ("add_prospect_google_reviews", "migrations.add_prospect_google_reviews"),
     ("add_demo_site_lead_status", "migrations.add_demo_site_lead_status"),
     ("add_demo_site_lead_handled_at", "migrations.add_demo_site_lead_handled_at"),
-    ("seed_assistant_video_email_template", "migrations.seed_assistant_video_email_template"),
-    ("add_assistant_video_thumbnail_to_first_emails", "migrations.add_assistant_video_thumbnail_to_first_emails"),
-    ("add_ai_assistant_start_columns", "migrations.add_ai_assistant_start_columns"),
-    ("add_ai_assistant_request_outcome", "migrations.add_ai_assistant_request_outcome"),
-    ("add_ai_assistant_limits", "migrations.add_ai_assistant_limits"),
-    ("add_ai_assistant_request_event", "migrations.add_ai_assistant_request_event"),
-    ("add_ai_assistant_client_link_version", "migrations.add_ai_assistant_client_link_version"),
-    ("add_ai_assistant_message_cap_alerted_on", "migrations.add_ai_assistant_message_cap_alerted_on"),
-    ("rename_assistant_language_lu_to_lb", "migrations.rename_assistant_language_lu_to_lb"),
-    (
-        "add_assistant_subscription_payment_failed_invoice_id",
-        "migrations.add_assistant_subscription_payment_failed_invoice_id",
-    ),
-    ("add_ai_assistant_mailbox_enabled", "migrations.add_ai_assistant_mailbox_enabled"),
-    ("add_ai_assistant_mailbox_tables", "migrations.add_ai_assistant_mailbox_tables"),
-    ("add_ai_assistant_custom_avatar", "migrations.add_ai_assistant_custom_avatar"),
     ("add_enrichment_professional_license", "migrations.add_enrichment_professional_license"),
     ("reseed_frank_email_template_library", "migrations.reseed_frank_email_template_library"),
     ("refresh_frank_email_template_library", "migrations.refresh_frank_email_template_library"),
     ("add_user_postal_address", "migrations.add_user_postal_address"),
-    ("add_loyalty_card_email_templates", "migrations.add_loyalty_card_email_templates"),
     ("add_user_siret", "migrations.add_user_siret"),
     ("add_sms_campaign_follow_ups", "migrations.add_sms_campaign_follow_ups"),
     ("add_email_template_layout", "migrations.add_email_template_layout"),
@@ -206,7 +164,6 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_demo_site_video_desktop_requested_at", "migrations.add_demo_site_video_desktop_requested_at"),
     ("add_presenter_video_takes", "migrations.add_presenter_video_takes"),
     ("add_prospect_dismissal", "migrations.add_prospect_dismissal"),
-    ("add_ai_assistant_video_desktop_requested_at", "migrations.add_ai_assistant_video_desktop_requested_at"),
     ("add_presenter_video_in_use_since", "migrations.add_presenter_video_in_use_since"),
     ("fail_unfinished_server_videos", "migrations.fail_unfinished_server_videos"),
     ("drop_sms_config_cold_sms_enabled", "migrations.drop_sms_config_cold_sms_enabled"),
@@ -219,6 +176,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_prospect_region", "migrations.add_prospect_region"),
     ("add_demo_site_is_showcase", "migrations.add_demo_site_is_showcase"),
     ("add_sms_auto_queue_revived_at", "migrations.add_sms_auto_queue_revived_at"),
+    ("add_product_modules_table", "migrations.add_product_modules_table"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.
@@ -293,7 +251,7 @@ def main() -> None:
     init_db()
     print("Base schema ensured.")
 
-    for migration_name, module_name in MIGRATION_MODULES:
+    for migration_name, module_name in _all_migrations():
         if _is_applied(engine, migration_name):
             print(f"Skipped (already applied): {migration_name}")
             continue
@@ -304,6 +262,16 @@ def main() -> None:
         print(f"Applied: {migration_name}")
 
     print("All migrations complete.")
+
+
+def _all_migrations() -> list[tuple[str, str]]:
+    """The core's migrations, then those of each installed product module, in its own order."""
+    from core.product_modules.registry import product_module_registry
+
+    migrations: list[tuple[str, str]] = list(MIGRATION_MODULES)
+    for product_module in product_module_registry.installed():
+        migrations.extend(product_module.migrations())
+    return migrations
 
 
 if __name__ == "__main__":

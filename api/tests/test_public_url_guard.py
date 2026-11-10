@@ -7,8 +7,6 @@ from typing import Any
 import httpx
 import pytest
 
-import services.ai_assistant.website_crawler as crawler_module
-from services.ai_assistant.website_crawler import AiAssistantWebsiteCrawler
 from services.brand_color_service import BrandColorService
 from services.public_url_guard import (
     NonPublicAddressError,
@@ -180,32 +178,6 @@ def test_the_sync_transport_guards_the_same_way() -> None:
     with httpx.Client(transport=PublicOnlyTransport(network)) as client, pytest.raises(NonPublicAddressError):
         client.get("http://169.254.169.254/")
     assert [request.url.host for request in requests] == ["93.184.216.34"]
-
-
-def test_the_website_reader_never_reaches_an_internal_address(
-    fake_dns: list[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A website field set to an internal address, or a page redirecting to one, reads nothing from it."""
-    requests: list[httpx.Request] = []
-    home = (
-        "<html><head><title>Toiture Martin</title></head><body><main><p>Couvreur à Poitiers.</p>"
-        '<a href="/tarifs">Tarifs</a></main></body></html>'
-    )
-    network = _recording_transport(
-        requests,
-        {
-            "/": httpx.Response(200, text=home, headers={"content-type": "text/html"}),
-            "/tarifs": httpx.Response(302, headers={"location": "http://169.254.169.254/latest/meta-data/"}),
-        },
-    )
-    monkeypatch.setattr(crawler_module, "PublicOnlyAsyncTransport", lambda: PublicOnlyAsyncTransport(network))
-
-    internal = asyncio.run(AiAssistantWebsiteCrawler().crawl("http://localhost:8005/"))
-    public = asyncio.run(AiAssistantWebsiteCrawler().crawl("toiture-martin.fr"))
-
-    assert internal is None
-    assert public is not None and [page["url"] for page in public["pages"]] == ["https://toiture-martin.fr/"]
-    assert {request.url.host for request in requests} == {"93.184.216.34"}
 
 
 def test_a_logo_on_an_internal_address_gives_no_colour(monkeypatch: pytest.MonkeyPatch, fake_dns: list[str]) -> None:

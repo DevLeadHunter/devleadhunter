@@ -8,11 +8,10 @@ from typing import ClassVar
 from enums.sms_template_category import SmsTemplateCategory
 from models.campaign import Campaign
 from schemas.campaign import CampaignFollowUpCreate
+from services.campaign_offers import CampaignOffers
 from services.campaign_queue_service import CampaignQueueService
-from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL
 from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, find_sms_template
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
-from services.sms_variables import SmsVariables
 
 
 class CampaignFollowUpRules:
@@ -60,8 +59,9 @@ class CampaignFollowUpRules:
                 return "Modèle inconnu : la relance utilise un modèle de relance de la bibliothèque SMS."
             if template.recalls_an_email:
                 return f"Le modèle « {template.name} » rappelle votre email : il ne peut pas suivre un premier SMS."
-            if template.uses(SmsVariables.CARD_LINK):
-                return LOYALTY_CARD_DEMO_MISSING_REFUSAL
+            linked_offer = CampaignOffers.sms_link_offer_of(template)
+            if linked_offer is not None and not linked_offer.is_sellable:
+                return linked_offer.missing_offer_skip_reason
             if CampaignQueueService.sms_template_module(template) != first_contact_module:
                 return f"Le modèle « {template.name} » ne présente pas la même offre que le premier SMS."
         return None

@@ -49,12 +49,11 @@ from schemas.sms import (
     SmsThreadItemResponse,
     SmsThreadResponse,
 )
-from services.ai_assistant.assistant_service import ai_assistant_service
 from services.auth_service import get_current_user, require_admin
+from services.campaign_offers import CampaignOffers, OfferRefusal
 from services.campaign_queue_service import CampaignQueueService
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
-from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164
@@ -488,27 +487,12 @@ async def preview_template(
         )
     if template.uses(SmsVariables.OLD_WEBSITE) and not prospect.website:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'ancien site connu.")
-    needs_assistant = any(
-        template.uses(name)
-        for name in (
-            SmsVariables.ASSISTANT_LINK,
-            SmsVariables.ASSISTANT_VIDEO_LINK,
-            SmsVariables.RECEPTIONIST_FIRST_NAME,
-            SmsVariables.RECEPTIONIST,
-            SmsVariables.VIRTUAL_ASSISTANT,
-        )
-    )
-    assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect.id, user_id=current_user.id)
-    if needs_assistant and assistant is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'assistant IA actif à envoyer."
-        )
-    if template.uses(SmsVariables.ASSISTANT_VIDEO_LINK) and not EmailVariables.assistant_video_urls(assistant)[0]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas de vidéo de réceptionniste générée."
-        )
-    if template.uses(SmsVariables.CARD_LINK):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=LOYALTY_CARD_DEMO_MISSING_REFUSAL)
+    # A template selling a module's offer needs the prospect's demo of it, and its video when it links one.
+    offer_refusal: OfferRefusal | None = CampaignOffers.sms_enqueue_refusal(
+        db, template, prospect_id=prospect.id, user_id=current_user.id
+    ) or CampaignOffers.sms_missing_video_refusal(db, template, prospect_id=prospect.id, user_id=current_user.id)
+    if offer_refusal is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=offer_refusal.reason)
 
     demo_url = ""
     video_url = ""
@@ -520,7 +504,6 @@ async def preview_template(
         db,
         user_id=current_user.id,
         prospect=prospect,
-        assistant=assistant,
         demo_url=demo_url,
         video_url=video_url,
         sale_price_cents=PricingService.sale_price_cents(db, current_user.id),
@@ -632,7 +615,7 @@ async def receive_dlr_callback(request: Request, db: Session = Depends(get_db)) 
         message.status_detail = detail
     db.commit()
     # Notify only on a real transition, so a provider re-sending the same DLR never double-pings;
-    # a service SMS (a sold assistant's owner alert) only when it failed.
+    # a service SMS (a product module's alert to its client) only when it failed.
     notified = {SmsStatus.FAILED.value}
     if message.kind != SmsMessageKind.SERVICE.value:
         notified.add(SmsStatus.DELIVERED.value)
@@ -644,7 +627,7 @@ async def receive_dlr_callback(request: Request, db: Session = Depends(get_db)) 
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
             detail=detail if message.status == SmsStatus.FAILED.value else None,
-            is_assistant_module=sms_service.is_assistant_message(message),
+            module_key=sms_service.module_key_of(message),
         )
     return {"status": "ok"}
 
@@ -707,7 +690,7 @@ async def receive_stop_callback(request: Request, db: Session = Depends(get_db))
             event_name="sms_stop",
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
-            is_assistant_module=sms_service.is_assistant_message(message),
+            module_key=sms_service.module_key_of(message),
         )
     return {"status": "ok"}
 

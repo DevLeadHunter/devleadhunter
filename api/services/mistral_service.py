@@ -1,5 +1,5 @@
 """
-Mistral La Plateforme client (OpenAI-compatible chat completions), used by the AI assistant module.
+Mistral La Plateforme client (OpenAI-compatible chat completions), the EU provider tried first.
 
 The assistant's calls go to Mistral first (``services/ai_assistant/llm_router.py``); the rest of the
 product stays on Groq. A failed call returns None so the router can fall back — or not, for an

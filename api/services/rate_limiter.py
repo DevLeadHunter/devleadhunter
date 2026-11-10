@@ -1,7 +1,7 @@
 """In-memory sliding-window rate limiter for public endpoints.
 
-A single API worker serves the public assistant endpoints, so a process-local limiter is
-enough to blunt abuse (a bot hammering the LLM-backed chat). It is best-effort: it resets on
+A single API worker serves the public endpoints (a product module's chat, the contact page), so a
+process-local limiter is enough to blunt abuse (a bot hammering an LLM-backed endpoint). It is best-effort: it resets on
 restart and does not span workers — it is a cost guard, not a security boundary.
 """
 
@@ -58,35 +58,5 @@ class SlidingWindowRateLimiter:
             del self._hits[key]
 
 
-# 30 messages / 5 min per visitor per assistant: roomy for a real conversation, caps a bot.
-assistant_chat_limiter = SlidingWindowRateLimiter(max_events=30, window_seconds=300)
-
-# 8 leads / 5 min per visitor per assistant: a real visitor leaves one, this caps spam.
-assistant_lead_limiter = SlidingWindowRateLimiter(max_events=8, window_seconds=300)
-
-# 6 photos / 10 min per visitor per assistant: 3 per quote request, each one costs a vision call.
-assistant_photo_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=600)
-
-# 5 checkouts / 5 min per visitor per assistant: each click creates a Stripe session, this caps a bot.
-assistant_subscribe_limiter = SlidingWindowRateLimiter(max_events=5, window_seconds=300)
-
-# 120 client-space calls / 5 min per visitor: the page and its actions, far below a token guesser's needs.
-assistant_client_limiter = SlidingWindowRateLimiter(max_events=120, window_seconds=300)
-
-# 60 demo-space reads / 5 min per visitor: the page and its reloads, far below what guessing session ids needs.
-assistant_demo_space_limiter = SlidingWindowRateLimiter(max_events=60, window_seconds=300)
-
-# 3 fresh client-space links / hour per assistant, emailed to the business from an expired link.
-assistant_client_renew_limiter = SlidingWindowRateLimiter(max_events=3, window_seconds=3600)
-
-# 6 fresh client-space links / day per assistant: an old link replayed never floods the business.
-assistant_client_renew_daily_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=86400)
-
 # 5 messages / hour per visitor on the marketing site's contact page: a person writes once, this caps a bot.
 site_contact_limiter = SlidingWindowRateLimiter(max_events=5, window_seconds=3600)
-
-# 2 test SMS / hour per assistant, from the client space: a mistyped number never drains the SMS budget.
-assistant_client_test_sms_limiter = SlidingWindowRateLimiter(max_events=2, window_seconds=3600)
-
-# 30 « marquer traitée » pages / 5 min per visitor: a signed link is opened once or twice, never dozens of times.
-assistant_request_link_limiter = SlidingWindowRateLimiter(max_events=30, window_seconds=300)
