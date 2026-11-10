@@ -89,7 +89,7 @@ import type {
 } from '~/types/PresenterVideoTakeCapture'
 import { onBeforeUnmount, ref } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
-import { PRESENTER_VIDEO_WORDINGS } from '~/constants/presenterVideoWordings'
+import { PresenterVideoAdapterRegistry } from '~/utils/presenterVideoAdapterRegistry'
 import { PRESENTER_VIDEO_MAX_BYTES, useVideoCompression } from '~/composables/useVideoCompression'
 import { useToast } from '~/composables/useToast'
 
@@ -155,7 +155,7 @@ const clipSizeErrorMessage: Ref<string | null> = ref(null)
  */
 function announceSavedTake(take: PresenterVideoTake): void {
   if (take.is_active) {
-    toast.success(PRESENTER_VIDEO_WORDINGS[props.module].uploadedToast)
+    toast.success(PresenterVideoAdapterRegistry.wordingOf(props.module).uploadedToast)
   } else {
     toast.success(
       `Prise ${take.take_number} enregistrée. Elle ne sert pas encore : comparez-la aux autres, puis choisissez celle à utiliser.`,

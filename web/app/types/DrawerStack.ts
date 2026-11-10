@@ -1,5 +1,6 @@
+import type { Component } from 'vue'
 import type { EmailLog, EmailTemplate, Prospect, ProspectZone, User } from '~/types'
-import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
+import type { ProductModuleKey } from '~/types/ProductModule'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
 import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
@@ -157,30 +158,6 @@ export type FinalizeSaleDrawerEntry = {
   order: Order
 }
 
-/** A sold-assistant subscription's detail drawer (view + cancel/refund). */
-export type AssistantSubscriptionDrawerEntry = {
-  kind: 'assistant-subscription'
-  subscription: AssistantSubscription
-}
-
-/** The read-only journal of what an assistant's visitors asked. */
-export type AssistantConversationsDrawerEntry = {
-  kind: 'assistant-conversations'
-  assistant: AiAssistantSummary
-}
-
-/** What an assistant reads: its website, its Google listing, its documents. */
-export type AssistantSourcesDrawerEntry = {
-  kind: 'assistant-sources'
-  assistant: AiAssistantSummary
-}
-
-/** One visitor request: its details, the conversation it came out of, and the owner's actions on it. */
-export type AssistantRequestDrawerEntry = {
-  kind: 'assistant-request'
-  request: AiAssistantRequestItem
-}
-
 /** A zone of the coverage map (one city, or a region's covered cities), scoped to its country so homonyms stay apart. */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -200,8 +177,8 @@ export type CoverageProspectsDrawerEntry = {
   zone: CoverageZone
 }
 
-/** One entry of the persistent drawer stack. */
-export type DrawerStackEntry =
+/** One entry of a drawer the core itself renders. */
+export type CoreDrawerStackEntry =
   | ProspectDrawerEntry
   | ProspectSettingsDrawerEntry
   | SendEmailDrawerEntry
@@ -224,27 +201,47 @@ export type DrawerStackEntry =
   | CoverageProspectsDrawerEntry
   | OrderDrawerEntry
   | FinalizeSaleDrawerEntry
-  | AssistantSubscriptionDrawerEntry
-  | AssistantConversationsDrawerEntry
-  | AssistantSourcesDrawerEntry
-  | AssistantRequestDrawerEntry
   | UserFormDrawerEntry
 
+export type CoreDrawerStackEntryKind = CoreDrawerStackEntry['kind']
+
+/** Entries of the drawers the product modules add, by kind: each module layer extends it (declaration merging). */
+export interface ModuleDrawerEntries {}
+
+export type ModuleDrawerKind = keyof ModuleDrawerEntries
+
+export type ModuleDrawerEntry = ModuleDrawerEntries[ModuleDrawerKind]
+
+/** One entry of the persistent drawer stack. */
+export type DrawerStackEntry = CoreDrawerStackEntry | ModuleDrawerEntry
+
 export type DrawerStackEntryKind = DrawerStackEntry['kind']
+
+/** A drawer a product module adds to the stack: like the core's, it takes `open` and `showBack`, emits `close` and `back`. */
+export type DrawerKindRegistration<TKind extends ModuleDrawerKind, TUpdatedValue = never> = {
+  kind: TKind
+  moduleKey: ProductModuleKey
+  component: Component
+  entryProps(entry: ModuleDrawerEntries[TKind]): Record<string, unknown>
+  notifyChange?(updatedValue: TUpdatedValue): void
+}
+
+/** A registered module drawer, as the stack host reads it. */
+export type RegisteredDrawerKind = {
+  kind: ModuleDrawerKind
+  moduleKey: ProductModuleKey
+  component: Component
+  entryProps(entry: ModuleDrawerEntry): Record<string, unknown>
+  notifyChange?(updatedValue: unknown): void
+}
+
+/** Notices the product modules broadcast to their pages through the drawer stack, by channel: each layer extends it. */
+export interface DrawerStackChangeNotices {}
+
+export type DrawerStackChangeChannel = keyof DrawerStackChangeNotices
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }
 
 /** Cross-page notice describing the latest order mutation done from a drawer. */
 export type OrderMutationNotice = { type: 'updated'; order: Order } | { type: 'deleted'; orderId: number }
-
-/** Cross-page notice describing the latest assistant-subscription mutation done from a drawer. */
-export type AssistantSubscriptionMutationNotice = { type: 'updated'; subscription: AssistantSubscription }
-
-/** Cross-page notice describing the latest assistant mutation done from a drawer or a page. */
-export type AssistantMutationNotice =
-  | { type: 'updated'; assistant: AiAssistantSummary }
-  | { type: 'deleted'; assistantId: number }
-
-/** Cross-page notice describing the latest change to a visitor request done from its drawer. */
-export type AssistantRequestMutationNotice = { type: 'updated'; request: AiAssistantRequestItem }

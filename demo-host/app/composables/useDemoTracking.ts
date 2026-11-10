@@ -1,5 +1,5 @@
 import type { PostHog } from 'posthog-js'
-import type { DemoEventCapturedBeforeInit, DemoPageTrackingOptions } from '~/types/demoTracking'
+import type { DemoEventCapturedBeforeInit, DemoPageTrackingOptions, DemoTrackingSurface } from '~/types/demoTracking'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 /**
@@ -92,6 +92,8 @@ const WITHDRAWN_DEMO_PAGE_TRACKING_OPTIONS: DemoPageTrackingOptions = {
   slugPropertyName: 'withdrawn_demo_slug',
 }
 
+const DEMO_SITE_TRACKING_SURFACE: DemoTrackingSurface = { name: 'demo', shouldTrackInsideFrame: false }
+
 const NAVIGATION_START_MILLISECONDS: number = 0
 
 /**
@@ -99,11 +101,18 @@ const NAVIGATION_START_MILLISECONDS: number = 0
  * @returns An object with the ``init`` method.
  */
 export function useDemoTracking(): {
-  init: (slug: string, status: string, variant: string | null, channel: string, surface?: string) => Promise<void>
-  initForOwnEvents: (slug: string, surface: string) => Promise<void>
+  init: (
+    slug: string,
+    status: string,
+    variant: string | null,
+    channel: string,
+    surface?: DemoTrackingSurface,
+  ) => Promise<void>
+  initForOwnEvents: (slug: string, surface: DemoTrackingSurface) => Promise<void>
   initForWithdrawnDemo: (slug: string, variant: string | null, channel: string) => Promise<void>
 } {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+  const appConfig: ReturnType<typeof useAppConfig> = useAppConfig()
 
   /**
    * Resolve a human-readable name for the section an element belongs to.
@@ -331,14 +340,14 @@ export function useDemoTracking(): {
    * @param status - Demo site status; tracking runs only when 'active'.
    * @param variant - Optional A/B variant from the email link.
    * @param channel - Marketing channel that brought the visit ('email' / 'sms' / 'direct').
-   * @param surface - PostHog surface separating modules in one project ('demo' = site, 'assistant' = IA).
+   * @param surface - PostHog surface separating modules in one project (the site's by default).
    */
   async function init(
     slug: string,
     status: string,
     variant: string | null,
     channel: string,
-    surface: string = 'demo',
+    surface: DemoTrackingSurface = DEMO_SITE_TRACKING_SURFACE,
   ): Promise<void> {
     const posthog: PostHog | null = await start(slug, status, variant, channel, surface)
     if (!posthog) return
@@ -348,11 +357,11 @@ export function useDemoTracking(): {
   }
 
   /**
-   * Initialise PostHog on a page of the demo journey that sends only its own events (the prospect's demo space).
+   * Initialise PostHog on a page of the demo journey that sends only its own events.
    * @param slug - Demo slug (used as a super property for server-side querying).
-   * @param surface - PostHog surface separating modules in one project ('assistant' = IA).
+   * @param surface - PostHog surface separating modules in one project.
    */
-  async function initForOwnEvents(slug: string, surface: string): Promise<void> {
+  async function initForOwnEvents(slug: string, surface: DemoTrackingSurface): Promise<void> {
     await start(slug, 'active', null, 'direct', surface)
   }
 
@@ -368,7 +377,7 @@ export function useDemoTracking(): {
       'active',
       variant,
       channel,
-      'demo',
+      DEMO_SITE_TRACKING_SURFACE,
       WITHDRAWN_DEMO_PAGE_TRACKING_OPTIONS,
     )
 
@@ -393,19 +402,21 @@ export function useDemoTracking(): {
     status: string,
     variant: string | null,
     channel: string,
-    surface: string,
+    surface: DemoTrackingSurface,
     trackingOptions: DemoPageTrackingOptions = FULL_PAGE_TRACKING_OPTIONS,
   ): Promise<PostHog | null> {
     if (!import.meta.client || initialized) return null
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
     if (DemoBeaconUtils.isInternalVisit()) return null
     // An embedded site = the dashboard's scaled card preview, never a prospect visit — tracking it
-    // would pollute the lead scoring. An embedded assistant is the real widget on a client's page.
-    if (window.self !== window.top && surface !== 'assistant') return null
+    // would pollute the lead scoring. An embedded widget is the real widget on a client's page.
+    if (window.self !== window.top && !surface.shouldTrackInsideFrame) return null
     const key: string = String(config.public.posthogProjectApiKey ?? '')
     // Never track a delivered/sold site, and skip when PostHog is not configured.
     if (!key || status !== 'active') return null
 
+    // Set on every page, even with nothing to match: unset, PostHog would apply the project's own masking setting.
+    const sessionReplayMaskedTextSelector: string = appConfig.demoTracking.sessionReplayMaskedTextSelectors.join(', ')
     const { default: posthog }: typeof import('posthog-js') = await import('posthog-js')
     posthog.init(key, {
       api_host: POSTHOG_PROXY_PATH,
@@ -420,18 +431,18 @@ export function useDemoTracking(): {
       persistence: 'memory',
       // Le slug sert aussi d'identité aux events email : un funnel email ↔ démo sur la même personne.
       bootstrap: { distinctID: slug, isIdentifiedID: true },
-      // Replay sans bandeau cookie : tous les champs de saisie sont masqués, et les bulles du chat aussi
+      // Replay sans bandeau cookie : tous les champs de saisie sont masqués, et les textes déclarés par les modules
       // (ce que le visiteur écrit y est réaffiché).
       disable_session_recording: !trackingOptions.shouldCapturePageViews,
       session_recording: {
         maskAllInputs: true,
-        maskTextSelector: '.ai-message',
+        ...(sessionReplayMaskedTextSelector ? { maskTextSelector: sessionReplayMaskedTextSelector } : {}),
       },
     })
-    // `surface` sépare les modules dans le MÊME projet PostHog ('demo' = site, 'assistant' = module IA) ;
+    // `surface` sépare les modules dans le MÊME projet PostHog ('demo' = site) ;
     // ne jamais renommer les noms demo_*/le super property demo_slug, lus côté API.
     posthog.register({
-      surface,
+      surface: surface.name,
       [trackingOptions.slugPropertyName]: slug,
       channel,
       ...(variant ? { ab_variant: variant } : {}),

@@ -89,7 +89,7 @@ export function useVideoGenerationProgress(
 
   /**
    * Open the modal and start following a build.
-   * @param slug - Slug of the site or receptionist being rendered (the sidecar's progress key).
+   * @param slug - Slug of the demo being rendered (the sidecar's progress key).
    * @param finalLabel - Label of the last, app-driven step (publish vs preview).
    */
   function start(slug: string, finalLabel: string): void {

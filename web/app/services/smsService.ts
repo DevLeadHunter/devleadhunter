@@ -1,4 +1,5 @@
 import type { PendingReply } from '~/types'
+import type { ProductModuleKey } from '~/types/ProductModule'
 import type { SmsSegmentCount, SmsSegmentCountPayload } from '~/types/SmsSegmentCount'
 import { ApiClient } from './api'
 
@@ -133,7 +134,8 @@ export type SmsThread = {
 /** Which touch of the SMS sequence a library template is written for. */
 export type SmsTemplateCategory = 'first_contact' | 'follow_up'
 
-export type SmsTemplateModule = 'websites' | 'ai-assistant'
+/** The module a library template sells, by its key (`websites`, or a product module's key). */
+export type SmsTemplateModule = ProductModuleKey
 
 export type SmsAutoQueueAction = {
   id: number

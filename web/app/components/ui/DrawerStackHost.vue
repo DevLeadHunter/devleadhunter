@@ -205,38 +205,16 @@
       @finalize="handleFinalizeSale"
     />
 
-    <UiSubscriptionDrawer
-      :open="assistantSubscriptionEntry !== null"
-      :subscription="assistantSubscriptionEntry?.subscription ?? null"
+    <component
+      :is="moduleDrawer.component"
+      v-for="moduleDrawer in moduleDrawers"
+      :key="moduleDrawer.kind"
+      :open="drawerStack.topEntry?.kind === moduleDrawer.kind"
       :show-back="hasPrevious"
+      v-bind="moduleDrawerProps(moduleDrawer)"
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
-      @updated="drawerStack.notifySubscriptionUpdated"
-    />
-
-    <UiAssistantConversationsDrawer
-      :open="assistantConversationsEntry !== null"
-      :assistant="assistantConversationsEntry?.assistant ?? null"
-      :show-back="hasPrevious"
-      @close="drawerStack.closeAll()"
-      @back="drawerStack.back()"
-    />
-
-    <UiAssistantSourcesDrawer
-      :open="assistantSourcesEntry !== null"
-      :assistant="assistantSourcesEntry?.assistant ?? null"
-      :show-back="hasPrevious"
-      @close="drawerStack.closeAll()"
-      @back="drawerStack.back()"
-    />
-
-    <UiAssistantRequestDrawer
-      :open="assistantRequestEntry !== null"
-      :request="assistantRequestEntry?.request ?? null"
-      :show-back="hasPrevious"
-      @close="drawerStack.closeAll()"
-      @back="drawerStack.back()"
-      @updated="drawerStack.notifyAssistantRequestUpdated"
+      v-on="moduleDrawerListeners(moduleDrawer)"
     />
 
     <UiFinalizeSaleDrawer
@@ -265,10 +243,6 @@ import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
-  AssistantConversationsDrawerEntry,
-  AssistantRequestDrawerEntry,
-  AssistantSourcesDrawerEntry,
-  AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
   CampaignReplyDrawerEntry,
   CoverageFiltersDrawerEntry,
@@ -283,10 +257,12 @@ import type {
   OrganizationDrawerEntry,
   ProfileDrawerEntry,
   DrawerBrowseDirection,
+  DrawerStackEntry,
   ProspectDrawerEntry,
   ProspectSearchDrawerEntry,
   ProspectSearchLeadDrawerEntry,
   ProspectSettingsDrawerEntry,
+  RegisteredDrawerKind,
   SendEmailDrawerEntry,
   SendSmsDrawerEntry,
   SmsLogDrawerEntry,
@@ -296,15 +272,20 @@ import type {
 import type { SmsMessage } from '~/services/smsService'
 import type { EmailTemplate, Prospect } from '~/types'
 import type { Order } from '~/services/ordersService'
+import type { DlhModuleKey } from '~/types/UiSidebar'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 import { ProspectsService } from '~/services/prospectsService'
 import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
+import { DrawerKindRegistry } from '~/utils/drawerKindRegistry'
 
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
 const toast: UseToastReturn = useToast()
 
@@ -465,29 +446,37 @@ const orderEntry: ComputedRef<OrderDrawerEntry | null> = computed((): OrderDrawe
   return drawerStack.topEntry?.kind === 'order' ? drawerStack.topEntry : null
 })
 
-/** Top entry narrowed to the assistant-subscription drawer. */
-const assistantSubscriptionEntry: ComputedRef<AssistantSubscriptionDrawerEntry | null> = computed(
-  (): AssistantSubscriptionDrawerEntry | null =>
-    drawerStack.topEntry?.kind === 'assistant-subscription' ? drawerStack.topEntry : null,
+const moduleDrawers: ComputedRef<RegisteredDrawerKind[]> = computed((): RegisteredDrawerKind[] =>
+  DrawerKindRegistry.list().filter((moduleDrawer: RegisteredDrawerKind): boolean =>
+    moduleStore.isModuleUsable(moduleDrawer.moduleKey),
+  ),
 )
 
-/** Top entry narrowed to the assistant-conversations journal drawer. */
-const assistantConversationsEntry: ComputedRef<AssistantConversationsDrawerEntry | null> = computed(
-  (): AssistantConversationsDrawerEntry | null =>
-    drawerStack.topEntry?.kind === 'assistant-conversations' ? drawerStack.topEntry : null,
-)
+/**
+ * The props of a module drawer, read from the top entry while it is the drawer shown.
+ * @param moduleDrawer - The registered drawer.
+ * @returns Its props; none while another drawer is on top (they fall back to their defaults).
+ */
+function moduleDrawerProps(moduleDrawer: RegisteredDrawerKind): Record<string, unknown> {
+  const entry: DrawerStackEntry | null = drawerStack.topEntry
 
-/** Top entry narrowed to the assistant sources drawer. */
-const assistantSourcesEntry: ComputedRef<AssistantSourcesDrawerEntry | null> = computed(
-  (): AssistantSourcesDrawerEntry | null =>
-    drawerStack.topEntry?.kind === 'assistant-sources' ? drawerStack.topEntry : null,
-)
+  if (entry === null || entry.kind !== moduleDrawer.kind || !DrawerKindRegistry.isModuleEntry(entry)) {
+    return {}
+  }
+  return moduleDrawer.entryProps(entry)
+}
 
-/** Top entry narrowed to the visitor request drawer. */
-const assistantRequestEntry: ComputedRef<AssistantRequestDrawerEntry | null> = computed(
-  (): AssistantRequestDrawerEntry | null =>
-    drawerStack.topEntry?.kind === 'assistant-request' ? drawerStack.topEntry : null,
-)
+/**
+ * The listeners of a module drawer: its `updated` event, when the module broadcasts what the drawer saved.
+ * @param moduleDrawer - The registered drawer.
+ * @returns The listeners to bind.
+ */
+function moduleDrawerListeners(moduleDrawer: RegisteredDrawerKind): Record<string, (updatedValue: unknown) => void> {
+  if (!moduleDrawer.notifyChange) {
+    return {}
+  }
+  return { updated: (updatedValue: unknown): void => moduleDrawer.notifyChange?.(updatedValue) }
+}
 
 /** Top entry narrowed to the sale finalization drawer. */
 const finalizeSaleEntry: ComputedRef<FinalizeSaleDrawerEntry | null> = computed((): FinalizeSaleDrawerEntry | null => {
@@ -898,6 +887,28 @@ function preventEdgeBackSwipe(event: TouchEvent): void {
     event.preventDefault()
   }
 }
+
+/**
+ * Whether an entry is the drawer of a module that is not available any more.
+ * @param entry - A stack entry.
+ * @returns True for a module drawer whose module was switched off.
+ */
+function isEntryOfUnavailableModule(entry: DrawerStackEntry): boolean {
+  const moduleDrawer: RegisteredDrawerKind | null = DrawerKindRegistry.find(entry.kind)
+  return moduleDrawer !== null && !moduleStore.isModuleUsable(moduleDrawer.moduleKey)
+}
+
+watch(
+  (): DlhModuleKey[] | null => moduleStore.enabledModuleKeys,
+  (): void => {
+    if (!drawerStack.stack.some(isEntryOfUnavailableModule)) {
+      return
+    }
+    drawerStack.replaceEntries((entry: DrawerStackEntry): DrawerStackEntry | null =>
+      isEntryOfUnavailableModule(entry) ? null : entry,
+    )
+  },
+)
 
 onMounted((): void => {
   window.addEventListener('keydown', handleKeydown)

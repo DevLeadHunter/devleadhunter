@@ -103,17 +103,13 @@ const props: CampaignSmsFollowUpCardProps = defineProps({
 
 const { user }: UseAuthReturn = useAuth()
 
-const LOYALTY_CARD_LINK_VARIABLE: string = 'lien_carte'
 const VIDEO_LINK_VARIABLE: string = 'lien_video'
 
 const renderedPreview: Ref<SmsTemplatePreview | null> = ref(null)
 
 const followUpTemplates: ComputedRef<SmsTemplate[]> = computed((): SmsTemplate[] =>
   props.templates.filter(
-    (template: SmsTemplate): boolean =>
-      template.module === props.campaignModule &&
-      !template.recalls_an_email &&
-      !template.variables.includes(LOYALTY_CARD_LINK_VARIABLE),
+    (template: SmsTemplate): boolean => template.module === props.campaignModule && !template.recalls_an_email,
   ),
 )
 

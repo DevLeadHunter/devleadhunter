@@ -10,6 +10,7 @@
 import type { Ref } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import { nextTick, ref } from 'vue'
+import { useModuleStore } from '~/stores/moduleStore'
 import { EmailVariables } from '~/utils/emailVariables'
 import { getCaretCoordinates } from '~/utils/textareaCaret'
 
@@ -47,6 +48,7 @@ export function useVariableInsertion(
   getValue: () => string,
   setValue: (value: string) => void,
 ): VariableInsertion {
+  const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
   const open: Ref<boolean> = ref(false)
   const items: Ref<EmailVariable[]> = ref([])
   const activeIndex: Ref<number> = ref(0)
@@ -121,12 +123,13 @@ export function useVariableInsertion(
 
     const query: string = (match[1] ?? '').toLowerCase()
     queryStart = caret - match[0].length
+    const catalog: EmailVariable[] = EmailVariables.catalogOf(moduleStore.isModuleUsable)
     items.value = query
-      ? EmailVariables.catalog.filter(
+      ? catalog.filter(
           (variable: EmailVariable): boolean =>
             variable.key.toLowerCase().includes(query) || variable.label.toLowerCase().includes(query),
         )
-      : [...EmailVariables.catalog]
+      : catalog
 
     if (items.value.length === 0) {
       close()

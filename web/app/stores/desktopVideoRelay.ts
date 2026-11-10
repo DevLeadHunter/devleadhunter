@@ -1,20 +1,21 @@
 /**
- * Desktop video relay store — the desktop app builds every prospection video left waiting for it.
+ * Desktop video relay store — the desktop app builds every prospection video left waiting for it: the demo sites',
+ * and those of the kinds of demo the product modules register in the `DesktopVideoSubjectRegistry`.
  */
-import type { AiAssistantDesktopVideoRequest } from '~/types/AiAssistant'
 import type { UseToastReturn } from '~/types/Composables'
-import type { DesktopVideoRequest, DesktopVideoSubjectKind, DesktopVideoSubjectRelay } from '~/types/DesktopVideoRelay'
+import type { DesktopVideoRequest, DesktopVideoSubjectRelay } from '~/types/DesktopVideoRelay'
 import type { DemoSiteDesktopVideoRequest } from '~/services/demoSiteService'
 import type { FullVideoBuildResult } from '~/services/storyblokSidecarService'
 import { defineStore } from 'pinia'
 import { useToast } from '~/composables/useToast'
-import { AiAssistantService } from '~/services/aiAssistantService'
-import { AssistantSidecarService } from '~/services/assistantSidecarService'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useUserStore } from '~/stores/user'
 import { parseApiDate } from '~/utils/date'
+import { DesktopVideoSubjectRegistry } from '~/utils/desktopVideoSubjectRegistry'
 
 const REQUEST_LOOKUP_INTERVAL_MS: number = 20_000
 
@@ -23,26 +24,28 @@ const STORYBLOK_DISCONNECTED_MESSAGE: string =
 
 const LOCAL_BUILD_FAILED_MESSAGE: string = 'La génération sur votre PC a échoué. Redemandez la vidéo.'
 
-const SUBJECT_RELAYS: Record<DesktopVideoSubjectKind, DesktopVideoSubjectRelay> = {
-  site: {
-    describeVideo: (businessName: string): string => `Vidéo de « ${businessName} »`,
-    claim: async (subjectId: number): Promise<void> => {
-      await DemoSiteService.claimDesktopVideo(subjectId)
-    },
-    build: (subjectId: number): Promise<FullVideoBuildResult> => StoryblokSidecarService.buildFullVideo(subjectId),
-    reportFailure: async (subjectId: number, message: string): Promise<void> => {
-      await DemoSiteService.reportDesktopVideoFailure(subjectId, message)
-    },
+/** The demo sites' videos, the core's own kind of desktop video. */
+const SITE_SUBJECT_RELAY: DesktopVideoSubjectRelay = {
+  kind: 'site',
+  moduleKey: WEBSITES_MODULE_KEY,
+  listWaitingRequests: async (): Promise<DesktopVideoRequest[]> => {
+    const siteRequests: DemoSiteDesktopVideoRequest[] = await DemoSiteService.listDesktopVideoRequests()
+    return siteRequests.map(
+      (request: DemoSiteDesktopVideoRequest): DesktopVideoRequest => ({
+        kind: 'site',
+        subjectId: request.demo_site_id,
+        businessName: request.business_name,
+        requestedAt: request.requested_at,
+      }),
+    )
   },
-  assistant: {
-    describeVideo: (businessName: string): string => `Vidéo de la réceptionniste de « ${businessName} »`,
-    claim: async (subjectId: number): Promise<void> => {
-      await AiAssistantService.claimDesktopVideo(subjectId)
-    },
-    build: (subjectId: number): Promise<FullVideoBuildResult> => AssistantSidecarService.buildFullVideo(subjectId),
-    reportFailure: async (subjectId: number, message: string): Promise<void> => {
-      await AiAssistantService.reportDesktopVideoFailure(subjectId, message)
-    },
+  describeVideo: (businessName: string): string => `Vidéo de « ${businessName} »`,
+  claim: async (subjectId: number): Promise<void> => {
+    await DemoSiteService.claimDesktopVideo(subjectId)
+  },
+  build: (subjectId: number): Promise<FullVideoBuildResult> => StoryblokSidecarService.buildFullVideo(subjectId),
+  reportFailure: async (subjectId: number, message: string): Promise<void> => {
+    await DemoSiteService.reportDesktopVideoFailure(subjectId, message)
   },
 }
 
@@ -50,6 +53,7 @@ const SUBJECT_RELAYS: Record<DesktopVideoSubjectKind, DesktopVideoSubjectRelay> 
 // eslint-disable-next-line @typescript-eslint/typedef
 export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => {
   const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
   const toast: UseToastReturn = useToast()
 
   let lookupTimer: ReturnType<typeof setTimeout> | null = null
@@ -69,33 +73,32 @@ export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => 
   }
 
   /**
-   * Gather the site and receptionist videos waiting for this computer, oldest request first.
-   * @returns The waiting requests; a list that cannot be read counts as empty until the next look.
+   * The kinds of video this computer builds: the demo sites', then those of the modules switched on.
+   * @returns The relays to look at.
    */
-  async function listWaitingRequests(): Promise<DesktopVideoRequest[]> {
-    const [siteRequests, assistantRequests]: [DemoSiteDesktopVideoRequest[], AiAssistantDesktopVideoRequest[]] =
-      await Promise.all([
-        DemoSiteService.listDesktopVideoRequests().catch((): DemoSiteDesktopVideoRequest[] => []),
-        AiAssistantService.listDesktopVideoRequests().catch((): AiAssistantDesktopVideoRequest[] => []),
-      ])
-    const requests: DesktopVideoRequest[] = [
-      ...siteRequests.map(
-        (request: DemoSiteDesktopVideoRequest): DesktopVideoRequest => ({
-          kind: 'site',
-          subjectId: request.demo_site_id,
-          businessName: request.business_name,
-          requestedAt: request.requested_at,
-        }),
-      ),
-      ...assistantRequests.map(
-        (request: AiAssistantDesktopVideoRequest): DesktopVideoRequest => ({
-          kind: 'assistant',
-          subjectId: request.assistant_id,
-          businessName: request.business_name,
-          requestedAt: request.requested_at,
-        }),
+  async function listSubjectRelays(): Promise<DesktopVideoSubjectRelay[]> {
+    await moduleStore.ensureEnabledModulesLoaded()
+    return [
+      SITE_SUBJECT_RELAY,
+      ...DesktopVideoSubjectRegistry.list().filter((relay: DesktopVideoSubjectRelay): boolean =>
+        moduleStore.isModuleUsable(relay.moduleKey),
       ),
     ]
+  }
+
+  /**
+   * Gather every video waiting for this computer, oldest request first.
+   * @param relays - The kinds of video to look at.
+   * @returns The waiting requests; a list that cannot be read counts as empty until the next look.
+   */
+  async function listWaitingRequests(relays: DesktopVideoSubjectRelay[]): Promise<DesktopVideoRequest[]> {
+    const requestsByKind: DesktopVideoRequest[][] = await Promise.all(
+      relays.map(
+        (relay: DesktopVideoSubjectRelay): Promise<DesktopVideoRequest[]> =>
+          relay.listWaitingRequests().catch((): DesktopVideoRequest[] => []),
+      ),
+    )
+    const requests: DesktopVideoRequest[] = requestsByKind.flat()
     return requests.sort(
       (first: DesktopVideoRequest, second: DesktopVideoRequest): number =>
         parseApiDate(first.requestedAt).getTime() - parseApiDate(second.requestedAt).getTime(),
@@ -104,11 +107,14 @@ export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => 
 
   /**
    * Build one requested video on this computer and publish it, or report why it could not be built.
-   * @param request - The site or receptionist whose video another device asked for.
+   * @param request - The demo whose video another device asked for.
+   * @param subjectRelay - How to claim, build and report a video of its kind.
    * @returns A promise resolved once the video is published or its failure is reported.
    */
-  async function buildRequestedVideo(request: DesktopVideoRequest): Promise<void> {
-    const subjectRelay: DesktopVideoSubjectRelay = SUBJECT_RELAYS[request.kind]
+  async function buildRequestedVideo(
+    request: DesktopVideoRequest,
+    subjectRelay: DesktopVideoSubjectRelay,
+  ): Promise<void> {
     const videoName: string = subjectRelay.describeVideo(request.businessName)
     try {
       await subjectRelay.claim(request.subjectId)
@@ -145,12 +151,19 @@ export const useDesktopVideoRelayStore = defineStore('desktopVideoRelay', () => 
       if (!hasLocalVideoBuilder) {
         return
       }
-      const requests: DesktopVideoRequest[] = await listWaitingRequests()
+      const relays: DesktopVideoSubjectRelay[] = await listSubjectRelays()
+      const requests: DesktopVideoRequest[] = await listWaitingRequests(relays)
       for (const request of requests) {
         if (!isWatchingRequests) {
           return
         }
-        await buildRequestedVideo(request)
+        const subjectRelay: DesktopVideoSubjectRelay | undefined = relays.find(
+          (relay: DesktopVideoSubjectRelay): boolean => relay.kind === request.kind,
+        )
+
+        if (subjectRelay) {
+          await buildRequestedVideo(request, subjectRelay)
+        }
       }
     } finally {
       isHandlingRequests = false

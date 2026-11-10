@@ -44,13 +44,19 @@ export type CampaignSkippedProspect = {
   name: string
 }
 
+/** Prospects left out of the queue because what a product module sells them is not ready yet (or it is off). */
+export type CampaignOfferSkip = {
+  module_key: string
+  module_label: string
+  prospects: CampaignSkippedProspect[]
+}
+
 /** What pushing newly added prospects into a launched campaign's send queue did (POST …/prospects only). */
 export type CampaignEnqueueOutcome = {
   enqueued: number
   skipped_no_demo: CampaignSkippedProspect[]
   skipped_no_video: CampaignSkippedProspect[]
-  skipped_no_assistant: CampaignSkippedProspect[]
-  skipped_no_loyalty_card_demo: CampaignSkippedProspect[]
+  skipped_without_offer?: CampaignOfferSkip[]
 }
 
 export type CampaignResponse = {
@@ -167,7 +173,7 @@ export type LaunchCampaignResponse = {
   success: boolean
   enqueued: number
   skipped_no_demo?: Array<{ id: number; name: string }>
-  skipped_no_assistant?: Array<{ id: number; name: string }>
+  skipped_without_offer?: CampaignOfferSkip[]
   message: string
 }
 

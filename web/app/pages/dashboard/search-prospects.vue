@@ -61,7 +61,7 @@
                   v-model="tradeInput"
                   type="text"
                   autocomplete="off"
-                  :placeholder="isAssistantModule ? 'Couvreur, carrosserie…' : 'Serrurier, menuisier…'"
+                  :placeholder="searchOptions.tradeInputPlaceholder"
                   :disabled="hasMaximumTrades"
                   class="app-input w-full pl-9 disabled:cursor-not-allowed disabled:opacity-50"
                   @keydown.enter.prevent="addTypedTrades"
@@ -200,8 +200,8 @@
             />
             <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               {{
-                isAssistantModule && !form.onlyWithoutWebsite
-                  ? 'La réceptionniste vit sur sa propre page : avec ou sans site, un pro qui reçoit des demandes est une cible.'
+                searchOptions.withWebsitesHint && !form.onlyWithoutWebsite
+                  ? searchOptions.withWebsitesHint
                   : 'Un site en panne ou un mini-site annuaire compte comme « sans site ».'
               }}
             </p>
@@ -364,8 +364,8 @@ import type {
   ProspectSearchStepKey,
   ProspectSearchWaveOptions,
 } from '~/types/ProspectSearchCreatePage'
+import type { ProspectSearchModuleOptions } from '~/types/ProspectingModuleOptions'
 import type { SelectFieldOption } from '~/types/SelectField'
-import type { SourcingVertical } from '~/types/Sourcing'
 import type { UiWizardStep } from '~/types/UiWizardStepper'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useDashboardScroll } from '~/composables/useDashboardScroll'
@@ -385,11 +385,11 @@ import {
   PROSPECT_SEARCH_TUNNEL_STEPS,
   PROSPECT_SEARCH_VALIDATION_OPTIONS,
 } from '~/constants/prospectSearch'
-import { SourcingService } from '~/services/sourcingService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useModuleStore } from '~/stores/moduleStore'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectingOptionsRegistry } from '~/utils/prospectingOptionsRegistry'
 import { ProspectSearchForm } from '~/utils/prospectSearchForm'
 import { ProspectSearches } from '~/utils/prospectSearches'
 import type { ProspectZoneOption } from '~/utils/prospectZones'
@@ -418,13 +418,22 @@ const steps: UiWizardStep[] = PROSPECT_SEARCH_TUNNEL_STEPS.map(
 )
 
 const currentStep: Ref<number> = ref(1)
-const verticals: Ref<SourcingVertical[]> = ref([])
-const form: Ref<ProspectSearchFormState> = ref(ProspectSearchForm.defaults(moduleStore.activeKey === 'ai-assistant'))
+/** The trade chips the active module offers wave by wave, once loaded. */
+const tradeWaves: Ref<ProspectSearchWaveOptions[]> = ref([])
+/** The module `tradeWaves` were loaded for, null until a module offered some. */
+const tradeWavesModuleKey: Ref<string | null> = ref(null)
+const form: Ref<ProspectSearchFormState> = ref(
+  ProspectSearchForm.defaults(
+    ProspectingOptionsRegistry.searchOptionsOf(moduleStore.activeKey).isOnlyWithoutWebsiteByDefault,
+  ),
+)
 const tradeInput: Ref<string> = ref('')
 const cityInput: Ref<string> = ref('')
 const cityInputRevision: Ref<number> = ref(0)
 
-const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
+const searchOptions: ComputedRef<ProspectSearchModuleOptions> = computed(
+  (): ProspectSearchModuleOptions => ProspectingOptionsRegistry.searchOptionsOf(moduleStore.activeKey),
+)
 
 const activeStepKey: ComputedRef<ProspectSearchStepKey> = computed(
   (): ProspectSearchStepKey => PROSPECT_SEARCH_TUNNEL_STEPS[currentStep.value - 1]?.key ?? 'target',
@@ -436,26 +445,9 @@ const knownTradeOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectF
   ),
 )
 
-const wavePresets: ComputedRef<ProspectSearchWaveOptions[]> = computed((): ProspectSearchWaveOptions[] => {
-  if (!isAssistantModule.value) return []
-  const presetsByWave: Map<number, ProspectSearchWaveOptions> = new Map()
-  for (const vertical of verticals.value) {
-    const preset: ProspectSearchWaveOptions = presetsByWave.get(vertical.wave) ?? {
-      wave: vertical.wave,
-      labels: [],
-      options: [],
-    }
-    preset.labels.push(vertical.label)
-    for (const searchTerm of vertical.search_terms) {
-      preset.options.push({ value: searchTerm, label: searchTerm })
-    }
-    presetsByWave.set(vertical.wave, preset)
-  }
-  return [...presetsByWave.values()].sort(
-    (firstPreset: ProspectSearchWaveOptions, secondPreset: ProspectSearchWaveOptions): number =>
-      firstPreset.wave - secondPreset.wave,
-  )
-})
+const wavePresets: ComputedRef<ProspectSearchWaveOptions[]> = computed((): ProspectSearchWaveOptions[] =>
+  tradeWavesModuleKey.value === moduleStore.activeKey ? tradeWaves.value : [],
+)
 
 const tradesOfferedAsChips: ComputedRef<string[]> = computed((): string[] => {
   if (wavePresets.value.length === 0) {
@@ -724,18 +716,18 @@ function loadForm(): void {
   if (import.meta.server) return
   let raw: string | null = null
   try {
-    raw = localStorage.getItem(ProspectSearchForm.storageKey(isAssistantModule.value))
+    raw = localStorage.getItem(ProspectSearchForm.storageKey(moduleStore.activeKey))
   } catch {
     raw = null
   }
-  form.value = ProspectSearchForm.fromStorage(raw, isAssistantModule.value)
+  form.value = ProspectSearchForm.fromStorage(raw, searchOptions.value.isOnlyWithoutWebsiteByDefault)
 }
 
 /** Remember the form for the next search (best-effort). */
 function saveForm(): void {
   if (!import.meta.client) return
   try {
-    localStorage.setItem(ProspectSearchForm.storageKey(isAssistantModule.value), JSON.stringify(form.value))
+    localStorage.setItem(ProspectSearchForm.storageKey(moduleStore.activeKey), JSON.stringify(form.value))
   } catch {
     // Storage full or unavailable: the search still starts.
   }
@@ -782,15 +774,22 @@ function alignTradesOnChipSpelling(): void {
 }
 
 /**
- * Fetch the target verticals once, in the Réceptionniste IA module only; the known trades stay offered on failure.
- * @returns A promise resolved once the verticals are loaded or the attempt failed.
+ * Fetch the trade waves of the active module once, when it offers some; the known trades stay offered on failure.
+ * @returns A promise resolved once the waves are loaded or the attempt failed.
  */
-async function loadVerticals(): Promise<void> {
-  if (!isAssistantModule.value || verticals.value.length > 0) return
+async function loadTradeWaves(): Promise<void> {
+  const moduleKey: string = moduleStore.activeKey
+  const loadModuleTradeWaves: ProspectSearchModuleOptions['loadTradeWaves'] = searchOptions.value.loadTradeWaves
+
+  if (!loadModuleTradeWaves || tradeWavesModuleKey.value === moduleKey) {
+    return
+  }
   try {
-    verticals.value = await SourcingService.listVerticals()
+    const waves: ProspectSearchWaveOptions[] = await loadModuleTradeWaves()
+    tradeWaves.value = waves
+    tradeWavesModuleKey.value = moduleKey
   } catch {
-    verticals.value = []
+    // The known trades stay offered; switching modules tries again.
   }
 }
 
@@ -833,17 +832,20 @@ async function launch(): Promise<void> {
 
 watch(tradesOfferedAsChips, alignTradesOnChipSpelling)
 
-watch(isAssistantModule, (): void => {
-  loadForm()
-  applyQueryPrefill()
-  loadVerticals()
-})
+watch(
+  (): string => moduleStore.activeKey,
+  (): void => {
+    loadForm()
+    applyQueryPrefill()
+    loadTradeWaves()
+  },
+)
 
 onMounted((): void => {
   loadForm()
   applyQueryPrefill()
   store.loadTradeOptions()
-  loadVerticals()
+  loadTradeWaves()
 })
 </script>
 

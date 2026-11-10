@@ -270,6 +270,7 @@ import type {
   ScraperSourceHealth,
 } from '~/services/adminMonitoringService'
 import { AdminMonitoringService } from '~/services/adminMonitoringService'
+import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
 import { isPlatformAdmin } from '~/utils/userRoles'
 
 definePageMeta({
@@ -340,7 +341,7 @@ const hasActiveFilters: ComputedRef<boolean> = computed(
 )
 
 /**
- * Human label for an activity category.
+ * Human label for an activity category: the core's, or the one the product module that logs it gives.
  * @param category - Raw category key.
  * @returns The French label (falls back to a capitalized key).
  */
@@ -349,7 +350,6 @@ function categoryLabel(category: string): string {
     email: 'E-mail',
     sms: 'SMS',
     demo: 'Démo',
-    assistant: 'Réceptionniste IA',
     sale: 'Vente',
     prospect: 'Prospect',
     demo_site: 'Site démo',
@@ -358,7 +358,11 @@ function categoryLabel(category: string): string {
     auth: 'Connexion',
     system: 'Système',
   }
-  return labels[category] ?? category.charAt(0).toUpperCase() + category.slice(1)
+  return (
+    labels[category] ??
+    DashboardModuleRegistry.activityCategoryLabel(category) ??
+    category.charAt(0).toUpperCase() + category.slice(1)
+  )
 }
 
 /**

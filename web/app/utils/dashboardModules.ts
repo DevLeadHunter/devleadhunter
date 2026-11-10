@@ -1,4 +1,5 @@
-import type { DlhModule, UiSidebarGroup } from '~/types/UiSidebar'
+import type { DlhModule, DlhModuleKey, UiSidebarGroup } from '~/types/UiSidebar'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 
 /**
  * The site-web module navigation: find prospects, build them a demo site, sell it.
@@ -26,61 +27,19 @@ const WEBSITES_NAV: UiSidebarGroup[] = [
   },
 ]
 
-/**
- * The AI-assistant module navigation: the same prospection base, but the deliverable is an
- * embedded receptionist (« Réceptionnistes IA ») instead of a demo site — so « Sites démo » and
- * the site automation tunnel drop out, the assistants + their captured leads come in, and the
- * one-off « Ventes » becomes the recurring « Abonnements ».
- */
-const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
-  {
-    heading: 'Pilotage',
-    links: [{ to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' }],
-  },
-  {
-    heading: 'Prospection',
-    links: [
-      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users', counterKey: 'pendingLeads' },
-      { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
-      { to: '/dashboard/ai-assistants', label: 'Réceptionnistes IA', icon: 'i-lucide-bot' },
-      { to: '/dashboard/ai-assistants/requests', label: 'Demandes', icon: 'i-lucide-inbox' },
-      { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
-      { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
-      { to: '/dashboard/sms', label: 'Suivi des SMS', icon: 'i-lucide-message-square-text' },
-      { to: '/dashboard/subscriptions', label: 'Abonnements', icon: 'i-lucide-repeat' },
-    ],
-  },
-]
+/** The core's module, first in the switcher and always available. */
+export const WEBSITES_DASHBOARD_MODULE: DlhModule = {
+  key: WEBSITES_MODULE_KEY,
+  label: 'Sites web',
+  icon: 'i-lucide-globe',
+  locked: false,
+  home: '/dashboard',
+  primaryCta: { label: 'Créer une automatisation', to: '/dashboard/automations/new', icon: 'i-lucide-plus' },
+  navGroups: WEBSITES_NAV,
+}
 
-/** Every product module of the shell, in switcher order. Locked ones announce their arrival. */
-export const DASHBOARD_MODULES: DlhModule[] = [
-  {
-    key: 'websites',
-    label: 'Sites web',
-    icon: 'i-lucide-globe',
-    locked: false,
-    home: '/dashboard',
-    primaryCta: { label: 'Créer une automatisation', to: '/dashboard/automations/new', icon: 'i-lucide-plus' },
-    navGroups: WEBSITES_NAV,
-  },
-  {
-    key: 'ai-assistant',
-    label: 'Réceptionniste IA',
-    icon: 'i-lucide-bot',
-    locked: false,
-    home: '/dashboard/ai-assistants',
-    primaryCta: { label: 'Trouver des prospects', to: '/dashboard/search-prospects', icon: 'i-lucide-search' },
-    navGroups: AI_ASSISTANT_NAV,
-  },
-  {
-    key: 'wallet-cards',
-    label: 'Cartes Apple Wallet',
-    icon: 'i-lucide-wallet-cards',
-    locked: true,
-    home: '/dashboard',
-    primaryCta: null,
-    navGroups: [],
-  },
+/** A module still to come, last in the switcher: clicking it only announces its arrival. */
+export const LOCKED_DASHBOARD_MODULES: DlhModule[] = [
   {
     key: 'freelance-missions',
     label: 'Missions freelance',
@@ -93,4 +52,4 @@ export const DASHBOARD_MODULES: DlhModule[] = [
 ]
 
 /** The default module when nothing is stored yet (the historical experience). */
-export const DEFAULT_MODULE_KEY: DlhModule['key'] = 'websites'
+export const DEFAULT_MODULE_KEY: DlhModuleKey = WEBSITES_MODULE_KEY

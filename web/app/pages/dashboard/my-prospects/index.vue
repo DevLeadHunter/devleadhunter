@@ -115,11 +115,11 @@
         class="grid grid-cols-2 gap-4"
         :class="{
           '@4xl:grid-cols-3': !isContactStatusTab,
-          '@4xl:grid-cols-6': isContactStatusTab && !isAssistantModule,
-          '@4xl:grid-cols-7': isContactStatusTab && isAssistantModule,
+          '@4xl:grid-cols-6': isContactStatusTab && !listOptions.showsInboundDemand,
+          '@4xl:grid-cols-7': isContactStatusTab && listOptions.showsInboundDemand,
         }"
       >
-        <div v-if="isAssistantModule && isContactStatusTab">
+        <div v-if="listOptions.showsInboundDemand && isContactStatusTab">
           <label class="app-label mb-1.5 block">Tri</label>
           <UiSelectField v-model="sortOrder" :options="sortOrderOptions" />
         </div>
@@ -296,7 +296,7 @@
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
         :temperatures="temperatureByPid"
-        :show-inbound-demand="isAssistantModule"
+        :show-inbound-demand="listOptions.showsInboundDemand"
         @view-prospect="openDrawer"
         @edit-prospect="openProspectEditDrawer"
         @delete-prospect="handleDeleteProspect"
@@ -397,7 +397,7 @@
               {{ bulkEnrichLabel }}
             </button>
             <button
-              v-if="isAssistantModule"
+              v-if="listOptions.canBulkScanWebsites"
               type="button"
               class="app-btn-secondary h-11 w-full disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="bulkScanning"
@@ -451,7 +451,7 @@
             {{ bulkEnrichLabel }}
           </button>
           <button
-            v-if="isAssistantModule"
+            v-if="listOptions.canBulkScanWebsites"
             type="button"
             class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="bulkScanning"
@@ -507,6 +507,7 @@ import type { UseToastReturn } from '~/types/Composables'
 import { ref, computed, watch, onMounted } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { Prospect } from '~/types'
+import type { ProspectListModuleOptions } from '~/types/ProspectingModuleOptions'
 import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
@@ -525,6 +526,7 @@ import { useToast } from '~/composables/useToast'
 import { useMyProspectsFilters } from '~/composables/useMyProspectsFilters'
 import { useModuleStore } from '~/stores/moduleStore'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
+import { ProspectingOptionsRegistry } from '~/utils/prospectingOptionsRegistry'
 
 definePageMeta({
   layout: 'dashboard',
@@ -557,15 +559,18 @@ const {
 }: ReturnType<typeof useMyProspectsFilters> = useMyProspectsFilters()
 
 const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
-const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
 
-/** Website filter choices; the Réceptionniste IA adds the « déjà équipé d'un chat » split. */
+const listOptions: ComputedRef<ProspectListModuleOptions> = computed(
+  (): ProspectListModuleOptions => ProspectingOptionsRegistry.listOptionsOf(moduleStore.activeKey),
+)
+
+/** Website filter choices; a module that sells against chat widgets adds the « déjà équipé d'un chat » split. */
 const websiteFilterOptions: ComputedRef<{ value: string; label: string }[]> = computed(
   (): { value: string; label: string }[] => [
     { value: 'all', label: 'Tous' },
     { value: 'yes', label: 'Oui' },
     { value: 'no', label: 'Non (aucun ou site mort)' },
-    ...(isAssistantModule.value
+    ...(listOptions.value.hasChatWebsiteFilters
       ? [
           { value: 'no-chat', label: 'Sans chat détecté' },
           { value: 'chat', label: "Déjà équipé d'un chat" },
@@ -678,7 +683,7 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
   } else if (filterWebsite.value === 'chat') {
     filtered = filtered.filter((prospect: Prospect) => ProspectWebsite.isChatEquipped(prospect))
   } else if (filterWebsite.value === 'no-chat') {
-    // Sans site, site mort ou site analysé sans widget : la réceptionniste n'a pas de concurrent en place.
+    // Sans site, site mort ou site analysé sans widget : aucun chat déjà en place.
     filtered = filtered.filter((prospect: Prospect) => !ProspectWebsite.isChatEquipped(prospect))
   }
 
@@ -715,7 +720,10 @@ const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   const inTab: Prospect[] = baseFiltered.value.filter((prospect: Prospect) =>
     activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted,
   )
-  if (!isAssistantModule.value || sortOrder.value !== 'demand') return inTab
+
+  if (!listOptions.value.showsInboundDemand || sortOrder.value !== 'demand') {
+    return inTab
+  }
   // Stable sort: equal scores keep the most recent first, unscored prospects go last.
   return [...inTab].sort(
     (left: Prospect, right: Prospect): number =>

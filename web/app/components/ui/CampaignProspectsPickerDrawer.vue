@@ -161,15 +161,18 @@ import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect } from '~/types'
 import type { SelectFieldOption } from '~/types/SelectField'
+import type { DashboardModuleDefinition } from '~/types/UiSidebar'
 import type {
   CampaignDetailResponse,
   CampaignEnqueueOutcome,
+  CampaignOfferSkip,
   CampaignProspectMembership,
   CampaignSkippedProspect,
 } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
+import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
 
 /** Drawer to attach existing prospects to a campaign. */
 const props: UiCampaignProspectsPickerDrawerProps = defineProps({
@@ -344,7 +347,7 @@ async function submit(): Promise<void> {
 }
 
 /**
- * Warn when newcomers joined a launched campaign but not its send queue (no live demo / video / assistant / card demo).
+ * Warn when newcomers joined a launched campaign but not its send queue (no live demo / video / module offer ready).
  * @param outcome - Enqueue outcome returned by the add call, or null when the campaign is not launched.
  */
 function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null): void {
@@ -361,18 +364,24 @@ function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null
       `Pas encore en file d'attente (pas de vidéo prête) : ${skippedProspectNames(outcome.skipped_no_video)}.`,
     )
   }
-  if (outcome.skipped_no_assistant.length > 0) {
-    const several: boolean = outcome.skipped_no_assistant.length > 1
-    toast.warning(
-      `Pas encore en file d'attente (pas d'assistant IA actif) : ${skippedProspectNames(outcome.skipped_no_assistant)}. ` +
-        `Génère ${several ? 'leurs assistants : ils rejoindront' : 'son assistant : il rejoindra'} la file à ${several ? 'leur' : 'sa'} position.`,
-    )
+  for (const offerSkip of outcome.skipped_without_offer ?? []) {
+    if (offerSkip.prospects.length > 0) {
+      toast.warning(describeProspectsWithoutOffer(offerSkip))
+    }
   }
-  if (outcome.skipped_no_loyalty_card_demo.length > 0) {
-    toast.warning(
-      `Pas en file d'attente (pas de démo de carte de fidélité) : ${skippedProspectNames(outcome.skipped_no_loyalty_card_demo)}.`,
-    )
-  }
+}
+
+/**
+ * The warning for prospects a module's offer held out of the queue: in the module's words when it gives them.
+ * @param offerSkip - The module and the prospects it held back.
+ * @returns The warning text.
+ */
+function describeProspectsWithoutOffer(offerSkip: CampaignOfferSkip): string {
+  const prospectNames: string[] = offerSkip.prospects.map((prospect: CampaignSkippedProspect): string => prospect.name)
+  const moduleDefinition: DashboardModuleDefinition | null = DashboardModuleRegistry.find(offerSkip.module_key)
+  if (moduleDefinition?.describeProspectsWithoutOffer)
+    return moduleDefinition.describeProspectsWithoutOffer(prospectNames)
+  return `Pas encore en file d'attente (rien de prêt pour « ${offerSkip.module_label} ») : ${prospectNames.join(', ')}.`
 }
 
 /**

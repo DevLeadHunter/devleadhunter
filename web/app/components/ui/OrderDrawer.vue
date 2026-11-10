@@ -431,6 +431,7 @@ import type { DomainCandidate, DomainSuggestions, DomainRegisterResult } from '~
 import { DomainsService } from '~/services/domainsService'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
+import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
 
 const DEFAULT_SALE_PRICE_CENTS: number = 50000
 
@@ -494,9 +495,9 @@ const statusOptions: { value: string; label: string }[] = [
 const STATUS_LABELS: Record<string, string> = Object.fromEntries(
   statusOptions.map((option: { value: string; label: string }) => [option.value, option.label]),
 )
+/** The core's product; a product module names the ones it sells (see `DashboardModuleRegistry`). */
 const PRODUCT_LABELS: Record<string, string> = {
   website: 'Site web',
-  apple_wallet: 'Carte Apple Wallet',
 }
 
 const isCreateMode: ComputedRef<boolean> = computed((): boolean => props.mode === 'create')
@@ -513,9 +514,10 @@ const drawerTitle: ComputedRef<string> = computed((): string => {
 const statusLabel: ComputedRef<string> = computed(
   (): string => STATUS_LABELS[props.order?.status ?? ''] ?? props.order?.status ?? '',
 )
-const productLabel: ComputedRef<string> = computed(
-  (): string => PRODUCT_LABELS[props.order?.product_type ?? ''] ?? props.order?.product_type ?? '',
-)
+const productLabel: ComputedRef<string> = computed((): string => {
+  const productType: string = props.order?.product_type ?? ''
+  return PRODUCT_LABELS[productType] ?? DashboardModuleRegistry.orderProductLabel(productType) ?? productType
+})
 
 /** Payment page of the issued invoice, falling back to the legacy platform link. */
 const paymentUrl: ComputedRef<string> = computed(

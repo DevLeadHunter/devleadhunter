@@ -15,5 +15,8 @@ export type DemoVideoEvent =
 
 export type DemoVideoEventCapture = (event: DemoVideoEvent, properties?: Record<string, unknown>) => void
 
-/** Module the video page belongs to: 'demo' for the website (/v), 'assistant' for the receptionist (/va). */
-export type DemoVideoSurface = 'demo' | 'assistant'
+/** Module the video page belongs to: its PostHog `surface` name and the prefix of its events. */
+export type DemoVideoSurface = {
+  name: string
+  eventPrefix: string
+}

@@ -16,7 +16,7 @@ export type UiProspectTableProps = {
   hideSelection?: boolean
   /** Show a drag handle on each row and let the user reorder rows by drag & drop. */
   reorderable?: boolean
-  /** Show the « Demande » column (inbound demand score of the Réceptionniste IA). */
+  /** Show the « Demande » column (the prospect's inbound demand score). */
   showInboundDemand?: boolean
 }
 

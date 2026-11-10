@@ -463,7 +463,7 @@ export class DemoSiteService {
    *
    * The clip is stored on R2 and streamed by an authed endpoint; the sidecar has
    * no auth, so the app fetches it and forwards the bytes.
-   * @param module - Which presenter clip to fetch (`websites` by default, `ai-assistant` for the assistant video).
+   * @param module - The module whose presenter clip to fetch (`websites` by default, a product module's key otherwise).
    * @returns The presenter mp4 blob.
    * @throws When no presenter clip is available.
    */

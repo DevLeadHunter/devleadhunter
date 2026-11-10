@@ -352,95 +352,17 @@
               </div>
             </div>
 
-            <div v-if="!isAssistantModule" class="border-t border-[var(--app-surface-2)]"></div>
-
-            <div v-if="!isAssistantModule" class="space-y-3 px-5 py-4">
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
-                  Réceptionniste IA
-                </p>
-                <a
-                  v-if="prospectAssistant"
-                  :href="assistantDemoUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="btn-secondary text-xs"
-                >
-                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
-                  Ouvrir
-                </a>
-                <button
-                  v-else
-                  type="button"
-                  class="btn-secondary text-xs"
-                  :disabled="isGeneratingAssistant"
-                  @click="handleGenerateAssistant"
-                >
-                  <UIcon
-                    :name="isGeneratingAssistant ? 'i-lucide-loader-circle' : 'i-lucide-bot'"
-                    :class="['h-3.5 w-3.5', isGeneratingAssistant && 'animate-spin']"
-                  />
-                  {{ isGeneratingAssistant ? 'Génération…' : 'Générer' }}
-                </button>
-              </div>
-              <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                Assistant multilingue branché sur les données de ce prospect, à tester sur sa page démo.
-              </p>
-            </div>
+            <template v-for="moduleSection in moduleSections" :key="moduleSection.key">
+              <div class="border-t border-[var(--app-surface-2)]"></div>
+              <component
+                :is="moduleSection.component"
+                :prospect="prospect"
+                :opening-id="openingId"
+                @updated="$emit('updated', $event)"
+              />
+            </template>
 
             <div class="border-t border-[var(--app-surface-2)]"></div>
-
-            <div v-if="canScanWebsiteEquipment" class="space-y-3 px-5 py-4">
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
-                  Équipement du site
-                </p>
-                <button
-                  type="button"
-                  class="btn-secondary text-xs"
-                  :disabled="isScanningEquipment"
-                  @click="handleWebsiteEquipmentScan"
-                >
-                  <UIcon
-                    :name="isScanningEquipment ? 'i-lucide-loader-circle' : 'i-lucide-scan-search'"
-                    :class="['h-3.5 w-3.5', isScanningEquipment && 'animate-spin']"
-                  />
-                  {{ isScanningEquipment ? 'Analyse…' : prospect.website_equipment_json ? 'Relancer' : 'Analyser' }}
-                </button>
-              </div>
-
-              <template v-if="prospect.website_equipment_json">
-                <div class="flex flex-wrap gap-1.5">
-                  <span v-if="ProspectWebsite.isChatEquipped(prospect)" class="app-badge app-badge--engaged">
-                    <UIcon name="i-lucide-message-circle" class="h-3 w-3" />
-                    Chat : {{ ProspectWebsite.chatProviderLabels(prospect).join(', ') }}
-                  </span>
-                  <span v-else class="app-badge app-badge--success">
-                    <UIcon name="i-lucide-message-circle-off" class="h-3 w-3" />
-                    Aucun chat
-                  </span>
-                  <span class="app-badge">
-                    <UIcon
-                      :name="prospect.website_equipment_json.has_contact_form ? 'i-lucide-mail' : 'i-lucide-mail-x'"
-                      class="h-3 w-3"
-                    />
-                    {{
-                      prospect.website_equipment_json.has_contact_form ? 'Formulaire de contact' : 'Pas de formulaire'
-                    }}
-                  </span>
-                </div>
-                <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">{{ websiteEquipmentAdvice }}</p>
-                <p v-if="prospect.website_equipment_at" class="text-[10px] text-[var(--app-faint)]">
-                  Analysé le {{ formatLongMonthDate(prospect.website_equipment_at) }}
-                </p>
-              </template>
-
-              <p v-else class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                Détecte un chat déjà installé (Tidio, Crisp, IONOS…) et un formulaire de contact.
-              </p>
-            </div>
-
-            <div v-if="canScanWebsiteEquipment" class="border-t border-[var(--app-surface-2)]"></div>
 
             <div v-if="prospect.website" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
@@ -638,27 +560,12 @@
                 <span class="truncate">Vendu</span>
               </button>
             </div>
-            <a
-              v-if="isAssistantModule && prospectAssistant"
-              :href="assistantDemoUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn-primary w-full"
-            >
-              <UIcon name="i-lucide-external-link" class="mr-1.5 h-4 w-4" />Ouvrir l'assistant
-            </a>
-            <button
-              v-else-if="isAssistantModule"
-              class="btn-primary w-full"
-              :disabled="isGeneratingAssistant"
-              @click="handleGenerateAssistant"
-            >
-              <UIcon
-                :name="isGeneratingAssistant ? 'i-lucide-loader-circle' : 'i-lucide-bot'"
-                :class="['mr-1.5 h-4 w-4', isGeneratingAssistant && 'animate-spin']"
-              />
-              {{ isGeneratingAssistant ? 'Génération…' : 'Générer un assistant IA' }}
-            </button>
+            <component
+              :is="modulePrimaryAction.component"
+              v-if="modulePrimaryAction"
+              :prospect="prospect"
+              :opening-id="openingId"
+            />
             <a
               v-else-if="demoSite?.demo_url"
               :href="DemoSiteService.withInternalFlag(demoSite.demo_url) ?? undefined"
@@ -698,7 +605,7 @@
 <script lang="ts" setup>
 import { formatLongMonthDate, parseApiDate } from '~/utils/date'
 import { ProspectCountries } from '~/utils/prospectCountries'
-import { ProspectWebsite } from '~/utils/prospectWebsite'
+import { ProspectDrawerExtensionRegistry } from '~/utils/prospectDrawerExtensionRegistry'
 import { ProspectZones } from '~/utils/prospectZones'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
@@ -711,9 +618,11 @@ import type { AddressSuggestion } from '~/types/AddressAutocompleteInput'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
-import type { AiAssistantSummary } from '~/types/AiAssistant'
+import type {
+  ProspectDrawerPrimaryActionRegistration,
+  ProspectDrawerSectionRegistration,
+} from '~/types/ProspectDrawerExtension'
 import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
-import { AiAssistantService } from '~/services/aiAssistantService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -758,9 +667,6 @@ const toast: UseToastReturn = useToast()
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
 const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
-/** True when the AI-assistant module is active — the drawer then leads with the assistant deliverable. */
-const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
-
 /** The cross-module lock blocking the ACTIVE module, or null when this module may contact the prospect. */
 const contactLock: ComputedRef<{ label: string; until: string } | null> = computed(
   (): { label: string; until: string } | null => {
@@ -779,14 +685,14 @@ const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
 const isReserving: Ref<boolean> = ref(false)
 const isAuditing: Ref<boolean> = ref(false)
-const isScanningEquipment: Ref<boolean> = ref(false)
-const isGeneratingAssistant: Ref<boolean> = ref(false)
-const prospectAssistant: Ref<AiAssistantSummary | null> = ref(null)
 const isLoadingDemoSite: Ref<boolean> = ref(false)
 const demoSite: Ref<DemoSite | null> = ref(null)
 const deleteConfirmModal: Ref<{ open: () => void } | null> = ref(null)
 const isTogglingContact: Ref<boolean> = ref(false)
 const isRestoring: Ref<boolean> = ref(false)
+
+/** Bumps each time the drawer opens on a prospect, so the module blocks refresh then (not on an edit round trip). */
+const openingId: Ref<number> = ref(0)
 
 // Exposed to the drawer host so it can suspend the swipe-to-next gesture while an edit is in progress.
 defineExpose({ editMode })
@@ -813,17 +719,28 @@ const isReservedByOther: ComputedRef<boolean> = computed(
 /** Contact details (emails, phones) stay editable unless another member currently holds the prospect. */
 const canEditContactDetails: ComputedRef<boolean> = computed((): boolean => !isReservedByOther.value)
 
-const canScanWebsiteEquipment: ComputedRef<boolean> = computed(
-  (): boolean => !!props.prospect && ProspectWebsite.hasWorkingWebsite(props.prospect),
+const moduleSections: ComputedRef<ProspectDrawerSectionRegistration[]> = computed(
+  (): ProspectDrawerSectionRegistration[] => {
+    const prospect: Prospect | null = props.prospect
+
+    if (!prospect) {
+      return []
+    }
+    return ProspectDrawerExtensionRegistry.sections().filter(
+      (section: ProspectDrawerSectionRegistration): boolean =>
+        moduleStore.isModuleUsable(section.moduleKey) &&
+        section.isShown({ prospect, activeModuleKey: moduleStore.activeKey }),
+    )
+  },
 )
 
-/** What the last website scan means for the Réceptionniste IA pitch. */
-const websiteEquipmentAdvice: ComputedRef<string> = computed((): string => {
-  if (!props.prospect) return ''
-  return ProspectWebsite.isChatEquipped(props.prospect)
-    ? "Déjà équipé d'un chat : parlez de ce qu'il ne fait pas (photo, SMS au patron, rapport mensuel) ou passez au suivant."
-    : "Aucun chat : ses demandes écrites attendent qu'il rappelle, la réceptionniste a sa place."
-})
+const modulePrimaryAction: ComputedRef<ProspectDrawerPrimaryActionRegistration | null> = computed(
+  (): ProspectDrawerPrimaryActionRegistration | null => {
+    const primaryAction: ProspectDrawerPrimaryActionRegistration | null =
+      ProspectDrawerExtensionRegistry.primaryActionOf(moduleStore.activeKey)
+    return primaryAction && moduleStore.isModuleUsable(primaryAction.moduleKey) ? primaryAction : null
+  },
+)
 
 /** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
 const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {
@@ -862,20 +779,6 @@ async function loadDemoSite(): Promise<void> {
     // Non-critical — the footer falls back to the generation call to action.
   } finally {
     isLoadingDemoSite.value = false
-  }
-}
-
-/**
- * Find the AI assistant already generated for this prospect, if any.
- * @returns A promise resolved once the lookup completes.
- */
-async function loadProspectAssistant(): Promise<void> {
-  if (!props.prospect) return
-  prospectAssistant.value = null
-  try {
-    prospectAssistant.value = await AiAssistantService.getForProspect(props.prospect.id)
-  } catch {
-    // Non-critical — the footer falls back to the generation call to action.
   }
 }
 
@@ -938,24 +841,6 @@ async function handleRelease(): Promise<void> {
 }
 
 /**
- * Scan the prospect's website for a chat widget and a contact form (a few seconds).
- * @returns A promise resolved once the scan is stored.
- */
-async function handleWebsiteEquipmentScan(): Promise<void> {
-  if (!props.prospect) return
-  isScanningEquipment.value = true
-  try {
-    const updated: Prospect = await ProspectsService.scanWebsiteEquipment(props.prospect.id)
-    emit('updated', updated)
-    toast.success(ProspectWebsite.isChatEquipped(updated) ? 'Chat déjà installé sur ce site' : 'Aucun chat sur ce site')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : "L'analyse du site a échoué")
-  } finally {
-    isScanningEquipment.value = false
-  }
-}
-
-/**
  * Run the Lighthouse audit on the prospect's existing website (slow, 30-60s).
  * @returns A promise resolved once the audit is stored.
  */
@@ -970,25 +855,6 @@ async function handleLighthouse(): Promise<void> {
     toast.error(err instanceof Error ? err.message : "L'audit a échoué")
   } finally {
     isAuditing.value = false
-  }
-}
-
-/**
- * Generate an AI assistant for this prospect and surface its demo link.
- *
- * @returns A promise resolved once the assistant is generated.
- */
-async function handleGenerateAssistant(): Promise<void> {
-  if (!props.prospect || isGeneratingAssistant.value) return
-  isGeneratingAssistant.value = true
-  try {
-    const assistant: AiAssistantSummary = await AiAssistantService.create(props.prospect.id)
-    prospectAssistant.value = assistant
-    toast.success('Réceptionniste IA générée — prête à tester et à envoyer.')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'La génération a échoué')
-  } finally {
-    isGeneratingAssistant.value = false
   }
 }
 
@@ -1042,13 +908,6 @@ const editForm: Ref<ProspectEditForm> = ref({
 /** Zone line under the city (Martinique, a country abroad) — empty for France so French cards keep their layout. */
 const zoneSuffix: ComputedRef<string> = computed((): string => ProspectZones.suffix(ProspectZones.of(props.prospect)))
 
-/** The prospect's assistant demo URL, marked internal so previewing it never pollutes its analytics. */
-const assistantDemoUrl: ComputedRef<string> = computed((): string => {
-  const url: string = prospectAssistant.value?.demo_url ?? ''
-  if (!url) return ''
-  return url.includes('?') ? `${url}&internal=1` : `${url}?internal=1`
-})
-
 watch(
   () => [props.open, props.prospect?.id],
   ([open]: (boolean | number | undefined)[]) => {
@@ -1060,8 +919,8 @@ watch(
       return
     }
     if (props.startInEdit) startEdit()
+    openingId.value++
     void loadDemoSite()
-    void loadProspectAssistant()
   },
   { immediate: true },
 )

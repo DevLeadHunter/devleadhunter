@@ -1,17 +1,17 @@
-export type StorageObjectKind =
-  | 'website_video'
-  | 'website_thumbnail'
-  | 'website_background'
-  | 'assistant_video'
-  | 'assistant_thumbnail'
-  | 'presenter'
-  | 'support'
-  | 'prospect_photo'
-  | 'assistant_photo'
-  | 'assistant_document'
-  | 'assistant_avatar'
-  | 'manual'
-  | 'other'
+/** A category of the bucket's objects, read from the key prefix: a core one, or one a product module declares. */
+export type StorageObjectKind = string
+
+/** How the storage page previews a category: a video player, an image, or nothing. */
+export type StorageKindMedia = 'video' | 'image' | 'file'
+
+/** How the storage page names, filters and previews one category (`kinds` of the listing, core first). */
+export type StorageKind = {
+  kind: StorageObjectKind
+  label: string
+  filter_prefix: string | null
+  filter_label: string
+  media: StorageKindMedia
+}
 
 export type StorageObject = {
   key: string
@@ -29,6 +29,7 @@ export type StorageObject = {
 export type StorageListResponse = {
   bucket: string
   public_base_url: string
+  kinds: StorageKind[]
   items: StorageObject[]
   total: number
   total_size: number

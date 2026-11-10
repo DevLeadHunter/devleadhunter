@@ -24,7 +24,7 @@ import type { EmitFn } from 'vue'
 import type { DemoCtaLinkEmits, DemoCtaLinkProps } from '~/types/DemoCtaLink'
 
 /**
- * The black pill call to action of the demo pages (video, receptionist): an arrow, and, when `pulse` is on, the
+ * The black pill call to action of the demo pages (video): an arrow, and, when `pulse` is on, the
  * breathing halo and periodic light sweep that nudge the visitor to click.
  */
 const props: DemoCtaLinkProps = defineProps({

@@ -1,6 +1,5 @@
 import type { PresenterVideoTake } from '~/types/PresenterVideoTake'
 import type { PreviewTimingOverrides } from '~/services/storyblokSidecarService'
-import type { AssistantPreviewTimingOverrides } from '~/types/AssistantSidecar'
 
 /** Mirror of the server's automatic split: Storyblok budget carved out of the middle. */
 export const AUTO_STORYBLOK_SECONDS: number = 17
@@ -10,12 +9,6 @@ export const MIN_SITE_SCROLL_SECONDS: number = 6
 
 /** Under this, the scripted Storyblok edit demo gets visibly cut. */
 export const STORYBLOK_COMFORT_SECONDS: number = 10
-
-/** Mirror of the server's client-space chapter, which closes the receptionist's middle. */
-export const RECEPTIONIST_SPACE_CHAPTER_SECONDS: number = 7
-
-/** Mirror of the server's shortest chat scene: below it plus the chapter, the chapter is dropped. */
-export const MIN_WIDGET_SCENE_SECONDS: number = 6
 
 /** Below this gap, a cut point read back from the database has not moved (FLOAT columns add noise). */
 export const CUT_POINT_TOLERANCE_SECONDS: number = 0.01
@@ -81,31 +74,6 @@ export class PresenterVideoTimings {
       site_seconds: PresenterVideoTimings.siteSeconds(take),
       total_seconds: PresenterVideoTimings.middleSeconds(take.duration_seconds, take.intro_seconds, take.outro_seconds),
     }
-  }
-
-  /**
-   * Timings a receptionist video build needs to be montaged with this take rather than the one in use.
-   * @param take - The take montaged.
-   * @returns The build's timing fields.
-   */
-  static receptionistBuildTimings(take: PresenterVideoTake): AssistantPreviewTimingOverrides {
-    return {
-      presenter_duration: take.duration_seconds,
-      presenter_intro: take.intro_seconds,
-      presenter_outro: take.outro_seconds,
-      total_seconds: PresenterVideoTimings.middleSeconds(take.duration_seconds, take.intro_seconds, take.outro_seconds),
-    }
-  }
-
-  /**
-   * Seconds of the receptionist's middle given to the client space, 0 when the chat would be left too short.
-   * @param middleSeconds - The take's middle length.
-   * @returns The chapter length.
-   */
-  static receptionistSpaceChapterSeconds(middleSeconds: number): number {
-    return middleSeconds >= MIN_WIDGET_SCENE_SECONDS + RECEPTIONIST_SPACE_CHAPTER_SECONDS
-      ? RECEPTIONIST_SPACE_CHAPTER_SECONDS
-      : 0
   }
 
   /**

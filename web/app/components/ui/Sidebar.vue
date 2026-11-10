@@ -136,12 +136,12 @@
               <UIcon :name="link.icon" class="h-4 w-4 shrink-0" />
               <span class="truncate">{{ link.label }}</span>
               <span
-                v-if="link.counterKey && counters[link.counterKey].count > 0"
+                v-if="link.counterKey && (counters[link.counterKey]?.count ?? 0) > 0"
                 class="font-label ml-auto shrink-0 rounded-full bg-[var(--app-accent-soft)] px-1.5 py-0.5 text-[10px] leading-none font-medium text-[var(--app-accent-ink)] tabular-nums"
-                :title="counters[link.counterKey].description"
-                :aria-label="counters[link.counterKey].description"
+                :title="counters[link.counterKey]?.description"
+                :aria-label="counters[link.counterKey]?.description"
               >
-                {{ counters[link.counterKey].count }}
+                {{ counters[link.counterKey]?.count }}
               </span>
             </NuxtLink>
           </div>
@@ -303,6 +303,8 @@ import type { UseAuthReturn, UseDesktopRuntimeReturn, UseProfilePhotoReturn, Use
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type {
+  DashboardModuleDefinition,
+  DashboardModuleSidebarCounter,
   DlhModule,
   UiSidebarCounter,
   UiSidebarCounterKey,
@@ -311,8 +313,8 @@ import type {
   UiSidebarProps,
 } from '~/types/UiSidebar'
 import { ref, computed, onMounted } from 'vue'
-import { DASHBOARD_MODULES } from '~/utils/dashboardModules'
 import { useModuleStore } from '~/stores/moduleStore'
+import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
 import { useUserStore } from '~/stores/user'
 import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
@@ -369,6 +371,7 @@ const { profilePhotoObjectUrl, ensureProfilePhotoLoaded }: UseProfilePhotoReturn
 
 onMounted(async (): Promise<void> => {
   moduleStore.initFromStorage()
+  moduleStore.ensureEnabledModulesLoaded()
   await ensureProfilePhotoLoaded()
   if (!isDesktopApp.value) return
   try {
@@ -405,11 +408,11 @@ useHorizontalSwipe(sidebarPanel, {
   onSwipeLeft: (): void => emit('toggle'),
 })
 
-/** Product modules of the shell, for the top-left switcher. */
-const modules: DlhModule[] = DASHBOARD_MODULES
-
 /** Active module store — drives which navigation the sidebar shows. */
 const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+
+/** Product modules of the shell, for the top-left switcher. */
+const modules: ComputedRef<DlhModule[]> = computed((): DlhModule[] => moduleStore.switcherModules)
 
 /** Navigation groups of the active module (swaps when the module changes). */
 const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => moduleStore.activeModule.navGroups)
@@ -444,11 +447,21 @@ const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspe
 const counters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>> = computed(
   (): Record<UiSidebarCounterKey, UiSidebarCounter> => {
     const pendingLeadCount: number = prospectSearchStore.pendingCount
+    const moduleDefinition: DashboardModuleDefinition | null = DashboardModuleRegistry.find(moduleStore.activeKey)
+    const moduleCounters: Record<UiSidebarCounterKey, UiSidebarCounter> = Object.fromEntries(
+      (moduleDefinition?.sidebarCounters ?? []).map(
+        (counter: DashboardModuleSidebarCounter): [UiSidebarCounterKey, UiSidebarCounter] => [
+          counter.key,
+          counter.read(),
+        ],
+      ),
+    )
     return {
       pendingLeads: {
         count: pendingLeadCount,
         description: pendingLeadCount > 1 ? `${pendingLeadCount} leads à valider` : '1 lead à valider',
       },
+      ...moduleCounters,
     }
   },
 )

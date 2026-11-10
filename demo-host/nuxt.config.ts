@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite'
+import { productModuleLayers } from '../product-modules.mjs'
 
 export default defineNuxtConfig({
   ssr: true,
@@ -18,12 +19,19 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-food#v1.2.0',
     'github:DevLeadHunter/devleadhunter-template-barber#v1.3.0',
     'github:DevLeadHunter/devleadhunter-template-landscaper-verdure#v1.10.0',
+    ...productModuleLayers('demo-host'),
   ],
 
   compatibilityDate: '2024-07-11',
   css: ['~/assets/css/fonts.css', '~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
+  },
+  appConfig: {
+    demoTracking: {
+      // Filled by the product module layers.
+      sessionReplayMaskedTextSelectors: [],
+    },
   },
   runtimeConfig: {
     public: {
@@ -45,13 +53,6 @@ export default defineNuxtConfig({
           'https://devleadhunter.fr https://devleadhunter.dibodev.fr http://localhost:3000 http://localhost:5173 http://localhost:1420 ' +
           'http://tauri.localhost https://tauri.localhost ' +
           'https://dibodev.fr https://www.dibodev.fr https://localhost:3000 http://localhost:3200',
-      },
-    },
-    // The assistant widget is an iframe on the clients' own websites: any site may frame it.
-    '/embed/**': {
-      cors: true,
-      headers: {
-        'Content-Security-Policy': 'frame-ancestors *',
       },
     },
   },

@@ -34,6 +34,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
         icon: 'i-lucide-sliders-horizontal',
         superAdminOnly: true,
       },
+      { to: '/dashboard/admin/modules', label: 'Modules', icon: 'i-lucide-blocks', superAdminOnly: true },
       { to: '/dashboard/admin/monitoring', label: 'Monitoring', icon: 'i-lucide-activity' },
       { to: '/dashboard/admin/storage', label: 'Stockage', icon: 'i-lucide-hard-drive' },
       { to: '/dashboard/accounting', label: 'Comptabilité', icon: 'i-lucide-calculator', superAdminOnly: true },

@@ -135,40 +135,35 @@ import type {
   PresenterVideoConfigEmits,
   PresenterVideoConfigProps,
   PresenterVideoExampleDemo,
+  PresenterVideoModuleAdapter,
   PresenterVideoModuleWording,
 } from '~/types/PresenterVideoConfig'
 import type { PresenterVideoTake, PresenterVideoTakeList } from '~/types/PresenterVideoTake'
-import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
 import type { PreviewVideoResult } from '~/services/storyblokSidecarService'
-import type { AssistantPreviewVideoResult } from '~/types/AssistantSidecar'
-import type { AiAssistantListResponse, AiAssistantSummary } from '~/types/AiAssistant'
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, onMounted, ref, watch } from 'vue'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { PresenterVideoService } from '~/services/presenterVideoService'
-import { DemoSiteService } from '~/services/demoSiteService'
-import { AiAssistantService } from '~/services/aiAssistantService'
-import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
-import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
+import { WEBSITES_PRESENTER_VIDEO_ADAPTER } from '~/services/websitesPresenterVideoAdapter'
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
-import { PRESENTER_VIDEO_WORDINGS } from '~/constants/presenterVideoWordings'
-import { RECEPTIONIST_VIDEO_BUILD_PHASES, SITE_VIDEO_BUILD_PHASES } from '~/constants/videoBuildPhases'
-import { PresenterVideoTimings } from '~/utils/presenterVideoTimings'
+import { PresenterVideoAdapterRegistry } from '~/utils/presenterVideoAdapterRegistry'
 import { useToast } from '~/composables/useToast'
 
 const props: PresenterVideoConfigProps = defineProps({
   module: {
     type: String as PropType<ProspectionScriptModule>,
-    default: 'websites',
+    default: WEBSITES_MODULE_KEY,
   },
 })
 
 const emit: EmitFn<PresenterVideoConfigEmits> = defineEmits<PresenterVideoConfigEmits>()
 
+const adapter: PresenterVideoModuleAdapter =
+  PresenterVideoAdapterRegistry.of(props.module) ?? WEBSITES_PRESENTER_VIDEO_ADAPTER
+
 const toast: UseToastReturn = useToast()
-const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress(
-  props.module === 'ai-assistant' ? RECEPTIONIST_VIDEO_BUILD_PHASES : SITE_VIDEO_BUILD_PHASES,
-)
+const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress(adapter.buildPhases)
 
 const takes: Ref<PresenterVideoTake[]> = ref([])
 const autoGenerate: Ref<boolean> = ref(true)
@@ -182,7 +177,7 @@ const isDesktopApp: Ref<boolean> = ref(false)
 
 const exampleDemos: Ref<PresenterVideoExampleDemo[]> = ref([])
 
-/** Site or receptionist used as the example, as a select value. */
+/** Demo used as the example, as a select value. */
 const selectedExampleDemoId: Ref<string> = ref('')
 
 /** One build at a time: the desktop builder keeps a single result per demo. */
@@ -193,9 +188,7 @@ const timingsTakeId: Ref<number | null> = ref(null)
 const takePendingDeletion: Ref<PresenterVideoTake | null> = ref(null)
 const deleteModalRef: Ref<{ open: () => void } | null> = ref(null)
 
-const wording: ComputedRef<PresenterVideoModuleWording> = computed(
-  (): PresenterVideoModuleWording => PRESENTER_VIDEO_WORDINGS[props.module],
-)
+const wording: ComputedRef<PresenterVideoModuleWording> = computed((): PresenterVideoModuleWording => adapter.wording)
 
 const activeTake: ComputedRef<PresenterVideoTake | null> = computed(
   (): PresenterVideoTake | null => takes.value.find((take: PresenterVideoTake): boolean => take.is_active) ?? null,
@@ -320,35 +313,15 @@ async function activateTake(take: PresenterVideoTake): Promise<void> {
 }
 
 /**
- * Have the desktop app render the video a take gives on a demo; nothing is published.
- * @param demoId - The site or receptionist filmed.
- * @param take - The take montaged, with the cut points to use.
- * @returns The rendered mp4, or why it could not be made.
- */
-function renderTake(
-  demoId: number,
-  take: PresenterVideoTake,
-): Promise<PreviewVideoResult | AssistantPreviewVideoResult> {
-  if (props.module === 'ai-assistant') {
-    return AssistantSidecarService.buildPreviewVideo(
-      demoId,
-      PresenterVideoTimings.receptionistBuildTimings(take),
-      take.id,
-    )
-  }
-  return StoryblokSidecarService.buildPreviewVideo(demoId, PresenterVideoTimings.siteBuildTimings(take), take.id)
-}
-
-/**
  * Render a take on a demo while the progress modal follows the build.
- * @param demo - The site or receptionist filmed.
+ * @param demo - The demo filmed.
  * @param take - The take montaged, with the cut points to use.
  * @returns The rendered mp4, or null when it could not be made (the user is told why).
  */
 async function renderTakeWithProgress(demo: PresenterVideoExampleDemo, take: PresenterVideoTake): Promise<Blob | null> {
   videoProgress.start(demo.slug, "Enregistrement de l'exemple")
   try {
-    const result: PreviewVideoResult | AssistantPreviewVideoResult = await renderTake(demo.id, take)
+    const result: PreviewVideoResult = await adapter.renderPreview(demo.id, take)
     if (result.status === 'done' && result.video) return result.video
     if (result.status === 'needs_login') {
       videoProgress.close()
@@ -376,7 +349,7 @@ async function renderTakeWithProgress(demo: PresenterVideoExampleDemo, take: Pre
  * Keep a rendered video as a take's example and show it on its card.
  * @param takeId - The take the video was montaged with.
  * @param video - The rendered mp4.
- * @param demo - The site or receptionist filmed.
+ * @param demo - The demo filmed.
  */
 async function keepExample(takeId: number, video: Blob, demo: PresenterVideoExampleDemo): Promise<void> {
   replaceTake(await PresenterVideoService.uploadTakeExample(takeId, video, demo.id, demo.name))
@@ -478,37 +451,6 @@ async function handleAutoGenerateChange(isOn: boolean): Promise<void> {
 }
 
 /**
- * The user's demo sites that can be filmed: live, with the Storyblok space the editor sequence opens.
- * @returns Them as example demos.
- */
-async function loadSiteExampleDemos(): Promise<PresenterVideoExampleDemo[]> {
-  const response: DemoSiteListResponse = await DemoSiteService.listDemoSites()
-  return response.items
-    .filter(
-      (site: DemoSite): boolean =>
-        site.status === 'active' && Boolean(site.demo_url) && Boolean(site.storyblok_editor_url),
-    )
-    .map((site: DemoSite): PresenterVideoExampleDemo => ({ id: site.id, slug: site.slug, name: site.business_name }))
-}
-
-/**
- * The user's receptionists that can be filmed: the live demos, a sold one is never filmed again.
- * @returns Them as example demos.
- */
-async function loadReceptionistExampleDemos(): Promise<PresenterVideoExampleDemo[]> {
-  const response: AiAssistantListResponse = await AiAssistantService.list()
-  return response.assistants
-    .filter((assistant: AiAssistantSummary): boolean => assistant.status === 'active')
-    .map(
-      (assistant: AiAssistantSummary): PresenterVideoExampleDemo => ({
-        id: assistant.id,
-        slug: assistant.slug,
-        name: assistant.business_name,
-      }),
-    )
-}
-
-/**
  * The demo the most recent example was built on, so a new example is compared on the same one.
  * @returns Its id, or null when no take has an example yet.
  */
@@ -524,8 +466,7 @@ function latestExampleDemoId(): number | null {
 /** Load the demos usable as examples; keep the one of the latest example, else take one at random. */
 async function loadExampleDemos(): Promise<void> {
   try {
-    exampleDemos.value =
-      props.module === 'ai-assistant' ? await loadReceptionistExampleDemos() : await loadSiteExampleDemos()
+    exampleDemos.value = await adapter.loadExampleDemos()
   } catch {
     // Pas bloquant : le sélecteur reste vide et la génération des exemples désactivée.
     return

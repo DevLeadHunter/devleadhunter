@@ -27,15 +27,20 @@
 
 <script lang="ts" setup>
 import type { UiVariableChipsEmits } from '~/types/UiVariableChips'
-import type { EmitFn, Ref } from 'vue'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useModuleStore } from '~/stores/moduleStore'
 import { EmailVariables } from '~/utils/emailVariables'
 
 const emit: EmitFn<UiVariableChipsEmits> = defineEmits<UiVariableChipsEmits>()
 
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+
 /** The available variables rendered as chips. */
-const variables: EmailVariable[] = EmailVariables.catalog
+const variables: ComputedRef<EmailVariable[]> = computed((): EmailVariable[] =>
+  EmailVariables.catalogOf(moduleStore.isModuleUsable),
+)
 
 /** Approximate tooltip width (matches `max-w-[260px]`) used to decide the flip. */
 const TOOLTIP_WIDTH: number = 264

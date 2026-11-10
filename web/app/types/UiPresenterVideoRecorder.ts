@@ -7,7 +7,7 @@ import type { RecordedTake } from '~/composables/useWebcamRecorder'
 
 export type UiPresenterVideoRecorderProps = {
   autoGenerate: boolean
-  /** Which clip is filmed: the site clip (default) or the receptionist clip, each with its own takes. */
+  /** Which module's clip is filmed (the site clip by default): each module has its own takes. */
   module: ProspectionScriptModule
 }
 

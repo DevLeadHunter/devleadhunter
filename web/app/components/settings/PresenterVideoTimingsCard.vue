@@ -63,7 +63,7 @@
           placeholder="5"
         />
       </div>
-      <div v-if="!isReceptionistTake">
+      <div v-if="hasSiteSplit">
         <label class="text-muted mb-1.5 block text-xs font-medium" :for="`${fieldIdPrefix}-site`"
           >Partie site (s)</label
         >
@@ -97,7 +97,7 @@
         PresenterVideoTimings.formatSeconds(outroSeconds)
       }}) sont mesurées sur vos prises — {{ wording.recordedCutsDetail }}
     </p>
-    <p v-if="!isReceptionistTake" class="text-muted text-xs leading-relaxed">
+    <p v-if="hasSiteSplit" class="text-muted text-xs leading-relaxed">
       Partie Storyblok :
       <span class="font-medium text-[var(--app-ink)]">{{
         PresenterVideoTimings.formatSeconds(storyblokSegmentSeconds)
@@ -108,10 +108,7 @@
       Moins de {{ STORYBLOK_COMFORT_SECONDS }} s pour la séquence Storyblok : la démonstration d'édition sera coupée
       avant la fin. Raccourcissez la partie site si vous voulez la montrer en entier.
     </UiCallout>
-    <UiCallout v-if="isSpaceChapterDropped" variant="warning">
-      Moins de {{ MIN_WIDGET_SCENE_SECONDS + RECEPTIONIST_SPACE_CHAPTER_SECONDS }} s au milieu : la vidéo montrera le
-      chat sans l'espace client. Allongez la prise du milieu pour le montrer.
-    </UiCallout>
+    <UiCallout v-if="shortMiddleWarning" variant="warning">{{ shortMiddleWarning }}</UiCallout>
 
     <div class="space-y-3 border-t border-[var(--app-line)] pt-4">
       <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
@@ -182,7 +179,11 @@
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import type { UseToastReturn } from '~/types/Composables'
 import type { ProspectionScriptModule } from '~/composables/useProspectionScript'
-import type { PresenterVideoModuleWording } from '~/types/PresenterVideoConfig'
+import type {
+  PresenterVideoMiddleLayout,
+  PresenterVideoModuleAdapter,
+  PresenterVideoModuleWording,
+} from '~/types/PresenterVideoConfig'
 import type { PresenterVideoTake } from '~/types/PresenterVideoTake'
 import type {
   PresenterVideoTimelinePart,
@@ -193,13 +194,9 @@ import type {
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, ref, watch } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
-import { PRESENTER_VIDEO_WORDINGS } from '~/constants/presenterVideoWordings'
-import {
-  MIN_WIDGET_SCENE_SECONDS,
-  PresenterVideoTimings,
-  RECEPTIONIST_SPACE_CHAPTER_SECONDS,
-  STORYBLOK_COMFORT_SECONDS,
-} from '~/utils/presenterVideoTimings'
+import { WEBSITES_PRESENTER_VIDEO_ADAPTER } from '~/services/websitesPresenterVideoAdapter'
+import { PresenterVideoAdapterRegistry } from '~/utils/presenterVideoAdapterRegistry'
+import { PresenterVideoTimings, STORYBLOK_COMFORT_SECONDS } from '~/utils/presenterVideoTimings'
 import { useToast } from '~/composables/useToast'
 
 const props: PresenterVideoTimingsCardProps = defineProps({
@@ -243,6 +240,9 @@ const props: PresenterVideoTimingsCardProps = defineProps({
 
 const emit: EmitFn<PresenterVideoTimingsCardEmits> = defineEmits<PresenterVideoTimingsCardEmits>()
 
+const adapter: PresenterVideoModuleAdapter =
+  PresenterVideoAdapterRegistry.of(props.module) ?? WEBSITES_PRESENTER_VIDEO_ADAPTER
+
 const toast: UseToastReturn = useToast()
 
 const introSeconds: Ref<number> = ref(4)
@@ -250,19 +250,20 @@ const outroSeconds: Ref<number> = ref(5)
 const siteScrollSeconds: Ref<number> = ref(12)
 const isSaving: Ref<boolean> = ref(false)
 
-const wording: ComputedRef<PresenterVideoModuleWording> = computed(
-  (): PresenterVideoModuleWording => PRESENTER_VIDEO_WORDINGS[props.module],
+const wording: ComputedRef<PresenterVideoModuleWording> = computed((): PresenterVideoModuleWording => adapter.wording)
+
+const middleLayout: ComputedRef<PresenterVideoMiddleLayout> = computed(
+  (): PresenterVideoMiddleLayout => adapter.middleLayout,
 )
 
-const isReceptionistTake: ComputedRef<boolean> = computed((): boolean => props.module === 'ai-assistant')
+/** Whether the middle is the site's: its scroll part set by hand, the Storyblok editor taking the rest. */
+const hasSiteSplit: ComputedRef<boolean> = computed((): boolean => middleLayout.value.kind === 'site-split')
 
 /** Whether the take was filmed in-app (its cut points are measured). */
 const isRecordedTake: ComputedRef<boolean> = computed((): boolean => props.take.source === 'recorded')
 
-/** Prefix of the form ids, so the site's clip and the receptionist's can sit on one page. */
-const fieldIdPrefix: ComputedRef<string> = computed((): string =>
-  isReceptionistTake.value ? 'receptionist-video' : 'video',
-)
+/** Prefix of the form ids, so several modules' clips can sit on one page. */
+const fieldIdPrefix: ComputedRef<string> = computed((): string => adapter.fieldIdPrefix)
 
 /** Seconds between intro and outro — shared by the site scroll and the Storyblok sequence. */
 const middleSeconds: ComputedRef<number> = computed((): number =>
@@ -276,26 +277,20 @@ const storyblokSegmentSeconds: ComputedRef<number> = computed((): number =>
 
 /** Whether the Storyblok demo will be visibly cut with the current split. */
 const isStoryblokSegmentShort: ComputedRef<boolean> = computed(
-  (): boolean => !isReceptionistTake.value && storyblokSegmentSeconds.value < STORYBLOK_COMFORT_SECONDS,
+  (): boolean => hasSiteSplit.value && storyblokSegmentSeconds.value < STORYBLOK_COMFORT_SECONDS,
 )
 
-/** Seconds of the receptionist's middle given to the client space, 0 when the chat would be left too short. */
-const spaceChapterSeconds: ComputedRef<number> = computed((): number =>
-  PresenterVideoTimings.receptionistSpaceChapterSeconds(middleSeconds.value),
-)
-
-/** Whether the receptionist's video will skip its client-space chapter with the current cuts. */
-const isSpaceChapterDropped: ComputedRef<boolean> = computed(
-  (): boolean => isReceptionistTake.value && spaceChapterSeconds.value === 0,
+const shortMiddleWarning: ComputedRef<string | null> = computed((): string | null =>
+  middleLayout.value.kind === 'chapters' ? middleLayout.value.shortMiddleWarning(middleSeconds.value) : null,
 )
 
 /** Whether any cut point is edited by hand: the intro and outro of an imported clip, the site part of the site's. */
-const hasEditableCuts: ComputedRef<boolean> = computed(
-  (): boolean => !isReceptionistTake.value || !isRecordedTake.value,
-)
+const hasEditableCuts: ComputedRef<boolean> = computed((): boolean => hasSiteSplit.value || !isRecordedTake.value)
 
 const timingGridClass: ComputedRef<string> = computed((): string => {
-  if (isReceptionistTake.value) return 'max-w-xs grid-cols-2'
+  if (!hasSiteSplit.value) {
+    return 'max-w-xs grid-cols-2'
+  }
   return isRecordedTake.value ? 'max-w-xs grid-cols-1' : 'max-w-md grid-cols-3'
 })
 
@@ -305,7 +300,7 @@ const hasUnsavedChanges: ComputedRef<boolean> = computed((): boolean => {
   const hasIntroMoved: boolean = !PresenterVideoTimings.isSameCutPoint(introSeconds.value, props.take.intro_seconds)
   const hasOutroMoved: boolean = !PresenterVideoTimings.isSameCutPoint(outroSeconds.value, props.take.outro_seconds)
   const hasSiteMoved: boolean =
-    !isReceptionistTake.value && !PresenterVideoTimings.isSameCutPoint(siteScrollSeconds.value, savedSiteSeconds.value)
+    hasSiteSplit.value && !PresenterVideoTimings.isSameCutPoint(siteScrollSeconds.value, savedSiteSeconds.value)
   return hasIntroMoved || hasOutroMoved || hasSiteMoved
 })
 
@@ -336,9 +331,10 @@ const exampleCaption: ComputedRef<string> = computed((): string => {
 const timelineSegments: ComputedRef<PresenterVideoTimelineSegment[]> = computed((): PresenterVideoTimelineSegment[] => {
   const duration: number = props.take.duration_seconds
   if (duration <= 0) return []
-  const parts: PresenterVideoTimelinePart[] = isReceptionistTake.value
-    ? receptionistTimelineParts()
-    : siteTimelineParts()
+  const parts: PresenterVideoTimelinePart[] =
+    middleLayout.value.kind === 'chapters'
+      ? chapteredTimelineParts(middleLayout.value.chapters(middleSeconds.value))
+      : siteTimelineParts()
   return parts.map(
     (part: PresenterVideoTimelinePart): PresenterVideoTimelineSegment => ({
       ...part,
@@ -400,30 +396,17 @@ function siteTimelineParts(): PresenterVideoTimelinePart[] {
 }
 
 /**
- * The receptionist video's timeline: intro, the chat answering, the client space when there is room, outro.
+ * A module's chaptered timeline: intro, the chapters the module computed for the middle, outro.
+ * @param chapters - The middle's chapters, without their widths.
  * @returns The parts, without their widths.
  */
-function receptionistTimelineParts(): PresenterVideoTimelinePart[] {
+function chapteredTimelineParts(chapters: PresenterVideoTimelinePart[]): PresenterVideoTimelinePart[] {
   const intro: PresenterVideoTimelinePart = {
     key: 'intro',
     label: 'Intro webcam',
     shortLabel: 'Intro',
     seconds: introSeconds.value,
     tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-  }
-  const chat: PresenterVideoTimelinePart = {
-    key: 'chat',
-    label: 'Chat de la réceptionniste',
-    shortLabel: 'Chat',
-    seconds: middleSeconds.value - spaceChapterSeconds.value,
-    tone: 'bg-[var(--app-ink)] text-[var(--app-bg)]',
-  }
-  const space: PresenterVideoTimelinePart = {
-    key: 'space',
-    label: 'Espace client',
-    shortLabel: 'Espace',
-    seconds: spaceChapterSeconds.value,
-    tone: 'bg-[var(--app-ink-soft)] text-[var(--app-bg)]',
   }
   const outro: PresenterVideoTimelinePart = {
     key: 'outro',
@@ -432,7 +415,7 @@ function receptionistTimelineParts(): PresenterVideoTimelinePart[] {
     seconds: outroSeconds.value,
     tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
   }
-  return spaceChapterSeconds.value > 0 ? [intro, chat, space, outro] : [intro, chat, outro]
+  return [intro, ...chapters, outro]
 }
 
 /** Start the form over from the take's saved cut points. */
@@ -453,7 +436,7 @@ async function saveTimings(): Promise<PresenterVideoTake | null> {
       props.take.id,
       introSeconds.value,
       outroSeconds.value,
-      isReceptionistTake.value ? null : siteScrollSeconds.value,
+      hasSiteSplit.value ? siteScrollSeconds.value : null,
     )
     emit('saved', take)
     return take

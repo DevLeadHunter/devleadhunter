@@ -8,10 +8,17 @@ export type EmailVariable = {
   example: string
 }
 
+/** A variable a product module adds to the catalog. */
+export type ModuleEmailVariable = EmailVariable & {
+  placeAfterKey?: string
+}
+
+const moduleVariablesByModule: Map<string, ModuleEmailVariable[]> = new Map()
+
 export class EmailVariables {
   private constructor() {}
 
-  static readonly catalog: EmailVariable[] = [
+  static readonly coreCatalog: EmailVariable[] = [
     {
       key: 'salutation',
       token: '{salutation}',
@@ -77,36 +84,6 @@ export class EmailVariables {
       example: 'https://demo.dibodev.fr/le-gourmet',
     },
     {
-      key: 'lien_assistant',
-      token: '{lien_assistant}',
-      label: 'Lien réceptionniste',
-      description: 'Lien tracké vers la démo de la réceptionniste IA du prospect (vide sans réceptionniste).',
-      example: 'https://demo.dibodev.fr/ia/le-gourmet',
-    },
-    {
-      key: 'prenom_receptionniste',
-      token: '{prenom_receptionniste}',
-      label: 'Prénom de la réceptionniste',
-      description: 'Prénom de la réceptionniste IA du prospect ; l’email n’est pas envoyé sans réceptionniste active.',
-      example: 'Sofia',
-    },
-    {
-      key: 'receptionniste',
-      token: '{receptionniste}',
-      label: 'Réceptionniste (accordé)',
-      description:
-        '« une réceptionniste » ou « un réceptionniste », accordé au prénom de la réceptionniste IA (Léa, Nathan).',
-      example: 'une réceptionniste',
-    },
-    {
-      key: 'assistant_virtuel',
-      token: '{assistant_virtuel}',
-      label: 'Assistant virtuel (accordé)',
-      description:
-        '« une assistante virtuelle » ou « un assistant virtuel », accordé au prénom de la réceptionniste IA (Léa, Nathan).',
-      example: 'une assistante virtuelle',
-    },
-    {
       key: 'lien_video',
       token: '{lien_video}',
       label: 'Lien vidéo',
@@ -119,27 +96,6 @@ export class EmailVariables {
       label: 'Vignette vidéo',
       description: 'Bloc image cliquable de la vidéo de prospection (HTML prêt à coller, renvoie au player).',
       example: '[vignette cliquable de la vidéo]',
-    },
-    {
-      key: 'lien_video_assistant',
-      token: '{lien_video_assistant}',
-      label: 'Lien vidéo réceptionniste',
-      description: 'URL de la page vidéo de la réceptionniste IA (vide sans vidéo générée).',
-      example: 'https://demo.dibodev.fr/va/le-gourmet',
-    },
-    {
-      key: 'vignette_video_assistant',
-      token: '{vignette_video_assistant}',
-      label: 'Vignette vidéo réceptionniste',
-      description: 'Bloc image cliquable de la vidéo de la réceptionniste IA (HTML prêt à coller, renvoie au player).',
-      example: '[vignette cliquable de la vidéo de la réceptionniste]',
-    },
-    {
-      key: 'lien_carte',
-      token: '{lien_carte}',
-      label: 'Lien carte de fidélité',
-      description: 'Lien vers la démo de carte de fidélité du prospect ; l’email n’est pas envoyé sans démo de carte.',
-      example: 'https://demo.dibodev.fr/c/boulangerie-martin',
     },
     {
       key: 'ancien_site',
@@ -158,21 +114,6 @@ export class EmailVariables {
       example: '500 €',
     },
     {
-      key: 'prix_assistant',
-      token: '{prix_assistant}',
-      label: 'Prix réceptionniste',
-      description:
-        'Prix mensuel de la réceptionniste IA configuré, dans la monnaie du prospect : « 79 € », « ≈ 70 CHF ».',
-      example: '79 €',
-    },
-    {
-      key: 'prix_carte',
-      token: '{prix_carte}',
-      label: 'Prix carte de fidélité',
-      description: 'Prix mensuel de la carte de fidélité, dans la monnaie du prospect : « 19 € », « ≈ 18 CHF ».',
-      example: '19 €',
-    },
-    {
       key: 'date_expiration',
       token: '{date_expiration}',
       label: 'Date d’expiration',
@@ -181,6 +122,49 @@ export class EmailVariables {
       example: '12 octobre',
     },
   ]
+
+  /**
+   * Register the variables a module adds, or replace the ones it registered before.
+   * @param moduleKey - The module whose offer uses them.
+   * @param variables - Its variables, each placed after a core one.
+   */
+  static registerModuleVariables(moduleKey: string, variables: ModuleEmailVariable[]): void {
+    moduleVariablesByModule.set(moduleKey, variables)
+  }
+
+  /**
+   * Every variable: the core's, then each registered module's, placed after the variable it follows.
+   * @returns The variables, in palette order.
+   */
+  static get catalog(): EmailVariable[] {
+    return EmailVariables.catalogOf((): boolean => true)
+  }
+
+  /**
+   * The variables the palette offers: the core's, plus those of the modules that can be used.
+   * @param isModuleUsable - Whether a module's variables are offered (a module switched off is not).
+   * @returns The variables, in palette order.
+   */
+  static catalogOf(isModuleUsable: (moduleKey: string) => boolean): EmailVariable[] {
+    const catalog: EmailVariable[] = [...EmailVariables.coreCatalog]
+    moduleVariablesByModule.forEach((variables: ModuleEmailVariable[], moduleKey: string): void => {
+      if (!isModuleUsable(moduleKey)) {
+        return
+      }
+      for (const variable of variables) {
+        const previousIndex: number = catalog.findIndex(
+          (candidate: EmailVariable): boolean => candidate.key === variable.placeAfterKey,
+        )
+
+        if (previousIndex < 0) {
+          catalog.push(variable)
+        } else {
+          catalog.splice(previousIndex + 1, 0, variable)
+        }
+      }
+    })
+    return catalog
+  }
 
   /**
    * Build a sample substitution map for realistic template preview.

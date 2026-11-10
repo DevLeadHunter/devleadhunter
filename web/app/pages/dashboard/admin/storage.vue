@@ -111,7 +111,7 @@
 
     <UiChipFilters
       :model-value="activePrefix"
-      :options="FILTERS"
+      :options="filterOptions"
       label="Catégorie de fichiers"
       @update:model-value="applyFilter"
     />
@@ -318,6 +318,8 @@ import type { ComputedRef, Ref } from 'vue'
 import type {
   StorageActionResponse,
   StorageHealthResponse,
+  StorageKind,
+  StorageKindMedia,
   StorageListResponse,
   StorageObject,
   StorageObjectKind,
@@ -344,66 +346,22 @@ const IMPORT_MODES: Array<{ value: 'file' | 'url'; label: string }> = [
   { value: 'url', label: 'Depuis une URL' },
 ]
 
-/** Prefix filters shown as pills (the value is the key prefix). */
-const FILTERS: SelectFieldOption[] = [
-  { label: 'Tout', value: '' },
-  { label: 'Vidéos', value: 'videos/websites/' },
-  { label: 'Vignettes', value: 'images/websites/' },
-  { label: 'Vidéos réceptionniste', value: 'videos/assistant/' },
-  { label: 'Vignettes réceptionniste', value: 'images/assistant/' },
-  { label: 'Clips webcam', value: 'videos/presenter/' },
-  { label: 'Photos prospects', value: PROSPECT_PHOTOS_PREFIX },
-  { label: 'Photos de devis', value: 'images/assistant-photos/' },
-  { label: 'Documents assistants', value: 'documents/assistant/' },
-  { label: 'Portraits réceptionniste', value: 'images/assistant-avatars/' },
-  { label: 'Support', value: 'images/support/' },
-  { label: 'Imports manuels', value: 'uploads/manual/' },
-]
+const ALL_OBJECTS_FILTER: SelectFieldOption = { label: 'Tout', value: '' }
 
-const VIDEO_KINDS: StorageObjectKind[] = ['website_video', 'website_background', 'assistant_video', 'presenter']
+const MEDIA_ICONS: Record<StorageKindMedia, string> = {
+  video: 'i-lucide-video',
+  image: 'i-lucide-image',
+  file: 'i-lucide-file',
+}
 
-const IMAGE_KINDS: StorageObjectKind[] = [
-  'website_thumbnail',
-  'assistant_thumbnail',
-  'support',
-  'prospect_photo',
-  'assistant_photo',
-  'assistant_avatar',
-]
-
-/** Icon per object category. */
-const KIND_ICONS: Record<StorageObjectKind, string> = {
-  website_video: 'i-lucide-video',
-  website_thumbnail: 'i-lucide-image',
+const CORE_KIND_ICONS: Record<string, string> = {
   website_background: 'i-lucide-film',
-  assistant_video: 'i-lucide-video',
-  assistant_thumbnail: 'i-lucide-image',
   presenter: 'i-lucide-webcam',
   support: 'i-lucide-paperclip',
-  prospect_photo: 'i-lucide-image',
-  assistant_photo: 'i-lucide-camera',
-  assistant_document: 'i-lucide-file-text',
-  assistant_avatar: 'i-lucide-circle-user',
   manual: 'i-lucide-upload',
-  other: 'i-lucide-file',
 }
 
-/** Human label per object category — distinguishes a prospect's video from its thumbnail. */
-const KIND_LABELS: Record<StorageObjectKind, string> = {
-  website_video: 'Vidéo',
-  website_thumbnail: 'Vignette',
-  website_background: 'Fond de montage',
-  assistant_video: 'Vidéo (réceptionniste)',
-  assistant_thumbnail: 'Vignette (réceptionniste)',
-  presenter: 'Clip webcam',
-  support: 'Pièce jointe',
-  prospect_photo: 'Photo prospect',
-  assistant_photo: 'Photo de devis (assistant)',
-  assistant_document: 'Document (assistant)',
-  assistant_avatar: 'Portrait (réceptionniste)',
-  manual: 'Import manuel',
-  other: 'Fichier',
-}
+const UNKNOWN_KIND_LABEL: string = 'Fichier'
 
 const toast: UseToastReturn = useToast()
 
@@ -426,6 +384,21 @@ const importUrl: Ref<string> = ref('')
 const isImporting: Ref<boolean> = ref(false)
 const importedUrl: Ref<string> = ref('')
 const fileInput: Ref<HTMLInputElement | null> = ref(null)
+
+const storageKindsByKind: ComputedRef<Record<StorageObjectKind, StorageKind>> = computed(
+  (): Record<StorageObjectKind, StorageKind> =>
+    Object.fromEntries(
+      (listing.value?.kinds ?? []).map((kind: StorageKind): [StorageObjectKind, StorageKind] => [kind.kind, kind]),
+    ),
+)
+
+/** Prefix filters shown as pills (the value is the key prefix). */
+const filterOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] => [
+  ALL_OBJECTS_FILTER,
+  ...(listing.value?.kinds ?? []).flatMap((kind: StorageKind): SelectFieldOption[] =>
+    kind.filter_prefix ? [{ label: kind.filter_label, value: kind.filter_prefix }] : [],
+  ),
+])
 
 /** Demo TTL in days, read from the API so the page never drifts from the real cleanup window. */
 const ttlDays: ComputedRef<number> = computed((): number => listing.value?.ttl_days ?? 21)
@@ -488,21 +461,30 @@ const healthSuffix: ComputedRef<string> = computed((): string => {
 })
 
 /**
+ * How a category previews, as the listing describes it (nothing for a category it does not describe).
+ * @param kind - Category from the API.
+ * @returns The media of the category.
+ */
+function kindMedia(kind: StorageObjectKind): StorageKindMedia {
+  return storageKindsByKind.value[kind]?.media ?? 'file'
+}
+
+/**
  * Icon matching an object category (the generic file icon for a category this page does not know yet).
  * @param kind - Category from the API.
  * @returns Lucide icon name.
  */
 function kindIcon(kind: StorageObjectKind): string {
-  return KIND_ICONS[kind] ?? KIND_ICONS.other
+  return CORE_KIND_ICONS[kind] ?? MEDIA_ICONS[kindMedia(kind)]
 }
 
 /**
- * Human label matching an object category (« Fichier » for a category this page does not know yet).
+ * Human label matching an object category (« Fichier » for a category the listing does not describe).
  * @param kind - Category from the API.
  * @returns Localised label.
  */
 function kindLabel(kind: StorageObjectKind): string {
-  return KIND_LABELS[kind] ?? KIND_LABELS.other
+  return storageKindsByKind.value[kind]?.label ?? UNKNOWN_KIND_LABEL
 }
 
 /**
@@ -529,20 +511,24 @@ function keyExtension(key: string): string {
 /**
  * Whether an object can be played inline.
  * @param item - Storage object.
- * @returns True for demo/presenter videos and for hand-uploaded video files.
+ * @returns True for the categories previewed as videos, and for hand-uploaded video files.
  */
 function isVideo(item: StorageObject): boolean {
-  if (VIDEO_KINDS.includes(item.kind)) return true
+  if (kindMedia(item.kind) === 'video') {
+    return true
+  }
   return item.kind === 'manual' && VIDEO_EXTENSIONS.includes(keyExtension(item.key))
 }
 
 /**
  * Whether an object can be shown as an image.
  * @param item - Storage object.
- * @returns True for thumbnails, support attachments, prospect and quote photos, and hand-uploaded images.
+ * @returns True for the categories previewed as images, and for hand-uploaded images.
  */
 function isImage(item: StorageObject): boolean {
-  if (IMAGE_KINDS.includes(item.kind)) return true
+  if (kindMedia(item.kind) === 'image') {
+    return true
+  }
   return item.kind === 'manual' && IMAGE_EXTENSIONS.includes(keyExtension(item.key))
 }
 

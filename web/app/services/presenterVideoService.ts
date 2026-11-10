@@ -257,7 +257,7 @@ export class PresenterVideoService {
    * Keep the example video the desktop app built with a take on one of the user's demos.
    * @param takeId - The take the example was built with.
    * @param video - The finished mp4.
-   * @param demoId - The demo site or receptionist filmed.
+   * @param demoId - The demo filmed (a demo site, or a product module's demo).
    * @param demoName - Its business name, shown under the example.
    * @returns The take with its new example.
    * @throws When the upload fails (message from the API when available).

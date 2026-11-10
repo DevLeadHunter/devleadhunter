@@ -1,4 +1,4 @@
-/** A Réceptionniste IA target vertical, offered as a search preset. */
+/** A target vertical of the sourcing catalog, offered as a search preset. */
 export type SourcingVertical = {
   key: string
   label: string

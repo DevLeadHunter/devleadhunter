@@ -9,8 +9,8 @@ const BUILDING_CHECK_INTERVAL_MS: number = 5_000
 
 /**
  * Follow a video asked from the owner's PC until it is published or given up, then tell how it ended.
- * @param readVideoState - Reloads the video's state into the followed demo site or receptionist.
- * @param followedSubject - The demo site or receptionist whose video is followed, as last read.
+ * @param readVideoState - Reloads the video's state into the followed demo.
+ * @param followedSubject - The demo whose video is followed, as last read.
  * @returns The follow-up controls.
  */
 export function useDesktopVideoRequestFollowUp(

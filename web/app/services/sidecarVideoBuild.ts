@@ -1,9 +1,9 @@
 /**
- * Shared machinery for a DETACHED sidecar video build (site or assistant).
+ * Shared machinery for a DETACHED sidecar video build (a demo site, or the demo of a product module).
  *
- * The webview kills a single multi-minute HTTP response, so both desktop builds run detached: the app
+ * The webview kills a single multi-minute HTTP response, so every desktop build runs detached: the app
  * POSTs to start, polls ``/video/build-progress`` until ``done``/``error``, then fetches the file from
- * ``/video/build-result``. That poll-and-fetch loop is identical for the site and the assistant — only
+ * ``/video/build-result``. That poll-and-fetch loop is identical for every kind of demo — only
  * what each POSTs (and, for the site, the Storyblok ``needs_login`` handling) differs — so it lives here.
  *
  * @module services/sidecarVideoBuild
@@ -32,7 +32,7 @@ const BUILD_WAIT_LIMIT_MS: number = 20 * 60 * 1000
  * Current phase of a local build for a slug (polled by the progress modal). Keyed by slug.
  * @param port - The sidecar port.
  * @param token - The one-shot sidecar token.
- * @param slug - Slug of the site/assistant being rendered.
+ * @param slug - Slug of the demo being rendered.
  * @returns The reported phase, or null when unreachable.
  */
 export async function fetchBuildProgress(

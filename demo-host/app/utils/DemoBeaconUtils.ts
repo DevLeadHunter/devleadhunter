@@ -42,7 +42,7 @@ export class DemoBeaconUtils {
 
   /**
    * A demo-host path carrying the visit's A/B variant and channel, so the next page stays attributed.
-   * @param path - The page path (e.g. '/ia/garage-martin').
+   * @param path - The page path (e.g. '/garage-martin/legal').
    * @param variant - The visit's A/B variant, or null.
    * @param channel - The visit's channel; 'direct' adds nothing.
    * @returns The path with its ``v`` and ``src`` query when there are any.

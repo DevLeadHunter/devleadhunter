@@ -2,13 +2,13 @@ import type { ProspectionVideoStatusTone, ProspectionVideoSubject } from '~/type
 
 const FAILED_GENERATION_MESSAGE: string = 'La génération a échoué.'
 
-/** Where a prospection video stands, in the same words on the demo site and receptionist pages. */
+/** Where a prospection video stands, in the same words on every page that shows a demo's video. */
 export class ProspectionVideoLabels {
   private constructor() {}
 
   /**
    * Whether the video waits for the owner's PC, or is being built by it.
-   * @param subject - The demo site or receptionist.
+   * @param subject - The demo (a demo site, or a product module's demo).
    * @returns True while a request is left for the PC.
    */
   static isWaitingForDesktop(subject: ProspectionVideoSubject): boolean {
@@ -17,7 +17,7 @@ export class ProspectionVideoLabels {
 
   /**
    * The badge of the video: « En attente » until the PC takes it, « En cours » while it builds, then its status.
-   * @param subject - The demo site or receptionist.
+   * @param subject - The demo (a demo site, or a product module's demo).
    * @returns The badge text, or null when no video was asked yet.
    */
   static statusLabel(subject: ProspectionVideoSubject): string | null {
@@ -35,7 +35,7 @@ export class ProspectionVideoLabels {
 
   /**
    * The tone of that badge, which each page colours its own way.
-   * @param subject - The demo site or receptionist.
+   * @param subject - The demo (a demo site, or a product module's demo).
    * @returns `waiting` while the PC has the video, else its status; null when no video was asked yet.
    */
   static statusTone(subject: ProspectionVideoSubject): ProspectionVideoStatusTone | null {
@@ -53,7 +53,7 @@ export class ProspectionVideoLabels {
 
   /**
    * Why the last generation failed, saying that a video already published stays online.
-   * @param subject - The demo site or receptionist.
+   * @param subject - The demo (a demo site, or a product module's demo).
    * @returns The message, or null when the last generation did not fail.
    */
   static failureMessage(subject: ProspectionVideoSubject): string | null {

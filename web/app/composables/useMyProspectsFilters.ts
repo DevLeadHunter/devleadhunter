@@ -1,8 +1,11 @@
 import type { Ref } from 'vue'
 import type { ProspectWebsiteFilter } from '~/types'
+import type { ProspectListModuleOptions } from '~/types/ProspectingModuleOptions'
 import type { DlhModuleKey } from '~/types/UiSidebar'
 import { ref, watch, onMounted } from 'vue'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { useModuleStore } from '~/stores/moduleStore'
+import { ProspectingOptionsRegistry } from '~/utils/prospectingOptionsRegistry'
 
 /** localStorage key persisting the « Mes prospects » list filters (site module; others get a suffix). */
 const MY_PROSPECTS_FILTERS_STORAGE_KEY: string = 'dlh-my-prospects-filters'
@@ -35,12 +38,12 @@ export type MyProspectsFiltersState = {
 
 /**
  * Storage key of a module's filters: each module keeps its own, since the site module hunts
- * pros without a site while the Réceptionniste IA takes them with or without one.
+ * pros without a site while another module may take them with or without one.
  * @param moduleKey - Active dashboard module.
  * @returns The localStorage key for that module.
  */
 function filtersStorageKey(moduleKey: DlhModuleKey): string {
-  return moduleKey === 'websites'
+  return moduleKey === WEBSITES_MODULE_KEY
     ? MY_PROSPECTS_FILTERS_STORAGE_KEY
     : `${MY_PROSPECTS_FILTERS_STORAGE_KEY}:${moduleKey}`
 }
@@ -51,14 +54,15 @@ function filtersStorageKey(moduleKey: DlhModuleKey): string {
  * @returns A fresh filter snapshot.
  */
 function defaultFilters(moduleKey: DlhModuleKey): MyProspectsFiltersState {
+  const listOptions: ProspectListModuleOptions = ProspectingOptionsRegistry.listOptionsOf(moduleKey)
   return {
     searchQuery: '',
     filterCategory: '',
     filterCity: '',
-    filterWebsite: moduleKey === 'ai-assistant' ? 'all' : 'no',
+    filterWebsite: listOptions.defaultWebsiteFilter,
     filterTemperature: 'all',
     filterEmail: 'all',
-    sortOrder: moduleKey === 'ai-assistant' ? 'demand' : 'recent',
+    sortOrder: listOptions.defaultSortOrder,
     activeTab: 'not_contacted',
   }
 }

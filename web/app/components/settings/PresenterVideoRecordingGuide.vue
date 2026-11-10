@@ -47,7 +47,7 @@
           <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
           <span>
             <strong class="font-semibold text-[var(--app-ink)]">Restez générique</strong> :
-            {{ PRESENTER_VIDEO_WORDINGS[props.module].stayGenericTip }}
+            {{ PresenterVideoAdapterRegistry.wordingOf(props.module).stayGenericTip }}
           </span>
         </p>
       </div>
@@ -66,7 +66,7 @@ import type {
 } from '~/types/PresenterVideoRecordingGuide'
 import { computed } from 'vue'
 import { buildScriptFor } from '~/composables/useProspectionScript'
-import { PRESENTER_VIDEO_WORDINGS } from '~/constants/presenterVideoWordings'
+import { PresenterVideoAdapterRegistry } from '~/utils/presenterVideoAdapterRegistry'
 import { useAuth } from '~/composables/useAuth'
 
 const props: PresenterVideoRecordingGuideProps = defineProps({
@@ -121,7 +121,7 @@ const workflowSteps: ComputedRef<PresenterVideoGuideStep[]> = computed((): Prese
   },
   {
     title: 'Chaque prospect reçoit sa vidéo',
-    detail: PRESENTER_VIDEO_WORDINGS[props.module].resultStepDetail,
+    detail: PresenterVideoAdapterRegistry.wordingOf(props.module).resultStepDetail,
   },
 ])
 </script>

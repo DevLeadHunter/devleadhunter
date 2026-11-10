@@ -1,5 +1,32 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineNuxtConfig } from 'nuxt/config'
+import { productModuleLayers } from '../product-modules.mjs'
+
+const webDirectory: string = dirname(fileURLToPath(import.meta.url))
+
+const webPackage: { dependencies: Record<string, string> } = JSON.parse(
+  readFileSync(join(webDirectory, 'package.json'), 'utf8'),
+)
+
+/**
+ * The tsconfig paths of a core dependency, for a product module layer cloned next to the core (it installs none).
+ * @param packageName - A dependency of `web/package.json`, `@scope/name` included.
+ * @returns Its `@types` folder first (its own one would resolve to plain JS with `allowJs`), then its own folder.
+ */
+function webDependencyTypePaths(packageName: string): string[] {
+  const typesPackageName: string = packageName.startsWith('@') ? packageName.slice(1).replace('/', '__') : packageName
+  return [join(webDirectory, 'node_modules/@types', typesPackageName), join(webDirectory, 'node_modules', packageName)]
+}
+
+const webDependencyPaths: Record<string, string[]> = Object.fromEntries(
+  Object.keys(webPackage.dependencies).map((packageName: string): [string, string[]] => [
+    packageName,
+    webDependencyTypePaths(packageName),
+  ]),
+)
 
 const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 
@@ -10,6 +37,8 @@ const siteUrl: string = 'https://devleadhunter.fr'
 
 export default defineNuxtConfig({
   ...(typecheckBuildDirectory ? { buildDir: typecheckBuildDirectory } : {}),
+
+  extends: productModuleLayers('web'),
 
   modules: [
     '@nuxt/eslint',
@@ -192,6 +221,11 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
     typeCheck: false,
+    tsConfig: {
+      compilerOptions: {
+        paths: webDependencyPaths,
+      },
+    },
   },
 
   eslint: {

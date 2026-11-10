@@ -3,7 +3,9 @@ import type {
   ProspectSearchCreatePayload,
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
+import type { ProductModuleKey } from '~/types/ProductModule'
 import type { ProspectSearchFormState } from '~/types/ProspectSearchCreatePage'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import {
   PROSPECT_SEARCH_BASE_REQUEST_COUNT,
   PROSPECT_SEARCH_CHANNEL_OPTIONS,
@@ -26,11 +28,11 @@ export class ProspectSearchForm {
   private constructor() {}
 
   /**
-   * Build a fresh form: the Réceptionniste IA takes pros with or without a site, the site module only those without.
-   * @param isForAssistantModule - Whether the form is opened from the Réceptionniste IA module.
+   * Build a fresh form: the site module takes only the pros without a site, another module may take them all.
+   * @param isOnlyWithoutWebsite - Whether the active module keeps only the pros without a website by default.
    * @returns The default objective.
    */
-  static defaults(isForAssistantModule: boolean): ProspectSearchFormState {
+  static defaults(isOnlyWithoutWebsite: boolean): ProspectSearchFormState {
     return {
       trades: [],
       country: ProspectCountries.france.code,
@@ -38,7 +40,7 @@ export class ProspectSearchForm {
       cities: [],
       countPerTrade: PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE,
       channel: 'email',
-      onlyWithoutWebsite: !isForAssistantModule,
+      onlyWithoutWebsite: isOnlyWithoutWebsite,
       useRegistries: true,
       validationMode: PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE,
     }
@@ -46,21 +48,21 @@ export class ProspectSearchForm {
 
   /**
    * Storage key of the remembered form: one per module, so each keeps its own defaults.
-   * @param isForAssistantModule - Whether the form belongs to the Réceptionniste IA module.
+   * @param moduleKey - The module the form belongs to.
    * @returns The localStorage key.
    */
-  static storageKey(isForAssistantModule: boolean): string {
-    return isForAssistantModule ? `${FORM_STORAGE_KEY}:ai-assistant` : FORM_STORAGE_KEY
+  static storageKey(moduleKey: ProductModuleKey): string {
+    return moduleKey === WEBSITES_MODULE_KEY ? FORM_STORAGE_KEY : `${FORM_STORAGE_KEY}:${moduleKey}`
   }
 
   /**
    * Rebuild the form from what was remembered, field by field: a stale or damaged entry falls back to the default.
    * @param raw - Serialized form read from the storage.
-   * @param isForAssistantModule - Whether the form belongs to the Réceptionniste IA module.
+   * @param isOnlyWithoutWebsite - Whether the module keeps only the pros without a website by default.
    * @returns A valid form.
    */
-  static fromStorage(raw: string | null, isForAssistantModule: boolean): ProspectSearchFormState {
-    const fallback: ProspectSearchFormState = ProspectSearchForm.defaults(isForAssistantModule)
+  static fromStorage(raw: string | null, isOnlyWithoutWebsite: boolean): ProspectSearchFormState {
+    const fallback: ProspectSearchFormState = ProspectSearchForm.defaults(isOnlyWithoutWebsite)
     if (!raw) return fallback
     try {
       const saved: Partial<Record<keyof ProspectSearchFormState, unknown>> = JSON.parse(raw)

@@ -4,13 +4,17 @@
  */
 
 import type { Ref } from 'vue'
+import type { ProductModuleKey } from '~/types/ProductModule'
+import type { PresenterVideoModuleAdapter } from '~/types/PresenterVideoConfig'
 import { ref } from 'vue'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
+import { PresenterVideoAdapterRegistry } from '~/utils/presenterVideoAdapterRegistry'
 
 /** The three takes, in the order they are filmed and played. */
 export type ProspectionScriptSegmentId = 'intro' | 'middle' | 'outro'
 
 /** The sellable module a presenter clip belongs to: its takes describe what the montage shows. */
-export type ProspectionScriptModule = 'websites' | 'ai-assistant'
+export type ProspectionScriptModule = ProductModuleKey
 
 /** One take: what is on screen, how long it should run, and what to say. */
 export type ProspectionScriptSegment = {
@@ -27,11 +31,8 @@ export type ProspectionScriptSavedSegment = {
   defaultText: string
 }
 
-/** localStorage keys holding the user's edited script, one per module. */
-const SCRIPT_STORAGE_KEYS: Record<ProspectionScriptModule, string> = {
-  websites: 'dlh-prospection-script',
-  'ai-assistant': 'dlh-prospection-script-ai-assistant',
-}
+/** localStorage key holding the user's edited script of the websites clip (each module adapter names its own). */
+export const WEBSITES_SCRIPT_STORAGE_KEY: string = 'dlh-prospection-script'
 
 /**
  * Default spoken script: generic (never names the prospect) and, for the middle take, in the fixed order of the rendered background — the site scrolls, then the Storyblok editor appears.
@@ -80,54 +81,6 @@ export function buildDefaultScript(presenterName: string, companyName: string): 
 }
 
 /**
- * Default receptionist script: « votre réceptionniste », never a name or a pronoun, middle take in the video's order.
- * @param presenterName - The connected user's full name, woven into the greeting.
- * @param companyName - The user's optional business name, appended to the greeting when set.
- * @returns The three default takes.
- */
-export function buildAssistantScript(presenterName: string, companyName: string): ProspectionScriptSegment[] {
-  const name: string = presenterName.trim()
-  const company: string = companyName.trim()
-  const presenter: string = company ? `${name} de ${company}` : name
-  return [
-    {
-      id: 'intro',
-      title: 'Intro',
-      staging: 'Vous, en plein écran. Le prénom du prospect s’affiche à côté de vous.',
-      targetSeconds: 6,
-      text: name
-        ? `Bonjour, moi c'est ${presenter}. Je vous ai préparé votre réceptionniste, rien que pour votre entreprise.`
-        : 'Bonjour. Je vous ai préparé votre réceptionniste, rien que pour votre entreprise.',
-    },
-    {
-      id: 'middle',
-      title: 'La réceptionniste répond, puis l’espace du patron',
-      staging:
-        'Le chat joue un exemple pendant l’essentiel de la prise : un client écrit, une photo est demandée, la ' +
-        'demande est transmise, puis les créneaux de rendez-vous s’ouvrent. Les sept dernières secondes montrent ' +
-        'l’espace où arrivent les demandes. Vous passez en petite pastille ronde, en bas à droite.',
-      targetSeconds: 30,
-      text:
-        'Votre réceptionniste est en ligne sur votre site, ou depuis votre fiche Google, vingt-quatre heures sur ' +
-        'vingt-quatre. ' +
-        "Un client pose une question : réponse immédiate, avec vos horaires et vos prestations, jamais rien d'inventé. " +
-        'Il envoie une photo pour un devis : sa demande est notée, photo comprise. ' +
-        "Il veut un rendez-vous : c'est réservé dans votre agenda. " +
-        "Et ça, c'est votre espace : chaque demande arrive ici, et vous recevez un SMS.",
-    },
-    {
-      id: 'outro',
-      title: 'Outro',
-      staging: 'Retour sur vous en plein écran, pour l’appel à l’action.',
-      targetSeconds: 12,
-      text:
-        "Le lien pour l'essayer est juste sous la vidéo. " +
-        'Posez-lui une question, envoyez-lui une photo, et dites-moi ce que vous en pensez. Bonne journée !',
-    },
-  ]
-}
-
-/**
  * The default takes of a module's clip.
  * @param module - The sellable module the clip belongs to.
  * @param presenterName - The connected user's full name.
@@ -139,8 +92,9 @@ export function buildScriptFor(
   presenterName: string,
   companyName: string,
 ): ProspectionScriptSegment[] {
-  return module === 'ai-assistant'
-    ? buildAssistantScript(presenterName, companyName)
+  const adapter: PresenterVideoModuleAdapter | null = PresenterVideoAdapterRegistry.of(module)
+  return adapter
+    ? adapter.buildDefaultScript(presenterName, companyName)
     : buildDefaultScript(presenterName, companyName)
 }
 
@@ -200,7 +154,7 @@ function isSavedSegment(entry: unknown): entry is ProspectionScriptSavedSegment 
 export function useProspectionScript(
   presenterName: string,
   companyName: string,
-  module: ProspectionScriptModule = 'websites',
+  module: ProspectionScriptModule = WEBSITES_MODULE_KEY,
 ): {
   segments: Ref<ProspectionScriptSegment[]>
   isCustomised: Ref<boolean>
@@ -208,7 +162,8 @@ export function useProspectionScript(
   resetToDefault: () => void
 } {
   const defaults: ProspectionScriptSegment[] = buildScriptFor(module, presenterName, companyName)
-  const storageKey: string = SCRIPT_STORAGE_KEYS[module]
+  const storageKey: string =
+    PresenterVideoAdapterRegistry.of(module)?.scriptStorageKey ?? `${WEBSITES_SCRIPT_STORAGE_KEY}-${module}`
   const segments: Ref<ProspectionScriptSegment[]> = ref(defaults)
   const isCustomised: Ref<boolean> = ref(false)
 

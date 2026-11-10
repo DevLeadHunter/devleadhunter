@@ -2,24 +2,33 @@ import { defineStore, skipHydrate } from 'pinia'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type {
-  AssistantMutationNotice,
-  AssistantRequestMutationNotice,
-  AssistantSubscriptionMutationNotice,
+  DrawerStackChangeChannel,
+  DrawerStackChangeNotices,
   DrawerStackEntry,
   DrawerStackEntryKind,
   OrderMutationNotice,
   ProspectMutationNotice,
 } from '~/types/DrawerStack'
 import type { Order } from '~/services/ordersService'
-import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { EmailTemplate, Prospect } from '~/types'
+import { DrawerKindRegistry } from '~/utils/drawerKindRegistry'
 
 /** sessionStorage key persisting the drawer stack across page reloads. */
 const DRAWER_STACK_STORAGE_KEY: string = 'dlh-drawer-stack'
 
 const PAGE_INDEPENDENT_DRAWER_KINDS: DrawerStackEntryKind[] = ['prospect-search', 'prospect-search-lead']
 
-const RETIRED_DRAWER_KINDS: string[] = ['search-prospects']
+/**
+ * Whether a stored entry can be shown again: a retired kind, or the drawer of a module no longer installed, is not.
+ * @param entry - An entry read back from the session.
+ * @returns True when its kind is the core's or a registered module's.
+ */
+function isRestorableEntry(entry: unknown): entry is DrawerStackEntry {
+  if (typeof entry !== 'object' || entry === null || !('kind' in entry)) {
+    return false
+  }
+  return typeof entry.kind === 'string' && DrawerKindRegistry.isKnownKind(entry.kind)
+}
 
 /** Pinia store driving the persistent right-side drawer stack (survives route changes via `UiDrawerStackHost`). */
 // Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
@@ -30,10 +39,9 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   if (import.meta.client) {
     try {
       const raw: string | null = sessionStorage.getItem(DRAWER_STACK_STORAGE_KEY)
-      if (raw) {
-        stack.value = (JSON.parse(raw) as DrawerStackEntry[]).filter(
-          (entry: DrawerStackEntry): boolean => !RETIRED_DRAWER_KINDS.includes(entry.kind),
-        )
+      const stored: unknown = raw ? JSON.parse(raw) : null
+      if (Array.isArray(stored)) {
+        stack.value = stored.filter(isRestorableEntry)
       }
     } catch {
       // État illisible → on repart d'une pile vide.
@@ -46,12 +54,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   const emailTemplateBrowseList: Ref<EmailTemplate[]> = ref([])
   const lastOrderMutation: Ref<OrderMutationNotice | null> = ref(null)
   const orderMutationCounter: Ref<number> = ref(0)
-  const lastSubscriptionMutation: Ref<AssistantSubscriptionMutationNotice | null> = ref(null)
-  const subscriptionMutationCounter: Ref<number> = ref(0)
-  const lastAssistantMutation: Ref<AssistantMutationNotice | null> = ref(null)
-  const assistantMutationCounter: Ref<number> = ref(0)
-  const lastRequestMutation: Ref<AssistantRequestMutationNotice | null> = ref(null)
-  const requestMutationCounter: Ref<number> = ref(0)
+  const changeCounts: Ref<Record<string, number>> = ref({})
+  const latestChangeNotices: Ref<Partial<DrawerStackChangeNotices>> = ref({})
   const emailLogsRefreshCounter: Ref<number> = ref(0)
   const smsMessagesRefreshCounter: Ref<number> = ref(0)
   const emailTemplatesRefreshCounter: Ref<number> = ref(0)
@@ -184,69 +188,47 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   }
 
   /**
-   * Broadcast an assistant-subscription update: refresh matching stacked entries and notify
-   * pages watching `subscriptionMutationCounter`.
-   * @param subscription - The freshly updated subscription.
+   * Replace, or drop, the stacked entries a change touches (a module refreshes its own drawers' entries this way).
+   * @param transform - Returns the entry as it should now read, the same entry when untouched, or null to drop it.
    */
-  function notifySubscriptionUpdated(subscription: AssistantSubscription): void {
-    stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
-      if (entry.kind === 'assistant-subscription' && entry.subscription.id === subscription.id) {
-        return { ...entry, subscription }
-      }
-      return entry
+  function replaceEntries(transform: (entry: DrawerStackEntry) => DrawerStackEntry | null): void {
+    stack.value = stack.value.flatMap((entry: DrawerStackEntry): DrawerStackEntry[] => {
+      const replacement: DrawerStackEntry | null = transform(entry)
+      return replacement === null ? [] : [replacement]
     })
-    lastSubscriptionMutation.value = { type: 'updated', subscription }
-    subscriptionMutationCounter.value++
   }
 
   /**
-   * Broadcast an assistant update: refresh the stacked entries showing it and notify pages watching
-   * `assistantMutationCounter`.
-   * @param assistant - The assistant as the API returned it.
+   * Broadcast a module's change to the pages watching its channel.
+   * @param channel - The channel the module declared in `DrawerStackChangeNotices`.
+   * @param notice - What changed.
    */
-  function notifyAssistantUpdated(assistant: AiAssistantSummary): void {
-    stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
-      if (
-        (entry.kind === 'assistant-conversations' || entry.kind === 'assistant-sources') &&
-        entry.assistant.id === assistant.id
-      ) {
-        return { ...entry, assistant }
-      }
-      return entry
-    })
-    lastAssistantMutation.value = { type: 'updated', assistant }
-    assistantMutationCounter.value++
+  function broadcastChange<TChannel extends DrawerStackChangeChannel>(
+    channel: TChannel,
+    notice: DrawerStackChangeNotices[TChannel],
+  ): void {
+    latestChangeNotices.value[channel] = notice
+    changeCounts.value[channel] = changeCountOf(channel) + 1
   }
 
   /**
-   * Broadcast an assistant deletion: drop the stacked entries showing it and notify pages watching
-   * `assistantMutationCounter`.
-   * @param assistantId - Identifier of the deleted assistant.
+   * How many changes a channel broadcast so far: pages watch it to apply the latest one.
+   * @param channel - The module's channel.
+   * @returns The count, 0 before the first change.
    */
-  function notifyAssistantDeleted(assistantId: number): void {
-    stack.value = stack.value.filter((entry: DrawerStackEntry): boolean => {
-      const showsAssistant: boolean =
-        (entry.kind === 'assistant-conversations' || entry.kind === 'assistant-sources') &&
-        entry.assistant.id === assistantId
-      return !showsAssistant
-    })
-    lastAssistantMutation.value = { type: 'deleted', assistantId }
-    assistantMutationCounter.value++
+  function changeCountOf(channel: DrawerStackChangeChannel): number {
+    return changeCounts.value[channel] ?? 0
   }
 
   /**
-   * Broadcast a change to a visitor request (status, note) to its open drawer and to the pages watching the counter.
-   * @param request - The request as the API returned it.
+   * The latest change broadcast on a channel.
+   * @param channel - The module's channel.
+   * @returns The notice, or null before the first change.
    */
-  function notifyAssistantRequestUpdated(request: AiAssistantRequestItem): void {
-    stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
-      if (entry.kind === 'assistant-request' && entry.request.id === request.id) {
-        return { ...entry, request }
-      }
-      return entry
-    })
-    lastRequestMutation.value = { type: 'updated', request }
-    requestMutationCounter.value++
+  function latestChangeOf<TChannel extends DrawerStackChangeChannel>(
+    channel: TChannel,
+  ): DrawerStackChangeNotices[TChannel] | null {
+    return latestChangeNotices.value[channel] ?? null
   }
 
   /** Signal that email logs changed (an email was sent from a drawer). */
@@ -319,12 +301,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     emailTemplateBrowseList,
     lastOrderMutation,
     orderMutationCounter,
-    lastSubscriptionMutation,
-    subscriptionMutationCounter,
-    lastAssistantMutation,
-    assistantMutationCounter,
-    lastRequestMutation,
-    requestMutationCounter,
+    changeCounts,
+    latestChangeNotices,
     emailLogsRefreshCounter,
     smsMessagesRefreshCounter,
     emailTemplatesRefreshCounter,
@@ -343,10 +321,10 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     notifyProspectDeleted,
     notifyOrderUpdated,
     notifyOrderDeleted,
-    notifySubscriptionUpdated,
-    notifyAssistantUpdated,
-    notifyAssistantDeleted,
-    notifyAssistantRequestUpdated,
+    replaceEntries,
+    broadcastChange,
+    changeCountOf,
+    latestChangeOf,
     bumpEmailLogsRefresh,
     bumpSmsMessagesRefresh,
     bumpEmailTemplatesRefresh,

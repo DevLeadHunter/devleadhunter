@@ -24,7 +24,7 @@ export class ProspectWebsite {
   }
 
   /**
-   * Whether the last website scan found a chat widget — « déjà équipé » for the receptionist pitch.
+   * Whether the last website scan found a chat widget — the prospect is « déjà équipé ».
    * @param prospect - Prospect to evaluate.
    * @returns True when at least one chat vendor was detected.
    */

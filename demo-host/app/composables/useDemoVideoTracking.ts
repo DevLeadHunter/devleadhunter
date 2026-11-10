@@ -2,17 +2,16 @@ import type { PostHog } from 'posthog-js'
 import type { DemoVideoEvent, DemoVideoEventCapture, DemoVideoSurface } from '~/types/demoVideoTracking'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
+const DEMO_SITE_VIDEO_SURFACE: DemoVideoSurface = { name: 'demo', eventPrefix: 'demo_video_' }
+
 let initialized: boolean = false
 let instance: PostHog | null = null
 let beaconSlug: string = ''
 let beaconBase: string = ''
-let videoSurface: DemoVideoSurface = 'demo'
+let videoEventPrefix: string = DEMO_SITE_VIDEO_SURFACE.eventPrefix
 
 // Video events worth a real-time owner notification (the rest stay analytics-only).
 const VIDEO_BEACON_EVENTS: Set<string> = new Set(['demo_video_play', 'demo_video_complete', 'demo_video_replay'])
-
-// The receptionist's page emits the site's video events under its own prefix, so the API tells the two modules apart.
-const VIDEO_EVENT_PREFIXES: Record<DemoVideoSurface, string> = { demo: 'demo_video_', assistant: 'assistant_video_' }
 
 /**
  * First-party proxy path for PostHog, same as `useDemoTracking` — a branded path
@@ -23,7 +22,7 @@ const POSTHOG_PROXY_PATH: string = '/dibodev/events'
 const POSTHOG_UI_HOST: string = 'https://eu.posthog.com'
 
 /**
- * PostHog tracking for the prospection-video player pages: the site's (/v/{slug}) and the receptionist's (/va/{slug}).
+ * PostHog tracking for the prospection-video player pages: the site's (/v/{slug}) and a product module's own.
  *
  * `distinct_id` is the demo slug, like `useDemoTracking`, so video events land on the SAME
  * person as the email and demo events and feed the email → vidéo → démo funnel.
@@ -41,13 +40,13 @@ export function useDemoVideoTracking(): {
    * @param slug - Demo slug (PostHog identity, shared with email/demo events).
    * @param variant - Optional A/B variant from the email link (`?v=`).
    * @param channel - Marketing channel that brought the visit ('email' / 'sms' / 'direct').
-   * @param surface - Module the video belongs to, which names its events: 'demo' (site) or 'assistant' (receptionist).
+   * @param surface - Module the video belongs to, which names its events (the site's by default).
    */
   async function init(
     slug: string,
     variant: string | null,
     channel: string,
-    surface: DemoVideoSurface = 'demo',
+    surface: DemoVideoSurface = DEMO_SITE_VIDEO_SURFACE,
   ): Promise<void> {
     if (!import.meta.client || initialized) return
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
@@ -72,13 +71,13 @@ export function useDemoVideoTracking(): {
         maskAllInputs: true,
       },
     })
-    posthog.register({ surface, demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
+    posthog.register({ surface: surface.name, demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
     initialized = true
     instance = posthog
     beaconSlug = slug
     beaconBase = String(config.public.apiBase ?? '')
-    videoSurface = surface
-    DemoBeaconUtils.send(beaconBase, beaconSlug, `${VIDEO_EVENT_PREFIXES[surface]}opened`)
+    videoEventPrefix = surface.eventPrefix
+    DemoBeaconUtils.send(beaconBase, beaconSlug, `${surface.eventPrefix}opened`)
   }
 
   /**
@@ -87,7 +86,7 @@ export function useDemoVideoTracking(): {
    * @param properties - Optional event properties.
    */
   const capture: DemoVideoEventCapture = (event: DemoVideoEvent, properties?: Record<string, unknown>): void => {
-    const surfaceEvent: string = event.replace(VIDEO_EVENT_PREFIXES.demo, VIDEO_EVENT_PREFIXES[videoSurface])
+    const surfaceEvent: string = event.replace(DEMO_SITE_VIDEO_SURFACE.eventPrefix, videoEventPrefix)
     instance?.capture(surfaceEvent, properties)
     if (VIDEO_BEACON_EVENTS.has(event)) {
       DemoBeaconUtils.send(beaconBase, beaconSlug, surfaceEvent)

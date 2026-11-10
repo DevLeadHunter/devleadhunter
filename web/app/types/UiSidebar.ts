@@ -1,9 +1,12 @@
+import type { ProductModuleKey } from '~/types/ProductModule'
+
 export type UiSidebarProps = {
   isOpen: boolean
   isMobile: boolean
 }
 
-export type UiSidebarCounterKey = 'pendingLeads'
+/** Identifier of a sidebar counter badge: the core's `pendingLeads`, or one a module brings. */
+export type UiSidebarCounterKey = string
 
 /** One navigation entry of the dashboard sidebar. */
 export type UiSidebarLink = {
@@ -25,15 +28,7 @@ export type UiSidebarGroup = {
 }
 
 /** Identifier of a DevLeadHunter product module. */
-export type DlhModuleKey = 'websites' | 'ai-assistant' | 'wallet-cards' | 'freelance-missions'
-
-/** One entry of the module switcher (the shell hosts several activatable modules). */
-export type DlhModuleEntry = {
-  key: DlhModuleKey
-  label: string
-  icon: string
-  locked: boolean
-}
+export type DlhModuleKey = ProductModuleKey
 
 /** The prominent call-to-action button a module puts at the top of the sidebar. */
 export type DlhModulePrimaryCta = {
@@ -54,4 +49,24 @@ export type DlhModule = {
   home: string
   primaryCta: DlhModulePrimaryCta | null
   navGroups: UiSidebarGroup[]
+}
+
+/** A counter badge a module computes for its own navigation links (read inside a computed: it may use stores). */
+export type DashboardModuleSidebarCounter = {
+  key: UiSidebarCounterKey
+  read: () => UiSidebarCounter
+}
+
+/** What a product module layer registers to appear in the dashboard: switcher entry, navigation, labels of its data. */
+export type DashboardModuleDefinition = {
+  key: DlhModuleKey
+  label: string
+  icon: string
+  home: string
+  primaryCta: DlhModulePrimaryCta | null
+  navGroups: UiSidebarGroup[]
+  sidebarCounters?: DashboardModuleSidebarCounter[]
+  activityCategoryLabels?: Record<string, string>
+  orderProductLabels?: Record<string, string>
+  describeProspectsWithoutOffer?: (prospectNames: string[]) => string
 }

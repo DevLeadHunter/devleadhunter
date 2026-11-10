@@ -15,3 +15,9 @@ export type DemoPageTrackingOptions = {
   shouldSendEachEventAtOnce: boolean
   slugPropertyName: 'demo_slug' | 'withdrawn_demo_slug'
 }
+
+/** Module a tracked page belongs to: its PostHog `surface` name and whether it still tracks in a frame. */
+export type DemoTrackingSurface = {
+  name: string
+  shouldTrackInsideFrame: boolean
+}

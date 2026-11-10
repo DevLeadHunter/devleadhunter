@@ -1,6 +1,8 @@
 import type { ComputedRef, Ref } from 'vue'
 import { SETTINGS_NAV_GROUPS } from '~/constants/settingsNav'
 import type { SettingsNavGroup, SettingsNavLink } from '~/types/SettingsNav'
+import { useModuleStore } from '~/stores/moduleStore'
+import { SettingsNavRegistry } from '~/utils/settingsNavRegistry'
 import { isPlatformAdmin, isSuperAdmin } from '~/utils/userRoles'
 
 export type SettingsNav = {
@@ -20,13 +22,19 @@ export type SettingsNav = {
 export function useSettingsNav(): SettingsNav {
   const route: ReturnType<typeof useRoute> = useRoute()
   const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
   const isAdmin: ComputedRef<boolean> = computed((): boolean => isPlatformAdmin(userStore.user?.role))
   const isSuperAdminUser: ComputedRef<boolean> = computed((): boolean => isSuperAdmin(userStore.user?.role))
   const showSettingsPanel: Ref<boolean> = useState('settings-nav-open', (): boolean => false)
 
+  const allSettingsGroups: ComputedRef<SettingsNavGroup[]> = computed((): SettingsNavGroup[] =>
+    SettingsNavRegistry.groupsWith(SETTINGS_NAV_GROUPS, moduleStore.isModuleUsable),
+  )
+
   const settingsGroups: ComputedRef<SettingsNavGroup[]> = computed((): SettingsNavGroup[] =>
-    SETTINGS_NAV_GROUPS.filter((group: SettingsNavGroup): boolean => !group.adminOnly || isAdmin.value)
+    allSettingsGroups.value
+      .filter((group: SettingsNavGroup): boolean => !group.adminOnly || isAdmin.value)
       .map(
         (group: SettingsNavGroup): SettingsNavGroup => ({
           ...group,
@@ -41,9 +49,9 @@ export function useSettingsNav(): SettingsNav {
   )
 
   const settingsPaths: ComputedRef<string[]> = computed((): string[] =>
-    SETTINGS_NAV_GROUPS.flatMap((group: SettingsNavGroup): SettingsNavLink[] => group.entries).map(
-      (entry: SettingsNavLink): string => entry.to,
-    ),
+    allSettingsGroups.value
+      .flatMap((group: SettingsNavGroup): SettingsNavLink[] => group.entries)
+      .map((entry: SettingsNavLink): string => entry.to),
   )
 
   /**

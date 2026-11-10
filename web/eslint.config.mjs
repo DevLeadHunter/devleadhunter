@@ -34,6 +34,8 @@ export default withNuxt(
       '@typescript-eslint/no-explicit-any': 'error',
       // A class of static methods is the house style for a cohesive helper set (see the standards).
       '@typescript-eslint/no-extraneous-class': 'off',
+      // An empty interface is how the core opens a type to the product module layers (declaration merging).
+      '@typescript-eslint/no-empty-object-type': ['error', { allowInterfaces: 'always' }],
       '@typescript-eslint/explicit-function-return-type': ['error'],
       '@typescript-eslint/typedef': [
         'error',

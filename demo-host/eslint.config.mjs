@@ -96,12 +96,5 @@ export default withNuxt(
       '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
-  {
-    // SVG drawn as markup: the icons' own constants and the QR code the API renders, never visitor content.
-    files: ['app/components/ClientSpaceIcon.vue', 'app/components/ClientSpaceGoogleProfile.vue'],
-    rules: {
-      'vue/no-v-html': 'off',
-    },
-  },
   eslintConfigPrettier,
 )
