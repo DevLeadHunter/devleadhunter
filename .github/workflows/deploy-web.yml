@@ -4,10 +4,14 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "product-modules.json"
+      - "product-modules.mjs"
   pull_request:
     branches: [main]
     paths:
       - "web/**"
+      - "product-modules.json"
+      - "product-modules.mjs"
   workflow_dispatch:
 
 jobs:
@@ -29,6 +33,9 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
         working-directory: ./web
+        env:
+          # nuxt prepare fetches the product modules' layers from GitHub: a token lifts the anonymous rate limit.
+          GIGET_AUTH: ${{ secrets.GIGET_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: 📝 Setup environment file
         run: |
@@ -40,6 +47,7 @@ jobs:
         run: npm run build
         working-directory: ./web
         env:
+          GIGET_AUTH: ${{ secrets.GIGET_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           NITRO_PRESET: node-server
           NODE_ENV: production
           # Public runtime config is baked here → the marketing-site PostHog key must

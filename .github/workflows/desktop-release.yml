@@ -16,6 +16,8 @@ on:
       - "api/scraper_sidecar.py"
       - "api/build_scraper_sidecar.py"
       - "api/requirements.txt"
+      - "product-modules.json"
+      - "product-modules.mjs"
       - ".github/workflows/desktop-release.yml"
   workflow_dispatch:
 
@@ -29,6 +31,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      # The web build fetches the product modules' layers from GitHub: a token lifts the anonymous rate limit.
+      GIGET_AUTH: ${{ secrets.GIGET_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: web
@@ -63,6 +68,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
+          # Before PyInstaller: the sidecar bundles the modules' routes (the receptionist's video build).
+          python scripts/product_module_requirements.py > product-module-requirements.txt
+          pip install -r product-module-requirements.txt
+          # pwsh carries on after a failed native command: never ship a sidecar without its modules' routes.
+          if ($LASTEXITCODE -ne 0) { throw "Product modules install failed (product-modules.json)" }
           # Bundle a STATIC ffmpeg AND ffprobe so desktop video generation is
           # plug-and-play (the user never installs them). BtbN builds are
           # self-contained exes; ffprobe measures durations during the assemble step.

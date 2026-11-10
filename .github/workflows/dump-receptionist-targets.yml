@@ -1,5 +1,7 @@
 name: 🔎 Dump receptionist campaign targets (manual, read-only)
 
+# Serves the receptionist module (its own repository) but stays here, with the VPS secrets.
+
 on:
   workflow_dispatch:
 
@@ -34,12 +36,16 @@ jobs:
 
             for _m in pkgutil.iter_modules(models.__path__):
                 importlib.import_module(f"models.{_m.name}")
+            from core.product_modules.registry import product_module_registry
+
+            # The receptionist's tables come with its module (DevLeadHunter/devleadhunter-module-receptionist).
+            product_module_registry.installed()
             configure_mappers()
 
             from core.database import SessionLocal
-            from models.ai_assistant import AiAssistant
+            from devleadhunter_receptionist.models.ai_assistant import AiAssistant
             from models.prospect_db import ProspectDB
-            from services.contact_lock_service import LOCK_DAYS, MODULE_AI_ASSISTANT
+            from services.contact_lock_service import LOCK_DAYS
             from services.sms.phone_normalizer import is_mobile_fr
 
             TRADES = {
@@ -71,6 +77,7 @@ jobs:
             def has_live_site(prospect):
                 return bool((prospect.website or "").strip()) and prospect.website_status not in ("dead", "placeholder")
 
+            MODULE_AI_ASSISTANT = "ai-assistant"
             now = datetime.utcnow()
             lock_window = timedelta(days=LOCK_DAYS)
 

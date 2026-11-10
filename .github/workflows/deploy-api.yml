@@ -6,6 +6,7 @@ on:
     paths:
       - "api/**"
       - "api/requirements.txt"
+      - "product-modules.json"
       - ".github/workflows/deploy-api.yml"
   pull_request:
     branches: [main]
@@ -31,6 +32,12 @@ jobs:
           sparse-checkout: |
             api
           lfs: false
+
+      # product-modules.json sits at the repository root, which a cone sparse checkout keeps.
+      - name: 🧩 List the product modules to install
+        run: |
+          python3 api/scripts/product_module_requirements.py > api/product-module-requirements.txt
+          cat api/product-module-requirements.txt
 
       - name: 🧭 Debug workspace
         run: |
@@ -80,13 +87,15 @@ jobs:
             sudo apt-get update -y --allow-releaseinfo-change || true
             # ffmpeg porte la prise en charge des clips webcam (mesure de durée,
             # normalisation) : sans lui l'API rend une erreur trompeuse sur chaque upload.
-            sudo apt-get install -y python3-venv ffmpeg
+            sudo apt-get install -y python3-venv ffmpeg git
             if [ ! -x ".venv/bin/python" ]; then
               python3 -m venv .venv
             fi
             . .venv/bin/activate
             python -m pip install --upgrade pip wheel
             pip install -r api/requirements.txt --no-cache-dir
+            # --force-reinstall: pip compares versions, not tags; --no-deps: modules' needs are in api/requirements.txt.
+            pip install --force-reinstall --no-deps -r api/product-module-requirements.txt --no-cache-dir
             deactivate
 
       - name: ⚙️ Create .env file (SSH)

@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "demo-host/**"
+      - "product-modules.json"
+      - "product-modules.mjs"
       - ".github/workflows/deploy-demo-host.yml"
   workflow_dispatch:
 

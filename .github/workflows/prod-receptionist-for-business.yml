@@ -3,6 +3,7 @@ name: 🤖 Réceptionniste IA pour une entreprise (manuel, prod)
 # Crée (ou retrouve) un prospect du compte propriétaire et lui génère sa réceptionniste sur la prod, par les
 # mêmes routes que le dashboard. Sert à tester le parcours client complet sur une entreprise réelle (la nôtre)
 # sans jeton de prod dans une session. Idempotent : un prospect du même nom et son assistant sont réutilisés.
+# Serves the receptionist module (its own repository) but stays here, with the VPS secrets.
 
 on:
   workflow_dispatch:
@@ -174,11 +175,13 @@ jobs:
 
                 import models
                 from core.database import SessionLocal
-                from models.ai_assistant_request import AiAssistantRequest
+                from core.product_modules.registry import product_module_registry
+                from devleadhunter_receptionist.models.ai_assistant_request import AiAssistantRequest
 
                 # Every mapper must be registered before the first query (relationships are resolved by name).
                 for module in pkgutil.iter_modules(models.__path__):
                     importlib.import_module("models.%s" % module.name)
+                product_module_registry.installed()
                 with SessionLocal() as db:
                     rows = db.query(AiAssistantRequest).filter(
                         AiAssistantRequest.assistant_id == assistant["id"]
