@@ -46,7 +46,23 @@ a{color:inherit}a:hover{color:inherit}
 .tab.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
 .count{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface2);color:var(--soft)}
 .rows{overflow:hidden}
-.rowhead,.row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.7fr) minmax(0,1.15fr) 132px;gap:20px;align-items:center;padding:20px}
+.rowhead,.row{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.9fr) minmax(0,1fr) 116px;gap:16px;align-items:center;padding:20px}
+.kinds{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.kind{gap:6px;padding:3px 10px 3px 8px;font-size:13px;font-weight:600}
+.kind.k-hack{background:var(--red);color:var(--surface)}
+.tic{display:inline-block;flex:none;width:14px;height:14px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
+.tech{display:inline-flex;align-items:center;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);white-space:nowrap}
+.k-hack{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM12 8v4M12 16h.01'/%3E%3C/svg%3E")}
+.k-security{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E")}
+.k-risk{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01'/%3E%3C/svg%3E")}
+.k-late{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5'/%3E%3C/svg%3E")}
+.k-mail{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'/%3E%3C/svg%3E")}
+.k-mobile{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 18h.01'/%3E%3C/svg%3E")}
+.k-contact{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E")}
+.k-dated{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 10h18'/%3E%3C/svg%3E")}
+.k-google{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.3-4.3'/%3E%3C/svg%3E")}
+.k-ok{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")}
+.k-review{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01'/%3E%3C/svg%3E")}
 .rowhead{padding-top:12px;padding-bottom:12px;background:var(--surface2)}
 .row{border-top:1px solid var(--line)}
 .rowname{display:block;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
@@ -63,8 +79,7 @@ a{color:inherit}a:hover{color:inherit}
 .block h3{margin:0 0 12px;font-size:15px;font-weight:600}
 .point{padding:12px 0;border-top:1px solid var(--line)}
 .point:first-of-type{border-top:0;padding-top:0}
-.point strong{display:block;font-size:14px;font-weight:600}
-.point span{display:block;margin-top:2px;font-size:14px;color:var(--soft)}
+.pointfact{margin:8px 0 0;font-size:14px;line-height:1.5}
 .plain{margin:0;font-size:14px;color:var(--soft)}
 .offer{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
 .offer:first-of-type{border-top:0;padding-top:0}
@@ -121,6 +136,20 @@ a{color:inherit}a:hover{color:inherit}
             <option value="g">Garages</option>
           </select>
         </div>
+        <div class="fixed">
+          <select class="input" aria-label="Filtrer par type de souci" value="{{kind}}" onChange="{{onKind}}">
+            <option value="all">Tous les soucis</option>
+            <option value="hack">Site piraté</option>
+            <option value="security">Sécurité</option>
+            <option value="risk">Version à risque</option>
+            <option value="late">Mise à jour en retard</option>
+            <option value="mail">E-mails</option>
+            <option value="mobile">Sur téléphone</option>
+            <option value="contact">Coordonnées</option>
+            <option value="dated">Site daté</option>
+            <option value="google">Dans Google</option>
+          </select>
+        </div>
       </div>
 
       <div class="tabs" role="group" aria-label="Trier les prospects">
@@ -144,7 +173,10 @@ a{color:inherit}a:hover{color:inherit}
               <span class="mono">{{row.domain}}</span>
             </div>
             <div style="min-width: 0">
-              <span class="badge {{row.toneCls}}">{{row.toneLabel}}</span>
+              <div class="kinds">
+                <span class="badge kind {{row.toneCls}} {{row.kindCls}}"><i class="tic" aria-hidden="true"></i>{{row.kindLabel}}</span>
+                <sc-if value="{{row.hasTech}}" hint-placeholder-val="{{false}}"><span class="tech">{{row.tech}}</span></sc-if>
+              </div>
               <span class="issue">{{row.lead}}</span>
               <sc-if value="{{row.hasMore}}" hint-placeholder-val="{{false}}"><span class="sub">{{row.more}}</span></sc-if>
             </div>
@@ -191,7 +223,13 @@ a{color:inherit}a:hover{color:inherit}
         <div class="card block">
           <h3>À corriger</h3>
           <sc-for list="{{sel.fixes}}" as="p" hint-placeholder-count="1">
-            <div class="point"><strong>{{p.label}}</strong><span>{{p.fact}}</span></div>
+            <div class="point">
+              <div class="kinds">
+                <span class="badge kind red {{p.kindCls}}"><i class="tic" aria-hidden="true"></i>{{p.kindLabel}}</span>
+                <sc-if value="{{p.hasTech}}" hint-placeholder-val="{{false}}"><span class="tech">{{p.tech}}</span></sc-if>
+              </div>
+              <p class="pointfact">{{p.fact}}</p>
+            </div>
           </sc-for>
         </div>
       </sc-if>
@@ -200,7 +238,13 @@ a{color:inherit}a:hover{color:inherit}
         <div class="card block">
           <h3>À surveiller</h3>
           <sc-for list="{{sel.watches}}" as="p" hint-placeholder-count="2">
-            <div class="point"><strong>{{p.label}}</strong><span>{{p.fact}}</span></div>
+            <div class="point">
+              <div class="kinds">
+                <span class="badge kind amber {{p.kindCls}}"><i class="tic" aria-hidden="true"></i>{{p.kindLabel}}</span>
+                <sc-if value="{{p.hasTech}}" hint-placeholder-val="{{false}}"><span class="tech">{{p.tech}}</span></sc-if>
+              </div>
+              <p class="pointfact">{{p.fact}}</p>
+            </div>
           </sc-for>
         </div>
       </sc-if>
@@ -258,8 +302,7 @@ a{color:inherit}a:hover{color:inherit}
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":1900}}'>
-var LABELS = ['Cadenas de sécurité (https)', 'Moteur du site (PHP)', 'Logiciel du site', 'Piratage', 'Adresse e-mail affichée', 'E-mails : expéditeur reconnu', 'E-mails : protection du nom', 'Numéro de la fiche Google', 'Numéro cliquable', 'Année en bas de page', 'Lecture sur téléphone', 'Présentation dans Google'];
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":2150}}'>
 var SHORT_LABELS = ['le cadenas', 'le moteur du site', 'le logiciel du site', 'aucun piratage', 'l’adresse e-mail', 'l’expéditeur des e-mails', 'la protection du nom', 'le numéro de la fiche Google', 'le numéro cliquable', 'l’année en bas de page', 'la lecture sur téléphone', 'la présentation dans Google'];
 var PHP_END = { '7.1': 'décembre 2019', '7.4': 'novembre 2022', '8.1': 'décembre 2025' };
 var PHP_YEAR = { '7.1': '2019', '7.4': '2022', '8.1': '2025' };
@@ -281,6 +324,8 @@ var PROOFS = [
   'Dans Google, tapez « site:DOMAINE » et regardez le texte sous votre titre.'
 ];
 var SUBJECTS = { 3: 'Des liens de casino sur votre site', 0: 'L’avertissement de sécurité sur votre site', 1: 'La version de PHP de votre site', 2: 'La version de votre site', 5: 'Les e-mails de votre nom de domaine', 10: 'Votre site sur téléphone' };
+var KINDS = { hack: 'Site piraté', security: 'Sécurité', risk: 'Version à risque', late: 'Mise à jour en retard', mail: 'E-mails', mobile: 'Sur téléphone', contact: 'Coordonnées', dated: 'Site daté', google: 'Dans Google' };
+var KIND_WORDS = { hack: 'piratage', security: 'sécurité', risk: 'version à risque', late: 'mise à jour en retard', mail: 'e-mails', mobile: 'affichage sur téléphone', contact: 'coordonnées', dated: 'site daté', google: 'présentation dans Google' };
 var OFFERS = { 3: ['Nettoyage du site après piratage', 390], 0: ['Mise en place du cadenas (https)', 90], 1: ['Passage à une version de PHP suivie', 190], 2: ['Mise à jour du site et de ses extensions', 190], 5: ['Réglage des e-mails du domaine', 90], 10: ['Adaptation au téléphone', null] };
 
 var ROWS = [
@@ -390,31 +435,65 @@ function factOf(index, state, d) {
   return 'Titre, description et fiche d’entreprise sont en place.';
 }
 function shortOf(index, state, d) {
-  if (index === 0) return state === 'f' ? (d.h === 'a' ? 'Pas de cadenas : le navigateur affiche « Non sécurisé »' : 'Certificat invalide : avertissement avant d’entrer') : 'Certificat à renouveler avant le ' + d.ce;
-  if (index === 1) return state === 'f' ? 'PHP ' + d.p + ', plus corrigé depuis ' + PHP_YEAR[d.p] : 'PHP 8.2 s’arrête le 31 décembre';
-  if (index === 2) return state === 'f' ? d.c + ', une version de 2017' : d.c + ', en retard';
-  if (index === 3) return 'Site piraté : liens cachés vers des casinos';
+  if (index === 0) {
+    if (state === 'w') return 'Certificat à renouveler avant le ' + d.ce;
+    return d.h === 'a' ? 'Pas de cadenas : le navigateur affiche « Non sécurisé »' : 'Certificat invalide : avertissement avant d’entrer';
+  }
+  if (index === 1) return state === 'f' ? 'Plus de correctif de sécurité depuis ' + PHP_YEAR[d.p] : 'Les correctifs de sécurité s’arrêtent le 31 décembre';
+  if (index === 2) return state === 'f' ? 'Une version de 2017, qui n’est plus suivie' : 'La version actuelle est la 7.1';
+  if (index === 3) return 'Liens cachés vers des sites de casino';
   if (index === 5) return 'Ses e-mails risquent les indésirables';
-  if (index === 6) return 'Nom de domaine non protégé';
-  if (index === 7) return 'Numéro différent de la fiche Google';
-  if (index === 8) return 'Numéro non cliquable sur téléphone';
-  if (index === 9) return 'Année dépassée en bas de page';
-  if (index === 10) return 'Illisible sur téléphone';
-  return 'Présentation dans Google incomplète';
+  if (index === 6) return 'Nom de domaine non protégé contre l’usurpation';
+  if (index === 7) return 'Numéro différent de celui de la fiche Google';
+  if (index === 8) return d.t === 0 ? 'Aucun numéro sur la page d’accueil' : 'Numéro à recopier pour appeler';
+  if (index === 9) return '« © ' + d.y + ' » en bas de page';
+  if (index === 10) return 'Page illisible sur un téléphone';
+  return 'Présentation incomplète';
+}
+function kindOf(index, state, d) {
+  if (index === 0) return 'security';
+  if (index === 1 || index === 2) return state === 'f' ? 'risk' : 'late';
+  if (index === 3) return 'hack';
+  if (index === 5 || index === 6) return 'mail';
+  if (index === 7) return 'contact';
+  if (index === 8) return d.t === 0 ? 'contact' : 'mobile';
+  if (index === 9) return 'dated';
+  if (index === 10) return 'mobile';
+  return 'google';
+}
+function techOf(index, d) {
+  if (index === 1) return d.p ? 'PHP ' + d.p : '';
+  if (index === 2) return d.c || '';
+  return '';
+}
+function pointOf(index, state, d) {
+  var kind = kindOf(index, state, d), tech = techOf(index, d);
+  return { fact: factOf(index, state, d), index: index, kind: kind, kindLabel: KINDS[kind], kindCls: 'k-' + kind, tech: tech, hasTech: tech !== '' };
 }
 function build(row, id) {
   var d = row.d, fixes = [], watches = [], goods = [], hidden = [], states = [];
   for (var i = 0; i < 12; i += 1) {
     var state = row.s.charAt(i);
     states.push(state);
-    if (state === 'f') fixes.push({ label: LABELS[i], fact: factOf(i, state, d), index: i });
-    else if (state === 'w') watches.push({ label: LABELS[i], fact: factOf(i, state, d), index: i });
+    if (state === 'f') fixes.push(pointOf(i, state, d));
+    else if (state === 'w') watches.push(pointOf(i, state, d));
     else if (state === 'o') goods.push(SHORT_LABELS[i]);
     else hidden.push(SHORT_LABELS[i]);
   }
   var leadIndex = -1, leadState = '';
   FIX_ORDER.forEach(function (index) { if (leadIndex < 0 && states[index] === 'f') { leadIndex = index; leadState = 'f'; } });
   WATCH_ORDER.forEach(function (index) { if (leadIndex < 0 && states[index] === 'w') { leadIndex = index; leadState = 'w'; } });
+  var lead = null, also = [], kinds = {}, points = fixes.concat(watches);
+  var wordsOf = function (point) { return KIND_WORDS[point.kind] + (point.tech ? ' (' + point.tech + ')' : ''); };
+  points.forEach(function (point) {
+    kinds[point.kind] = true;
+    if (point.index === leadIndex) lead = point;
+  });
+  points.forEach(function (point) {
+    var words = wordsOf(point);
+    if (point === lead || (lead && words === wordsOf(lead)) || also.indexOf(words) >= 0) return;
+    also.push(words);
+  });
   var slug = slugOf(row.n);
   var offer = [];
   FIX_ORDER.forEach(function (index) {
@@ -422,13 +501,13 @@ function build(row, id) {
       offer.push({ label: OFFERS[index][0], price: OFFERS[index][1] === null ? 'Sur devis' : OFFERS[index][1] + ' €', euros: OFFERS[index][1] });
     }
   });
-  return { id: id, row: row, slug: slug, domain: slug + '.fr', email: row.e ? 'contact@' + slug + '.fr' : 'Pas d’email connu', fixes: fixes, watches: watches, goods: goods, hidden: hidden, leadIndex: leadIndex, leadState: leadState, offer: offer, others: fixes.length + watches.length - (leadIndex < 0 ? 0 : 1) };
+  return { id: id, row: row, slug: slug, domain: slug + '.fr', email: row.e ? 'contact@' + slug + '.fr' : 'Pas d’email connu', fixes: fixes, watches: watches, goods: goods, hidden: hidden, leadIndex: leadIndex, leadState: leadState, lead: lead, also: also, kinds: kinds, offer: offer };
 }
 var ITEMS = ROWS.map(build);
 var EMPTY = { name: '', sub: '', domain: '', email: '', stateLabel: '', stateCls: '', fixes: [], watches: [], offer: [], paragraphs: [], subject: '', goodLine: '', hiddenLine: '', unreadText: '', hasFixes: false, hasWatches: false, hasOffer: false, hasMessage: false, hasHidden: false, isRead: false, isUnread: false, canSend: false, needsEmail: false };
 
 class Component extends DCLogic {
-  state = { tab: 'write', query: '', trade: 'all', openId: null, withLink: false, sent: {} };
+  state = { tab: 'write', query: '', trade: 'all', kind: 'all', openId: null, withLink: false, sent: {} };
 
   groupOf(item) {
     var row = item.row;
@@ -451,10 +530,10 @@ class Component extends DCLogic {
 
   leadOf(item) {
     var row = item.row;
-    if (row.g === 'x') return { text: 'Le site ne répond plus', tone: 'À revoir', cls: 'amber' };
-    if (row.g === 'r') return { text: 'Le site a refusé la lecture automatique', tone: 'À revoir', cls: 'amber' };
-    if (item.leadIndex < 0) return { text: 'Rien à signaler', tone: 'Tout va bien', cls: 'green' };
-    return { text: shortOf(item.leadIndex, item.leadState, row.d), tone: item.leadState === 'f' ? 'À corriger' : 'À surveiller', cls: item.leadState === 'f' ? 'red' : 'amber' };
+    if (row.g === 'x') return { text: 'Le site ne répond plus', label: 'À revoir', cls: 'amber', kindCls: 'k-review', tech: '' };
+    if (row.g === 'r') return { text: 'Le site a refusé la lecture automatique', label: 'À revoir', cls: 'amber', kindCls: 'k-review', tech: '' };
+    if (item.leadIndex < 0) return { text: 'Tout ce qui se voit de l’extérieur est bon', label: 'Rien à signaler', cls: 'green', kindCls: 'k-ok', tech: '' };
+    return { text: shortOf(item.leadIndex, item.leadState, row.d), label: item.lead.kindLabel, cls: item.leadState === 'f' ? 'red' : 'amber', kindCls: item.lead.kindCls, tech: item.lead.tech };
   }
 
   messageOf(item) {
@@ -494,14 +573,15 @@ class Component extends DCLogic {
     var visible = ITEMS.filter(function (item) {
       if (self.groupOf(item) !== current.tab) return false;
       if (current.trade !== 'all' && item.row.t !== current.trade) return false;
+      if (current.kind !== 'all' && !item.kinds[current.kind]) return false;
       if (!query) return true;
       return (item.row.n + ' ' + item.row.c + ' ' + item.domain).toLowerCase().indexOf(query) >= 0;
     });
     var rows = visible.map(function (item) {
       var lead = self.leadOf(item);
       var status = self.stateOf(item);
-      var more = item.others > 0 && item.row.g !== 'x' && item.row.g !== 'r';
-      return { name: item.row.n, sub: TRADES[item.row.t] + ' · ' + item.row.c, domain: item.domain, lead: lead.text, toneLabel: lead.tone, toneCls: lead.cls, hasMore: more, more: item.others === 1 ? 'et 1 autre point' : 'et ' + item.others + ' autres points', email: item.email, stateLabel: status.label, stateCls: status.cls, open: function () { self.setState({ openId: item.id, withLink: false }); } };
+      var more = item.also.length > 0 && item.row.g !== 'x' && item.row.g !== 'r';
+      return { name: item.row.n, sub: TRADES[item.row.t] + ' · ' + item.row.c, domain: item.domain, lead: lead.text, kindLabel: lead.label, kindCls: lead.kindCls, toneCls: lead.cls, tech: lead.tech, hasTech: lead.tech !== '', hasMore: more, more: 'Aussi : ' + item.also.join(', '), email: item.email, stateLabel: status.label, stateCls: status.cls, open: function () { self.setState({ openId: item.id, withLink: false }); } };
     });
     var listNote = '';
     if (current.tab === 'calm') listNote = 'Les 12 premiers sur 89 : la maquette n’affiche pas les autres.';
@@ -551,6 +631,8 @@ class Component extends DCLogic {
       trade: current.trade,
       onQuery: function (event) { self.setState({ query: event.target.value }); },
       onTrade: function (event) { self.setState({ trade: event.target.value }); },
+      kind: current.kind,
+      onKind: function (event) { self.setState({ kind: event.target.value }); },
       tabs: tabs,
       rows: rows,
       isEmpty: rows.length === 0,

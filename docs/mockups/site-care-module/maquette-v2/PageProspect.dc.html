@@ -12,7 +12,7 @@
 <style>
 body{margin:0}
 a{color:#6f5fe0}a:hover{color:#5b4bd0}
-.sheet{width:390px;min-height:3300px;box-sizing:border-box;background:#ffffff;color:#141414;font-family:'Rubik',ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:28px;-webkit-font-smoothing:antialiased}
+.sheet{width:390px;min-height:3960px;box-sizing:border-box;background:#ffffff;color:#141414;font-family:'Rubik',ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:28px;-webkit-font-smoothing:antialiased}
 .sheet *{box-sizing:border-box}
 .sheet p{margin:0}
 .band{padding:48px 24px;display:flex;flex-direction:column;gap:24px}
@@ -28,9 +28,16 @@ a{color:#6f5fe0}a:hover{color:#5b4bd0}
 .small{font-size:15px;line-height:24px;color:#4b4b47}
 .card{display:flex;gap:16px;padding:24px;border:1px solid rgba(20,20,20,.12);border-radius:12px;background:#ffffff}
 .round{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:#e6e1ff;color:#6f5fe0}
-.round.number{width:44px;height:44px;font-size:16px;font-weight:500}
 .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .stack{display:flex;flex-direction:column;gap:16px}
+.alert{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid rgba(180,83,9,.3);border-radius:12px;background:#fdf1dc}
+.alerthead{display:flex;align-items:center;gap:10px;font-size:12px;line-height:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#b45309}
+.alerthead .round{width:32px;height:32px;background:#ffffff;color:#b45309}
+.fact{font-size:19px;line-height:27px;font-weight:500;color:#141414}
+.rows{display:flex;flex-direction:column;padding:4px 24px;border:1px solid rgba(20,20,20,.12);border-radius:12px;background:#ffffff}
+.rowline{padding:18px 0;border-top:1px solid rgba(20,20,20,.12);font-size:16px;line-height:26px;color:#141414}
+.rowline.first{border-top:0}
+.stepno{display:block;margin-bottom:4px;font-size:12px;line-height:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#6f5fe0}
 .offer{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid #6f5fe0;border-radius:12px;background:#ffffff;box-shadow:0 18px 40px rgba(111,95,224,.12)}
 .tag{align-self:flex-start;padding:4px 10px;border-radius:6px;background:#6f5fe0;color:#ffffff;font-size:12px;line-height:16px;font-weight:500}
 .amount{font-size:40px;line-height:1.1;font-weight:500}
@@ -59,21 +66,19 @@ a{color:#6f5fe0}a:hover{color:#5b4bd0}
   <section class="band alt">
     <p class="eyebrow">Le constat</p>
     <h2>Ce que j’ai vu</h2>
-    <div class="card">
-      <span class="round" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span>
-      <p class="small" style="color: #141414">{{seen}}</p>
+    <div class="alert">
+      <p class="alerthead"><span class="round" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span>{{seenLabel}}</p>
+      <p class="fact">{{seenLead}}</p>
+      <p class="small">{{seenRest}}</p>
     </div>
   </section>
 
   <section class="band">
     <p class="eyebrow">Les conséquences</p>
     <h2>Ce que ça change pour vous</h2>
-    <div class="stack">
+    <div class="rows">
       <sc-for list="{{changes}}" as="change" hint-placeholder-count="2">
-        <div class="card">
-          <span class="round" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-          <p class="small">{{change.text}}</p>
-        </div>
+        <p class="rowline {{change.cls}}">{{change.text}}</p>
       </sc-for>
     </div>
   </section>
@@ -81,11 +86,11 @@ a{color:#6f5fe0}a:hover{color:#5b4bd0}
   <section class="band alt">
     <p class="eyebrow">La preuve</p>
     <h2>Vérifiez-le vous-même</h2>
-    <div class="stack">
+    <div class="rows">
       <sc-for list="{{proofSteps}}" as="step" hint-placeholder-count="2">
-        <div class="card" style="align-items: center">
-          <span class="round number" aria-hidden="true">{{step.number}}</span>
-          <p class="small" style="color: #141414">{{step.text}}</p>
+        <div class="rowline {{step.cls}}">
+          <span class="stepno">Étape {{step.rank}}</span>
+          <p>{{step.text}}</p>
         </div>
       </sc-for>
     </div>
@@ -149,13 +154,15 @@ a{color:#6f5fe0}a:hover{color:#5b4bd0}
   </section>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"exemple":{"editor":"enum","options":["PHP plus corrigé","Site piraté","Pas de cadenas"],"default":"PHP plus corrigé"},"$preview":{"width":390,"height":3300}}'>
+<script type="text/x-dc" data-dc-script data-props='{"exemple":{"editor":"enum","options":["PHP plus corrigé","Site piraté","Pas de cadenas"],"default":"PHP plus corrigé"},"$preview":{"width":390,"height":3960}}'>
 var EXAMPLES = {
   'PHP plus corrigé': {
     businessName: 'Élagage Renaud',
     domain: 'elagage-renaud.fr',
     title: ['Le moteur de votre site n’est plus corrigé ', 'depuis 2022', '.'],
-    seen: 'Votre site fonctionne grâce à un logiciel appelé PHP. Le vôtre est en version 7.4. Cette version ne reçoit plus aucun correctif de sécurité depuis novembre 2022.',
+    seenLabel: 'Point à corriger',
+    seenLead: 'Votre site tourne avec PHP 7.4, une version qui n’est plus corrigée.',
+    seenRest: 'PHP est le logiciel qui fait fonctionner votre site. La version 7.4 ne reçoit plus aucun correctif de sécurité depuis novembre 2022.',
     changes: ['Une faille découverte aujourd’hui dans cette version ne sera jamais réparée. C’est une des portes d’entrée habituelles des pirates.', 'Votre hébergeur peut retirer cette version. Le site s’arrêterait alors du jour au lendemain.'],
     proofSteps: ['Appelez votre hébergeur, ou écrivez-lui.', 'Demandez-lui : « Quelle version de PHP fait tourner mon site ? »'],
     offerLabel: 'Je passe votre site sur une version de PHP suivie.',
@@ -167,7 +174,9 @@ var EXAMPLES = {
     businessName: 'Bellanger Électricité',
     domain: 'bellanger-electricite.fr',
     title: ['Votre site contient ', 'des liens vers des casinos', '. Ce n’est pas vous qui les avez mis.'],
-    seen: 'Dans le code de votre page d’accueil, il y a des liens cachés vers des sites de casino. Un visiteur ne les voit pas, mais Google les lit. Quelqu’un est entré dans votre site pour les y mettre.',
+    seenLabel: 'À corriger sans attendre',
+    seenLead: 'Votre page d’accueil contient des liens cachés vers des sites de casino.',
+    seenRest: 'Un visiteur ne les voit pas, mais Google les lit. Quelqu’un est entré dans votre site pour les y mettre.',
     changes: ['Google finit par afficher un avertissement à côté de votre nom, ou par retirer votre site de ses résultats.', 'Tant que la porte d’entrée n’est pas refermée, les liens reviennent.'],
     proofSteps: ['Ouvrez Google.', 'Tapez : site:bellanger-electricite.fr casino'],
     offerLabel: 'Je nettoie votre site et je referme la porte d’entrée.',
@@ -179,7 +188,9 @@ var EXAMPLES = {
     businessName: 'Élagage Tessier',
     domain: 'elagage-tessier.fr',
     title: ['Votre site s’ouvre avec la mention ', '« Non sécurisé »', '.'],
-    seen: 'Votre site n’a pas le cadenas de sécurité (https). À gauche de votre adresse, le navigateur écrit « Non sécurisé » à chaque visiteur.',
+    seenLabel: 'Point à corriger',
+    seenLead: 'Votre site n’a pas le cadenas de sécurité (https).',
+    seenRest: 'À gauche de votre adresse, le navigateur écrit « Non sécurisé » à chaque visiteur.',
     changes: ['Un visiteur qui lit « Non sécurisé » hésite à vous appeler ou à vous écrire. Certains repartent.', 'Google met en avant les sites qui ont le cadenas.'],
     proofSteps: ['Ouvrez votre site sur votre téléphone.', 'Regardez à gauche de l’adresse : « Non sécurisé ».'],
     offerLabel: 'Je mets le cadenas de sécurité en place.',
@@ -192,14 +203,16 @@ var EXAMPLES = {
 class Component extends DCLogic {
   renderVals() {
     var example = EXAMPLES[this.props.exemple ?? 'PHP plus corrigé'] || EXAMPLES['PHP plus corrigé'];
-    var asItems = function (texts) { return texts.map(function (text, index) { return { text: text, number: '0' + (index + 1) }; }); };
+    var asItems = function (texts) { return texts.map(function (text, index) { return { text: text, rank: index + 1, cls: index === 0 ? 'first' : '' }; }); };
     return {
       businessName: example.businessName,
       domain: example.domain,
       titleStart: example.title[0],
       titleMark: example.title[1],
       titleEnd: example.title[2],
-      seen: example.seen,
+      seenLabel: example.seenLabel,
+      seenLead: example.seenLead,
+      seenRest: example.seenRest,
       changes: asItems(example.changes),
       proofSteps: asItems(example.proofSteps),
       offerLabel: example.offerLabel,

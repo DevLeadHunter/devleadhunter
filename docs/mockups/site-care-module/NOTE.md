@@ -82,10 +82,18 @@ Le portrait est celui du site (`dibodev.fr-frontend/public/images/about/leo-guil
 
 Vérification à l'écran : Léo a ouvert le lien en partage, Claude a donc pu regarder la page pour le prospect du haut en bas (rendu conforme). Les six autres écrans n'ont été contrôlés que par leur logique, exécutée hors canevas (aucune erreur) ; Léo les a vus lui-même.
 
-Reste une phrase de Léo à éclaircir, sur la colonne « Ce qu'on a vu sur son site » : soit il dit qu'on y comprend tout de suite le type de souci (mise à jour en retard, risque, PHP ou autre langage, sécurité ou piratage), soit il demande que ce type se voie au premier coup d'œil. Question posée le 11/11.
+**Troisième retour de Léo (11/11)**. Sa phrase sur la colonne « Ce qu'on a vu sur son site » était un reproche, pas un compliment (Claude l'avait mal lue) : on n'y comprenait pas au premier coup d'œil s'il s'agit d'une mise à jour en retard, d'une version à risque, de PHP ou d'un autre logiciel, d'un souci de sécurité ou d'un piratage. Et la carte « Ce que j'ai vu » de la page pour le prospect ne le convainquait pas : « peut-être la mettre en jaune, en orange, un peu en mode warning », dans la direction artistique de dibodev.fr, et ne plus laisser l'icône prendre la gauche de la carte en écrasant le texte.
+
+Fait le jour même :
+
+- **Colonne « Ce qu'on a vu sur son site »** : chaque ligne commence par une étiquette qui nomme le type de souci, avec son icône : Site piraté (rouge plein), Sécurité, Version à risque, Mise à jour en retard, E-mails, Sur téléphone, Coordonnées, Site daté, Dans Google. Rouge = à corriger, ambre = à surveiller, vert = rien à signaler. À côté, la technologie quand elle compte (« PHP 7.4 », « WordPress 6.5 »). Dessous, le fait en une phrase, puis « Aussi : … » qui nomme les autres soucis du site, à la place de « et 3 autres points ». Un troisième filtre, « Tous les soucis », trie la liste par type. La fiche reprend les mêmes étiquettes.
+- **Carte du constat** : fond ambre `#fdf1dc`, filet et libellé `#b45309` (la teinte ambre de la palette de dibodev.fr, `app/core/constants/accentPalettes.ts`). L'icône et le libellé « Point à corriger » tiennent sur une ligne en haut ; le fait en gras, puis l'explication, sur toute la largeur. Même règle pour les cartes voisines : « Ce que ça change pour vous » et « Vérifiez-le vous-même » n'ont plus d'icône à gauche (une carte, des lignes séparées par un filet, « Étape 1 », « Étape 2 »).
+- Hauteurs des planches : « Mes prospects » 2150, page pour le prospect 3960 (elle dépassait sa planche).
+
+Vérification : rendu local de chaque planche modifiée (`render_board.js` puis capture Playwright avec `shoot_preview.py`, rangés dans `devleadhunter-module-site-care/tools/`), en clair et en sombre ; puis dans le vrai canevas : liste, onglet « Sans email », fiche ouverte, page pour le prospect.
 
 Le layer Nuxt local (`devleadhunter-module-site-care`) et les 24 captures correspondent à la première version : à refaire sur la version retenue.
 
 ## État au 11/11/2026
 
-Version 2 cliquable publiée, page pour le prospect refaite dans la direction artistique de dibodev.fr, en attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.
+Version 2 cliquable publiée ; page pour le prospect dans la direction artistique de dibodev.fr, avec la carte du constat en alerte ambre ; liste « Mes prospects » avec le type de souci en étiquette. En attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.

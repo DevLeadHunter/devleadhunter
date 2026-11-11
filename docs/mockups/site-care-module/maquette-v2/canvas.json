@@ -5,13 +5,13 @@
   "launch": { "view": "canvas" },
   "pages": [],
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 820, "h": 1900, "title": "Mes prospects", "expand": "fill", "is_interactive": true },
+    "Main.dc.html": { "x": 0, "y": 0, "w": 820, "h": 2150, "title": "Mes prospects", "expand": "fill", "is_interactive": true },
     "Recherche.dc.html": { "x": 900, "y": 0, "w": 820, "h": 1500, "title": "Nouvelle recherche", "expand": "fill", "is_interactive": true },
     "Veille.dc.html": { "x": 1800, "y": 0, "w": 820, "h": 1500, "title": "Veille", "expand": "fill", "is_interactive": true },
     "Suivis.dc.html": { "x": 2700, "y": 0, "w": 820, "h": 1500, "title": "Suivis", "expand": "fill", "is_interactive": true },
     "Reglages.dc.html": { "x": 3600, "y": 0, "w": 820, "h": 2150, "title": "Réglages du module", "expand": "fill", "is_interactive": true },
     "Menu.dc.html": { "x": 4500, "y": 0, "w": 400, "h": 1500, "title": "Menu du module", "expand": "fill", "is_interactive": true },
-    "PageProspect.dc.html": { "x": 4980, "y": 0, "w": 390, "h": 3300, "title": "Page pour le prospect (facultative)" }
+    "PageProspect.dc.html": { "x": 4980, "y": 0, "w": 390, "h": 3960, "title": "Page pour le prospect (facultative)" }
   },
   "order": [
     "Main.dc.html",
