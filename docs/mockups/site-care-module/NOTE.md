@@ -106,10 +106,20 @@ Léo, sur la version 2 corrigée : « Nickel, vas-y, code le nouveau module dans
   - la fiche a une carte « Son email » (chercher l'adresse sur le site, ou la taper) et des actions en bas (recontrôler, suivi mensuel, retirer) ;
   - les réglages ont une carte « Qui écrit » (nom, métier, phrase de présentation, site, photo) ; l'adresse d'envoi reste celle du compte ;
   - un site trop lent à répondre est rangé « à revoir », jamais annoncé comme disparu ; un piratage n'est retenu que sur des liens sortants vers des sites de jeux d'argent.
-- **Pas fait** : une recherche qui trouve de nouvelles entreprises avec site, le SMS, les campagnes du module, une adresse d'envoi à part, le tri des pages partagées (carte, campagnes) par module.
+- **Pas fait** : le SMS, les campagnes du module, une adresse d'envoi à part, le tri des pages partagées (carte, campagnes) par module. La recherche de nouvelles entreprises avec site est arrivée le soir même, voir plus bas.
 - **Voir le module en local** sans aucun vrai site : `tools/local/` du dépôt du module (base jetable, entreprises inventées en `.test`, captures).
 - Les domaines inventés des maquettes sont en `.fr` : à passer en `.example`, comme dans le dépôt du module.
 
+## Version 1.1.0 : la recherche sur OpenStreetMap (11/11/2026 au soir)
+
+Léo, une fois le module allumé et la base française passée (1 111 sites) : « je veux bien que tu rajoutes beaucoup plus de sites français […] peu importe le domaine de métier […] le but principal, c'est de trouver un site français qui a un problème de sécurité, qui a été hacké, ou alors qui a une version de PHP ancienne ».
+
+- **Deuxième source de la recherche** : OpenStreetMap, par département (les 96 de métropole et de Corse). La carte libre liste les entreprises qui ont un site : artisans, commerces, bureaux et services, restaurants et cafés, hébergements. Une question par département, puis chaque site est lu. Sont laissés de côté : les enseignes, les adresses qui pointent à l'intérieur d'un site, un site partagé par trois entreprises ou plus, les organismes publics et les associations.
+- **« Sites à garder »** : tous, ceux qui ont un souci, ou ceux qui ont un souci de sécurité (site piraté, pas de cadenas, PHP ou WordPress qui n'est plus suivi ou qui s'arrête bientôt). Un site lu n'est jamais relu par une recherche suivante.
+- **En plus** : un bouton « Arrêter » sur la recherche en cours ; un site gardé sans adresse e-mail prend celle de ses pages de contact et de mentions légales ; la ville qui manque sur la carte est retrouvée par la position, et rattrapée plus tard quand le service public des communes ne répond pas (il était en panne ce soir-là).
+- **Ce que l'essai a montré** (Ille-et-Vilaine, lue depuis le poste avant de déployer) : 2 724 sites lus, 385 avec un souci de sécurité (14 %), dont 3 sites piratés ou détournés (liens de paris turcs, page de loterie indonésienne, lien vers un casino en ligne). PHP 7.4 est la version dépassée la plus fréquente, puis PHP 8.2 (fin le 31 décembre 2026) et PHP 8.0.
+- **Limites dites** : pas l'outre-mer ; une recherche garde 2 000 sites au plus ; les sites qui bloquent les lecteurs automatiques sortent « à revoir » et ne sont pas gardés.
+
 ## État au 11/11/2026
 
-Module codé, relu et déployé en production le 11/11 au soir, coupé par défaut. Rien n'a été envoyé à personne. Le seuil du test à la main (début décembre) reste le juge de la suite.
+Module codé, relu et déployé en production le 11/11 au soir, coupé par défaut, puis allumé le soir même à la demande de Léo. Version 1.1.0 déployée dans la foulée (cœur `18ae6f64`). Rien n'a été envoyé à personne. Le seuil du test à la main (début décembre) reste le juge de la suite.
