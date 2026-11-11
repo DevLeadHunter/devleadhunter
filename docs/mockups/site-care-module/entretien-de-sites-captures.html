@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module « Entretien de sites » : maquette</title>
+<style>
+  :root { --bg: #f4f1e9; --surface: #fbf9f3; --ink: #1d1a14; --soft: #6e6759; --line: #e1dbcc; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #131312; --surface: #1b1b1a; --ink: #f0efeb; --soft: #a1a09a; --line: #2b2b29; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 56px 0 6px; }
+  p { margin: 0 0 12px; color: var(--soft); max-width: 72ch; }
+  .lead { color: var(--ink); }
+  ul { margin: 0 0 12px; padding-left: 20px; color: var(--soft); max-width: 72ch; }
+  li { margin-bottom: 6px; }
+  .figures { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 16px; }
+  figure { margin: 0; }
+  figure.wide { flex: 1 1 460px; max-width: 100%; }
+  figure.narrow { flex: 0 1 300px; }
+  img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  figcaption { margin-top: 8px; font-size: 13px; color: var(--soft); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-top: 16px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Module « Entretien de sites »</h1>
+  <p class="lead">Maquette du 11 novembre 2026, construite dans le vrai logiciel : captures sur iPad en portrait, en thème clair et sombre, sur ordinateur et sur téléphone.</p>
+  <p>Le module s'adresse aux entreprises qui ont déjà un site. Il contrôle le site de l'extérieur, comme un visiteur, écrit seulement quand un point mérite une correction, et vend deux choses : la correction à prix fixe et le suivi mensuel.</p>
+
+  <div class="card">
+    <h3>Ce qui est vrai, ce qui est inventé</h3>
+    <ul>
+      <li><strong>Vrai :</strong> les résultats. 150 sites français de la base ont été contrôlés le 11 novembre 2026 (une lecture de la page d'accueil et des réglages publics du nom de domaine). 14 sites de réseaux ont été retirés, il en reste 136 : 32 méritent un message, 1 est piraté, 8 tournent avec un PHP sans correctifs, 7 avec PHP 8.2, 60 n'ont pas de règle DMARC.</li>
+      <li><strong>Changé :</strong> les noms, les villes et les adresses des sites. Le dépôt est public : aucun vrai site n'est associé à ses défauts.</li>
+      <li><strong>Inventé :</strong> les messages « écrits », les réponses, les trois clients en suivi, et les blocs « Radar » et « Depuis le dernier contrôle » de la veille. Rien n'a été envoyé.</li>
+    </ul>
+  </div>
+
+  <section><h2>Le module dans le logiciel</h2><p>Un quatrième choix dans le sélecteur, entre « Sites web » et « Réceptionniste IA ». Le menu garde les pages partagées (Tableau de bord, Mes prospects, Carte de prospection, Campagnes, Suivi des emails, Suivi des SMS, Ventes) et ajoute trois pages : Veille, Contrôles, Suivis. Le bouton du haut devient « Contrôler des sites ».</p><div class="figures"><figure class="wide"><img src="captures/14-menu-du-module.jpg" alt="Le sélecteur de modules ouvert, sur ordinateur." loading="lazy"><figcaption>Le sélecteur de modules ouvert, sur ordinateur.</figcaption></figure></div></section><section><h2>Contrôles</h2><p>La page d'accueil du module : chaque site passe douze points, rangés en quatre familles (sécurité, e-mails, coordonnées, visibilité). Une pastille par point : vert, orange, rouge, ou vide quand le point ne se voit pas de l'extérieur. Les sites sont triés du plus pressant au moins pressant.</p><div class="figures"><figure class="wide"><img src="captures/01-controles.jpg" alt="iPad, onglet « À écrire » : la page entière." loading="lazy"><figcaption>iPad, onglet « À écrire » : la page entière.</figcaption></figure><figure class="wide"><img src="captures/02-controles-rien-d-urgent.jpg" alt="iPad, onglet « Rien d'urgent » : des points à surveiller, aucun message à envoyer." loading="lazy"><figcaption>iPad, onglet « Rien d'urgent » : des points à surveiller, aucun message à envoyer.</figcaption></figure><figure class="wide"><img src="captures/01-controles-sombre.jpg" alt="iPad, thème sombre." loading="lazy"><figcaption>iPad, thème sombre.</figcaption></figure><figure class="wide"><img src="captures/01-controles-ordinateur.jpg" alt="Ordinateur." loading="lazy"><figcaption>Ordinateur.</figcaption></figure><figure class="narrow"><img src="captures/01-controles-telephone.jpg" alt="Téléphone : le tableau devient des cartes." loading="lazy"><figcaption>Téléphone : le tableau devient des cartes.</figcaption></figure></div></section><section><h2>L'atelier d'un contrôle</h2><p>Même atelier que pour un site démo ou une réceptionniste : ce que le prospect verra, en plein écran, et cinq outils en bas. « Points » et « Offre » ouvrent un volet, car ils changent le bilan sous les yeux. « Message », « Activité » et « Plus » sont des pages.</p><div class="figures"><figure class="wide"><img src="captures/03-atelier-bilan.jpg" alt="Le bilan d'un site piraté, dans un téléphone." loading="lazy"><figcaption>Le bilan d'un site piraté, dans un téléphone.</figcaption></figure><figure class="wide"><img src="captures/04-atelier-points.jpg" alt="Outil « Points » : couper un point le retire du bilan, en direct." loading="lazy"><figcaption>Outil « Points » : couper un point le retire du bilan, en direct.</figcaption></figure><figure class="wide"><img src="captures/05-atelier-offre.jpg" alt="Outil « Offre » : les corrections à prix fixe et le suivi mensuel à 100 ou 150 €." loading="lazy"><figcaption>Outil « Offre » : les corrections à prix fixe et le suivi mensuel à 100 ou 150 €.</figcaption></figure><figure class="wide"><img src="captures/06-atelier-message-avec-lien.jpg" alt="Outil « Message », version avec le lien du bilan." loading="lazy"><figcaption>Outil « Message », version avec le lien du bilan.</figcaption></figure><figure class="wide"><img src="captures/06-atelier-message-sans-lien.jpg" alt="Outil « Message », version sans lien : les faits sont dans le mail." loading="lazy"><figcaption>Outil « Message », version sans lien : les faits sont dans le mail.</figcaption></figure><figure class="wide"><img src="captures/07-atelier-activite.jpg" alt="Outil « Activité » : ce qui s'est passé depuis le contrôle (exemple inventé)." loading="lazy"><figcaption>Outil « Activité » : ce qui s'est passé depuis le contrôle (exemple inventé).</figcaption></figure><figure class="wide"><img src="captures/08-atelier-plus.jpg" alt="Outil « Plus » : lien du bilan, fiche du site, recontrôler, après la vente." loading="lazy"><figcaption>Outil « Plus » : lien du bilan, fiche du site, recontrôler, après la vente.</figcaption></figure><figure class="wide"><img src="captures/03-atelier-bilan-sombre.jpg" alt="Thème sombre : le bilan du prospect reste clair." loading="lazy"><figcaption>Thème sombre : le bilan du prospect reste clair.</figcaption></figure><figure class="wide"><img src="captures/03-atelier-bilan-ordinateur.jpg" alt="Ordinateur." loading="lazy"><figcaption>Ordinateur.</figcaption></figure></div></section><section><h2>Le bilan vu par le prospect</h2><p>La page à son nom, ouverte depuis le mail. Ce qui est à corriger d'abord, chaque point avec la façon de le vérifier soi-même, puis ce qui va bien, le prix, et comment dire non.</p><div class="figures"><figure class="narrow"><img src="captures/13-bilan-prospect-telephone.jpg" alt="Téléphone : un PHP sans correctifs et trois points à surveiller." loading="lazy"><figcaption>Téléphone : un PHP sans correctifs et trois points à surveiller.</figcaption></figure><figure class="narrow"><img src="captures/13-bilan-prospect-pirate-telephone.jpg" alt="Téléphone : un site piraté." loading="lazy"><figcaption>Téléphone : un site piraté.</figcaption></figure><figure class="wide"><img src="captures/13-bilan-prospect-ordinateur.jpg" alt="Ordinateur." loading="lazy"><figcaption>Ordinateur.</figcaption></figure></div></section><section><h2>Contrôler des sites</h2><p>Le bouton du haut du menu. Quatre façons de choisir les sites ; la première part des entreprises que la recherche de prospects a écartées parce qu'elles ont déjà un site.</p><div class="figures"><figure class="wide"><img src="captures/09-controler-des-sites.jpg" alt="iPad : la page entière." loading="lazy"><figcaption>iPad : la page entière.</figcaption></figure><figure class="wide"><img src="captures/09-controler-des-sites-sombre.jpg" alt="iPad, thème sombre." loading="lazy"><figcaption>iPad, thème sombre.</figcaption></figure></div></section><section><h2>Veille</h2><p>Les raisons d'écrire aujourd'hui : ce qui vient de changer et les échéances. Les deux premiers blocs viennent des vrais contrôles ; « Radar » et « Depuis le dernier contrôle » sont des exemples inventés.</p><div class="figures"><figure class="wide"><img src="captures/10-veille.jpg" alt="iPad : la page entière." loading="lazy"><figcaption>iPad : la page entière.</figcaption></figure><figure class="wide"><img src="captures/10-veille-sombre.jpg" alt="iPad, thème sombre." loading="lazy"><figcaption>iPad, thème sombre.</figcaption></figure></div></section><section><h2>Suivis</h2><p>Les clients en suivi mensuel. Il n'y en a aucun aujourd'hui : les trois lignes sont inventées pour montrer la page remplie.</p><div class="figures"><figure class="wide"><img src="captures/11-suivis.jpg" alt="iPad." loading="lazy"><figcaption>iPad.</figcaption></figure></div></section><section><h2>Réglages du module</h2><p>Dans Paramètres : les prix annoncés dans le bilan, à partir de quand on écrit, les points contrôlés, et l'adresse d'envoi du module.</p><div class="figures"><figure class="wide"><img src="captures/12-reglages.jpg" alt="iPad : la page entière." loading="lazy"><figcaption>iPad : la page entière.</figcaption></figure></div></section>
+
+  <section>
+    <h2>Les pages partagées</h2>
+    <p>Tableau de bord, Mes prospects, Carte de prospection, Campagnes, Suivi des emails, Suivi des SMS et Ventes restent les mêmes pages, avec les prospects du module : des entreprises qui ont un site. Elles ne sont pas redessinées ici.</p>
+  </section>
+
+  <section>
+    <h2>À trancher</h2>
+    <ul>
+      <li>Les prix : 190 et 390 € reprennent ceux de dibodev.fr ; 90 € (https, e-mails, fiche pour Google) et 60 € (petites retouches) sont des propositions.</li>
+      <li>Le suivi mensuel : 100 ou 150 €.</li>
+      <li>Le message : avec le lien du bilan ou sans lien. Les deux versions sont prêtes pour partir en A et B d'une même campagne.</li>
+      <li>L'adresse d'envoi du module, à part de celle des campagnes de sites web.</li>
+      <li>Les douze points : en retirer, en ajouter.</li>
+      <li>Les sites qui ne répondent plus : les passer au module Sites web.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

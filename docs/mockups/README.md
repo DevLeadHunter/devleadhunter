@@ -4,6 +4,15 @@ Les maquettes HTML du produit, gardées dans le dépôt pour qu'aucune ne se per
 
 ## En attente de décision
 
+### Module « Entretien de sites » (`site-care-module/`)
+
+Nouveau module, dans son propre dépôt comme la réceptionniste et le Wallet : contrôler de l'extérieur les sites d'entreprises qui en ont déjà un, écrire quand un point mérite une correction, vendre la correction à prix fixe et le suivi mensuel.
+
+| Fichier | Ce qu'il montre | État |
+|---|---|---|
+| `site-care-module/entretien-de-sites-captures.html` (+ `captures/`) | **Vingt-quatre captures du vrai logiciel** : le module dans le sélecteur, la page « Contrôles » (douze points par site), l'atelier d'un contrôle (Points, Offre, Message avec ou sans lien, Activité, Plus), le bilan vu par le prospect, « Contrôler des sites », la veille, les suivis, les réglages ; iPad portrait, sombre, ordinateur, téléphone. Résultats réels de 150 sites contrôlés le 11/11, noms changés | **En attente du retour de Léo** (11/11) |
+| `site-care-module/NOTE.md` | Le pourquoi, ce que Léo a tranché, d'où viennent les données, ce qui est inventé, les points à trancher, comment rejouer | À jour |
+
 ### Présence humaine sur la démo (`human-presence/`)
 
 Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour franchir le mur clic → contact de la vague 3 (environ 95 visites humaines, un seul message laissé).
