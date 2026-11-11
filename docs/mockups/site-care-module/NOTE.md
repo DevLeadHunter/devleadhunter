@@ -31,7 +31,7 @@ Construite dans le vrai logiciel (voir « Comment la rejouer »), captures iPad 
 - **La base** (lue en prod le 11/11, en lecture seule) : les 27 recherches de prospects ont écarté 2 036 entreprises parce qu'elles ont un site en ligne (1 153 en France, 771 en Suisse, 112 au Québec ; 886 paysagistes, 582 électriciens, 568 garages). Aucune n'est devenue un prospect : elles n'ont jamais été contactées.
 - **Les contrôles** : 150 sites français tirés au hasard, lus le 11/11/2026. Une seule lecture de la page d'accueil et les réglages publics du nom de domaine (MX, SPF, DMARC), comme un visiteur ; rien d'envoyé, aucun dossier caché, aucune connexion essayée.
 - **Résultats réels** : 146 pages lues, 4 sites qui ne répondent plus ; 14 sites de réseaux ou d'annuaires retirés, il en reste 136, dont 121 lisibles ; **32 méritent un message** (25 avec un point à corriger) ; 1 site piraté (liens cachés vers des casinos, vérifié à la main) ; 8 sur un PHP sans correctifs (7.1, 7.4, 8.1) et 7 sur PHP 8.2 ; 2 sans https valable ; 3 certificats qui expirent sous 20 jours ; 12 WordPress en retard ; 12 domaines qui envoient des mails sans SPF ; 60 sans DMARC ; 4 pages pas adaptées au téléphone ; 12 où le numéro de la fiche Google n'est pas celui de la page d'accueil ; 16 signés par une agence en pied de page. La version de PHP n'est affichée que par 32 sites sur 121.
-- **Noms, villes et adresses changés** : le dépôt est public, aucun vrai site n'est associé à ses défauts. Les vrais résultats restent sur le poste de Léo (`devleadhunter-module-site-care/tools/data/`, ignoré par git).
+- **Noms, villes et adresses changés** : le dépôt est public, aucun vrai site n'est associé à ses défauts. Les vrais résultats restent sur le poste de Léo (`devleadhunter-module-site-care-mockup/tools/data/`, ignoré par git).
 - **Inventé** : les envois (« Écrits », « Bilan ouvert », « A répondu », « En suivi »), les trois clients de « Suivis », et les blocs « Radar » et « Depuis le dernier contrôle » de la veille. Rien n'a été envoyé à personne.
 
 ## À trancher
@@ -45,10 +45,9 @@ Construite dans le vrai logiciel (voir « Comment la rejouer »), captures iPad 
 
 ## Comment la rejouer
 
-- Le module vit dans un dossier local, à côté du cœur : `C:\Users\leogu\Desktop\Projects\devleadhunter-module-site-care` (layer Nuxt `web/`, dépôt git local, pas encore de dépôt GitHub). Les données sont dans `web/app/fixtures/`.
-- Le cœur est le worktree `C:\Users\leogu\Desktop\Projects\dlh-mockup-site-care` (branche `mockup/site-care-module`, sur `origin/main` du 10/11) : seule modification, `product-modules.json` inscrit le module `site-care`. À ne pas fusionner : le dépôt GitHub du module n'existe pas.
-- Serveur : configuration `web-mockup-site-care` du `.claude/launch.json` (port 3000, `DLH_PRODUCT_MODULES_DIR` pointe sur le dossier des clones).
-- Outils, dans `devleadhunter-module-site-care/tools/` : `check_sites.py` (le contrôle), `build_fixture.py` (les douze points et les noms changés), `shoot.py` (les captures : l'API de prod n'est lue qu'une fois, ses réponses sont rejouées ensuite ; tout ce qui n'est pas une lecture est répondu sur place), `build_gallery.py` (cette page).
+- La maquette en captures vit dans un dossier local, à côté du cœur : `C:\Users\leogu\Desktop\Projects\devleadhunter-module-site-care-mockup` (layer Nuxt `web/` sur données figées, dépôt git local jamais publié). Les données sont dans `web/app/fixtures/`. Depuis le 11/11 au soir, `devleadhunter-module-site-care` est le vrai module (voir « Le module codé »).
+- Le worktree `dlh-mockup-site-care` et sa branche `mockup/site-care-module` ont été retirés le 11/11 : pour rejouer ces captures, il faudrait pointer le `product-modules.json` d'un worktree sur ce dossier.
+- Outils, dans `devleadhunter-module-site-care-mockup/tools/` : `check_sites.py` (le contrôle), `build_fixture.py` (les douze points et les noms changés), `shoot.py` (les captures : l'API de prod n'est lue qu'une fois, ses réponses sont rejouées ensuite ; tout ce qui n'est pas une lecture est répondu sur place), `build_gallery.py` (cette page).
 - Le module n'est pas listé par l'API comme activé : les captures l'ajoutent à la réponse de `GET /product-modules`.
 
 ## Retours de Léo sur la première version (11/11/2026) et version 2
@@ -90,10 +89,27 @@ Fait le jour même :
 - **Carte du constat** : fond ambre `#fdf1dc`, filet et libellé `#b45309` (la teinte ambre de la palette de dibodev.fr, `app/core/constants/accentPalettes.ts`). L'icône et le libellé « Point à corriger » tiennent sur une ligne en haut ; le fait en gras, puis l'explication, sur toute la largeur. Même règle pour les cartes voisines : « Ce que ça change pour vous » et « Vérifiez-le vous-même » n'ont plus d'icône à gauche (une carte, des lignes séparées par un filet, « Étape 1 », « Étape 2 »).
 - Hauteurs des planches : « Mes prospects » 2150, page pour le prospect 3960 (elle dépassait sa planche).
 
-Vérification : rendu local de chaque planche modifiée (`render_board.js` puis capture Playwright avec `shoot_preview.py`, rangés dans `devleadhunter-module-site-care/tools/`), en clair et en sombre ; puis dans le vrai canevas : liste, onglet « Sans email », fiche ouverte, page pour le prospect.
+Vérification : rendu local de chaque planche modifiée (`render_board.js` puis capture Playwright avec `shoot_preview.py`, rangés dans `devleadhunter-module-site-care-mockup/tools/`), en clair et en sombre ; puis dans le vrai canevas : liste, onglet « Sans email », fiche ouverte, page pour le prospect.
 
-Le layer Nuxt local (`devleadhunter-module-site-care`) et les 24 captures correspondent à la première version : à refaire sur la version retenue.
+Le layer Nuxt local de la maquette (`devleadhunter-module-site-care-mockup`) et les 24 captures correspondent à la première version, refusée.
+
+## Le module codé (11/11/2026)
+
+Léo, sur la version 2 corrigée : « Nickel, vas-y, code le nouveau module dans un repo séparé de l'orga, comme les modules Apple Wallet et assistant IA. » Fait le jour même.
+
+- **Dépôt** : `DevLeadHunter/devleadhunter-module-site-care` (public), version `v1.0.0`, épinglée dans `product-modules.json` (cœur `86c23eb5`). Clé `site-care`, installé et **coupé par défaut** : il s'allume dans Paramètres → Administration → Modules.
+- **Ce qui est livré** : les écrans de la version 2 (Mes prospects et la fiche, Nouvelle recherche, Veille, Suivis, Réglages, page pour le prospect sur l'hôte des démos, `/bilan/<adresse>`), le contrôle d'un site (douze points), l'envoi du message par le chemin d'envoi du cœur, la veille (recontrôle tous les sept jours) et le suivi mensuel avec son rapport. Le détail est dans le README du module et son `docs/API.md`.
+- **Écarts avec la maquette, décidés en codant** :
+  - la recherche puise dans les entreprises que les recherches du cœur ont écartées parce qu'elles ont un site (la recherche du cœur ne sait pas garder « seulement avec site ») ; les métiers proposés sont donc ceux de la base, avec leur nombre, et il n'y a ni champ « Autre métier » ni carte « Validation » ;
+  - email seulement : « Par email, sinon par SMS » est affiché « Bientôt » ; pas de campagne, chaque message part depuis la fiche ;
+  - un sixième onglet « Tous », dont la veille a besoin ;
+  - la fiche a une carte « Son email » (chercher l'adresse sur le site, ou la taper) et des actions en bas (recontrôler, suivi mensuel, retirer) ;
+  - les réglages ont une carte « Qui écrit » (nom, métier, phrase de présentation, site, photo) ; l'adresse d'envoi reste celle du compte ;
+  - un site trop lent à répondre est rangé « à revoir », jamais annoncé comme disparu ; un piratage n'est retenu que sur des liens sortants vers des sites de jeux d'argent.
+- **Pas fait** : une recherche qui trouve de nouvelles entreprises avec site, le SMS, les campagnes du module, une adresse d'envoi à part, le tri des pages partagées (carte, campagnes) par module.
+- **Voir le module en local** sans aucun vrai site : `tools/local/` du dépôt du module (base jetable, entreprises inventées en `.test`, captures).
+- Les domaines inventés des maquettes sont en `.fr` : à passer en `.example`, comme dans le dépôt du module.
 
 ## État au 11/11/2026
 
-Version 2 cliquable publiée ; page pour le prospect dans la direction artistique de dibodev.fr, avec la carte du constat en alerte ambre ; liste « Mes prospects » avec le type de souci en étiquette. En attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.
+Module codé, relu et déployé en production le 11/11 au soir, coupé par défaut. Rien n'a été envoyé à personne. Le seuil du test à la main (début décembre) reste le juge de la suite.
