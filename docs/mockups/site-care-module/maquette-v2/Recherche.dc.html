@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Nouvelle recherche : module Entretien de sites</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--accent:#e8a33c;--green:#2a7146;--green-soft:rgba(47,125,78,.13);--btn:#1d1a14;--btn-text:#fbf9f3;min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--green:#6cba8c;--green-soft:rgba(85,168,120,.16);--btn:#f0efeb;--btn-text:#131312}
+.app *{box-sizing:border-box}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;border:0;background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
+.brand{font-weight:600;letter-spacing:-.01em}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--soft)}
+.page{max-width:860px;margin:0 auto;padding:28px 24px 96px;display:flex;flex-direction:column;gap:24px}
+.label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.title{margin:12px 0 0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.back{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:13px;color:var(--soft);text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:20px}
+.card h2{margin:0;font-size:16px;font-weight:600}
+.hint{margin:4px 0 0;font-size:14px;color:var(--soft)}
+.sep{border:0;border-top:1px solid var(--line);margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none}
+.btn.primary{border-color:var(--btn);background:var(--btn);color:var(--btn-text);font-weight:600}
+.btn.primary:hover{color:var(--btn-text)}
+.input{height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.steps{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--soft);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.step b{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500}
+.step.on{border-color:var(--ink);color:var(--ink)}
+.step.on b{background:var(--ink);color:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--soft);font:inherit;font-size:14px;cursor:pointer}
+.chip.on{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.addrow{display:flex;gap:8px;max-width:460px}
+.radio{display:flex;align-items:flex-start;gap:12px;width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.radio.on{border-color:var(--ink);background:var(--surface2)}
+.radio span{display:block}
+.radio .name{font-size:14px;font-weight:500}
+.radio .desc{margin-top:2px;font-size:13px;color:var(--soft)}
+.dot{flex:none;width:18px;height:18px;margin-top:2px;border-radius:999px;border:1px solid var(--soft)}
+.radio.on .dot{border:5px solid var(--ink)}
+.recap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 24px;padding:12px 0;border-top:1px solid var(--line);font-size:14px}
+.recap:first-of-type{border-top:0;padding-top:0}
+.recap strong{font-weight:500}
+.footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+.done{display:flex;align-items:flex-start;gap:12px;padding:16px;border-radius:12px;background:var(--green-soft);color:var(--green);font-size:14px}
+</style>
+</helmet>
+<div class="app {{themeClass}}">
+  <header class="topbar">
+    <a class="iconbtn" href="Menu.dc.html" aria-label="Ouvrir le menu du module">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </a>
+    <span class="brand">devleadhunter</span>
+    <span class="pill">Entretien de sites</span>
+  </header>
+
+  <main class="page">
+    <div>
+      <a class="back" href="Main.dc.html">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+        Mes prospects
+      </a>
+      <h1 class="title">Nouvelle recherche</h1>
+    </div>
+
+    <div class="steps" role="group" aria-label="Étapes de la recherche">
+      <sc-for list="{{steps}}" as="step" hint-placeholder-count="4">
+        <button type="button" class="step {{step.cls}}" aria-pressed="{{step.on}}" onClick="{{step.go}}"><b>{{step.number}}</b>{{step.label}}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{isTarget}}" hint-placeholder-val="{{true}}">
+      <section class="card">
+        <div>
+          <h2>Métiers recherchés</h2>
+          <p class="hint">Cochez autant de métiers que vous voulez. Sans métier coché, la recherche prend toutes les entreprises de la zone.</p>
+        </div>
+        <div class="chips" role="group" aria-label="Métiers connus">
+          <sc-for list="{{knownTrades}}" as="trade" hint-placeholder-count="10">
+            <button type="button" class="chip {{trade.cls}}" aria-pressed="{{trade.on}}" onClick="{{trade.toggle}}">{{trade.label}}</button>
+          </sc-for>
+        </div>
+        <div>
+          <label class="label" for="other-trade" style="margin-bottom: 8px">Autre métier</label>
+          <div class="addrow">
+            <input id="other-trade" class="input" type="text" autocomplete="off" placeholder="Ex. : menuisier, opticien, fleuriste" value="{{tradeInput}}" onChange="{{onTradeInput}}">
+            <button type="button" class="btn" onClick="{{addTrade}}">Ajouter</button>
+          </div>
+          <sc-if value="{{hasCustomTrades}}" hint-placeholder-val="{{false}}">
+            <div class="chips" style="margin-top: 12px">
+              <sc-for list="{{customTrades}}" as="trade" hint-placeholder-count="1">
+                <button type="button" class="chip on" aria-label="{{trade.removeLabel}}" onClick="{{trade.remove}}">
+                  {{trade.label}}
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <hr class="sep">
+        <div>
+          <label class="label" for="count" style="margin-bottom: 8px">Nombre de prospects</label>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px">
+            <input id="count" class="input" type="number" inputmode="numeric" min="1" step="1" style="width: 120px" value="{{count}}" onChange="{{onCount}}">
+            <p class="hint" style="margin: 0">{{countLabel}}</p>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isZone}}" hint-placeholder-val="{{false}}">
+      <section class="card">
+        <div>
+          <h2>Pays</h2>
+          <div class="chips" role="group" aria-label="Pays" style="margin-top: 12px">
+            <sc-for list="{{countries}}" as="country" hint-placeholder-count="4">
+              <button type="button" class="chip {{country.cls}}" aria-pressed="{{country.on}}" onClick="{{country.pick}}">{{country.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <hr class="sep">
+        <div>
+          <h2>Villes <span style="font-size: 14px; font-weight: 400; color: var(--soft)">(facultatif)</span></h2>
+          <p class="hint">Laissez vide : l’app choisit les villes et en change jusqu’au compte.</p>
+          <sc-if value="{{hasCities}}" hint-placeholder-val="{{false}}">
+            <div class="chips" style="margin-top: 12px">
+              <sc-for list="{{cities}}" as="city" hint-placeholder-count="1">
+                <button type="button" class="chip on" aria-label="{{city.removeLabel}}" onClick="{{city.remove}}">
+                  {{city.label}}
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div class="addrow" style="margin-top: 12px">
+            <input class="input" type="text" autocomplete="off" placeholder="Ajouter une ville" aria-label="Ajouter une ville" value="{{cityInput}}" onChange="{{onCityInput}}">
+            <button type="button" class="btn" onClick="{{addCity}}">Ajouter</button>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isCriteria}}" hint-placeholder-val="{{false}}">
+      <section class="card">
+        <div>
+          <h2>Comment les joindre</h2>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px" role="group" aria-label="Comment les joindre">
+            <sc-for list="{{channels}}" as="channel" hint-placeholder-count="2">
+              <button type="button" class="radio {{channel.cls}}" aria-pressed="{{channel.on}}" onClick="{{channel.pick}}">
+                <span class="dot"></span>
+                <span><span class="name">{{channel.label}}</span><span class="desc">{{channel.description}}</span></span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <hr class="sep">
+        <div>
+          <span class="label">Site web</span>
+          <p class="hint" style="margin-top: 8px">Ce module garde les entreprises qui ont un site en ligne. Le site de chacune est regardé pendant la recherche.</p>
+        </div>
+      </section>
+      <section class="card">
+        <div>
+          <h2>Validation</h2>
+          <p class="hint">Qui décide qu’une entreprise entre dans vos prospects.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px" role="group" aria-label="Validation">
+          <sc-for list="{{validations}}" as="validation" hint-placeholder-count="2">
+            <button type="button" class="radio {{validation.cls}}" aria-pressed="{{validation.on}}" onClick="{{validation.pick}}">
+              <span class="dot"></span>
+              <span><span class="name">{{validation.label}}</span><span class="desc">{{validation.description}}</span></span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isLaunch}}" hint-placeholder-val="{{false}}">
+      <section class="card">
+        <h2>Objectif</h2>
+        <div>
+          <sc-for list="{{recap}}" as="line" hint-placeholder-count="5">
+            <div class="recap"><span class="label">{{line.label}}</span><strong>{{line.value}}</strong></div>
+          </sc-for>
+        </div>
+        <p class="hint" style="margin: 0">Les entreprises déjà connues ne sont jamais reprises.</p>
+        <sc-if value="{{isLaunched}}" hint-placeholder-val="{{false}}">
+          <div class="done">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="margin-top: 3px"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>Recherche lancée. Vous pouvez changer de page pendant qu’elle tourne : les prospects arrivent dans « Mes prospects » au fur et à mesure.</span>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <div class="footer">
+      <sc-if value="{{hasPrevious}}" hint-placeholder-val="{{false}}">
+        <button type="button" class="btn" onClick="{{previous}}">Précédent</button>
+      </sc-if>
+      <sc-if value="{{hasNext}}" hint-placeholder-val="{{true}}">
+        <button type="button" class="btn primary" style="margin-left: auto" onClick="{{next}}">Suivant</button>
+      </sc-if>
+      <sc-if value="{{canLaunch}}" hint-placeholder-val="{{false}}">
+        <button type="button" class="btn primary" style="margin-left: auto" onClick="{{launch}}">Lancer la recherche</button>
+      </sc-if>
+      <sc-if value="{{isLaunched}}" hint-placeholder-val="{{false}}">
+        <a class="btn primary" href="Main.dc.html" style="margin-left: auto">Voir mes prospects</a>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":1500}}'>
+var STEP_LABELS = ['Cible', 'Zone', 'Critères', 'Lancer'];
+var KNOWN_TRADES = ['Paysagiste', 'Électricien', 'Garage', 'Plombier', 'Couvreur', 'Menuisier', 'Maçon', 'Peintre', 'Carrossier', 'Coiffeur', 'Restaurant', 'Hôtel'];
+var COUNTRIES = ['France', 'Suisse', 'Belgique', 'Québec', 'Martinique'];
+var CHANNELS = [
+  { key: 'email', label: 'Par email', description: 'Seules les entreprises dont on trouve l’adresse e-mail deviennent des prospects. Les autres sont gardées à part, dans « Sans email ».' },
+  { key: 'both', label: 'Par email, sinon par SMS', description: 'Sans adresse e-mail, un numéro de portable suffit.' }
+];
+var VALIDATIONS = [
+  { key: 'manual', label: 'Je valide chaque prospect', description: 'Les entreprises trouvées attendent votre accord.' },
+  { key: 'auto', label: 'Automatique', description: 'Tout ce qui tient les critères entre dans vos prospects.' }
+];
+
+class Component extends DCLogic {
+  state = { step: 0, trades: { Paysagiste: true, Garage: true }, custom: [], tradeInput: '', count: 50, country: 'France', cities: [], cityInput: '', channel: 'email', validation: 'manual', launched: false };
+
+  renderVals() {
+    var self = this;
+    var current = this.state;
+    var picked = KNOWN_TRADES.filter(function (label) { return current.trades[label]; }).concat(current.custom);
+    var tradesText = picked.length === 0 ? 'Tous les métiers' : picked.join(', ');
+    var steps = STEP_LABELS.map(function (label, index) {
+      return { label: label, number: index + 1, cls: index === current.step ? 'on' : '', on: index === current.step, go: function () { self.setState({ step: index }); } };
+    });
+    var knownTrades = KNOWN_TRADES.map(function (label) {
+      var on = Boolean(current.trades[label]);
+      return { label: label, on: on, cls: on ? 'on' : '', toggle: function () {
+        var trades = Object.assign({}, current.trades);
+        trades[label] = !on;
+        self.setState({ trades: trades });
+      } };
+    });
+    var customTrades = current.custom.map(function (label) {
+      return { label: label, removeLabel: 'Retirer ' + label, remove: function () { self.setState({ custom: current.custom.filter(function (other) { return other !== label; }) }); } };
+    });
+    var countries = COUNTRIES.map(function (label) {
+      return { label: label, on: label === current.country, cls: label === current.country ? 'on' : '', pick: function () { self.setState({ country: label }); } };
+    });
+    var cities = current.cities.map(function (label) {
+      return { label: label, removeLabel: 'Retirer ' + label, remove: function () { self.setState({ cities: current.cities.filter(function (other) { return other !== label; }) }); } };
+    });
+    var channels = CHANNELS.map(function (option) {
+      return { label: option.label, description: option.description, on: option.key === current.channel, cls: option.key === current.channel ? 'on' : '', pick: function () { self.setState({ channel: option.key }); } };
+    });
+    var validations = VALIDATIONS.map(function (option) {
+      return { label: option.label, description: option.description, on: option.key === current.validation, cls: option.key === current.validation ? 'on' : '', pick: function () { self.setState({ validation: option.key }); } };
+    });
+    var channelLabel = current.channel === 'email' ? 'Par email' : 'Par email, sinon par SMS';
+    var validationLabel = current.validation === 'manual' ? 'Je valide chaque prospect' : 'Automatique';
+    var count = Number(current.count) || 0;
+    var recap = [
+      { label: 'Métiers', value: tradesText },
+      { label: 'Nombre', value: count + ' prospects' },
+      { label: 'Zone', value: current.cities.length > 0 ? current.country + ' : ' + current.cities.join(', ') : current.country + ', villes choisies par l’app' },
+      { label: 'Joindre', value: channelLabel },
+      { label: 'Validation', value: validationLabel }
+    ];
+    return {
+      themeClass: (this.props.theme ?? 'clair') === 'sombre' ? 'dark' : '',
+      steps: steps,
+      isTarget: current.step === 0,
+      isZone: current.step === 1,
+      isCriteria: current.step === 2,
+      isLaunch: current.step === 3,
+      knownTrades: knownTrades,
+      customTrades: customTrades,
+      hasCustomTrades: customTrades.length > 0,
+      tradeInput: current.tradeInput,
+      onTradeInput: function (event) { self.setState({ tradeInput: event.target.value }); },
+      addTrade: function () {
+        var label = current.tradeInput.trim();
+        if (label === '' || current.custom.indexOf(label) >= 0) return;
+        self.setState({ custom: current.custom.concat([label]), tradeInput: '' });
+      },
+      count: current.count,
+      onCount: function (event) { self.setState({ count: event.target.value }); },
+      countLabel: picked.length > 1 ? 'en tout, répartis entre les ' + picked.length + ' métiers' : 'en tout',
+      countries: countries,
+      cities: cities,
+      hasCities: cities.length > 0,
+      cityInput: current.cityInput,
+      onCityInput: function (event) { self.setState({ cityInput: event.target.value }); },
+      addCity: function () {
+        var label = current.cityInput.trim();
+        if (label === '' || current.cities.indexOf(label) >= 0) return;
+        self.setState({ cities: current.cities.concat([label]), cityInput: '' });
+      },
+      channels: channels,
+      validations: validations,
+      recap: recap,
+      hasPrevious: current.step > 0 && !current.launched,
+      hasNext: current.step < 3,
+      canLaunch: current.step === 3 && !current.launched,
+      isLaunched: current.step === 3 && current.launched,
+      previous: function () { self.setState({ step: Math.max(0, current.step - 1) }); },
+      next: function () { self.setState({ step: Math.min(3, current.step + 1) }); },
+      launch: function () { self.setState({ launched: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

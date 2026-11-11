@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Menu du module Entretien de sites</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--accent:#e8a33c;--btn:#1d1a14;--btn-text:#fbf9f3;min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--btn:#f0efeb;--btn-text:#131312}
+.app *{box-sizing:border-box}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.menu{max-width:420px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:20px}
+.brand{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.modules{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.module{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
+.module:first-child{border-top:0}
+.module.on{color:var(--ink);font-weight:600}
+.module .dot{margin-left:auto;width:8px;height:8px;border-radius:999px;background:var(--accent)}
+.module .tag{margin-left:auto;font-size:12px}
+.cta{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:999px;background:var(--btn);color:var(--btn-text);font-size:14px;font-weight:600;text-decoration:none}
+.cta:hover{color:var(--btn-text)}
+.group{display:flex;flex-direction:column;gap:2px}
+.link{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 12px;border-radius:10px;font-size:15px;font-weight:500;text-decoration:none;color:var(--ink)}
+.link.on{background:var(--surface2);box-shadow:inset 3px 0 0 var(--accent)}
+.link.same{color:var(--soft)}
+.same .tag{margin-left:auto;font-size:12px;font-weight:400}
+</style>
+</helmet>
+<div class="app {{themeClass}}">
+  <nav class="menu" aria-label="Menu du module Entretien de sites">
+    <span class="brand">devleadhunter</span>
+
+    <div>
+      <span class="label" style="margin-bottom: 8px">Module</span>
+      <div class="modules">
+        <div class="module">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
+          Sites web
+        </div>
+        <div class="module on">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          Entretien de sites
+          <span class="dot" aria-hidden="true"></span>
+        </div>
+        <div class="module">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></svg>
+          Réceptionniste IA
+        </div>
+        <div class="module">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12h.01M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
+          Missions freelance
+          <span class="tag">bientôt</span>
+        </div>
+      </div>
+    </div>
+
+    <a class="cta" href="Recherche.dc.html">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Trouver des prospects
+    </a>
+
+    <div class="group">
+      <span class="label" style="margin: 0 12px 6px">Pilotage</span>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        Tableau de bord
+        <span class="tag">page partagée</span>
+      </span>
+      <a class="link" href="Veille.dc.html">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34M4 6h.01M2.29 9.62a10 10 0 1 0 19.02-1.27M16.24 7.76a6 6 0 1 0-8.01 8.91M12 18h.01M17.99 11.66a6 6 0 0 1-2.22 5.01"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg>
+        Veille
+      </a>
+    </div>
+
+    <div class="group">
+      <span class="label" style="margin: 0 12px 6px">Prospection</span>
+      <a class="link on" href="Main.dc.html">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Mes prospects
+      </a>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0zM15 5.764v15M9 3.236v15"/></svg>
+        Carte de prospection
+        <span class="tag">page partagée</span>
+      </span>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        Campagnes
+        <span class="tag">page partagée</span>
+      </span>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
+        Suivi des emails
+        <span class="tag">page partagée</span>
+      </span>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM13 8H7M17 12H7"/></svg>
+        Suivi des SMS
+        <span class="tag">page partagée</span>
+      </span>
+      <span class="link same">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+        Ventes
+        <span class="tag">page partagée</span>
+      </span>
+      <a class="link" href="Suivis.dc.html">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+        Suivis
+      </a>
+    </div>
+
+    <div class="group">
+      <span class="label" style="margin: 0 12px 6px">Réglages</span>
+      <a class="link" href="Reglages.dc.html">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Entretien de sites
+      </a>
+    </div>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":400,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themeClass: (this.props.theme ?? 'clair') === 'sombre' ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Réglages : module Entretien de sites</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--amber:#85590c;--amber-soft:rgba(232,163,60,.18);min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--amber:#ecb865;--amber-soft:rgba(232,163,60,.15)}
+.app *{box-sizing:border-box}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;color:var(--ink);text-decoration:none}
+.brand{font-weight:600;letter-spacing:-.01em}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--soft)}
+.page{max-width:760px;margin:0 auto;padding:28px 24px 96px;display:flex;flex-direction:column;gap:24px}
+.label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.title{margin:8px 0 6px;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.lead{margin:0;color:var(--soft);max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px}
+.card h2{margin:0 0 4px;font-size:16px;font-weight:600}
+.hint{margin:0 0 16px;font-size:14px;color:var(--soft)}
+.line{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.line.first{border-top:0}
+.line label,.line .text{min-width:0;font-size:15px}
+.money{display:flex;align-items:center;gap:8px;flex:none;font-size:14px;color:var(--soft)}
+.input{height:44px;width:96px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px;text-align:right}
+.badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;background:var(--surface2);color:var(--soft);white-space:nowrap}
+.badge.amber{background:var(--amber-soft);color:var(--amber)}
+.radio{display:flex;align-items:flex-start;gap:12px;width:100%;margin-top:8px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.radio.on{border-color:var(--ink);background:var(--surface2)}
+.radio span{display:block}
+.radio .name{font-size:14px;font-weight:500}
+.radio .desc{margin-top:2px;font-size:13px;color:var(--soft)}
+.dot{flex:none;width:18px;height:18px;margin-top:2px;border-radius:999px;border:1px solid var(--soft)}
+.radio.on .dot{border:5px solid var(--ink)}
+.switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;cursor:pointer;flex:none}
+.track{position:relative;display:inline-block;width:40px;height:24px;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+.track i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:var(--soft)}
+.switch.on .track{background:var(--ink);border-color:var(--ink)}
+.switch.on .track i{left:18px;background:var(--bg)}
+.family{margin:20px 0 4px}
+</style>
+</helmet>
+<div class="app {{themeClass}}">
+  <header class="topbar">
+    <a class="iconbtn" href="Menu.dc.html" aria-label="Ouvrir le menu du module">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </a>
+    <span class="brand">devleadhunter</span>
+    <span class="pill">Entretien de sites</span>
+  </header>
+
+  <main class="page">
+    <div>
+      <span class="label">Paramètres</span>
+      <h1 class="title">Entretien de sites</h1>
+      <p class="lead">Vos prix, ce qui est regardé sur chaque site, et à partir de quand on écrit.</p>
+    </div>
+
+    <section class="card">
+      <h2>Prix des corrections</h2>
+      <p class="hint">Annoncés dans le message, avant de commencer.</p>
+      <sc-for list="{{prices}}" as="price" hint-placeholder-count="7">
+        <div class="line {{price.cls}}">
+          <label for="{{price.id}}">{{price.label}}</label>
+          <span class="money"><input id="{{price.id}}" class="input" type="number" inputmode="numeric" min="0" step="10" value="{{price.value}}" onChange="{{price.change}}"> {{price.unit}}</span>
+        </div>
+      </sc-for>
+      <div class="line">
+        <span class="text">Adaptation au téléphone</span>
+        <span class="badge">Sur devis</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Comment joindre les prospects</h2>
+      <p class="hint">L’email passe en premier, comme dans le module Sites web.</p>
+      <div role="group" aria-label="Comment joindre les prospects">
+        <sc-for list="{{channels}}" as="channel" hint-placeholder-count="2">
+          <button type="button" class="radio {{channel.cls}}" aria-pressed="{{channel.on}}" onClick="{{channel.pick}}">
+            <span class="dot"></span>
+            <span><span class="name">{{channel.label}}</span><span class="desc">{{channel.description}}</span></span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Quand écrire</h2>
+      <p class="hint">Un site sans rien à corriger reste dans « Rien à signaler » : on ne lui écrit pas.</p>
+      <div role="group" aria-label="Quand écrire">
+        <sc-for list="{{triggers}}" as="trigger" hint-placeholder-count="2">
+          <button type="button" class="radio {{trigger.cls}}" aria-pressed="{{trigger.on}}" onClick="{{trigger.pick}}">
+            <span class="dot"></span>
+            <span><span class="name">{{trigger.label}}</span><span class="desc">{{trigger.description}}</span></span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ce qui est regardé sur chaque site</h2>
+      <p class="hint">Seulement ce que voit un visiteur : la page d’accueil et les réglages publics du nom de domaine.</p>
+      <sc-for list="{{families}}" as="family" hint-placeholder-count="4">
+        <span class="label family">{{family.label}}</span>
+        <sc-for list="{{family.points}}" as="point" hint-placeholder-count="3">
+          <div class="line {{point.cls}}">
+            <span class="text">{{point.label}}</span>
+            <button type="button" class="switch {{point.switchCls}}" aria-pressed="{{point.on}}" aria-label="{{point.aria}}" onClick="{{point.toggle}}"><span class="track"><i></i></span></button>
+          </div>
+        </sc-for>
+      </sc-for>
+    </section>
+
+    <section class="card" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="min-width: 0; flex: 999 1 320px">
+        <h2>Adresse d’envoi du module</h2>
+        <p class="hint" style="margin: 0">Une adresse à part, pour ne pas mêler ces messages aux campagnes de sites web.</p>
+      </div>
+      <span class="badge amber">À choisir</span>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":1500}}'>
+var PRICE_LINES = [
+  ['cleanup', 'Nettoyage du site après piratage', 390, '€'],
+  ['php', 'Passage à une version de PHP suivie', 190, '€'],
+  ['cms', 'Mise à jour du site et de ses extensions', 190, '€'],
+  ['https', 'Mise en place du cadenas (https)', 90, '€'],
+  ['mail', 'Réglage des e-mails du domaine', 90, '€'],
+  ['search', 'Présentation dans Google', 90, '€'],
+  ['touchup', 'Petites retouches : numéro, année', 60, '€'],
+  ['care', 'Suivi mensuel', 100, '€ par mois']
+];
+var FAMILIES = [
+  ['Sécurité', ['Cadenas de sécurité (https)', 'Moteur du site (PHP)', 'Logiciel du site', 'Piratage']],
+  ['E-mails', ['Adresse e-mail affichée', 'Expéditeur reconnu', 'Protection du nom de domaine']],
+  ['Coordonnées', ['Numéro de la fiche Google', 'Numéro cliquable', 'Année en bas de page']],
+  ['Visibilité', ['Lecture sur téléphone', 'Présentation dans Google']]
+];
+var CHANNELS = [
+  ['email', 'Par email', 'Une entreprise sans adresse e-mail est gardée à part, dans « Sans email ».'],
+  ['both', 'Par email, sinon par SMS', 'Sans adresse e-mail, un numéro de portable suffit.']
+];
+var TRIGGERS = [
+  ['fix', 'Dès qu’un point est à corriger', 'Le réglage conseillé : un message par vrai problème.'],
+  ['watch', 'Aussi quand trois points sont à surveiller', 'Plus de messages, pour des corrections plus petites.']
+];
+
+class Component extends DCLogic {
+  state = { values: {}, off: {}, channel: 'email', trigger: 'fix' };
+
+  renderVals() {
+    var self = this;
+    var current = this.state;
+    var prices = PRICE_LINES.map(function (line, index) {
+      var stored = current.values[line[0]];
+      return { id: 'price-' + line[0], label: line[1], value: stored === undefined ? line[2] : stored, unit: line[3], cls: index === 0 ? 'first' : '', change: function (event) {
+        var values = Object.assign({}, current.values);
+        values[line[0]] = event.target.value;
+        self.setState({ values: values });
+      } };
+    });
+    var families = FAMILIES.map(function (family) {
+      return { label: family[0], points: family[1].map(function (label, index) {
+        var on = !current.off[label];
+        return { label: label, on: on, switchCls: on ? 'on' : '', cls: index === 0 ? 'first' : '', aria: 'Regarder : ' + label, toggle: function () {
+          var off = Object.assign({}, current.off);
+          off[label] = on;
+          self.setState({ off: off });
+        } };
+      }) };
+    });
+    var channels = CHANNELS.map(function (option) {
+      return { label: option[1], description: option[2], on: option[0] === current.channel, cls: option[0] === current.channel ? 'on' : '', pick: function () { self.setState({ channel: option[0] }); } };
+    });
+    var triggers = TRIGGERS.map(function (option) {
+      return { label: option[1], description: option[2], on: option[0] === current.trigger, cls: option[0] === current.trigger ? 'on' : '', pick: function () { self.setState({ trigger: option[0] }); } };
+    });
+    return {
+      themeClass: (this.props.theme ?? 'clair') === 'sombre' ? 'dark' : '',
+      prices: prices,
+      families: families,
+      channels: channels,
+      triggers: triggers
+    };
+  }
+}
+</script>
+</body>
+</html>

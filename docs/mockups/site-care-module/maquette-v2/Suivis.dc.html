@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Suivis : module Entretien de sites</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--green:#2a7146;--green-soft:rgba(47,125,78,.13);min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--green:#6cba8c;--green-soft:rgba(85,168,120,.16)}
+.app *{box-sizing:border-box}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;color:var(--ink);text-decoration:none}
+.brand{font-weight:600;letter-spacing:-.01em}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--soft)}
+.page{max-width:1100px;margin:0 auto;padding:28px 24px 96px;display:flex;flex-direction:column;gap:28px}
+.label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.title{margin:8px 0 6px;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.lead{margin:0;color:var(--soft);max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat{padding:18px}
+.stat b{display:block;margin-top:6px;font-size:26px;font-weight:600;line-height:1.1}
+.rows{overflow:hidden}
+.rowhead,.row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1.2fr) 130px;gap:20px;align-items:start;padding:20px}
+.rowhead{padding-top:12px;padding-bottom:12px;background:var(--surface2)}
+.row{border-top:1px solid var(--line)}
+.name{display:block;font-size:15px;font-weight:600}
+.sub{display:block;margin-top:2px;font-size:13px;color:var(--soft)}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft)}
+.badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;background:var(--ink);color:var(--bg);white-space:nowrap}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.right{justify-self:end;text-align:right}
+.note{margin:0;font-size:13px;color:var(--soft)}
+@media (max-width:640px){.rowhead{display:none}.row{grid-template-columns:minmax(0,1fr);gap:10px}.right{justify-self:start;text-align:left}}
+</style>
+</helmet>
+<div class="app {{themeClass}}">
+  <header class="topbar">
+    <a class="iconbtn" href="Menu.dc.html" aria-label="Ouvrir le menu du module">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </a>
+    <span class="brand">devleadhunter</span>
+    <span class="pill">Entretien de sites</span>
+  </header>
+
+  <main class="page">
+    <div>
+      <span class="label">Entretien de sites</span>
+      <h1 class="title">Suivis</h1>
+      <p class="lead">Les clients qui ont pris le suivi mensuel. Leur site est regardé chaque mois, les mises à jour sont faites pour eux, et ils reçoivent un rapport.</p>
+    </div>
+
+    <section class="stats" aria-label="Chiffres des suivis">
+      <div class="card stat"><span class="label">Clients en suivi</span><b>3</b></div>
+      <div class="card stat"><span class="label">Revenu par mois</span><b>350 €</b></div>
+      <div class="card stat"><span class="label">Rapports à envoyer</span><b>1</b></div>
+    </section>
+
+    <div class="card rows">
+      <div class="rowhead">
+        <span class="label">Client</span>
+        <span class="label">Dernier contrôle</span>
+        <span class="label">Rapport du mois</span>
+        <span class="label right">Suivi</span>
+      </div>
+      <div class="row">
+        <div style="min-width: 0">
+          <span class="name">Quéré Espaces Verts</span>
+          <span class="sub">Paysagiste · Cébazat</span>
+          <span class="mono">quere-espaces-verts.fr</span>
+        </div>
+        <div style="min-width: 0">
+          <span>Tout est en ordre depuis la correction.</span>
+          <span class="sub">Regardé le 10 novembre</span>
+        </div>
+        <div style="min-width: 0">
+          <span class="badge">À envoyer</span>
+          <span class="sub" style="margin-top: 6px">Premier rapport le 1er décembre</span>
+        </div>
+        <div class="right">
+          <span class="name">100 € par mois</span>
+          <span class="sub">Depuis le 10 novembre</span>
+        </div>
+      </div>
+      <div class="row">
+        <div style="min-width: 0">
+          <span class="name">Atelier Paysage Morin</span>
+          <span class="sub">Paysagiste · Castres</span>
+          <span class="mono">atelier-paysage-morin.fr</span>
+        </div>
+        <div style="min-width: 0">
+          <span>Tout est en ordre. WordPress a été mis à jour.</span>
+          <span class="sub">Regardé le 1er novembre</span>
+        </div>
+        <div style="min-width: 0">
+          <span class="badge green">Envoyé</span>
+          <span class="sub" style="margin-top: 6px">Le 1er novembre, lu le 2</span>
+        </div>
+        <div class="right">
+          <span class="name">100 € par mois</span>
+          <span class="sub">Depuis le 2 octobre</span>
+        </div>
+      </div>
+      <div class="row">
+        <div style="min-width: 0">
+          <span class="name">Élec Lemoine</span>
+          <span class="sub">Électricien · Reims</span>
+          <span class="mono">elec-lemoine.fr</span>
+        </div>
+        <div style="min-width: 0">
+          <span>Un point à surveiller : l’année en bas de page.</span>
+          <span class="sub">Regardé le 1er novembre</span>
+        </div>
+        <div style="min-width: 0">
+          <span class="badge green">Envoyé</span>
+          <span class="sub" style="margin-top: 6px">Le 1er novembre, lu le jour même</span>
+        </div>
+        <div class="right">
+          <span class="name">150 € par mois</span>
+          <span class="sub">Depuis le 15 septembre</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">Ces trois clients sont inventés : personne n’est encore en suivi.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themeClass: (this.props.theme ?? 'clair') === 'sombre' ? 'dark' : '' };
+  }
+}
+</script>
+</body>
+</html>

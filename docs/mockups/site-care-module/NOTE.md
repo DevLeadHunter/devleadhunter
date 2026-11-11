@@ -51,6 +51,30 @@ Construite dans le vrai logiciel (voir « Comment la rejouer »), captures iPad 
 - Outils, dans `devleadhunter-module-site-care/tools/` : `check_sites.py` (le contrôle), `build_fixture.py` (les douze points et les noms changés), `shoot.py` (les captures : l'API de prod n'est lue qu'une fois, ses réponses sont rejouées ensuite ; tout ce qui n'est pas une lecture est répondu sur place), `build_gallery.py` (cette page).
 - Le module n'est pas listé par l'API comme activé : les captures l'ajoutent à la réponse de `GET /product-modules`.
 
+## Retours de Léo sur la première version (11/11/2026) et version 2
+
+Ses mots : « j'aurais plutôt vu une maquette Claude Code et pas simplement des screens ». Puis, point par point :
+
+1. **« Mes prospects » et « Contrôles » font doublon** : une seule page. Et dans un module, « Mes prospects » ne montre que les prospects de ce module ; la liste et la recherche ne partagent pas leurs données d'un module à l'autre à l'écran (même si, en dessous, un prospect écarté par un module peut servir à un autre).
+2. **Les pastilles de couleur du bilan** : « on ne comprend pas ce que ça veut dire, trop brouillon, pas assez propre, pas assez lisible, pas assez aéré ».
+3. **L'email d'abord**, comme dans le module Sites web ; le téléphone passe après.
+4. **La page générée pour le prospect** : « pas vraiment utile, pas vraiment belle, pas compréhensible. En l'état, je ne l'enverrai jamais. » À améliorer pour peut-être l'envoyer, ou à garder pour lui.
+5. **Les métiers** : pas trois pastilles figées ; pouvoir en cocher autant qu'on veut, ou aucun, et en ajouter un autre, comme dans le module Sites web.
+6. **« Laisser de côté les réseaux et les franchises »** : toujours actif, plus affiché.
+
+**Version 2 = maquette cliquable** sur un canevas de design : https://claude.ai/artifact/Y6Dsa2yaw7x3qS7oyQ1VWX (privé, ouvrable depuis l'iPad ; sources dans `maquette-v2/`). Sept écrans reliés entre eux :
+
+- **Mes prospects** (la seule liste, « Contrôles » disparaît) : les prospects du module, quatre chiffres, recherche, filtre par métier, onglets À écrire / Écrits / Sans email / Rien à signaler / À revoir. Chaque ligne dit en une phrase ce qu'on a vu sur le site (« PHP 7.4, plus corrigé depuis 2022 »), sans pastille. Un clic sur le nom ouvre la fiche : à corriger, à surveiller, le reste, ce qu'on peut proposer, le message, « Envoyer par email ».
+- **Nouvelle recherche** : la recherche du module, en quatre étapes comme la vraie (Cible, Zone, Critères, Lancer). Métiers à cocher librement, aucun = tous, champ « Autre métier ». « Par email » choisi d'office ; les entreprises sans email vont dans « Sans email ». Les réseaux et franchises sont écartés sans le dire.
+- **Page pour le prospect (facultative)** : refaite comme une lettre. Un titre en clair, ce que j'ai vu, ce que ça change pour vous, vérifiez-le vous-même en deux gestes, le prix, le reste du site en phrases, qui je suis. Le message part sans lien ; un interrupteur dans la fiche ajoute le lien. Trois exemples (PHP plus corrigé, site piraté, pas de cadenas).
+- **Veille**, **Suivis**, **Réglages**, **Menu du module** : repris en plus aéré, sans pastilles, avec des mots simples (« cadenas de sécurité » pour https, « moteur du site » pour PHP).
+
+Ce que la version 2 ne montre pas : les pages partagées (Tableau de bord, Carte, Campagnes, Suivi des emails et des SMS, Ventes), marquées « page partagée » dans le menu. Les lignes viennent des mêmes contrôles réels ; les onglets « Rien à signaler » et « À revoir » n'affichent que les premières lignes.
+
+Non vérifié à l'écran par Claude : le canevas demande le compte de Léo. La logique de chaque écran a été exécutée hors canevas (aucune erreur).
+
+Le layer Nuxt local (`devleadhunter-module-site-care`) et les 24 captures correspondent à la première version : à refaire sur la version retenue.
+
 ## État au 11/11/2026
 
-Maquette faite, en attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.
+Version 2 cliquable publiée, en attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mes prospects : module Entretien de sites</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--accent:#e8a33c;--amber:#85590c;--amber-soft:rgba(232,163,60,.18);--green:#2a7146;--green-soft:rgba(47,125,78,.13);--red:#a23f29;--red-soft:rgba(191,77,51,.13);--violet:#66509a;--violet-soft:rgba(141,123,184,.18);--btn:#1d1a14;--btn-text:#fbf9f3;min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--amber:#ecb865;--amber-soft:rgba(232,163,60,.15);--green:#6cba8c;--green-soft:rgba(85,168,120,.16);--red:#e08a77;--red-soft:rgba(215,106,85,.16);--violet:#b7a5e0;--violet-soft:rgba(168,148,214,.16);--btn:#f0efeb;--btn-text:#131312}
+.app *{box-sizing:border-box}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;border:0;background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
+.brand{font-weight:600;letter-spacing:-.01em}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--soft)}
+.page{max-width:1100px;margin:0 auto;padding:28px 24px 96px;display:flex;flex-direction:column;gap:28px}
+.label{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.title{margin:8px 0 6px;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.lead{margin:0;color:var(--soft);max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none}
+.btn.primary{border-color:var(--btn);background:var(--btn);color:var(--btn-text);font-weight:600}
+.btn.primary:hover{color:var(--btn-text)}
+.input{height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;background:var(--surface2);color:var(--soft);white-space:nowrap}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.badge.amber{background:var(--amber-soft);color:var(--amber)}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.badge.violet{background:var(--violet-soft);color:var(--violet)}
+.badge.ink{background:var(--ink);color:var(--bg)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+.stat{padding:18px}
+.stat b{display:block;margin-top:6px;font-size:26px;font-weight:600;line-height:1.1}
+.filters{display:flex;flex-wrap:wrap;gap:12px}
+.filters .grow{flex:999 1 260px;min-width:0}
+.filters .fixed{flex:1 1 200px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.tab{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:0;background:transparent;color:var(--soft);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.tab.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.count{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface2);color:var(--soft)}
+.rows{overflow:hidden}
+.rowhead,.row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.7fr) minmax(0,1.15fr) 132px;gap:20px;align-items:center;padding:20px}
+.rowhead{padding-top:12px;padding-bottom:12px;background:var(--surface2)}
+.row{border-top:1px solid var(--line)}
+.rowname{display:block;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
+.sub{display:block;margin-top:2px;font-size:13px;color:var(--soft)}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--soft);overflow-wrap:anywhere}
+.issue{display:block;margin-top:6px;font-size:15px;line-height:1.45}
+.right{justify-self:end;text-align:right}
+.note{margin:0;padding:16px 20px;border-top:1px solid var(--line);font-size:13px;color:var(--soft)}
+@media (max-width:640px){.rowhead{display:none}.row{grid-template-columns:minmax(0,1fr);gap:10px}.right{justify-self:start;text-align:left}}
+.scrim{position:fixed;inset:0;border:0;background:rgba(29,26,20,.38);cursor:pointer}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(580px,100%);overflow-y:auto;background:var(--bg);border-left:1px solid var(--line);padding:20px 20px 40px;display:flex;flex-direction:column;gap:20px}
+.drawerhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.block{padding:20px}
+.block h3{margin:0 0 12px;font-size:15px;font-weight:600}
+.point{padding:12px 0;border-top:1px solid var(--line)}
+.point:first-of-type{border-top:0;padding-top:0}
+.point strong{display:block;font-size:14px;font-weight:600}
+.point span{display:block;margin-top:2px;font-size:14px;color:var(--soft)}
+.plain{margin:0;font-size:14px;color:var(--soft)}
+.offer{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.offer:first-of-type{border-top:0;padding-top:0}
+.price{font-family:'IBM Plex Mono',monospace;font-weight:500;white-space:nowrap}
+.mail{margin:0 0 12px;font-size:14px;line-height:1.6;white-space:pre-line}
+.switch{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.track{position:relative;display:inline-block;width:40px;height:24px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);flex:none}
+.track i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;background:var(--soft)}
+.switch.on .track{background:var(--ink);border-color:var(--ink)}
+.switch.on .track i{left:18px;background:var(--bg)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.actions .btn{flex:1 1 200px}
+</style>
+</helmet>
+<div class="app {{themeClass}}">
+  <header class="topbar">
+    <a class="iconbtn" href="Menu.dc.html" aria-label="Ouvrir le menu du module">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </a>
+    <span class="brand">devleadhunter</span>
+    <span class="pill">Entretien de sites</span>
+  </header>
+
+  <main class="page">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+      <div style="flex: 999 1 420px; min-width: 0">
+        <span class="label">Entretien de sites</span>
+        <h1 class="title">Mes prospects</h1>
+        <p class="lead">Des entreprises qui ont déjà un site. Chaque site est regardé de l’extérieur, comme un visiteur. On écrit seulement quand un point mérite une correction.</p>
+      </div>
+      <a class="btn primary" href="Recherche.dc.html" style="flex: 1 1 220px">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>
+        Nouvelle recherche
+      </a>
+    </div>
+
+    <section class="stats" aria-label="Chiffres du module">
+      <div class="card stat"><span class="label">Total prospects</span><b>{{totalCount}}</b></div>
+      <div class="card stat"><span class="label">Avec email</span><b>{{emailCount}}</b></div>
+      <div class="card stat"><span class="label">Un point à corriger</span><b>{{toFixCount}}</b></div>
+      <div class="card stat"><span class="label">Écrits</span><b>{{sentCount}}</b></div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 16px">
+      <div class="filters">
+        <div class="grow">
+          <input class="input" type="search" placeholder="Nom, ville, adresse du site" aria-label="Rechercher un prospect" value="{{query}}" onChange="{{onQuery}}">
+        </div>
+        <div class="fixed">
+          <select class="input" aria-label="Filtrer par métier" value="{{trade}}" onChange="{{onTrade}}">
+            <option value="all">Tous les métiers</option>
+            <option value="p">Paysagistes</option>
+            <option value="e">Électriciens</option>
+            <option value="g">Garages</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tabs" role="group" aria-label="Trier les prospects">
+        <sc-for list="{{tabs}}" as="tab" hint-placeholder-count="5">
+          <button type="button" class="tab {{tab.cls}}" aria-pressed="{{tab.on}}" onClick="{{tab.pick}}">{{tab.label}} <span class="count">{{tab.count}}</span></button>
+        </sc-for>
+      </div>
+
+      <div class="card rows">
+        <div class="rowhead">
+          <span class="label">Entreprise</span>
+          <span class="label">Ce qu’on a vu sur son site</span>
+          <span class="label">Email</span>
+          <span class="label right">État</span>
+        </div>
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="6">
+          <div class="row">
+            <div style="min-width: 0">
+              <button type="button" class="rowname" onClick="{{row.open}}">{{row.name}}</button>
+              <span class="sub">{{row.sub}}</span>
+              <span class="mono">{{row.domain}}</span>
+            </div>
+            <div style="min-width: 0">
+              <span class="badge {{row.toneCls}}">{{row.toneLabel}}</span>
+              <span class="issue">{{row.lead}}</span>
+              <sc-if value="{{row.hasMore}}" hint-placeholder-val="{{false}}"><span class="sub">{{row.more}}</span></sc-if>
+            </div>
+            <div class="mono" style="font-size: 13px">{{row.email}}</div>
+            <div class="right">
+              <span class="badge {{row.stateCls}}">{{row.stateLabel}}</span>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
+          <p class="note">Aucun prospect ne correspond à ce tri.</p>
+        </sc-if>
+        <sc-if value="{{hasListNote}}" hint-placeholder-val="{{false}}">
+          <p class="note">{{listNote}}</p>
+        </sc-if>
+      </div>
+    </section>
+  </main>
+
+  <sc-if value="{{isOpen}}" hint-placeholder-val="{{false}}">
+    <button type="button" class="scrim" aria-label="Fermer la fiche" onClick="{{close}}"></button>
+    <aside class="drawer" aria-label="Fiche du prospect">
+      <div class="drawerhead">
+        <div style="min-width: 0">
+          <span class="badge {{sel.stateCls}}">{{sel.stateLabel}}</span>
+          <h2 style="margin: 10px 0 2px; font-size: 20px; font-weight: 600">{{sel.name}}</h2>
+          <span class="sub">{{sel.sub}}</span>
+          <span class="mono" style="display: block; margin-top: 6px">{{sel.domain}}</span>
+          <span class="mono" style="display: block">{{sel.email}}</span>
+        </div>
+        <button type="button" class="iconbtn" aria-label="Fermer la fiche" onClick="{{close}}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <sc-if value="{{sel.isUnread}}" hint-placeholder-val="{{false}}">
+        <div class="card block">
+          <h3>Contrôle à refaire</h3>
+          <p class="plain">{{sel.unreadText}}</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{sel.hasFixes}}" hint-placeholder-val="{{true}}">
+        <div class="card block">
+          <h3>À corriger</h3>
+          <sc-for list="{{sel.fixes}}" as="p" hint-placeholder-count="1">
+            <div class="point"><strong>{{p.label}}</strong><span>{{p.fact}}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{sel.hasWatches}}" hint-placeholder-val="{{true}}">
+        <div class="card block">
+          <h3>À surveiller</h3>
+          <sc-for list="{{sel.watches}}" as="p" hint-placeholder-count="2">
+            <div class="point"><strong>{{p.label}}</strong><span>{{p.fact}}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{sel.isRead}}" hint-placeholder-val="{{true}}">
+        <div class="card block">
+          <h3>Le reste</h3>
+          <p class="plain">{{sel.goodLine}}</p>
+          <sc-if value="{{sel.hasHidden}}" hint-placeholder-val="{{false}}">
+            <p class="plain" style="margin-top: 8px">{{sel.hiddenLine}}</p>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{sel.hasOffer}}" hint-placeholder-val="{{true}}">
+        <div class="card block">
+          <h3>Ce que je peux lui proposer</h3>
+          <sc-for list="{{sel.offer}}" as="line" hint-placeholder-count="1">
+            <div class="offer"><span>{{line.label}}</span><span class="price">{{line.price}}</span></div>
+          </sc-for>
+          <div class="offer"><span>Ensuite, s’il le souhaite : suivi mensuel</span><span class="price">100 € par mois</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{sel.hasMessage}}" hint-placeholder-val="{{true}}">
+        <div class="card block">
+          <h3>Le message</h3>
+          <span class="label">Objet</span>
+          <p style="margin: 4px 0 16px; font-size: 14px; font-weight: 600">{{sel.subject}}</p>
+          <sc-for list="{{sel.paragraphs}}" as="para" hint-placeholder-count="5">
+            <p class="mail">{{para.text}}</p>
+          </sc-for>
+          <button type="button" class="switch {{linkCls}}" aria-pressed="{{withLink}}" onClick="{{toggleLink}}">
+            <span class="track"><i></i></span>
+            Ajouter le lien de la page préparée pour lui
+          </button>
+          <div class="actions" style="margin-top: 12px">
+            <sc-if value="{{sel.canSend}}" hint-placeholder-val="{{true}}">
+              <button type="button" class="btn primary" onClick="{{send}}">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
+                Envoyer par email
+              </button>
+            </sc-if>
+            <sc-if value="{{sel.needsEmail}}" hint-placeholder-val="{{false}}">
+              <button type="button" class="btn primary">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                Chercher son email sur son site
+              </button>
+            </sc-if>
+            <a class="btn" href="PageProspect.dc.html">Voir la page préparée</a>
+          </div>
+        </div>
+      </sc-if>
+    </aside>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["clair","sombre"],"default":"clair"},"$preview":{"width":820,"height":1500}}'>
+var LABELS = ['Cadenas de sécurité (https)', 'Moteur du site (PHP)', 'Logiciel du site', 'Piratage', 'Adresse e-mail affichée', 'E-mails : expéditeur reconnu', 'E-mails : protection du nom', 'Numéro de la fiche Google', 'Numéro cliquable', 'Année en bas de page', 'Lecture sur téléphone', 'Présentation dans Google'];
+var SHORT_LABELS = ['le cadenas', 'le moteur du site', 'le logiciel du site', 'aucun piratage', 'l’adresse e-mail', 'l’expéditeur des e-mails', 'la protection du nom', 'le numéro de la fiche Google', 'le numéro cliquable', 'l’année en bas de page', 'la lecture sur téléphone', 'la présentation dans Google'];
+var PHP_END = { '7.1': 'décembre 2019', '7.4': 'novembre 2022', '8.1': 'décembre 2025' };
+var PHP_YEAR = { '7.1': '2019', '7.4': '2022', '8.1': '2025' };
+var TRADES = { p: 'Paysagiste', e: 'Électricien', g: 'Garage' };
+var FIX_ORDER = [3, 0, 1, 2, 5, 10];
+var WATCH_ORDER = [1, 0, 2, 6, 7, 9, 8, 11];
+var PROOFS = [
+  'Ouvrez votre site et regardez à gauche de l’adresse : un cadenas, ou la mention « Non sécurisé ».',
+  'Demandez à votre hébergeur quelle version de PHP fait tourner votre site.',
+  'Dans l’administration de votre site, ouvrez « Mises à jour » : la version y est écrite.',
+  'Dans Google, tapez « site:DOMAINE casino » : les pages ajoutées à votre insu apparaissent.',
+  'Écrivez à l’adresse affichée sur votre site depuis une autre boîte.',
+  'Envoyez-vous un e-mail vers une adresse Gmail, puis ouvrez « Afficher l’original ».',
+  'Envoyez-vous un e-mail vers une adresse Gmail, puis ouvrez « Afficher l’original ».',
+  'Comparez le numéro de votre fiche Google et celui de votre page d’accueil.',
+  'Sur votre téléphone, appuyez sur le numéro affiché sur votre site.',
+  'Regardez tout en bas de votre page d’accueil.',
+  'Ouvrez votre site sur votre téléphone.',
+  'Dans Google, tapez « site:DOMAINE » et regardez le texte sous votre titre.'
+];
+var SUBJECTS = { 3: 'Des liens de casino sur votre site', 0: 'L’avertissement de sécurité sur votre site', 1: 'La version de PHP de votre site', 2: 'La version de votre site', 5: 'Les e-mails de votre nom de domaine', 10: 'Votre site sur téléphone' };
+var OFFERS = { 3: ['Nettoyage du site après piratage', 390], 0: ['Mise en place du cadenas (https)', 90], 1: ['Passage à une version de PHP suivie', 190], 2: ['Mise à jour du site et de ses extensions', 190], 5: ['Réglage des e-mails du domaine', 90], 10: ['Adaptation au téléphone', null] };
+
+var ROWS = [
+  { n: 'Jardins Guillot', t: 'p', c: 'Moulins-lès-Metz', s: 'offooowoouoo', e: 1, x: '', g: 'w', d: { p: '7.1', c: 'WordPress 4.9' } },
+  { n: 'Entreprise Royer', t: 'e', c: 'Germaine', s: 'ofwoooooouoo', e: 1, x: '', g: 'w', d: { p: '8.1', c: 'WordPress 6.8' } },
+  { n: 'Jardins Imbert', t: 'p', c: 'Reims', s: 'ofuooowwouoo', e: 1, x: '', g: 'w', d: { p: '8.1' } },
+  { n: 'Jardins Jacquet', t: 'p', c: 'Reims', s: 'ooooofwoowoo', e: 1, x: '', g: 'w', d: { p: '8.5', c: 'WordPress 7.1', y: 2015 } },
+  { n: 'Garage Fabre', t: 'g', c: 'Mont-de-Marsan', s: 'ooooofwooooo', e: 1, x: '', g: 'w', d: { p: '8.5', c: 'WordPress 7.1' } },
+  { n: 'Aubert Électricité', t: 'e', c: 'Gap', s: 'ouuoofwooooo', e: 1, x: '', g: 'w', d: {} },
+  { n: 'Verdier Élec Services', t: 'e', c: 'Limoges', s: 'ouooofwooooo', e: 1, x: '', g: 'w', d: { c: 'Solocal' } },
+  { n: 'Ollivier Électricité', t: 'e', c: 'Fort-de-France', s: 'ouooofwowuoo', e: 1, x: '', g: 'w', d: { c: 'Squarespace' } },
+  { n: 'Atelier Paysage Navarro', t: 'p', c: 'Saint-Contest', s: 'ouooofwoouow', e: 1, x: '', g: 'w', d: { c: 'Solocal', s: 'j' } },
+  { n: 'Fabre Paysage', t: 'p', c: 'Saint-Max', s: 'ouuooowooofo', e: 1, x: '', g: 'w', d: {} },
+  { n: 'Maillard Paysage', t: 'p', c: 'Besançon', s: 'ouuooowooofo', e: 1, x: '', g: 'w', d: {} },
+  { n: 'Jardins Hamel', t: 'p', c: 'La Rochelle', s: 'offoofwoooow', e: 1, x: 'r', g: 'w', d: { p: '7.4', c: 'WordPress 4.9', s: 'j' } },
+  { n: 'Quéré Espaces Verts', t: 'p', c: 'Cébazat', s: 'owwooooooooo', e: 1, x: 'c', g: 'w', d: { p: '8.2', c: 'WordPress 6.5' } },
+  { n: 'Hubert Automobiles', t: 'g', c: 'Agen', s: 'ofwooowowoow', e: 1, x: 'e', g: 'w', d: { p: '7.4', c: 'WordPress 6.6', s: 'dj' } },
+  { n: 'Atelier Paysage Fabre', t: 'p', c: 'Ver-lès-Chartres', s: 'ofwooowowuoo', e: 1, x: 'e', g: 'w', d: { p: '7.4', c: 'WordPress 6.9' } },
+  { n: 'Élagage Daniel', t: 'p', c: 'Bretteville-sur-Odon', s: 'ofuooowoowoo', e: 1, x: 'e', g: 'w', d: { p: '7.4', y: 2015 } },
+  { n: 'Evrard Automobiles', t: 'g', c: 'Ducos', s: 'ouuoofwooooo', e: 1, x: 'e', g: 'w', d: {} },
+  { n: 'Blanchard Espaces Verts', t: 'p', c: 'Verneuil-sur-Vienne', s: 'ouuooooowufw', e: 1, x: 'e', g: 'w', d: { s: 'd' } },
+  { n: 'Élagage Blanchard', t: 'p', c: 'Caen', s: 'owuooowoooow', e: 1, x: 'e', g: 'w', d: { p: '8.2', s: 'j' } },
+  { n: 'Auto Quéré', t: 'g', c: 'Reims', s: 'owuooowoooow', e: 1, x: 'e', g: 'w', d: { p: '8.2', s: 'dj' } },
+  { n: 'Bellanger Électricité', t: 'e', c: 'Mulhouse', s: 'ooofuoooooow', e: 0, x: '', g: 'w', d: { p: '8.5', c: 'WordPress 7.1', s: 'd' } },
+  { n: 'Élagage Tessier', t: 'p', c: 'Clermont-Ferrand', s: 'fuuouowuwuow', e: 0, x: '', g: 'w', d: { h: 'a', s: 'dj', t: 0 } },
+  { n: 'Les Jardins du Lac', t: 'p', c: 'Chartres', s: 'fuoouowuwufw', e: 0, x: '', g: 'w', d: { h: 'i', c: 'Linkeo', s: 'dj', t: 0 } },
+  { n: 'Élagage Renaud', t: 'p', c: 'Schœlcher', s: 'ofuouowowuow', e: 0, x: '', g: 'w', d: { p: '7.4', s: 'j' } },
+  { n: 'Lemoine Paysage', t: 'p', c: 'Besançon', s: 'oououfwuwuoo', e: 0, x: '', g: 'w', d: { p: '8.3', t: 0 } },
+  { n: 'Garage Dumas', t: 'g', c: 'Fort-de-France', s: 'ouuoufwuwuoo', e: 0, x: '', g: 'w', d: { t: 0 } },
+  { n: 'Lemoine Automobiles', t: 'g', c: 'Rodez', s: 'ouuoufwooooo', e: 0, x: '', g: 'w', d: {} },
+  { n: 'Auto Estève', t: 'g', c: 'Le Passage', s: 'ouuoufwoooow', e: 0, x: '', g: 'w', d: { s: 'j' } },
+  { n: 'Atelier Paysage Blanchard', t: 'p', c: 'Montluçon', s: 'owwouowoowoo', e: 0, x: '', g: 'w', d: { p: '8.2', c: 'WordPress 6.9', y: 2016 } },
+  { n: 'Garage Jacquet', t: 'g', c: 'Niort', s: 'owuouoooouow', e: 0, x: '', g: 'w', d: { p: '8.2', s: 'j' } },
+  { n: 'Les Jardins du Bocage', t: 'p', c: 'Gap', s: 'owoouooooooo', e: 0, x: '', g: 'w', d: { p: '8.2', c: 'WordPress 7.1' } },
+  { n: 'Auto Daniel', t: 'g', c: 'Draguignan', s: 'owoouowoouoo', e: 0, x: '', g: 'w', d: { p: '8.2', c: 'WordPress 7.1' } },
+  { n: 'Élec Thibault', t: 'e', c: 'Bergerac', s: 'wuuooooowuow', e: 1, x: '', g: 'n', d: { ce: '29 novembre', cd: 18, s: 'd' } },
+  { n: 'Entreprise Meunier', t: 'e', c: 'Valence', s: 'wooooowoouoo', e: 1, x: '', g: 'n', d: { ce: '30 novembre', cd: 19, p: '8.4', c: 'WordPress 7.1' } },
+  { n: 'Garage Ollivier', t: 'g', c: 'Nîmes', s: 'ouwouowwowoo', e: 1, x: '', g: 'n', d: { c: 'WordPress 6.2', y: 2014 } },
+  { n: 'Verdier Paysage', t: 'p', c: 'Saint-Apollinaire', s: 'ouwoooouwuoo', e: 1, x: '', g: 'n', d: { c: 'WordPress 6.1', t: 0 } },
+  { n: 'Électricité du Bocage', t: 'e', c: 'Pau', s: 'oowoooooooow', e: 1, x: '', g: 'n', d: { p: '8.3', c: 'WordPress 6.9', s: 'd' } },
+  { n: 'Élagage Hamel', t: 'p', c: 'Valence', s: 'ouwooooowwoo', e: 1, x: '', g: 'n', d: { c: 'WordPress 6.9', y: 2015 } },
+  { n: 'Jardins Blanchard', t: 'p', c: 'Périgny', s: 'oooooowooooo', e: 1, x: '', g: 'n', d: { p: '8.5', c: 'WordPress 7.1' } },
+  { n: 'Leclerc Espaces Verts', t: 'p', c: 'Moulins-lès-Metz', s: 'ouoooooowooo', e: 1, x: '', g: 'n', d: { c: 'Wix' } },
+  { n: 'Ollivier Automobiles', t: 'g', c: 'Châtellerault', s: 'ouoooooowooo', e: 1, x: '', g: 'n', d: { c: 'WordPress 7.1' } },
+  { n: 'Bellanger Paysage', t: 'p', c: 'Mont-de-Marsan', s: 'ooooooooouoo', e: 1, x: '', g: 'n', d: { p: '8.5', c: 'WordPress 7.1' } },
+  { n: 'Picard Électricité', t: 'e', c: 'Reims', s: 'ooooooooouoo', e: 1, x: '', g: 'n', d: { p: '8.5', c: 'WordPress 7.1' } },
+  { n: 'Jardins Noël', t: 'p', c: 'Caen', s: 'ouoooooooooo', e: 1, x: '', g: 'n', d: { c: 'Hostinger' } },
+  { n: 'Coste Électricité', t: 'e', c: 'Chambéry', s: 'uuuuuuuuuuuu', e: 1, x: '', g: 'x', d: {} },
+  { n: 'Jardins Hubert', t: 'p', c: 'Périgny', s: 'uuuuuuuuuuuu', e: 0, x: '', g: 'x', d: {} },
+  { n: 'Garage Thibault', t: 'g', c: 'Nîmes', s: 'uuuuuuuuuuuu', e: 0, x: '', g: 'x', d: {} },
+  { n: 'Quéré Électricité', t: 'e', c: 'Sanilhac', s: 'uuuuuuuuuuuu', e: 0, x: '', g: 'x', d: {} },
+  { n: 'Jardins Renaud', t: 'p', c: 'Le Vigen', s: 'uuuuuuuuuuuu', e: 1, x: '', g: 'r', d: {} },
+  { n: 'Guillot Électricité', t: 'e', c: 'La Rochelle', s: 'uuuuuuuuuuuu', e: 0, x: '', g: 'r', d: {} }
+];
+
+function slugOf(name) {
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/œ/g, 'oe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+function lowerFirst(text) {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+function ofName(name) {
+  if (name.indexOf('Les ') === 0) return 'des ' + name.slice(4);
+  if (name.indexOf('Le ') === 0) return 'du ' + name.slice(3);
+  return /^[AEIOUYÉÈÊÀÂÎÔÛ]/i.test(name) ? 'd’' + name : 'de ' + name;
+}
+function factOf(index, state, d) {
+  if (index === 0) {
+    if (state === 'f') return d.h === 'a' ? 'Le site s’ouvre sans cadenas : le navigateur affiche « Non sécurisé ».' : 'Le certificat ne correspond pas à l’adresse du site : le navigateur affiche un avertissement avant d’ouvrir la page.';
+    if (state === 'w') return 'Le certificat expire le ' + d.ce + ', dans ' + d.cd + ' jours, et n’a pas été renouvelé.';
+    return 'Le site s’ouvre avec le cadenas.';
+  }
+  if (index === 1) {
+    if (state === 'f') return 'Le site tourne avec PHP ' + d.p + ', qui ne reçoit plus de correctifs de sécurité depuis ' + PHP_END[d.p] + '.';
+    if (state === 'w') return 'Le site tourne avec PHP 8.2, dont les correctifs de sécurité s’arrêtent le 31 décembre 2026.';
+    if (state === 'o') return 'PHP ' + d.p + ', une version suivie.';
+    return 'La version de PHP ne se voit pas de l’extérieur.';
+  }
+  if (index === 2) {
+    if (state === 'f') return d.c + ', une version de 2017 qui n’est plus suivie.';
+    if (state === 'w') return d.c + ', alors que la version actuelle est la 7.1.';
+    if (state === 'o') return d.c && d.c.indexOf('WordPress') === 0 ? d.c + ', la version actuelle.' : 'Site fait avec ' + d.c + ', qui se charge des mises à jour.';
+    return 'Le logiciel du site ne se voit pas de l’extérieur.';
+  }
+  if (index === 3) return state === 'f' ? 'La page d’accueil contient des liens cachés vers des sites de casino : le site a très probablement été piraté.' : 'Aucun lien suspect sur la page d’accueil.';
+  if (index === 4) return state === 'o' ? 'L’adresse affichée sur le site reçoit bien les messages.' : 'Aucune adresse e-mail sur la page d’accueil.';
+  if (index === 5) return state === 'f' ? 'Le domaine envoie des e-mails sans dire qui en a le droit : ils risquent de finir en indésirables.' : 'Les e-mails du domaine sont reconnus par les messageries.';
+  if (index === 6) return state === 'w' ? 'Rien n’empêche quelqu’un d’envoyer des e-mails au nom du domaine.' : 'Le nom de domaine est protégé contre l’usurpation.';
+  if (index === 7) {
+    if (state === 'w') return 'Le numéro de la fiche Google n’est pas celui de la page d’accueil.';
+    return state === 'o' ? 'Le numéro est le même que sur la fiche Google.' : 'Pas de numéro à comparer avec la fiche Google.';
+  }
+  if (index === 8) {
+    if (state === 'w') return d.t === 0 ? 'Aucun numéro de téléphone sur la page d’accueil.' : 'Sur téléphone, il faut recopier le numéro pour appeler.';
+    return 'Sur téléphone, un appui sur le numéro lance l’appel.';
+  }
+  if (index === 9) {
+    if (state === 'w') return 'Le bas de page affiche « © ' + d.y + ' » : le site paraît à l’abandon.';
+    return state === 'o' ? 'L’année du bas de page est à jour.' : 'Pas d’année en bas de page.';
+  }
+  if (index === 10) return state === 'f' ? 'La page n’est pas prévue pour les téléphones : elle s’y affiche en tout petit.' : 'La page s’adapte à l’écran d’un téléphone.';
+  if (state === 'w') {
+    if (d.s === 'd') return 'Il manque la description que Google affiche sous le titre.';
+    if (d.s === 'j') return 'Il manque la fiche d’entreprise lue par Google et les IA.';
+    return 'Il manque la description et la fiche d’entreprise lues par Google et les IA.';
+  }
+  return 'Titre, description et fiche d’entreprise sont en place.';
+}
+function shortOf(index, state, d) {
+  if (index === 0) return state === 'f' ? (d.h === 'a' ? 'Pas de cadenas : le navigateur affiche « Non sécurisé »' : 'Certificat invalide : avertissement avant d’entrer') : 'Certificat à renouveler avant le ' + d.ce;
+  if (index === 1) return state === 'f' ? 'PHP ' + d.p + ', plus corrigé depuis ' + PHP_YEAR[d.p] : 'PHP 8.2 s’arrête le 31 décembre';
+  if (index === 2) return state === 'f' ? d.c + ', une version de 2017' : d.c + ', en retard';
+  if (index === 3) return 'Site piraté : liens cachés vers des casinos';
+  if (index === 5) return 'Ses e-mails risquent les indésirables';
+  if (index === 6) return 'Nom de domaine non protégé';
+  if (index === 7) return 'Numéro différent de la fiche Google';
+  if (index === 8) return 'Numéro non cliquable sur téléphone';
+  if (index === 9) return 'Année dépassée en bas de page';
+  if (index === 10) return 'Illisible sur téléphone';
+  return 'Présentation dans Google incomplète';
+}
+function build(row, id) {
+  var d = row.d, fixes = [], watches = [], goods = [], hidden = [], states = [];
+  for (var i = 0; i < 12; i += 1) {
+    var state = row.s.charAt(i);
+    states.push(state);
+    if (state === 'f') fixes.push({ label: LABELS[i], fact: factOf(i, state, d), index: i });
+    else if (state === 'w') watches.push({ label: LABELS[i], fact: factOf(i, state, d), index: i });
+    else if (state === 'o') goods.push(SHORT_LABELS[i]);
+    else hidden.push(SHORT_LABELS[i]);
+  }
+  var leadIndex = -1, leadState = '';
+  FIX_ORDER.forEach(function (index) { if (leadIndex < 0 && states[index] === 'f') { leadIndex = index; leadState = 'f'; } });
+  WATCH_ORDER.forEach(function (index) { if (leadIndex < 0 && states[index] === 'w') { leadIndex = index; leadState = 'w'; } });
+  var slug = slugOf(row.n);
+  var offer = [];
+  FIX_ORDER.forEach(function (index) {
+    if (states[index] === 'f' || (index === 1 && states[index] === 'w')) {
+      offer.push({ label: OFFERS[index][0], price: OFFERS[index][1] === null ? 'Sur devis' : OFFERS[index][1] + ' €', euros: OFFERS[index][1] });
+    }
+  });
+  return { id: id, row: row, slug: slug, domain: slug + '.fr', email: row.e ? 'contact@' + slug + '.fr' : 'Pas d’email connu', fixes: fixes, watches: watches, goods: goods, hidden: hidden, leadIndex: leadIndex, leadState: leadState, offer: offer, others: fixes.length + watches.length - (leadIndex < 0 ? 0 : 1) };
+}
+var ITEMS = ROWS.map(build);
+var EMPTY = { name: '', sub: '', domain: '', email: '', stateLabel: '', stateCls: '', fixes: [], watches: [], offer: [], paragraphs: [], subject: '', goodLine: '', hiddenLine: '', unreadText: '', hasFixes: false, hasWatches: false, hasOffer: false, hasMessage: false, hasHidden: false, isRead: false, isUnread: false, canSend: false, needsEmail: false };
+
+class Component extends DCLogic {
+  state = { tab: 'write', query: '', trade: 'all', openId: null, withLink: false, sent: {} };
+
+  groupOf(item) {
+    var row = item.row;
+    if (row.g === 'x' || row.g === 'r') return 'review';
+    if (row.g === 'n') return 'calm';
+    if (row.x !== '' || this.state.sent[item.id]) return 'sent';
+    return row.e ? 'write' : 'noemail';
+  }
+
+  stateOf(item) {
+    var row = item.row;
+    if (this.state.sent[item.id]) return { label: 'Écrit à l’instant', cls: '' };
+    if (row.x === 'c') return { label: 'En suivi', cls: 'green' };
+    if (row.x === 'r') return { label: 'A répondu', cls: 'violet' };
+    if (row.x === 'e') return { label: 'Écrit le 9 nov.', cls: '' };
+    if (row.g === 'x' || row.g === 'r') return { label: 'À revoir', cls: 'amber' };
+    if (row.g === 'n') return { label: 'Rien à faire', cls: '' };
+    return row.e ? { label: 'À écrire', cls: 'ink' } : { label: 'Sans email', cls: '' };
+  }
+
+  leadOf(item) {
+    var row = item.row;
+    if (row.g === 'x') return { text: 'Le site ne répond plus', tone: 'À revoir', cls: 'amber' };
+    if (row.g === 'r') return { text: 'Le site a refusé la lecture automatique', tone: 'À revoir', cls: 'amber' };
+    if (item.leadIndex < 0) return { text: 'Rien à signaler', tone: 'Tout va bien', cls: 'green' };
+    return { text: shortOf(item.leadIndex, item.leadState, row.d), tone: item.leadState === 'f' ? 'À corriger' : 'À surveiller', cls: item.leadState === 'f' ? 'red' : 'amber' };
+  }
+
+  messageOf(item) {
+    var row = item.row;
+    if (item.leadIndex < 0 || row.g !== 'w') return { subject: '', paragraphs: [] };
+    var fact = factOf(item.leadIndex, item.leadState, row.d);
+    var proof = PROOFS[item.leadIndex].replace('DOMAINE', item.domain);
+    var first = item.offer[0];
+    var price = first && first.euros !== null ? 'La correction coûte ' + first.euros + ' €, une seule fois.' : 'Je vous donne le prix de la correction avant de commencer.';
+    var rest = this.state.withLink
+      ? 'J’ai regardé le reste de votre site, comme un visiteur. Tout est noté sur cette page : dibodev.fr/bilan/' + item.slug
+      : 'J’ai regardé le reste de votre site, comme un visiteur : ' + item.goods.length + ' points sur 12 sont bons.';
+    var texts = [
+      'Bonjour,',
+      'Je suis Léo Guillaume, développeur à Rennes. En regardant le site ' + ofName(row.n) + ', j’ai vu que ' + lowerFirst(fact),
+      'Vous pouvez le vérifier vous-même : ' + lowerFirst(proof),
+      rest,
+      price + ' Si cela ne vous intéresse pas, dites-le-moi et je ne vous recontacte plus.',
+      'Bonne journée,\nLéo Guillaume\ndibodev.fr'
+    ];
+    return { subject: SUBJECTS[item.leadIndex] || 'Votre site', paragraphs: texts.map(function (text) { return { text: text }; }) };
+  }
+
+  renderVals() {
+    var self = this;
+    var current = this.state;
+    var counts = { write: 0, sent: 0, noemail: 0, calm: 89, review: 15 };
+    ITEMS.forEach(function (item) {
+      var group = self.groupOf(item);
+      if (group === 'write' || group === 'sent' || group === 'noemail') counts[group] += 1;
+    });
+    var tabDefs = [['write', 'À écrire'], ['sent', 'Écrits'], ['noemail', 'Sans email'], ['calm', 'Rien à signaler'], ['review', 'À revoir']];
+    var tabs = tabDefs.map(function (def) {
+      return { label: def[0] === current.tab ? def[1] : def[1], count: counts[def[0]], cls: def[0] === current.tab ? 'on' : '', on: def[0] === current.tab, pick: function () { self.setState({ tab: def[0] }); } };
+    });
+    var query = current.query.trim().toLowerCase();
+    var visible = ITEMS.filter(function (item) {
+      if (self.groupOf(item) !== current.tab) return false;
+      if (current.trade !== 'all' && item.row.t !== current.trade) return false;
+      if (!query) return true;
+      return (item.row.n + ' ' + item.row.c + ' ' + item.domain).toLowerCase().indexOf(query) >= 0;
+    });
+    var rows = visible.map(function (item) {
+      var lead = self.leadOf(item);
+      var status = self.stateOf(item);
+      var more = item.others > 0 && item.row.g !== 'x' && item.row.g !== 'r';
+      return { name: item.row.n, sub: TRADES[item.row.t] + ' · ' + item.row.c, domain: item.domain, lead: lead.text, toneLabel: lead.tone, toneCls: lead.cls, hasMore: more, more: item.others === 1 ? 'et 1 autre point' : 'et ' + item.others + ' autres points', email: item.email, stateLabel: status.label, stateCls: status.cls, open: function () { self.setState({ openId: item.id, withLink: false }); } };
+    });
+    var listNote = '';
+    if (current.tab === 'calm') listNote = 'Les 12 premiers sur 89 : la maquette n’affiche pas les autres.';
+    if (current.tab === 'review') listNote = 'Les 6 premiers sur 15 : la maquette n’affiche pas les autres.';
+
+    var sel = EMPTY;
+    var opened = current.openId === null ? null : ITEMS[current.openId];
+    if (opened) {
+      var status = this.stateOf(opened);
+      var message = this.messageOf(opened);
+      var isUnread = opened.row.g === 'x' || opened.row.g === 'r';
+      var alreadySent = this.groupOf(opened) === 'sent';
+      sel = {
+        name: opened.row.n,
+        sub: TRADES[opened.row.t] + ' · ' + opened.row.c,
+        domain: opened.domain,
+        email: opened.email,
+        stateLabel: status.label,
+        stateCls: status.cls,
+        fixes: opened.fixes,
+        watches: opened.watches,
+        offer: opened.offer,
+        subject: message.subject,
+        paragraphs: message.paragraphs,
+        goodLine: opened.goods.length + ' points sont bons : ' + opened.goods.join(', ') + '.',
+        hiddenLine: 'Pas visible de l’extérieur, donc pas contrôlé : ' + opened.hidden.join(', ') + '.',
+        unreadText: opened.row.g === 'x' ? 'L’adresse du site ne mène plus nulle part. C’est peut-être un prospect pour le module Sites web.' : 'Le site a refusé la lecture automatique. Il faut l’ouvrir à la main pour le regarder.',
+        hasFixes: !isUnread && opened.fixes.length > 0,
+        hasWatches: !isUnread && opened.watches.length > 0,
+        hasOffer: !isUnread && opened.offer.length > 0,
+        hasMessage: !isUnread && message.paragraphs.length > 0,
+        hasHidden: opened.hidden.length > 0,
+        isRead: !isUnread,
+        isUnread: isUnread,
+        canSend: opened.row.e === 1 && !alreadySent,
+        needsEmail: opened.row.e === 0
+      };
+    }
+
+    return {
+      themeClass: (this.props.theme ?? 'clair') === 'sombre' ? 'dark' : '',
+      totalCount: 136,
+      emailCount: 67,
+      toFixCount: 32,
+      sentCount: counts.sent,
+      query: current.query,
+      trade: current.trade,
+      onQuery: function (event) { self.setState({ query: event.target.value }); },
+      onTrade: function (event) { self.setState({ trade: event.target.value }); },
+      tabs: tabs,
+      rows: rows,
+      isEmpty: rows.length === 0,
+      hasListNote: listNote !== '' && rows.length > 0,
+      listNote: listNote,
+      isOpen: opened !== null,
+      sel: sel,
+      withLink: current.withLink,
+      linkCls: current.withLink ? 'on' : '',
+      toggleLink: function () { self.setState({ withLink: !current.withLink }); },
+      close: function () { self.setState({ openId: null }); },
+      send: function () {
+        var sent = Object.assign({}, current.sent);
+        sent[current.openId] = true;
+        self.setState({ sent: sent, openId: null });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Page préparée pour le prospect</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#1d1a14}a:hover{color:#1d1a14}
+.sheet{width:390px;min-height:2300px;box-sizing:border-box;padding:36px 24px 48px;background:#fbf9f3;color:#1d1a14;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.6;display:flex;flex-direction:column;gap:36px}
+.sheet *{box-sizing:border-box}
+.small{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6a6356}
+.headline{margin:12px 0 0;font-size:28px;line-height:1.2;font-weight:600;letter-spacing:-.015em}
+.sheet h2{margin:0 0 12px;font-size:18px;font-weight:600}
+.sheet p{margin:0}
+.soft{color:#5f584c}
+.tinted{padding:20px;border-radius:14px;background:#f1e3da}
+.steps{padding:20px;border-radius:14px;border:1px solid #e1dbcc;display:flex;flex-direction:column;gap:14px}
+.stepline{display:flex;gap:12px;align-items:flex-start}
+.num{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:#1d1a14;color:#fbf9f3;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.pricecard{padding:24px;border-radius:14px;background:#1d1a14;color:#fbf9f3;display:flex;flex-direction:column;gap:14px}
+.amount{font-size:40px;font-weight:600;line-height:1}
+.pricecard .muted{color:#d6d1c4}
+.line{display:flex;gap:10px;align-items:flex-start}
+.ic{width:18px;height:18px;margin-top:4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.green{color:#2a7146}
+.amber{color:#85590c}
+.list{display:flex;flex-direction:column;gap:10px}
+.who{display:flex;align-items:center;gap:14px}
+.avatar{flex:none;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;background:#1d1a14;color:#fbf9f3;font-weight:600}
+.btn{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 20px;border-radius:999px;border:1px solid #1d1a14;background:#1d1a14;color:#fbf9f3;font-size:16px;font-weight:600;text-decoration:none}
+.btn:hover{color:#fbf9f3}
+.btn.ghost{background:transparent;color:#1d1a14;font-weight:500;border-color:#cfc8b6}
+.btn.ghost:hover{color:#1d1a14}
+</style>
+</helmet>
+<div class="sheet">
+  <header>
+    <span class="small">Pour {{businessName}}</span>
+    <h1 class="headline">{{headline}}</h1>
+  </header>
+
+  <p>Bonjour, je suis Léo Guillaume, développeur web à Rennes. J’ai regardé votre site <strong>{{domain}}</strong> comme le ferait un visiteur. Je n’ai rien touché, et je n’ai vu que ce que tout le monde peut voir.</p>
+
+  <section>
+    <h2>Ce que j’ai vu</h2>
+    <div class="tinted">
+      <p>{{seen}}</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ce que ça change pour vous</h2>
+    <div class="list">
+      <sc-for list="{{changes}}" as="change" hint-placeholder-count="2">
+        <p>{{change.text}}</p>
+      </sc-for>
+    </div>
+  </section>
+
+  <section>
+    <h2>Vérifiez-le vous-même</h2>
+    <div class="steps">
+      <sc-for list="{{proofSteps}}" as="step" hint-placeholder-count="2">
+        <div class="stepline"><span class="num">{{step.number}}</span><p>{{step.text}}</p></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ce que je vous propose</h2>
+    <div class="pricecard">
+      <p>{{offerLabel}}</p>
+      <p class="amount">{{price}}</p>
+      <p class="muted">Une seule fois. Vous payez après la correction.</p>
+      <div class="list">
+        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Je fais d’abord une sauvegarde complète.</p></div>
+        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Je travaille sur une copie, pas sur votre site.</p></div>
+        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Votre site garde la même présentation.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Le reste de votre site</h2>
+    <p class="soft" style="margin-bottom: 14px">J’ai regardé onze autres points. Voici ce qui va bien.</p>
+    <div class="list">
+      <sc-for list="{{goods}}" as="good" hint-placeholder-count="4">
+        <div class="line green"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p style="color: #1d1a14">{{good.text}}</p></div>
+      </sc-for>
+    </div>
+    <sc-if value="{{hasWatches}}" hint-placeholder-val="{{true}}">
+      <p class="soft" style="margin: 20px 0 14px">Et ce qui mérite un coup d’œil, sans urgence.</p>
+      <div class="list">
+        <sc-for list="{{watches}}" as="watch" hint-placeholder-count="2">
+          <div class="line amber"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg><p style="color: #1d1a14">{{watch.text}}</p></div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </section>
+
+  <section>
+    <div class="who">
+      <span class="avatar" aria-hidden="true">LG</span>
+      <div>
+        <p style="font-weight: 600">Léo Guillaume</p>
+        <p class="soft" style="font-size: 15px">Développeur web à Rennes · dibodev.fr</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px">
+      <a class="btn" href="#repondre">Me répondre</a>
+      <a class="btn ghost" href="#transmettre">Ce n’est pas moi qui gère le site</a>
+    </div>
+    <p class="soft" style="margin-top: 20px; font-size: 15px">Si cela ne vous intéresse pas, dites-le-moi : je ne vous écrirai plus. Cette page n’est visible que par vous.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"exemple":{"editor":"enum","options":["PHP plus corrigé","Site piraté","Pas de cadenas"],"default":"PHP plus corrigé"},"$preview":{"width":390,"height":2300}}'>
+var EXAMPLES = {
+  'PHP plus corrigé': {
+    businessName: 'Élagage Renaud',
+    domain: 'elagage-renaud.fr',
+    headline: 'Le moteur de votre site n’est plus corrigé depuis 2022.',
+    seen: 'Votre site fonctionne grâce à un logiciel appelé PHP. Le vôtre est en version 7.4. Cette version ne reçoit plus aucun correctif de sécurité depuis novembre 2022.',
+    changes: ['Une faille découverte aujourd’hui dans cette version ne sera jamais réparée. C’est une des portes d’entrée habituelles des pirates.', 'Votre hébergeur peut retirer cette version. Le site s’arrêterait alors du jour au lendemain.'],
+    proofSteps: ['Appelez votre hébergeur, ou écrivez-lui.', 'Demandez-lui : « Quelle version de PHP fait tourner mon site ? »'],
+    offerLabel: 'Je passe votre site sur une version de PHP suivie.',
+    price: '190 €',
+    goods: ['Le cadenas de sécurité est en place.', 'Aucun lien suspect sur votre page d’accueil.', 'Vos e-mails sont reconnus par les messageries.', 'Le site se lit bien sur téléphone.'],
+    watches: ['Sur téléphone, il faut recopier votre numéro pour vous appeler.', 'Google n’a pas de fiche à lire sur votre entreprise.']
+  },
+  'Site piraté': {
+    businessName: 'Bellanger Électricité',
+    domain: 'bellanger-electricite.fr',
+    headline: 'Votre site contient des liens vers des casinos. Ce n’est pas vous qui les avez mis.',
+    seen: 'Dans le code de votre page d’accueil, il y a des liens cachés vers des sites de casino. Un visiteur ne les voit pas, mais Google les lit. Quelqu’un est entré dans votre site pour les y mettre.',
+    changes: ['Google finit par afficher un avertissement à côté de votre nom, ou par retirer votre site de ses résultats.', 'Tant que la porte d’entrée n’est pas refermée, les liens reviennent.'],
+    proofSteps: ['Ouvrez Google.', 'Tapez : site:bellanger-electricite.fr casino'],
+    offerLabel: 'Je nettoie votre site et je referme la porte d’entrée.',
+    price: '390 €',
+    goods: ['Le cadenas de sécurité est en place.', 'Votre site et son logiciel sont à jour.', 'Vos e-mails sont reconnus par les messageries.', 'Le site se lit bien sur téléphone.'],
+    watches: ['Google n’a pas de description à afficher sous votre nom.']
+  },
+  'Pas de cadenas': {
+    businessName: 'Élagage Tessier',
+    domain: 'elagage-tessier.fr',
+    headline: 'Votre site s’ouvre avec la mention « Non sécurisé ».',
+    seen: 'Votre site n’a pas le cadenas de sécurité (https). À gauche de votre adresse, le navigateur écrit « Non sécurisé » à chaque visiteur.',
+    changes: ['Un visiteur qui lit « Non sécurisé » hésite à vous appeler ou à vous écrire. Certains repartent.', 'Google met en avant les sites qui ont le cadenas.'],
+    proofSteps: ['Ouvrez votre site sur votre téléphone.', 'Regardez à gauche de l’adresse : « Non sécurisé ».'],
+    offerLabel: 'Je mets le cadenas de sécurité en place.',
+    price: '90 €',
+    goods: ['Aucun lien suspect sur votre page d’accueil.', 'Le site se lit bien sur téléphone.'],
+    watches: ['Rien n’empêche quelqu’un d’envoyer des e-mails à votre nom.', 'Aucun numéro de téléphone sur votre page d’accueil.', 'Google n’a ni description ni fiche à lire sur votre entreprise.']
+  }
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    var example = EXAMPLES[this.props.exemple ?? 'PHP plus corrigé'] || EXAMPLES['PHP plus corrigé'];
+    var asItems = function (texts) { return texts.map(function (text, index) { return { text: text, number: index + 1 }; }); };
+    return {
+      businessName: example.businessName,
+      domain: example.domain,
+      headline: example.headline,
+      seen: example.seen,
+      changes: asItems(example.changes),
+      proofSteps: asItems(example.proofSteps),
+      offerLabel: example.offerLabel,
+      price: example.price,
+      goods: asItems(example.goods),
+      watches: asItems(example.watches),
+      hasWatches: example.watches.length > 0
+    };
+  }
+}
+</script>
+</body>
+</html>
