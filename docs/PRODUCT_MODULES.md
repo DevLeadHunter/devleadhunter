@@ -8,6 +8,7 @@
 | Sites web (le cœur) | `websites` | `DevLeadHunter/devleadhunter` | toujours actif |
 | Réceptionniste IA | `ai-assistant` | `DevLeadHunter/devleadhunter-module-receptionist` | activé |
 | Cartes Apple Wallet | `apple-wallet` | `DevLeadHunter/devleadhunter-module-apple-wallet` | désactivé |
+| Entretien de sites | `site-care` | `DevLeadHunter/devleadhunter-module-site-care` | désactivé |
 
 La clé `ai-assistant` est historique (déjà écrite dans `prospects.contacted_by_module`, `presenter_videos.module`) :
 elle ne change pas.

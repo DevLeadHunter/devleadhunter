@@ -14,6 +14,13 @@
       "ref": "v1.0.0",
       "python_distribution": "devleadhunter-apple-wallet",
       "layers": ["web"]
+    },
+    {
+      "key": "site-care",
+      "repository": "DevLeadHunter/devleadhunter-module-site-care",
+      "ref": "v1.0.0",
+      "python_distribution": "devleadhunter-site-care",
+      "layers": ["web", "demo-host"]
     }
   ]
 }
