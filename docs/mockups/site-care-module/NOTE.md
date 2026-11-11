@@ -62,7 +62,7 @@ Ses mots : « j'aurais plutôt vu une maquette Claude Code et pas simplement des
 5. **Les métiers** : pas trois pastilles figées ; pouvoir en cocher autant qu'on veut, ou aucun, et en ajouter un autre, comme dans le module Sites web.
 6. **« Laisser de côté les réseaux et les franchises »** : toujours actif, plus affiché.
 
-**Version 2 = maquette cliquable** sur un canevas de design : https://claude.ai/artifact/Y6Dsa2yaw7x3qS7oyQ1VWX (privé, ouvrable depuis l'iPad ; sources dans `maquette-v2/`). Sept écrans reliés entre eux :
+**Version 2 = maquette cliquable** sur un canevas de design : https://claude.ai/artifact/Y6Dsa2yaw7x3qS7oyQ1VWX (ouvrable depuis l'iPad, partagé par lien par Léo le 11/11 ; sources dans `maquette-v2/`). Sept écrans reliés entre eux :
 
 - **Mes prospects** (la seule liste, « Contrôles » disparaît) : les prospects du module, quatre chiffres, recherche, filtre par métier, onglets À écrire / Écrits / Sans email / Rien à signaler / À revoir. Chaque ligne dit en une phrase ce qu'on a vu sur le site (« PHP 7.4, plus corrigé depuis 2022 »), sans pastille. Un clic sur le nom ouvre la fiche : à corriger, à surveiller, le reste, ce qu'on peut proposer, le message, « Envoyer par email ».
 - **Nouvelle recherche** : la recherche du module, en quatre étapes comme la vraie (Cible, Zone, Critères, Lancer). Métiers à cocher librement, aucun = tous, champ « Autre métier ». « Par email » choisi d'office ; les entreprises sans email vont dans « Sans email ». Les réseaux et franchises sont écartés sans le dire.
@@ -71,10 +71,21 @@ Ses mots : « j'aurais plutôt vu une maquette Claude Code et pas simplement des
 
 Ce que la version 2 ne montre pas : les pages partagées (Tableau de bord, Carte, Campagnes, Suivi des emails et des SMS, Ventes), marquées « page partagée » dans le menu. Les lignes viennent des mêmes contrôles réels ; les onglets « Rien à signaler » et « À revoir » n'affichent que les premières lignes.
 
-Non vérifié à l'écran par Claude : le canevas demande le compte de Léo. La logique de chaque écran a été exécutée hors canevas (aucune erreur).
+**Deuxième retour de Léo (11/11, sur la version 2)** : « ça commence à être pas mal ». Sa demande : que la page pour le prospect reprenne la direction artistique de dibodev.fr. Fait le jour même, dans `PageProspect.dc.html` :
+
+- police Rubik, fond blanc et bandes gris clair `#f6f6f3`, texte `#141414` ;
+- violet `#6f5fe0` pour les sur-titres, le mot fort du titre et le bouton ; lavande `#e6e1ff` pour les ronds d'icône et le bloc final ;
+- cartes à filet fin et coins de 12 px ; la carte du prix a le filet violet, l'ombre violette et l'étiquette « Prix fixe », comme la carte mise en avant des tarifs du site ;
+- sections : le constat, les conséquences, la preuve (01, 02), le prix, le reste du site, qui vous écrit (portrait de Léo), bloc final « Vous voulez que je m'en occupe ? » avec « Me répondre » et « Ce n'est pas moi qui gère le site ».
+
+Le portrait est celui du site (`dibodev.fr-frontend/public/images/about/leo-guillaume-portrait-400.webp`), déposé dans le canevas ; dans la source, son adresse `/_blob/…` ne vaut que là-bas. Les valeurs viennent de `app/assets/css/main.css` et des sections `DibodevPricingSection`, `DibodevFounderSection`, `DibodevContactCtaSection` du dépôt du site.
+
+Vérification à l'écran : Léo a ouvert le lien en partage, Claude a donc pu regarder la page pour le prospect du haut en bas (rendu conforme). Les six autres écrans n'ont été contrôlés que par leur logique, exécutée hors canevas (aucune erreur) ; Léo les a vus lui-même.
+
+Reste une phrase de Léo à éclaircir, sur la colonne « Ce qu'on a vu sur son site » : soit il dit qu'on y comprend tout de suite le type de souci (mise à jour en retard, risque, PHP ou autre langage, sécurité ou piratage), soit il demande que ce type se voie au premier coup d'œil. Question posée le 11/11.
 
 Le layer Nuxt local (`devleadhunter-module-site-care`) et les 24 captures correspondent à la première version : à refaire sur la version retenue.
 
 ## État au 11/11/2026
 
-Version 2 cliquable publiée, en attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.
+Version 2 cliquable publiée, page pour le prospect refaite dans la direction artistique de dibodev.fr, en attente du retour de Léo. Rien n'est codé côté API, rien n'est envoyé.

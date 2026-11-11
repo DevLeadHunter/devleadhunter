@@ -8,124 +8,153 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500&display=swap">
 <style>
 body{margin:0}
-a{color:#1d1a14}a:hover{color:#1d1a14}
-.sheet{width:390px;min-height:2300px;box-sizing:border-box;padding:36px 24px 48px;background:#fbf9f3;color:#1d1a14;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.6;display:flex;flex-direction:column;gap:36px}
+a{color:#6f5fe0}a:hover{color:#5b4bd0}
+.sheet{width:390px;min-height:3300px;box-sizing:border-box;background:#ffffff;color:#141414;font-family:'Rubik',ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:28px;-webkit-font-smoothing:antialiased}
 .sheet *{box-sizing:border-box}
-.small{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6a6356}
-.headline{margin:12px 0 0;font-size:28px;line-height:1.2;font-weight:600;letter-spacing:-.015em}
-.sheet h2{margin:0 0 12px;font-size:18px;font-weight:600}
 .sheet p{margin:0}
-.soft{color:#5f584c}
-.tinted{padding:20px;border-radius:14px;background:#f1e3da}
-.steps{padding:20px;border-radius:14px;border:1px solid #e1dbcc;display:flex;flex-direction:column;gap:14px}
-.stepline{display:flex;gap:12px;align-items:flex-start}
-.num{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:#1d1a14;color:#fbf9f3;font-family:'IBM Plex Mono',monospace;font-size:13px}
-.pricecard{padding:24px;border-radius:14px;background:#1d1a14;color:#fbf9f3;display:flex;flex-direction:column;gap:14px}
-.amount{font-size:40px;font-weight:600;line-height:1}
-.pricecard .muted{color:#d6d1c4}
-.line{display:flex;gap:10px;align-items:flex-start}
-.ic{width:18px;height:18px;margin-top:4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.green{color:#2a7146}
-.amber{color:#85590c}
-.list{display:flex;flex-direction:column;gap:10px}
-.who{display:flex;align-items:center;gap:14px}
-.avatar{flex:none;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;background:#1d1a14;color:#fbf9f3;font-weight:600}
-.btn{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 20px;border-radius:999px;border:1px solid #1d1a14;background:#1d1a14;color:#fbf9f3;font-size:16px;font-weight:600;text-decoration:none}
-.btn:hover{color:#fbf9f3}
-.btn.ghost{background:transparent;color:#1d1a14;font-weight:500;border-color:#cfc8b6}
-.btn.ghost:hover{color:#1d1a14}
+.band{padding:48px 24px;display:flex;flex-direction:column;gap:24px}
+.band.alt{background:#f6f6f3}
+.hero{padding:56px 24px 48px;display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:12px;line-height:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#6f5fe0}
+.eyebrow.muted{color:#66665f}
+.sheet h1{margin:0;font-size:32px;line-height:1.15;font-weight:500;letter-spacing:-.01em;text-wrap:balance}
+.sheet h2{margin:0;font-size:28px;line-height:1.15;font-weight:500;letter-spacing:-.01em;text-wrap:balance}
+.sheet h3{margin:0;font-size:18px;line-height:1.35;font-weight:500}
+.mark{color:#6f5fe0}
+.soft{color:#4b4b47}
+.small{font-size:15px;line-height:24px;color:#4b4b47}
+.card{display:flex;gap:16px;padding:24px;border:1px solid rgba(20,20,20,.12);border-radius:12px;background:#ffffff}
+.round{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:#e6e1ff;color:#6f5fe0}
+.round.number{width:44px;height:44px;font-size:16px;font-weight:500}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.stack{display:flex;flex-direction:column;gap:16px}
+.offer{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid #6f5fe0;border-radius:12px;background:#ffffff;box-shadow:0 18px 40px rgba(111,95,224,.12)}
+.tag{align-self:flex-start;padding:4px 10px;border-radius:6px;background:#6f5fe0;color:#ffffff;font-size:12px;line-height:16px;font-weight:500}
+.amount{font-size:40px;line-height:1.1;font-weight:500}
+.notes{display:flex;flex-direction:column;gap:12px;padding:24px;border-radius:12px;background:#f5f3ff}
+.noteline{display:flex;align-items:flex-start;gap:12px}
+.noteline .ic{width:20px;height:20px;margin-top:2px;color:#6f5fe0}
+.noteline.watch .ic{color:#66665f}
+.who{display:flex;align-items:center;gap:20px}
+.portrait{position:relative;flex:none;width:104px;height:130px}
+.portrait::before{content:'';position:absolute;top:-10px;left:-10px;width:64px;height:64px;border-radius:14px;background:#e6e1ff}
+.portrait img{position:relative;display:block;width:104px;height:130px;object-fit:cover;border-radius:12px;box-shadow:0 18px 40px rgba(20,20,20,.08)}
+.cta{margin:0 24px 48px;padding:40px 24px;border-radius:16px;background:#e6e1ff;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:14px 24px;border:1px solid transparent;border-radius:8px;background:#6f5fe0;color:#ffffff;font-size:16px;line-height:24px;font-weight:500;text-decoration:none}
+.btn:hover{background:#5b4bd0;color:#ffffff}
+.btn.outlined{border-color:rgba(20,20,20,.22);background:transparent;color:#141414}
+.btn.outlined:hover{background:#f6f6f3;color:#141414}
 </style>
 </helmet>
 <div class="sheet">
-  <header>
-    <span class="small">Pour {{businessName}}</span>
-    <h1 class="headline">{{headline}}</h1>
+  <header class="hero">
+    <p class="eyebrow muted">Pour {{businessName}}</p>
+    <h1>{{titleStart}}<span class="mark">{{titleMark}}</span>{{titleEnd}}</h1>
+    <p class="soft">Bonjour, je suis Léo Guillaume, développeur web à Rennes. J’ai regardé votre site <strong style="font-weight: 500; color: #141414">{{domain}}</strong> comme le ferait un visiteur, sans rien y toucher.</p>
   </header>
 
-  <p>Bonjour, je suis Léo Guillaume, développeur web à Rennes. J’ai regardé votre site <strong>{{domain}}</strong> comme le ferait un visiteur. Je n’ai rien touché, et je n’ai vu que ce que tout le monde peut voir.</p>
-
-  <section>
+  <section class="band alt">
+    <p class="eyebrow">Le constat</p>
     <h2>Ce que j’ai vu</h2>
-    <div class="tinted">
-      <p>{{seen}}</p>
+    <div class="card">
+      <span class="round" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span>
+      <p class="small" style="color: #141414">{{seen}}</p>
     </div>
   </section>
 
-  <section>
+  <section class="band">
+    <p class="eyebrow">Les conséquences</p>
     <h2>Ce que ça change pour vous</h2>
-    <div class="list">
+    <div class="stack">
       <sc-for list="{{changes}}" as="change" hint-placeholder-count="2">
-        <p>{{change.text}}</p>
+        <div class="card">
+          <span class="round" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          <p class="small">{{change.text}}</p>
+        </div>
       </sc-for>
     </div>
   </section>
 
-  <section>
+  <section class="band alt">
+    <p class="eyebrow">La preuve</p>
     <h2>Vérifiez-le vous-même</h2>
-    <div class="steps">
+    <div class="stack">
       <sc-for list="{{proofSteps}}" as="step" hint-placeholder-count="2">
-        <div class="stepline"><span class="num">{{step.number}}</span><p>{{step.text}}</p></div>
+        <div class="card" style="align-items: center">
+          <span class="round number" aria-hidden="true">{{step.number}}</span>
+          <p class="small" style="color: #141414">{{step.text}}</p>
+        </div>
       </sc-for>
     </div>
   </section>
 
-  <section>
+  <section class="band">
+    <p class="eyebrow">Le prix</p>
     <h2>Ce que je vous propose</h2>
-    <div class="pricecard">
-      <p>{{offerLabel}}</p>
+    <div class="offer">
+      <span class="tag">Prix fixe</span>
+      <h3 style="font-size: 16px; color: #4b4b47">{{offerLabel}}</h3>
       <p class="amount">{{price}}</p>
-      <p class="muted">Une seule fois. Vous payez après la correction.</p>
-      <div class="list">
-        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Je fais d’abord une sauvegarde complète.</p></div>
-        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Je travaille sur une copie, pas sur votre site.</p></div>
-        <div class="line"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p>Votre site garde la même présentation.</p></div>
-      </div>
+      <p class="small">Une seule fois. Vous payez après la correction.</p>
+    </div>
+    <div class="notes">
+      <div class="noteline"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg><p class="small">Je fais d’abord une sauvegarde complète.</p></div>
+      <div class="noteline"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg><p class="small">Je travaille sur une copie, pas sur votre site.</p></div>
+      <div class="noteline"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg><p class="small">Votre site garde la même présentation.</p></div>
     </div>
   </section>
 
-  <section>
-    <h2>Le reste de votre site</h2>
-    <p class="soft" style="margin-bottom: 14px">J’ai regardé onze autres points. Voici ce qui va bien.</p>
-    <div class="list">
+  <section class="band alt">
+    <p class="eyebrow">Le reste de votre site</p>
+    <h2>J’ai regardé onze autres points</h2>
+    <div class="card" style="flex-direction: column; gap: 12px">
+      <h3>Ce qui va bien</h3>
       <sc-for list="{{goods}}" as="good" hint-placeholder-count="4">
-        <div class="line green"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><p style="color: #1d1a14">{{good.text}}</p></div>
+        <div class="noteline"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg><p class="small">{{good.text}}</p></div>
       </sc-for>
     </div>
     <sc-if value="{{hasWatches}}" hint-placeholder-val="{{true}}">
-      <p class="soft" style="margin: 20px 0 14px">Et ce qui mérite un coup d’œil, sans urgence.</p>
-      <div class="list">
+      <div class="card" style="flex-direction: column; gap: 12px">
+        <h3>À regarder un jour, sans urgence</h3>
         <sc-for list="{{watches}}" as="watch" hint-placeholder-count="2">
-          <div class="line amber"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg><p style="color: #1d1a14">{{watch.text}}</p></div>
+          <div class="noteline watch"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><p class="small">{{watch.text}}</p></div>
         </sc-for>
       </div>
     </sc-if>
   </section>
 
-  <section>
+  <section class="band">
+    <p class="eyebrow">Qui vous écrit</p>
     <div class="who">
-      <span class="avatar" aria-hidden="true">LG</span>
+      <div class="portrait"><img src="/_blob/35d9e8dc8ed834f54c0fa0b1882150cd" alt="Portrait de Léo Guillaume" width="104" height="130"></div>
       <div>
-        <p style="font-weight: 600">Léo Guillaume</p>
-        <p class="soft" style="font-size: 15px">Développeur web à Rennes · dibodev.fr</p>
+        <h2 style="font-size: 24px">Léo Guillaume</h2>
+        <p class="small" style="margin-top: 6px">Développeur web à Rennes. Je travaille seul, à distance, pour des entreprises comme la vôtre.</p>
       </div>
     </div>
-    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px">
+    <p class="small">Mon site : <a href="https://dibodev.fr" style="font-weight: 500">dibodev.fr</a></p>
+  </section>
+
+  <section class="cta">
+    <h2>Vous voulez que je m’en occupe ?</h2>
+    <p class="small">Répondez à mon message, c’est tout. Et si cela ne vous intéresse pas, dites-le-moi : je ne vous écrirai plus.</p>
+    <div class="stack" style="width: 100%; gap: 12px">
       <a class="btn" href="#repondre">Me répondre</a>
-      <a class="btn ghost" href="#transmettre">Ce n’est pas moi qui gère le site</a>
+      <a class="btn outlined" href="#transmettre">Ce n’est pas moi qui gère le site</a>
     </div>
-    <p class="soft" style="margin-top: 20px; font-size: 15px">Si cela ne vous intéresse pas, dites-le-moi : je ne vous écrirai plus. Cette page n’est visible que par vous.</p>
+    <p class="small" style="font-size: 13px; line-height: 20px">Cette page n’est visible que par vous.</p>
   </section>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"exemple":{"editor":"enum","options":["PHP plus corrigé","Site piraté","Pas de cadenas"],"default":"PHP plus corrigé"},"$preview":{"width":390,"height":2300}}'>
+<script type="text/x-dc" data-dc-script data-props='{"exemple":{"editor":"enum","options":["PHP plus corrigé","Site piraté","Pas de cadenas"],"default":"PHP plus corrigé"},"$preview":{"width":390,"height":3300}}'>
 var EXAMPLES = {
   'PHP plus corrigé': {
     businessName: 'Élagage Renaud',
     domain: 'elagage-renaud.fr',
-    headline: 'Le moteur de votre site n’est plus corrigé depuis 2022.',
+    title: ['Le moteur de votre site n’est plus corrigé ', 'depuis 2022', '.'],
     seen: 'Votre site fonctionne grâce à un logiciel appelé PHP. Le vôtre est en version 7.4. Cette version ne reçoit plus aucun correctif de sécurité depuis novembre 2022.',
     changes: ['Une faille découverte aujourd’hui dans cette version ne sera jamais réparée. C’est une des portes d’entrée habituelles des pirates.', 'Votre hébergeur peut retirer cette version. Le site s’arrêterait alors du jour au lendemain.'],
     proofSteps: ['Appelez votre hébergeur, ou écrivez-lui.', 'Demandez-lui : « Quelle version de PHP fait tourner mon site ? »'],
@@ -137,7 +166,7 @@ var EXAMPLES = {
   'Site piraté': {
     businessName: 'Bellanger Électricité',
     domain: 'bellanger-electricite.fr',
-    headline: 'Votre site contient des liens vers des casinos. Ce n’est pas vous qui les avez mis.',
+    title: ['Votre site contient ', 'des liens vers des casinos', '. Ce n’est pas vous qui les avez mis.'],
     seen: 'Dans le code de votre page d’accueil, il y a des liens cachés vers des sites de casino. Un visiteur ne les voit pas, mais Google les lit. Quelqu’un est entré dans votre site pour les y mettre.',
     changes: ['Google finit par afficher un avertissement à côté de votre nom, ou par retirer votre site de ses résultats.', 'Tant que la porte d’entrée n’est pas refermée, les liens reviennent.'],
     proofSteps: ['Ouvrez Google.', 'Tapez : site:bellanger-electricite.fr casino'],
@@ -149,7 +178,7 @@ var EXAMPLES = {
   'Pas de cadenas': {
     businessName: 'Élagage Tessier',
     domain: 'elagage-tessier.fr',
-    headline: 'Votre site s’ouvre avec la mention « Non sécurisé ».',
+    title: ['Votre site s’ouvre avec la mention ', '« Non sécurisé »', '.'],
     seen: 'Votre site n’a pas le cadenas de sécurité (https). À gauche de votre adresse, le navigateur écrit « Non sécurisé » à chaque visiteur.',
     changes: ['Un visiteur qui lit « Non sécurisé » hésite à vous appeler ou à vous écrire. Certains repartent.', 'Google met en avant les sites qui ont le cadenas.'],
     proofSteps: ['Ouvrez votre site sur votre téléphone.', 'Regardez à gauche de l’adresse : « Non sécurisé ».'],
@@ -163,11 +192,13 @@ var EXAMPLES = {
 class Component extends DCLogic {
   renderVals() {
     var example = EXAMPLES[this.props.exemple ?? 'PHP plus corrigé'] || EXAMPLES['PHP plus corrigé'];
-    var asItems = function (texts) { return texts.map(function (text, index) { return { text: text, number: index + 1 }; }); };
+    var asItems = function (texts) { return texts.map(function (text, index) { return { text: text, number: '0' + (index + 1) }; }); };
     return {
       businessName: example.businessName,
       domain: example.domain,
-      headline: example.headline,
+      titleStart: example.title[0],
+      titleMark: example.title[1],
+      titleEnd: example.title[2],
       seen: example.seen,
       changes: asItems(example.changes),
       proofSteps: asItems(example.proofSteps),
