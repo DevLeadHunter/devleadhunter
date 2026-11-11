@@ -18,7 +18,7 @@
     {
       "key": "site-care",
       "repository": "DevLeadHunter/devleadhunter-module-site-care",
-      "ref": "v1.0.0",
+      "ref": "v1.1.0",
       "python_distribution": "devleadhunter-site-care",
       "layers": ["web", "demo-host"]
     }
