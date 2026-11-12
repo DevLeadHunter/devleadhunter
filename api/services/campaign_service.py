@@ -181,6 +181,10 @@ class CampaignService:
         update_data = campaign_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(campaign, field, value)
+        if campaign.status != previous_status and campaign.scheduled_launch_claimed_at is None:
+            # A scheduled launch belongs to the draft it was set on: kept across a status change, it could fire later.
+            campaign.scheduled_launch_at = None
+            campaign.scheduled_launch_error = None
 
         db.commit()
         db.refresh(campaign)

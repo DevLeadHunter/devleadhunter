@@ -106,6 +106,12 @@ class CampaignSettingsUpdate(BaseModel):
     follow_ups: list[CampaignFollowUpCreate] | None = None
 
 
+class CampaignScheduledLaunchRequest(BaseModel):
+    """Schema for scheduling the launch of a draft campaign (a zoned time is converted to UTC, a naive one is UTC)."""
+
+    scheduled_at: datetime
+
+
 class CampaignProspectAdd(BaseModel):
     """Schema for adding prospects to a campaign."""
 
@@ -197,6 +203,9 @@ class CampaignResponse(CampaignBase):
     include_video: bool = True
     max_emails_per_day: int | None = None
     started_at: datetime | None = None
+    # Scheduled launch of a draft (naive UTC); with ``scheduled_launch_error`` set, the time of a launch that did not start.
+    scheduled_launch_at: datetime | None = None
+    scheduled_launch_error: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
     prospects_count: int = 0

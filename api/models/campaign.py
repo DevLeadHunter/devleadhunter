@@ -105,6 +105,11 @@ class Campaign(Base):
     # SendPolicy cap still applies). Set to 1 to send one métier per day.
     max_emails_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Scheduled launch of a draft, naive UTC; NULL = none. A missed launch keeps its time, next to its reason.
+    scheduled_launch_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Stamped when the launch loop takes a due launch, cleared once it ends: still set at startup = cut by a restart.
+    scheduled_launch_claimed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    scheduled_launch_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)

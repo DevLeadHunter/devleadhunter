@@ -45,6 +45,7 @@ from core.config import settings
 from core.rate_limiter import limiter
 from core.win32_asyncio import ensure_proactor_event_loop
 from services.acquisition_orchestrator import acquisition_orchestrator
+from services.campaign_scheduled_launch_service import campaign_scheduled_launch_service
 from services.cms_invitation_watch_service import cms_invitation_watch_service
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from services.email_queue_worker import email_queue_worker
@@ -152,6 +153,7 @@ async def startup_event() -> None:
         run_send_queue_watchdog_loop(),
         run_sms_automation_loop(),
         scheduled_email_service.run_loop(),
+        campaign_scheduled_launch_service.run_loop(),
         # The loops of the installed product modules, run only while their module is switched on.
         product_module_loop_supervisor.run_forever(),
     ):

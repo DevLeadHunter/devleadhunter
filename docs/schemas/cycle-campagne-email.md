@@ -4,6 +4,15 @@ De la mise en file à la relance, en passant par le test A/B et la fenêtre d'en
 La logique vit dans `api/services/campaign_queue_service.py`, tournée en boucle par
 `api/services/email_queue_worker.py`.
 
+## Lancement programmé
+
+Un brouillon peut démarrer seul à une date et une heure : `PUT /campaigns/{id}/scheduled-launch` programme ou
+déplace le lancement, `DELETE` l'annule. `api/services/campaign_scheduled_launch_service.py` prend chaque lancement
+arrivé à l'heure une seule fois, puis passe par le même lancement que le bouton « Lancer »
+(`api/services/campaign_launch_service.py`) : mêmes refus, mêmes garde-fous à la mise en file, mêmes créneaux.
+Un lancement refusé, ou qui ne met aucun envoi en file, laisse la campagne en brouillon avec sa raison
+(`scheduled_launch_error`) et notifie les administrateurs. Lancer la campagne à la main retire le lancement programmé.
+
 ## Mise en file au lancement
 
 ```mermaid

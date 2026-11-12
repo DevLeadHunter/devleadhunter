@@ -33,6 +33,7 @@ from schemas.campaign import (
     CampaignProspectReorder,
     CampaignProspectResponse,
     CampaignResponse,
+    CampaignScheduledLaunchRequest,
     CampaignSettingsUpdate,
     CampaignSkippedProspect,
     CampaignStats,
@@ -48,8 +49,14 @@ from schemas.campaign_storyblok_spaces import CampaignStoryblokSpacesResponse
 from schemas.campaign_videos import CampaignVideoRequestsCreate, CampaignVideoRequestsResponse, CampaignVideosResponse
 from services.auth_service import get_current_user
 from services.campaign_follow_up_rules import CampaignFollowUpRules
+from services.campaign_launch_service import CampaignLaunchOverrides, campaign_launch_service
 from services.campaign_queue_service import CampaignQueueService, EnqueueResult
 from services.campaign_results_service import campaign_results_service
+from services.campaign_scheduled_launch_service import (
+    CampaignLaunchUnderwayError,
+    CampaignScheduledLaunchError,
+    campaign_scheduled_launch_service,
+)
 from services.campaign_service import campaign_service
 from services.campaign_storyblok_spaces_service import CampaignStoryblokSpacesService
 from services.campaign_videos_service import CampaignVideosService
@@ -103,14 +110,6 @@ def _parse_forecast_start(start: str | None) -> datetime:
     return parsed
 
 
-def _has_resend_config(db: Session, user_id: int) -> bool:
-    """Return True when the user has a Resend API key configured."""
-    from models.resend_config import ResendConfig
-
-    config = db.execute(select(ResendConfig).where(ResendConfig.user_id == user_id)).scalar_one_or_none()
-    return config is not None and bool(config.api_key)
-
-
 def _ab_variants_by_prospect(db: Session, campaign_id: int) -> dict[int, str | None]:
     """Map each prospect to the A/B variant assigned on its initial queue item."""
     rows = db.execute(
@@ -144,6 +143,8 @@ def _detail_response(
         include_video=campaign.include_video,
         max_emails_per_day=campaign.max_emails_per_day,
         started_at=campaign.started_at,
+        scheduled_launch_at=campaign.scheduled_launch_at,
+        scheduled_launch_error=campaign.scheduled_launch_error,
         created_at=campaign.created_at,
         updated_at=campaign.updated_at,
         prospects_count=len(campaign.prospects),
@@ -238,6 +239,18 @@ def _refuse_system_management() -> None:
     )
 
 
+def _drop_scheduled_launch(db: Session, campaign: Campaign) -> None:
+    """Drop the campaign's scheduled launch: cancelled by its owner, or replaced by a start by hand the loop must not repeat.
+
+    Raises:
+        HTTPException: 409 while the launch loop is starting the campaign.
+    """
+    try:
+        campaign_scheduled_launch_service.cancel(db, campaign)
+    except CampaignLaunchUnderwayError as underway:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(underway)) from underway
+
+
 def _offer_skips(result: EnqueueResult) -> list[CampaignOfferSkip]:
     """The prospects each product module's offer left out of the queue, with the module's name."""
     from core.product_modules.registry import product_module_registry
@@ -253,24 +266,6 @@ def _offer_skips(result: EnqueueResult) -> list[CampaignOfferSkip]:
             )
         )
     return skips
-
-
-def _offer_skip_message(db: Session, result: EnqueueResult) -> str:
-    """The end of the launch message for the prospects the product modules' offers left out."""
-    from services.campaign_offers import CampaignOffers
-    from services.product_module_service import product_module_service
-
-    offers = {offer.module_key: offer for offer in CampaignOffers.installed()}
-    message: str = ""
-    for module_key, entries in result.skipped_without_offer.items():
-        offer = offers.get(module_key)
-        if offer is not None and product_module_service.is_enabled(db, module_key):
-            reason: str = offer.missing_offer_launch_summary
-        else:
-            label: str = CampaignOffers.module_label(offer) if offer is not None else module_key
-            reason = f"car le module « {label} » est désactivé"
-        message += f" · {len(entries)} prospect(s) ignoré(s) {reason}"
-    return message
 
 
 @router.post("", response_model=CampaignDetailResponse, status_code=status.HTTP_201_CREATED)
@@ -330,6 +325,8 @@ async def list_campaigns(
                 include_video=c.include_video,
                 max_emails_per_day=c.max_emails_per_day,
                 started_at=c.started_at,
+                scheduled_launch_at=c.scheduled_launch_at,
+                scheduled_launch_error=c.scheduled_launch_error,
                 created_at=c.created_at,
                 updated_at=c.updated_at,
                 prospects_count=len(c.prospects),
@@ -671,89 +668,61 @@ async def launch_campaign(
     if _is_system_auto_relance(campaign):
         _refuse_system_management()
 
-    # SMS campaigns reuse the same queue/scheduler but need an SMS sender, not Resend or a template.
-    if campaign.channel == "sms":
-        from services.sms_config_service import sms_config_service
-
-        sms_config = sms_config_service.get(db, current_user.id)
-        if sms_config is None or not sms_config.sender:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Expéditeur SMS manquant — Paramètres → Relance SMS",
-            )
-        campaign.status = CampaignStatus.ACTIVE.value
-        campaign.started_at = datetime.now(UTC).replace(tzinfo=None)
-        db.commit()
-        result = CampaignQueueService(db).enqueue_campaign(campaign)
-        message = f"{result.enqueued} SMS mis en file"
-        if result.skipped_no_demo:
-            message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
-        message += _offer_skip_message(db, result)
-        if result.skipped_locked:
-            message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
-        return {
-            "success": True,
-            "enqueued": result.enqueued,
-            "skipped_no_demo": result.skipped_no_demo,
-            "skipped_no_video": [],
-            "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
-            "skipped_locked": result.skipped_locked,
-            "message": message,
-        }
-
-    if not _has_resend_config(db, current_user.id):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Configuration Resend manquante — Paramètres → Configuration Resend",
-        )
-
-    # Resolve template: prefer request override, fall back to stored.
-    template_id = launch_data.template_id or campaign.template_id
-    ab_template_id_b = launch_data.ab_template_id_b or campaign.ab_template_id_b
-
-    if not template_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="template_id requis — sélectionnez un template J1",
-        )
-
-    # Persist any runtime overrides on the campaign.
-    campaign.template_id = template_id
-    if ab_template_id_b:
-        campaign.ab_template_id_b = ab_template_id_b
-    campaign.send_delay_minutes = launch_data.send_delay_minutes
-    if launch_data.follow_up_template_id:
-        campaign.follow_up_template_id = launch_data.follow_up_template_id
-        campaign.follow_up_delay_days = launch_data.follow_up_delay_days
-    campaign.status = CampaignStatus.ACTIVE.value
-    campaign.started_at = datetime.now(UTC).replace(tzinfo=None)
-    db.commit()
-
-    queue_service = CampaignQueueService(db)
-    result = queue_service.enqueue_campaign(
-        campaign,
-        template_id=template_id,
-        ab_template_id_b=ab_template_id_b,
+    overrides = CampaignLaunchOverrides(
+        template_id=launch_data.template_id,
+        ab_template_id_b=launch_data.ab_template_id_b,
+        follow_up_template_id=launch_data.follow_up_template_id,
+        follow_up_delay_days=launch_data.follow_up_delay_days,
+        send_delay_minutes=launch_data.send_delay_minutes,
     )
+    refusal: str | None = campaign_launch_service.refusal(db, campaign, overrides)
+    if refusal is not None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=refusal)
+    _drop_scheduled_launch(db, campaign)
+    outcome = campaign_launch_service.launch(db, campaign, overrides)
 
-    ab_info = " (A/B 50/50)" if ab_template_id_b else ""
-    message = f"{result.enqueued} email(s) mis en file{ab_info} — 1 toutes les {campaign.send_delay_minutes} min"
-    if result.skipped_no_demo:
-        message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
-    if result.skipped_no_video:
-        message += f" · {len(result.skipped_no_video)} prospect(s) ignoré(s) faute de vidéo de prospection"
-    message += _offer_skip_message(db, result)
-    if result.skipped_locked:
-        message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
+    result = outcome.enqueue_result
     return {
         "success": True,
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
-        "skipped_no_video": result.skipped_no_video,
+        "skipped_no_video": [] if campaign.channel == "sms" else result.skipped_no_video,
         "skipped_without_offer": [skip.model_dump() for skip in _offer_skips(result)],
         "skipped_locked": result.skipped_locked,
-        "message": message,
+        "message": outcome.message,
     }
+
+
+@router.put("/{campaign_id}/scheduled-launch", response_model=CampaignDetailResponse)
+async def schedule_campaign_launch(
+    campaign_id: int,
+    payload: CampaignScheduledLaunchRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignDetailResponse:
+    """Schedule the launch of a draft campaign at a date and time, or move a launch already scheduled."""
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    if _is_system_auto_relance(campaign):
+        _refuse_system_management()
+    try:
+        campaign_scheduled_launch_service.schedule(db, campaign, payload.scheduled_at)
+    except CampaignLaunchUnderwayError as underway:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(underway)) from underway
+    except CampaignScheduledLaunchError as refusal:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(refusal)) from refusal
+    return _detail_response(db, campaign)
+
+
+@router.delete("/{campaign_id}/scheduled-launch", response_model=CampaignDetailResponse)
+async def cancel_campaign_scheduled_launch(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignDetailResponse:
+    """Cancel the scheduled launch of a campaign; the campaign stays a draft."""
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    _drop_scheduled_launch(db, campaign)
+    return _detail_response(db, campaign)
 
 
 @router.post("/{campaign_id}/pause")
@@ -850,6 +819,7 @@ async def resume_campaign(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Expéditeur SMS manquant — Paramètres → Relance SMS",
             )
+        _drop_scheduled_launch(db, campaign)
         campaign.status = CampaignStatus.ACTIVE.value
         db.commit()
         result = CampaignQueueService(db).enqueue_campaign(campaign)
@@ -866,12 +836,13 @@ async def resume_campaign(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configurez un template J1 avant de reprendre",
         )
-    if not _has_resend_config(db, current_user.id):
+    if not campaign_launch_service.has_resend_config(db, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
 
+    _drop_scheduled_launch(db, campaign)
     campaign.status = CampaignStatus.ACTIVE.value
     db.commit()
 
@@ -902,7 +873,7 @@ async def send_now(
     bypassing the scheduled queue.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
-    if not _has_resend_config(db, current_user.id):
+    if not campaign_launch_service.has_resend_config(db, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
@@ -1074,7 +1045,7 @@ async def resend_queue_item(
             "scheduled_at": planned.scheduled_at.isoformat(),
         }
 
-    if not _has_resend_config(db, current_user.id):
+    if not campaign_launch_service.has_resend_config(db, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
@@ -1112,7 +1083,7 @@ async def backfill_ready_prospects(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="La campagne doit être active pour ajouter des prospects prêts.",
         )
-    if not _has_resend_config(db, current_user.id):
+    if not campaign_launch_service.has_resend_config(db, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
