@@ -66,6 +66,19 @@
             <UIcon name="i-lucide-play" class="mr-1.5 h-4 w-4" />Reprendre
           </button>
           <button
+            v-if="canScheduleLaunch && !campaign.scheduled_launch_at"
+            type="button"
+            :disabled="!canLaunch"
+            class="btn-secondary disabled:cursor-not-allowed disabled:opacity-40"
+            :title="canLaunch ? 'Programmer le lancement' : launchDisabledReason"
+            aria-label="Programmer le lancement"
+            :aria-expanded="isLaunchPickerOpen"
+            @click="isLaunchPickerOpen = !isLaunchPickerOpen"
+          >
+            <UIcon name="i-lucide-calendar-clock" class="h-4 w-4 @xl:mr-1.5" />
+            <span class="hidden @xl:inline">Programmer le lancement</span>
+          </button>
+          <button
             v-if="(campaign.status === 'draft' || campaign.status === 'paused') && !isAutoRelanceCampaign"
             :disabled="!canLaunch"
             class="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
@@ -93,6 +106,16 @@
           </button>
         </div>
       </div>
+
+      <CampaignScheduledLaunchCard
+        v-if="canScheduleLaunch"
+        v-model:is-picker-open="isLaunchPickerOpen"
+        :scheduled-launch-at="campaign.scheduled_launch_at ?? null"
+        :scheduled-launch-error="campaign.scheduled_launch_error ?? null"
+        :is-busy="isSchedulingLaunch"
+        @schedule="handleScheduleLaunch"
+        @cancel="handleCancelScheduledLaunch"
+      />
 
       <UiCallout v-if="isAutoRelanceCampaign" variant="info">
         Cette campagne se remplit toute seule : chaque prospect emailé sans réponse y entre avec son SMS planifié à
@@ -880,7 +903,7 @@ import type {
   CampaignResultsReply,
   CampaignResultsResponse,
 } from '~/types/CampaignResults'
-import { formatCompactDateTime } from '~/utils/date'
+import { formatCompactDateTime, formatScheduledMoment } from '~/utils/date'
 import { ProspectTimezone } from '~/utils/prospectTimezone'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
@@ -971,6 +994,8 @@ const cancelQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const resendQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const isRefreshing: Ref<boolean> = ref(false)
 const isBackfilling: Ref<boolean> = ref(false)
+const isLaunchPickerOpen: Ref<boolean> = ref(false)
+const isSchedulingLaunch: Ref<boolean> = ref(false)
 const autoRefreshTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 /** SMS sender config — loaded only for SMS campaigns, drives the launch precondition + config panel. */
 const smsConfig: Ref<SmsConfig | null> = ref(null)
@@ -1159,6 +1184,21 @@ const launchDisabledReason: ComputedRef<string> = computed((): string =>
 )
 
 const isCampaignActive: ComputedRef<boolean> = computed((): boolean => campaign.value?.status === 'active')
+
+/** Only an operator's draft can be launched at a scheduled time. */
+const canScheduleLaunch: ComputedRef<boolean> = computed(
+  (): boolean => campaign.value?.status === 'draft' && !isAutoRelanceCampaign.value,
+)
+
+const isAwaitingScheduledLaunch: ComputedRef<boolean> = computed(
+  (): boolean =>
+    canScheduleLaunch.value && Boolean(campaign.value?.scheduled_launch_at) && !campaign.value?.scheduled_launch_error,
+)
+
+/** The page follows a running campaign, and a draft about to start by itself. */
+const shouldAutoRefresh: ComputedRef<boolean> = computed(
+  (): boolean => isCampaignActive.value || isAwaitingScheduledLaunch.value,
+)
 const canBackfillReady: ComputedRef<boolean> = computed(
   (): boolean => campaign.value?.status === 'active' && Boolean(campaign.value?.supports_ready_backfill),
 )
@@ -1519,9 +1559,11 @@ function stopAutoRefresh(): void {
   autoRefreshTimer.value = null
 }
 
-/** Refresh as soon as the tab becomes visible again while the campaign is running, to avoid waiting for the next tick. */
+/** Refresh as soon as the tab becomes visible again while the campaign is followed, to avoid waiting for the next tick. */
 function refreshOnTabVisible(): void {
-  if (document.visibilityState === 'visible' && isCampaignActive.value) refreshLiveData()
+  if (document.visibilityState === 'visible' && shouldAutoRefresh.value) {
+    refreshLiveData()
+  }
 }
 
 /** Toggle the per-campaign daily cap: default to 1 send/day when enabling, clear it when disabling. */
@@ -1589,6 +1631,46 @@ async function handleLaunch(): Promise<void> {
     await loadAll()
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Erreur lors du lancement')
+  }
+}
+
+/**
+ * Schedule the launch of the draft at the picked time, or move a launch already scheduled.
+ * @param moment - When the campaign starts by itself.
+ * @returns A promise resolved once the launch time is saved.
+ */
+async function handleScheduleLaunch(moment: Date): Promise<void> {
+  isSchedulingLaunch.value = true
+  try {
+    if (settingsDirty.value) {
+      await saveSettings()
+    }
+
+    campaign.value = await CampaignService.scheduleLaunch(campaignId.value, moment)
+    isLaunchPickerOpen.value = false
+    toast.success(`Lancement programmé ${formatScheduledMoment(moment)}`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la programmation')
+  } finally {
+    isSchedulingLaunch.value = false
+  }
+}
+
+/**
+ * Cancel the scheduled launch (or dismiss a missed one); the campaign stays a draft.
+ * @returns A promise resolved once the scheduled launch is dropped.
+ */
+async function handleCancelScheduledLaunch(): Promise<void> {
+  const hadMissedLaunch: boolean = Boolean(campaign.value?.scheduled_launch_error)
+  isSchedulingLaunch.value = true
+  try {
+    campaign.value = await CampaignService.cancelScheduledLaunch(campaignId.value)
+    isLaunchPickerOpen.value = false
+    toast.success(hadMissedLaunch ? 'Lancement manqué retiré' : 'Lancement programmé annulé')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Erreur lors de l'annulation")
+  } finally {
+    isSchedulingLaunch.value = false
   }
 }
 
@@ -1855,10 +1937,13 @@ watch((): number => drawerStack.campaignsRefreshCounter, loadAll)
 
 watch((): number => drawerStack.campaignResultsRefreshCounter, loadResults)
 
-// Soft auto-refresh: starts while the campaign is running, stops otherwise.
-watch(isCampaignActive, (active: boolean): void => {
-  if (active) startAutoRefresh()
-  else stopAutoRefresh()
+// Soft auto-refresh: starts while the campaign is running or about to start by itself, stops otherwise.
+watch(shouldAutoRefresh, (shouldRefresh: boolean): void => {
+  if (shouldRefresh) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
 })
 
 /** Sending identity — powers the « arrêt automatique à la réponse » assurance line. */

@@ -78,6 +78,9 @@ export type CampaignResponse = {
   include_video: boolean
   max_emails_per_day?: number | null
   started_at?: string | null
+  /** Scheduled launch of a draft (naive UTC); with `scheduled_launch_error` set, the time of a launch that did not start. */
+  scheduled_launch_at?: string | null
+  scheduled_launch_error?: string | null
   created_at: string
   updated_at?: string | null
   prospects_count: number
@@ -350,6 +353,27 @@ export class CampaignService {
    */
   static async launch(campaignId: number, data: CampaignLaunchPayload = {}): Promise<LaunchCampaignResponse> {
     return ApiClient.post<LaunchCampaignResponse>(`/api/v1/campaigns/${campaignId}/launch`, data)
+  }
+
+  /**
+   * Schedule the launch of a draft campaign at a date and time, or move a launch already scheduled.
+   * @param campaignId - Campaign ID.
+   * @param scheduledAt - When the campaign starts by itself.
+   * @returns The campaign with its scheduled launch.
+   */
+  static async scheduleLaunch(campaignId: number, scheduledAt: Date): Promise<CampaignDetailResponse> {
+    return ApiClient.put<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/scheduled-launch`, {
+      scheduled_at: scheduledAt.toISOString(),
+    })
+  }
+
+  /**
+   * Cancel the scheduled launch of a campaign, which stays a draft.
+   * @param campaignId - Campaign ID.
+   * @returns The campaign without any scheduled launch.
+   */
+  static async cancelScheduledLaunch(campaignId: number): Promise<CampaignDetailResponse> {
+    return ApiClient.delete<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/scheduled-launch`)
   }
 
   /**

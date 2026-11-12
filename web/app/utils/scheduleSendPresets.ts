@@ -1,4 +1,4 @@
-import type { ScheduleSendPreset } from '~/types/UiScheduleSendControls'
+import type { ScheduleSendPreset } from '~/types/UiScheduleMomentPicker'
 import { formatScheduledMoment } from '~/utils/date'
 
 const MORNING_HOUR: number = 9
@@ -7,7 +7,7 @@ const MONDAY: number = 1
 /** Before this hour the « next morning » is today's: planning at 1 a.m. targets the coming morning. */
 const NIGHT_END_HOUR: number = 6
 
-/** One-click send times for the « Programmer l'envoi » panel. */
+/** One-click times for the schedule panel (a reply to send, a campaign to launch). */
 export class ScheduleSendPresets {
   /**
    * The presets offered at a given moment: next morning 9:00 and 11:00, then Monday 9:00 when it is another day.

@@ -325,6 +325,23 @@
               <UIcon name="i-lucide-clock" class="h-3 w-3" />
               Prochain envoi · {{ formatNextSend(campaign.next_send_at) }}
             </span>
+            <span
+              v-else-if="campaign.status === 'draft' && campaign.scheduled_launch_at"
+              :class="[
+                '-mt-1 inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-xs',
+                campaign.scheduled_launch_error
+                  ? 'bg-[var(--app-red-soft)] text-[var(--app-red)]'
+                  : 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]',
+              ]"
+              :title="campaign.scheduled_launch_error ?? ''"
+            >
+              <UIcon
+                :name="campaign.scheduled_launch_error ? 'i-lucide-triangle-alert' : 'i-lucide-calendar-clock'"
+                class="h-3 w-3"
+              />
+              {{ campaign.scheduled_launch_error ? 'Lancement manqué' : 'Lancement programmé' }} ·
+              {{ formatNextSend(campaign.scheduled_launch_at) }}
+            </span>
 
             <div v-if="campaign.channel !== 'sms'" class="grid grid-cols-3 gap-3 rounded-lg bg-[var(--app-bg)] p-3">
               <div>
