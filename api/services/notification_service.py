@@ -84,6 +84,8 @@ _EMAIL_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "email_unsubscribed": ("🚫", "warning", "S'est désinscrit de tes emails"),
 }
 
+_MUTED_EMAIL_EVENTS: frozenset[str] = frozenset({"email_sent", "email_delivered"})
+
 # Live demo / video event → (emoji, level, body). Same title convention.
 _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_opened": ("🌐", "success", "Vient d'ouvrir sa démo"),
@@ -153,6 +155,8 @@ class NotificationService:
         """
         Raise a notification for an email lifecycle event.
 
+        A muted event is written to the activity log only: no in-app notification, no push.
+
         Args:
             db: Active database session (to resolve the prospect's name).
             user_id: Owner of the email — the notification recipient.
@@ -189,6 +193,8 @@ class NotificationService:
             entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
+        if event_name in _MUTED_EMAIL_EVENTS:
+            return
         await self._dispatch(
             user_id=user_id,
             category="email",
