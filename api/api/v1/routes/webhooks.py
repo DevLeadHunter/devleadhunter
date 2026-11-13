@@ -73,14 +73,13 @@ _EVENT_STATUS_MAP: dict[str, str] = {
 _EVENT_TIMESTAMP_MAP: dict[str, str] = {
     "email.sent": "sent_at",
     "email.delivered": "delivered_at",
-    "email.delivery_delayed": "delivered_at",
     "email.opened": "opened_at",
     "email.clicked": "clicked_at",
     "email.bounced": "bounced_at",
     "email.complained": "complained_at",
     "email.failed": "failed_at",
     "email.suppressed": "suppressed_at",
-    # email.scheduled has no dedicated timestamp column.
+    # email.scheduled and email.delivery_delayed write no timestamp: a delayed email is not delivered yet.
 }
 
 # Events whose payload carries a human failure reason worth storing on the log.
