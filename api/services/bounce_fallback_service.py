@@ -4,6 +4,7 @@ When a campaign email hard-bounces on a prospect's primary address, we don't wan
 if they have another (not-yet-tried) email, promote it to primary and re-queue the same campaign email
 to it, scheduled on a normal send slot. Always 1-to-1 — never a multi-recipient send. It stops on its
 own once every email has been tried, and never re-sends when a message already reached the prospect.
+The follow-ups armed by the bounced send are held back: the re-sent email arms its own when it leaves.
 
 When every address has bounced with no delivery, the prospect's email is a dead end: we flag it
 ``email_undeliverable`` so the operator sees it and can recover the prospect into an SMS campaign,
@@ -104,6 +105,9 @@ class BounceFallbackService:
             )
         )
         db.commit()
+        from services.campaign_queue_service import CampaignQueueService
+
+        CampaignQueueService(db).hold_back_follow_ups_of_bounced_first_email(campaign.id, prospect.id)
         logger.info(
             "Bounce fallback: prospect_id=%s re-queued to next email after %s bounced",
             prospect.id,
