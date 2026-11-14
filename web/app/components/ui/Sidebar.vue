@@ -150,6 +150,17 @@
         <div class="mb-4">
           <p class="app-label mb-1.5 px-3 !text-[0.6rem]">Réglages</p>
           <div class="space-y-0.5">
+            <NuxtLink
+              v-for="link in moduleSettingsLinks"
+              :key="link.to"
+              :to="link.to"
+              :class="navItemClass(isActive(link.to))"
+              @click="handleClick"
+            >
+              <span :class="navBarClass(isActive(link.to))"></span>
+              <UIcon :name="link.icon" class="h-4 w-4 shrink-0" />
+              <span class="truncate">{{ link.label }}</span>
+            </NuxtLink>
             <button type="button" :class="navItemClass(false)" class="w-full" @click="openSettingsPanel">
               <span :class="navBarClass(false)"></span>
               <UIcon name="i-lucide-settings" class="h-4 w-4 shrink-0" />
@@ -159,10 +170,20 @@
           </div>
         </div>
 
+        <p
+          v-if="moduleStatusLine"
+          class="mt-auto mb-2 flex items-center gap-2.5 rounded-lg bg-[var(--app-bg)] px-3 py-2.5 text-sm text-[var(--app-ink-soft)]"
+          role="status"
+        >
+          <span class="h-2 w-2 shrink-0 rounded-full bg-[var(--app-green)]" aria-hidden="true"></span>
+          <span class="truncate">{{ moduleStatusLine }}</span>
+        </p>
+
         <NuxtLink
           v-if="!isMobile"
           to="/dashboard/buy-credits"
-          class="group mt-auto flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
+          :class="moduleStatusLine ? '' : 'mt-auto'"
+          class="group flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
         >
           <span class="flex flex-col gap-0.5">
             <span class="app-label !text-[0.6rem]">Crédits</span>
@@ -417,12 +438,25 @@ const modules: ComputedRef<DlhModule[]> = computed((): DlhModule[] => moduleStor
 /** Navigation groups of the active module (swaps when the module changes). */
 const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => moduleStore.activeModule.navGroups)
 
+const activeModuleDefinition: ComputedRef<DashboardModuleDefinition | null> = computed(
+  (): DashboardModuleDefinition | null => DashboardModuleRegistry.find(moduleStore.activeKey),
+)
+
+const moduleSettingsLinks: ComputedRef<UiSidebarLink[]> = computed(
+  (): UiSidebarLink[] => activeModuleDefinition.value?.settingsLinks ?? [],
+)
+
+const moduleStatusLine: ComputedRef<string | null> = computed(
+  (): string | null => activeModuleDefinition.value?.sidebarStatus?.read() ?? null,
+)
+
 /** Every navigable path of the active module, used to elect the single highlighted row. */
-const navPaths: ComputedRef<string[]> = computed((): string[] =>
-  navGroups.value.flatMap((group: UiSidebarGroup): string[] =>
+const navPaths: ComputedRef<string[]> = computed((): string[] => [
+  ...navGroups.value.flatMap((group: UiSidebarGroup): string[] =>
     group.links.map((link: UiSidebarLink): string => link.to),
   ),
-)
+  ...moduleSettingsLinks.value.map((link: UiSidebarLink): string => link.to),
+])
 
 /**
  * The one and only menu path highlighted for the current route.
@@ -447,9 +481,8 @@ const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspe
 const counters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>> = computed(
   (): Record<UiSidebarCounterKey, UiSidebarCounter> => {
     const pendingLeadCount: number = prospectSearchStore.pendingCount
-    const moduleDefinition: DashboardModuleDefinition | null = DashboardModuleRegistry.find(moduleStore.activeKey)
     const moduleCounters: Record<UiSidebarCounterKey, UiSidebarCounter> = Object.fromEntries(
-      (moduleDefinition?.sidebarCounters ?? []).map(
+      (activeModuleDefinition.value?.sidebarCounters ?? []).map(
         (counter: DashboardModuleSidebarCounter): [UiSidebarCounterKey, UiSidebarCounter] => [
           counter.key,
           counter.read(),

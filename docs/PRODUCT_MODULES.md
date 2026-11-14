@@ -102,6 +102,22 @@ cœur ne dépend d'aucun fichier de module.
 - Les workflows manuels de la réceptionniste (`gen-demo-assistant`, `prod-receptionist-for-business`,
   `dump-receptionist-targets`) restent dans le cœur, avec les secrets du VPS ; ils importent le paquet du module.
 
+## Module privé
+
+Un module dont le dépôt est privé porte `"private": true` dans `product-modules.json`, comme `missions`.
+GitHub ne donne pas ce dépôt anonymement, donc :
+
+- `product_module_requirements.py` et `productModuleLayers()` le laissent de côté (avec un avertissement), sauf clone
+  local dans `DLH_PRODUCT_MODULES_DIR` : le cœur se construit et se teste sans lui, sur n'importe quelle machine.
+- Les workflows le récupèrent avec **sa clé de déploiement en lecture seule** : secret `MISSIONS_MODULE_DEPLOY_KEY`
+  du cœur, clé publique dans les *Deploy keys* du dépôt du module. `deploy-api.yml` en fait une roue (`pip wheel`)
+  envoyée au VPS avec `api/`, si bien que le serveur ne détient aucune clé ; `deploy-web.yml` et
+  `desktop-release.yml` le clonent dans `web/.private-modules/`, où ses imports se résolvent sur `web/node_modules`.
+- Sans le secret, les déploiements passent **sans le module** (avertissement dans le journal du workflow).
+- Prérequis de l'organisation GitHub : *Settings → Member privileges → Deploy keys → Enabled*.
+- Un autre module privé suit le même schéma : un secret `<MODULE>_MODULE_DEPLOY_KEY` et les mêmes étapes dans les
+  trois workflows.
+
 ## Publier une version d'un module
 
 1. Taguer `main` du dépôt du module (`vX.Y.Z`) et pousser le tag.

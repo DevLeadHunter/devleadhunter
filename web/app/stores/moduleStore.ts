@@ -12,7 +12,7 @@ import type { DashboardModuleDefinition, DlhModule, DlhModuleKey } from '~/types
 import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { ProductModuleService } from '~/services/productModuleService'
 import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
-import { DEFAULT_MODULE_KEY, LOCKED_DASHBOARD_MODULES, WEBSITES_DASHBOARD_MODULE } from '~/utils/dashboardModules'
+import { DEFAULT_MODULE_KEY, WEBSITES_DASHBOARD_MODULE } from '~/utils/dashboardModules'
 
 const STORAGE_KEY: string = 'dlh-active-module'
 
@@ -111,11 +111,6 @@ export const useModuleStore = defineStore('module', () => {
     ...DashboardModuleRegistry.list()
       .filter((definition: DashboardModuleDefinition): boolean => isListedInSwitcher(definition.key))
       .map(toSwitcherEntry),
-  ])
-
-  const switcherModules: ComputedRef<DlhModule[]> = computed((): DlhModule[] => [
-    ...availableModules.value,
-    ...LOCKED_DASHBOARD_MODULES,
   ])
 
   const activeModule: ComputedRef<DlhModule> = computed(
@@ -223,7 +218,7 @@ export const useModuleStore = defineStore('module', () => {
     activeKey,
     enabledModuleKeys,
     availableModules,
-    switcherModules,
+    switcherModules: availableModules,
     activeModule,
     isModuleUsable,
     initFromStorage,

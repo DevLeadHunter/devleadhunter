@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url'
  * `DLH_PRODUCT_MODULES_DISABLED` leaves modules out: `1` builds an app with no module layer at all, the core alone
  * (it checks that the core never depends on a module's files); a comma-separated list of module keys
  * (`apple-wallet`) leaves only those out, e.g. while another module's layer is half-built.
+ *
+ * A module marked `"private": true` lives in a private repository that GitHub does not hand out anonymously: it is
+ * only ever extended from a local clone in `DLH_PRODUCT_MODULES_DIR` (the deploy workflows check it out with its
+ * deploy key). Without that clone the app is built without it, a warning says so.
  */
 
 const repositoryRoot = dirname(fileURLToPath(import.meta.url))
@@ -60,7 +64,8 @@ function readDisabledModules() {
  *
  * @param {'web' | 'demo-host'} app - The app whose layers to list.
  * @returns {string[]} A local path per module when `DLH_PRODUCT_MODULES_DIR` holds its clone, a `github:` source
- *   pinned by tag otherwise; the modules `DLH_PRODUCT_MODULES_DISABLED` names are left out (all of them for `1`).
+ *   pinned by tag otherwise; the modules `DLH_PRODUCT_MODULES_DISABLED` names are left out (all of them for `1`),
+ *   and so is a private module without a local clone.
  */
 export function productModuleLayers(app) {
   const { isEveryModuleDisabled, disabledKeys } = readDisabledModules()
@@ -77,6 +82,10 @@ export function productModuleLayers(app) {
           console.warn(`[product-modules] ${repositoryName}/${app} holds no nuxt.config: « ${module.key} » left out.`)
           return []
         }
+      }
+      if (module.private) {
+        console.warn(`[product-modules] « ${module.key} » is private and has no local clone: left out.`)
+        return []
       }
       return [`github:${module.repository}/${app}#${module.ref}`]
     })

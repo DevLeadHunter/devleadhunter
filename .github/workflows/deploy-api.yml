@@ -39,6 +39,38 @@ jobs:
           python3 api/scripts/product_module_requirements.py > api/product-module-requirements.txt
           cat api/product-module-requirements.txt
 
+      # A private module is checked out here with its own read-only deploy key, then sent to the server as a wheel:
+      # the server never holds a key. Without the key (secret not set), the API deploys without the module.
+      - name: 🔐 Private product modules
+        id: private_modules
+        env:
+          MISSIONS_KEY: ${{ secrets.MISSIONS_MODULE_DEPLOY_KEY }}
+        run: |
+          echo "missions_ref=$(jq -r '.modules[] | select(.key == "missions") | .ref' product-modules.json)" >> "$GITHUB_OUTPUT"
+          if [ -n "$MISSIONS_KEY" ]; then
+            echo "has_missions_key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::MISSIONS_MODULE_DEPLOY_KEY is not set: the API deploys without the Missions module."
+          fi
+
+      - name: 📥 Checkout the Missions module (private)
+        if: steps.private_modules.outputs.has_missions_key == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: DevLeadHunter/devleadhunter-module-missions
+          ref: ${{ steps.private_modules.outputs.missions_ref }}
+          ssh-key: ${{ secrets.MISSIONS_MODULE_DEPLOY_KEY }}
+          path: private-modules/devleadhunter-module-missions
+          sparse-checkout: api
+          persist-credentials: false
+
+      - name: 🛞 Build the private modules' wheels
+        if: steps.private_modules.outputs.has_missions_key == 'true'
+        run: |
+          python3 -m pip install --upgrade pip wheel
+          python3 -m pip wheel --no-deps --wheel-dir api/product-module-wheels private-modules/devleadhunter-module-missions/api
+          ls -la api/product-module-wheels
+
       - name: 🧭 Debug workspace
         run: |
           pwd
@@ -96,6 +128,10 @@ jobs:
             pip install -r api/requirements.txt --no-cache-dir
             # --force-reinstall: pip compares versions, not tags; --no-deps: modules' needs are in api/requirements.txt.
             pip install --force-reinstall --no-deps -r api/product-module-requirements.txt --no-cache-dir
+            # The private modules arrive as wheels built from their checkout (none without their deploy key).
+            if ls api/product-module-wheels/*.whl >/dev/null 2>&1; then
+              pip install --force-reinstall --no-deps api/product-module-wheels/*.whl --no-cache-dir
+            fi
             deactivate
 
       - name: ⚙️ Create .env file (SSH)

@@ -34,6 +34,8 @@ jobs:
     env:
       # The web build fetches the product modules' layers from GitHub: a token lifts the anonymous rate limit.
       GIGET_AUTH: ${{ secrets.GIGET_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      # A private module's layer is checked out there with its deploy key (see the step below).
+      DLH_PRODUCT_MODULES_DIR: ${{ github.workspace }}\web\.private-modules
     defaults:
       run:
         working-directory: web
@@ -51,6 +53,33 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+
+      # A private module's layer is checked out with its own read-only deploy key, inside web/ so that its imports
+      # resolve against web/node_modules. Without the key (secret not set), the app is built without the module.
+      - name: Private product modules
+        id: private_modules
+        shell: pwsh
+        env:
+          MISSIONS_KEY: ${{ secrets.MISSIONS_MODULE_DEPLOY_KEY }}
+        run: |
+          $missions = (Get-Content ../product-modules.json -Raw | ConvertFrom-Json).modules | Where-Object { $_.key -eq 'missions' }
+          "missions_ref=$($missions.ref)" >> $env:GITHUB_OUTPUT
+          if ($env:MISSIONS_KEY) {
+            "has_missions_key=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "::warning::MISSIONS_MODULE_DEPLOY_KEY is not set: the app is built without the Missions module."
+          }
+
+      - name: Checkout the Missions module (private)
+        if: steps.private_modules.outputs.has_missions_key == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: DevLeadHunter/devleadhunter-module-missions
+          ref: ${{ steps.private_modules.outputs.missions_ref }}
+          ssh-key: ${{ secrets.MISSIONS_MODULE_DEPLOY_KEY }}
+          path: web/.private-modules/devleadhunter-module-missions
+          sparse-checkout: web
+          persist-credentials: false
 
       - name: Install frontend dependencies
         run: npm ci

@@ -57,6 +57,11 @@ export type DashboardModuleSidebarCounter = {
   read: () => UiSidebarCounter
 }
 
+/** The very short line a module shows at the bottom of the sidebar (read inside a computed: it may use stores). */
+export type DashboardModuleSidebarStatus = {
+  read: () => string | null
+}
+
 /** What a product module layer registers to appear in the dashboard: switcher entry, navigation, labels of its data. */
 export type DashboardModuleDefinition = {
   key: DlhModuleKey
@@ -65,6 +70,8 @@ export type DashboardModuleDefinition = {
   home: string
   primaryCta: DlhModulePrimaryCta | null
   navGroups: UiSidebarGroup[]
+  settingsLinks?: UiSidebarLink[]
+  sidebarStatus?: DashboardModuleSidebarStatus
   sidebarCounters?: DashboardModuleSidebarCounter[]
   activityCategoryLabels?: Record<string, string>
   orderProductLabels?: Record<string, string>

@@ -7,6 +7,9 @@ Each module's ``api/`` folder is a Python distribution installed from its GitHub
 
 The deploy and desktop-release workflows run it, so ``product-modules.json`` stays the only place a module's version
 is bumped. To work on a module locally, install your clone instead: ``pip install -e ../<module-repo>/api``.
+
+A module marked ``"private": true`` is left out: GitHub does not hand its repository to pip anonymously. The API
+deploy checks it out with its deploy key and sends it to the server as a wheel.
 """
 
 from __future__ import annotations
@@ -26,14 +29,14 @@ def requirement_lines(manifest_path: Path = _MANIFEST) -> list[str]:
         manifest_path: The ``product-modules.json`` to read.
 
     Returns:
-        One ``<distribution> @ git+https://github.com/<repository>@<ref>#subdirectory=api`` line per module.
+        One ``<distribution> @ git+https://github.com/<repository>@<ref>#subdirectory=api`` line per public module.
     """
     manifest: dict[str, list[dict[str, object]]] = json.loads(manifest_path.read_text(encoding="utf-8"))
     return [
         f"{module['python_distribution']} @ git+https://github.com/{module['repository']}@{module['ref']}"
         "#subdirectory=api"
         for module in manifest["modules"]
-        if module.get("python_distribution")
+        if module.get("python_distribution") and not module.get("private")
     ]
 
 

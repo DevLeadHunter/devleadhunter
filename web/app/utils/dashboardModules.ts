@@ -38,18 +38,5 @@ export const WEBSITES_DASHBOARD_MODULE: DlhModule = {
   navGroups: WEBSITES_NAV,
 }
 
-/** A module still to come, last in the switcher: clicking it only announces its arrival. */
-export const LOCKED_DASHBOARD_MODULES: DlhModule[] = [
-  {
-    key: 'freelance-missions',
-    label: 'Missions freelance',
-    icon: 'i-lucide-briefcase-business',
-    locked: true,
-    home: '/dashboard',
-    primaryCta: null,
-    navGroups: [],
-  },
-]
-
 /** The default module when nothing is stored yet (the historical experience). */
 export const DEFAULT_MODULE_KEY: DlhModuleKey = WEBSITES_MODULE_KEY
