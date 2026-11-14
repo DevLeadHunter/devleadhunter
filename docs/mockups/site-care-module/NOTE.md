@@ -120,6 +120,15 @@ Léo, une fois le module allumé et la base française passée (1 111 sites) : �
 - **Ce que l'essai a montré** (Ille-et-Vilaine, lue depuis le poste avant de déployer) : 2 724 sites lus, 385 avec un souci de sécurité (14 %), dont 3 sites piratés ou détournés (liens de paris turcs, page de loterie indonésienne, lien vers un casino en ligne). PHP 7.4 est la version dépassée la plus fréquente, puis PHP 8.2 (fin le 31 décembre 2026) et PHP 8.0.
 - **Limites dites** : pas l'outre-mer ; une recherche garde 2 000 sites au plus ; les sites qui bloquent les lecteurs automatiques sortent « à revoir » et ne sont pas gardés.
 
-## État au 11/11/2026
+## Version 1.1.1 : « piraté » seulement quand les liens sont cachés (14/11/2026)
 
-Module codé, relu et déployé en production le 11/11 au soir, coupé par défaut, puis allumé le soir même à la demande de Léo. Version 1.1.0 déployée dans la foulée (cœur `18ae6f64`). Rien n'a été envoyé à personne. Le seuil du test à la main (début décembre) reste le juge de la suite.
+Avant d'écrire aux 22 sites que le module disait « piratés », Léo a demandé de les vérifier un par un. Résultat : 5 vrais piratages (liens ou texte de casino cachés au visiteur sur le site de l'entreprise) et 17 adresses qui ne sont plus à l'entreprise (nom de domaine perdu qui renvoie vers un site de jeux étranger, site refait par un vendeur de liens sur un nom repris, adresse d'un réseau). Le module concluait « piraté » dès qu'il voyait un lien de jeux d'argent : faux trois fois sur quatre.
+
+- **Nouvelle règle** : « piraté » seulement quand un lien de jeux est caché au visiteur (bloc non affiché, de taille nulle ou poussé hors de l'écran).
+- **Jeux montrés ouvertement** (l'adresse renvoie vers un site de jeux sur un autre domaine, le titre de la page vend des jeux, un lien de casino est laissé visible) : le site est rangé « À revoir » avec ce qui a été vu, et aucun message ne peut partir de sa fiche.
+- **Veille** : elle n'annonce plus « Un site piraté » pour un site qui ne l'est plus.
+- **Vérifié** : la règle a été repassée sur les 22 vrais sites avant le déploiement (même verdict que la vérification à la main), puis les 22 ont été recontrôlés en production : 5 « Site piraté », 17 « À revoir ».
+
+## État au 14/11/2026
+
+Module codé, relu et déployé en production le 11/11 au soir, coupé par défaut, puis allumé le soir même à la demande de Léo. Version 1.1.0 déployée dans la foulée (cœur `18ae6f64`), version 1.1.1 le 14/11 (cœur `76ea1881`). Au 14/11 : 2 865 sites dans le module (la base du compte, la Bretagne et quatre départements voisins), dont 5 piratés, 1 221 en version de PHP ou de WordPress qui n'est plus suivie et 316 en PHP 8.2. Rien n'a été envoyé à personne. Le seuil du test à la main (début décembre) reste le juge de la suite.
