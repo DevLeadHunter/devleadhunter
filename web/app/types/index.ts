@@ -1,3 +1,5 @@
+import type { ProductModuleKey } from '~/types/ProductModule'
+
 /** Mirrors the backend ``Source`` enum ; ``all`` is a filter-only sentinel, never stored. */
 export type ProspectSource =
   | 'google'
@@ -493,6 +495,7 @@ export type EmailTemplate = {
   is_library?: boolean
   is_fork?: boolean
   library_source_id?: number | null
+  module: ProductModuleKey
   created_at: string
   updated_at?: string | null
 }

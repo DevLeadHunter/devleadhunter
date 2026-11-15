@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from enums.email_status import EmailStatus
+from models.campaign import Campaign
 from models.email_log import EmailLog
 from models.user import User
 from schemas.email_sending import (
@@ -34,6 +35,7 @@ from services.campaign_queue_service import CampaignQueueService
 from services.conversation_service import conversation_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 from services.email_sending_service import EmailSendingService
+from services.product_module_service import product_module_service
 from services.prospect_service import prospect_service
 from services.resend_status_sync import ResendStatusSync
 from services.scheduled_email_service import ScheduledEmailError, scheduled_email_service
@@ -165,12 +167,32 @@ class QuickSendRequest(BaseModel):
     prospect_id: str | None = None
     campaign_id: str | None = None
     signature_id: int | None = None
+    module_key: str | None = None
 
 
 class ResendEmailLogRequest(BaseModel):
     """Payload for POST /emails/logs/{log_id}/resend — optional address to send to instead."""
 
     email: str | None = None
+
+
+def _quick_send_module_key(db: Session, payload: QuickSendRequest, *, user_id: int) -> str | None:
+    """
+    The module a hand-written email is filed under: its campaign's, else the module open in the dashboard.
+
+    Args:
+        db: Active database session.
+        payload: The email being sent.
+        user_id: The sender.
+
+    Returns:
+        The module key, or None to leave the email to the websites module (no module named, or one switched off).
+    """
+    if payload.campaign_id:
+        campaign: Campaign | None = db.get(Campaign, int(payload.campaign_id))
+        if campaign is not None and campaign.user_id == user_id and campaign.channel != "sms":
+            return CampaignQueueService(db).email_campaign_module_key(campaign)
+    return product_module_service.enabled_key(db, payload.module_key)
 
 
 @router.post("/quick-send", response_model=SendEmailResponse)
@@ -231,6 +253,7 @@ async def quick_send_email(
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,
         bcc=bcc,
+        module_key=_quick_send_module_key(db, payload, user_id=current_user.id),
     )
     # A manual contact supersedes the campaigns: hold back every pending send of this prospect.
     if result.get("success") and payload.prospect_id:
@@ -249,6 +272,7 @@ async def get_email_logs(
     campaign_id: str = Query(None, description="Filter by campaign ID"),
     prospect_id: str = Query(None, description="Filter by prospect ID"),
     status_filter: EmailStatus = Query(None, alias="status", description="Filter by status"),
+    module_key: str = Query(None, description="Keep the emails filed under this module"),
     limit: int = Query(50, ge=1, le=1000, description="Number of logs to return"),
     offset: int = Query(0, ge=0, description="Number of logs to skip"),
     current_user: User = Depends(get_current_user),
@@ -266,6 +290,8 @@ async def get_email_logs(
         stmt = stmt.where(EmailLog.prospect_id == prospect_id)
     if status_filter:
         stmt = stmt.where(EmailLog.status == status_filter.value)
+    if module_key:
+        stmt = stmt.where(EmailLog.module_key == module_key)
 
     # Get total count
     count_stmt = select(func.count()).select_from(stmt.subquery())
@@ -362,6 +388,7 @@ async def resend_email_log(
         prospect_id=prospect_id,
         campaign_id=str(log.campaign_id) if log.campaign_id else None,
         bcc=bcc,
+        module_key=log.module_key,
     )
 
 
@@ -388,14 +415,15 @@ async def get_conversation(
 
 @router.get("/replies/pending", response_model=PendingRepliesResponse)
 async def get_pending_replies(
+    module_key: str = Query(None, description="Keep what waits in this module"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PendingRepliesResponse:
     """The « à traiter » queue: human replies + demo messages (email prospects), newest first."""
     from services.demo_lead_inbox_service import demo_lead_inbox_service
 
-    items = conversation_service.pending_replies(db, current_user.id)
-    items.extend(demo_lead_inbox_service.pending_items(db, current_user.id, "email"))
+    items = conversation_service.pending_replies(db, current_user.id, module_key=module_key)
+    items.extend(demo_lead_inbox_service.pending_items(db, current_user.id, "email", module_key=module_key))
     items.sort(key=lambda row: row.get("received_at") or "", reverse=True)
     return PendingRepliesResponse(count=len(items), items=items)
 
@@ -561,6 +589,7 @@ async def send_scheduled_email_now(
 @router.get("/stats", response_model=EmailStatsResponse)
 async def get_email_stats(
     campaign_id: str = Query(None, description="Filter by campaign ID"),
+    module_key: str = Query(None, description="Keep the emails filed under this module"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -570,6 +599,8 @@ async def get_email_stats(
     filters: list[object] = [EmailLog.user_id == current_user.id]
     if campaign_id:
         filters.append(EmailLog.campaign_id == campaign_id)
+    if module_key:
+        filters.append(EmailLog.module_key == module_key)
 
     counts = aggregate_email_log_counts(db, *filters)
     rates = compute_engagement_rates(counts)

@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div v-else-if="emailTemplates.length === 0" class="card px-6 py-12 text-center">
+    <div v-else-if="moduleTemplates.length === 0" class="card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun modèle d'email</h3>
       <p class="text-muted mx-auto mt-2 max-w-sm text-sm leading-relaxed">
@@ -198,6 +198,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 import {
   EMAIL_TEMPLATE_CATEGORIES,
   EMAIL_TEMPLATE_CATEGORY_LABELS,
@@ -215,6 +216,8 @@ const toast: UseToastReturn = useToast()
 /** Persistent drawer stack (create/edit/preview live there). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+
 const emailTemplates: Ref<EmailTemplate[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
 const searchQuery: Ref<string> = ref('')
@@ -226,9 +229,19 @@ const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref(nu
 /** Sequence step currently displayed. */
 const activeCategory: Ref<EmailTemplateCategory> = ref('first_email')
 
+const hasOpenModuleOwnTemplates: ComputedRef<boolean> = computed((): boolean =>
+  moduleStore.hasEmailTemplates(moduleStore.activeKey),
+)
+
+const moduleTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] =>
+  hasOpenModuleOwnTemplates.value
+    ? emailTemplates.value.filter((template: EmailTemplate): boolean => template.module === moduleStore.activeKey)
+    : emailTemplates.value,
+)
+
 /** Templates of the active tab only, before the search filter. */
 const categoryTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] =>
-  emailTemplates.value.filter((template: EmailTemplate): boolean => template.category === activeCategory.value),
+  moduleTemplates.value.filter((template: EmailTemplate): boolean => template.category === activeCategory.value),
 )
 
 /** One tab per sequence step, each badged with how many active templates it holds. */
@@ -237,7 +250,7 @@ const categoryTabs: ComputedRef<UiFilterTab[]> = computed((): UiFilterTab[] =>
     (category: EmailTemplateCategory): UiFilterTab => ({
       key: category,
       label: EMAIL_TEMPLATE_CATEGORY_LABELS[category],
-      count: emailTemplates.value.filter(
+      count: moduleTemplates.value.filter(
         (template: EmailTemplate): boolean => template.category === category && template.is_active,
       ).length,
     }),

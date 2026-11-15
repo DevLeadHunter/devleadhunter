@@ -1,11 +1,16 @@
 import type { ProductModuleKey } from '~/types/ProductModule'
 
+export type SettingsPageRequiredModuleFeature = 'email-templates' | 'sms-templates' | 'presenter-video'
+
 export type SettingsNavLink = {
   to: string
   label: string
   icon: string
   adminOnly?: boolean
   superAdminOnly?: boolean
+  requiredModuleFeature?: SettingsPageRequiredModuleFeature
+  labelOutsideWebsitesModule?: string
+  ownerModuleKey?: ProductModuleKey
 }
 
 export type SettingsNavGroup = {

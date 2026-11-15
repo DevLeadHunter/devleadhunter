@@ -2,6 +2,8 @@ import type { ComponentPublicInstance, ComputedRef, MaybeRefOrGetter, Ref, Style
 import type { LoginCredentials, SignupPayload, User } from '~/types'
 import type { AtelierSheetSize, AtelierTool } from '~/types/AtelierToolSheet'
 import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
+import type { UiMobileTabBarNavigation } from '~/types/UiMobileTabBar'
+import type { UiSidebarCounter, UiSidebarCounterKey, UiSidebarGroup, UiSidebarLink } from '~/types/UiSidebar'
 
 export type UseAuthReturn = {
   login: (credentials: LoginCredentials) => Promise<void>
@@ -181,4 +183,11 @@ export type UseAtelierToolSheetReturn<TKey extends string> = {
   endSheetDrag: (event: PointerEvent) => void
   cancelSheetDrag: () => void
   toggleSheetSize: () => void
+}
+
+export type UseModuleNavigationReturn = {
+  navGroups: ComputedRef<UiSidebarGroup[]>
+  moduleSettingsLinks: ComputedRef<UiSidebarLink[]>
+  counters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>>
+  tabBar: ComputedRef<UiMobileTabBarNavigation>
 }

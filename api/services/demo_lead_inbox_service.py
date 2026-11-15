@@ -13,6 +13,7 @@ from typing import Any, Literal
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from core.product_modules.contract import WEBSITES_MODULE_KEY
 from models.demo_site_lead import LEAD_STATUS_SUBMITTED, DemoSiteLead
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
@@ -51,7 +52,24 @@ class DemoLeadInboxService:
             .limit(1)
         ).scalar_one_or_none()
 
-    def pending_items(self, db: Session, user_id: int, channel: DemoInboxChannel) -> list[dict[str, Any]]:
+    def pending_items(
+        self, db: Session, user_id: int, channel: DemoInboxChannel, *, module_key: str | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        The demo-site messages still awaiting an answer, for the prospects of one contact channel.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the demo sites.
+            channel: Keep the prospects answered by email, or those answered by SMS.
+            module_key: The module whose queue is read; None reads it whatever the module.
+
+        Returns:
+            One item per pending message; none for another module than the websites one, which owns the
+            demo sites.
+        """
+        if module_key is not None and module_key != WEBSITES_MODULE_KEY:
+            return []
         rows = self._pending_rows(db, user_id)
         prospect_ids = [row.prospect_id for row in rows if row.prospect_id]
         prospects: dict[int, ProspectDB] = {}

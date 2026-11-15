@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class EnabledProductModuleResponse(BaseModel):
     """A module the dashboard may show: installed and switched on."""
 
-    model_config = ConfigDict(from_attributes=True)
-
     key: str
     label: str
+    has_email_templates: bool = Field(description="True when email templates can sell the module's offer")
+    has_sms_templates: bool = Field(description="True when the module adds SMS templates to the library")
 
 
 class ProductModuleStatusResponse(BaseModel):

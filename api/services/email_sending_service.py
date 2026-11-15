@@ -8,6 +8,8 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.product_modules.contract import WEBSITES_MODULE_KEY
+from core.product_modules.module_at_work import ModuleAtWork
 from enums.email_status import EmailStatus
 from enums.sending_provider import SendingProvider
 from models.email_account import EmailAccount
@@ -210,6 +212,7 @@ class EmailSendingService:
         is_transactional: bool = False,
         is_conversation_reply: bool = False,
         thread_headers: dict[str, str] | None = None,
+        module_key: str | None = None,
     ) -> dict:
         """
         Send an email via the user's active sending identity (Resend or Gmail).
@@ -243,6 +246,8 @@ class EmailSendingService:
                              Reply-To IS kept so the next answer comes back too.
             thread_headers:  RFC threading headers (``In-Reply-To`` / ``References``)
                              so the answer lands in the prospect's existing thread.
+            module_key:      The module the email is filed under; left out, the module at
+                             work (a module's own route or loop), else the websites module.
 
         Returns:
             Dict with ``success``, ``email_log_id`` and ``message_id`` / ``error``.
@@ -300,6 +305,7 @@ class EmailSendingService:
             provider=identity.provider,
             ab_variant=ab_variant,
             is_conversation_reply=is_conversation_reply,
+            module_key=module_key or ModuleAtWork.key() or WEBSITES_MODULE_KEY,
         )
         self.db.add(email_log)
         self.db.commit()

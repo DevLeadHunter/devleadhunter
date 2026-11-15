@@ -69,6 +69,19 @@ class ProductModuleService:
         state: ProductModuleState | None = db.get(ProductModuleState, key)
         return state.is_enabled if state is not None else module.enabled_by_default
 
+    def enabled_key(self, db: Session, key: str | None) -> str | None:
+        """
+        The module key a request names, when that module may run.
+
+        Args:
+            db: Active database session.
+            key: The module key the request names, if any.
+
+        Returns:
+            The key, or None when the request names no module or one that is not switched on.
+        """
+        return key if key and self.is_enabled(db, key) else None
+
     def enabled_modules(self, db: Session) -> list[ProductModule]:
         """
         The installed modules that are switched on.

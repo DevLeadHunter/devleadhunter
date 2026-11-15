@@ -137,6 +137,7 @@ import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import { computed, ref, watch } from 'vue'
 import { SmsService } from '~/services/smsService'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useToast } from '~/composables/useToast'
 import { ProspectCountries } from '~/utils/prospectCountries'
 
@@ -162,6 +163,8 @@ const props: UiSendSmsDrawerProps = defineProps({
 const emit: EmitFn<UiSendSmsDrawerEmits> = defineEmits<UiSendSmsDrawerEmits>()
 
 const toast: UseToastReturn = useToast()
+
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
 const SEGMENT_COUNT_DELAY_MILLISECONDS: number = 300
 
@@ -312,6 +315,7 @@ async function handleSend(): Promise<void> {
       text: form.value.text,
       prospect_id: props.prospect?.id ?? null,
       recipient_name: form.value.recipient_name || null,
+      module_key: moduleStore.activeKey,
     })
     if (result.sent) {
       toast.success('SMS envoyé')

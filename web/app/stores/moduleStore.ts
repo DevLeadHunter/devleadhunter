@@ -13,6 +13,7 @@ import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { ProductModuleService } from '~/services/productModuleService'
 import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
 import { DEFAULT_MODULE_KEY, WEBSITES_DASHBOARD_MODULE } from '~/utils/dashboardModules'
+import { ModuleNavigation } from '~/utils/moduleNavigation'
 
 const STORAGE_KEY: string = 'dlh-active-module'
 
@@ -63,7 +64,7 @@ function toSwitcherEntry(definition: DashboardModuleDefinition): DlhModule {
     locked: false,
     home: definition.home,
     primaryCta: definition.primaryCta,
-    navGroups: definition.navGroups,
+    navGroups: ModuleNavigation.removeWebsitesDashboardLink(definition.navGroups),
   }
 }
 
@@ -72,11 +73,18 @@ function toSwitcherEntry(definition: DashboardModuleDefinition): DlhModule {
 export const useModuleStore = defineStore('module', () => {
   const activeKey: Ref<DlhModuleKey> = ref(DEFAULT_MODULE_KEY)
 
-  /** Keys of the modules the API lists as switched on; null until it answered. */
-  const enabledModuleKeys: Ref<DlhModuleKey[] | null> = ref(null)
+  /** The modules the API lists as switched on; null until it answered. */
+  const enabledModules: Ref<EnabledProductModule[] | null> = ref(null)
+
+  const enabledModuleKeys: ComputedRef<DlhModuleKey[] | null> = computed(
+    (): DlhModuleKey[] | null =>
+      enabledModules.value?.map((module: EnabledProductModule): DlhModuleKey => module.key) ?? null,
+  )
 
   /** The request under way for the enabled modules, shared by every caller. */
   let enabledModulesRequest: Promise<void> | null = null
+
+  let hasReadStoredModule: boolean = false
 
   /**
    * Whether a module's drawers, blocks and settings show: a registered module does unless the API lists it as off.
@@ -92,6 +100,48 @@ export const useModuleStore = defineStore('module', () => {
       return false
     }
     return enabledModuleKeys.value === null || enabledModuleKeys.value.includes(key)
+  }
+
+  /**
+   * What the API says of a module switched on.
+   * @param key - The module key.
+   * @returns The module, or undefined while the API has not answered or does not list it.
+   */
+  function findEnabledModule(key: DlhModuleKey): EnabledProductModule | undefined {
+    return enabledModules.value?.find((module: EnabledProductModule): boolean => module.key === key)
+  }
+
+  /**
+   * Whether a module has email templates of its own (the websites module always does).
+   * @param key - The module key.
+   * @returns What the API says; true while it has not answered, so the pages show as they always did.
+   */
+  function hasEmailTemplates(key: DlhModuleKey): boolean {
+    if (key === WEBSITES_MODULE_KEY) {
+      return true
+    }
+    return findEnabledModule(key)?.has_email_templates ?? true
+  }
+
+  /**
+   * Whether a module has SMS templates of its own (the websites module always does).
+   * @param key - The module key.
+   * @returns What the API says; true while it has not answered, so the pages show as they always did.
+   */
+  function hasSmsTemplates(key: DlhModuleKey): boolean {
+    if (key === WEBSITES_MODULE_KEY) {
+      return true
+    }
+    return findEnabledModule(key)?.has_sms_templates ?? true
+  }
+
+  /**
+   * Whether the SMS settings page of a module only names its sender: the 30-day relance is the websites module's.
+   * @param key - The module key.
+   * @returns True for another module than the websites one that has SMS templates.
+   */
+  function isSmsPageLimitedToSenderName(key: DlhModuleKey): boolean {
+    return key !== WEBSITES_MODULE_KEY && hasSmsTemplates(key)
   }
 
   /**
@@ -139,6 +189,10 @@ export const useModuleStore = defineStore('module', () => {
 
   /** Restore the persisted module (called once on the client after hydration). */
   function initFromStorage(): void {
+    if (!import.meta.client || hasReadStoredModule) {
+      return
+    }
+    hasReadStoredModule = true
     const stored: DlhModuleKey | null = readStoredModuleKey()
     const isStoredUsable: boolean =
       stored !== null &&
@@ -168,8 +222,7 @@ export const useModuleStore = defineStore('module', () => {
    */
   async function loadEnabledModules(): Promise<void> {
     try {
-      const modules: EnabledProductModule[] = await ProductModuleService.listEnabled()
-      enabledModuleKeys.value = modules.map((module: EnabledProductModule): DlhModuleKey => module.key)
+      enabledModules.value = await ProductModuleService.listEnabled()
     } catch {
       // The API could not tell: the registered modules stay as they are until the next load.
     }
@@ -180,7 +233,7 @@ export const useModuleStore = defineStore('module', () => {
    * @returns A promise resolved once they are known, or the attempt failed.
    */
   function ensureEnabledModulesLoaded(): Promise<void> {
-    if (enabledModuleKeys.value !== null) {
+    if (enabledModules.value !== null) {
       return Promise.resolve()
     }
     enabledModulesRequest ??= loadEnabledModules().finally((): void => {
@@ -221,6 +274,9 @@ export const useModuleStore = defineStore('module', () => {
     switcherModules: availableModules,
     activeModule,
     isModuleUsable,
+    hasEmailTemplates,
+    hasSmsTemplates,
+    isSmsPageLimitedToSenderName,
     initFromStorage,
     setModule,
     ensureEnabledModulesLoaded,

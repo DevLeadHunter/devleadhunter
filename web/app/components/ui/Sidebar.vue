@@ -320,15 +320,18 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseAuthReturn, UseDesktopRuntimeReturn, UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
+import type {
+  UseAuthReturn,
+  UseDesktopRuntimeReturn,
+  UseModuleNavigationReturn,
+  UseProfilePhotoReturn,
+  UseToastReturn,
+} from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type {
   DashboardModuleDefinition,
-  DashboardModuleSidebarCounter,
   DlhModule,
-  UiSidebarCounter,
-  UiSidebarCounterKey,
   UiSidebarGroup,
   UiSidebarLink,
   UiSidebarProps,
@@ -336,12 +339,13 @@ import type {
 import { ref, computed, onMounted } from 'vue'
 import { useModuleStore } from '~/stores/moduleStore'
 import { DashboardModuleRegistry } from '~/utils/dashboardModuleRegistry'
+import { ModuleNavigation } from '~/utils/moduleNavigation'
 import { useUserStore } from '~/stores/user'
 import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { useProspectSearchStore } from '~/stores/prospectSearch'
+import { useModuleNavigation } from '~/composables/useModuleNavigation'
 import { useToast } from '~/composables/useToast'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
 import { useProfilePhoto } from '~/composables/useProfilePhoto'
@@ -435,15 +439,10 @@ const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 /** Product modules of the shell, for the top-left switcher. */
 const modules: ComputedRef<DlhModule[]> = computed((): DlhModule[] => moduleStore.switcherModules)
 
-/** Navigation groups of the active module (swaps when the module changes). */
-const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => moduleStore.activeModule.navGroups)
+const { navGroups, moduleSettingsLinks, counters }: UseModuleNavigationReturn = useModuleNavigation()
 
 const activeModuleDefinition: ComputedRef<DashboardModuleDefinition | null> = computed(
   (): DashboardModuleDefinition | null => DashboardModuleRegistry.find(moduleStore.activeKey),
-)
-
-const moduleSettingsLinks: ComputedRef<UiSidebarLink[]> = computed(
-  (): UiSidebarLink[] => activeModuleDefinition.value?.settingsLinks ?? [],
 )
 
 const moduleStatusLine: ComputedRef<string | null> = computed(
@@ -467,37 +466,8 @@ const activeNavPath: ComputedRef<string | null> = computed((): string | null => 
   if (route.path === '/dashboard/automations/new') {
     return route.query.from === 'sites' ? '/dashboard/demo-sites' : '/dashboard/automations'
   }
-  // Longest match wins, so a sub-route never lights up its parent section too.
-  return navPaths.value.reduce((best: string | null, candidate: string): string | null => {
-    const matches: boolean =
-      route.path === candidate || (candidate !== '/dashboard' && route.path.startsWith(candidate + '/'))
-    if (!matches) return best
-    return best === null || candidate.length > best.length ? candidate : best
-  }, null)
+  return ModuleNavigation.electActivePath(route.path, navPaths.value)
 })
-
-const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
-
-const counters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>> = computed(
-  (): Record<UiSidebarCounterKey, UiSidebarCounter> => {
-    const pendingLeadCount: number = prospectSearchStore.pendingCount
-    const moduleCounters: Record<UiSidebarCounterKey, UiSidebarCounter> = Object.fromEntries(
-      (activeModuleDefinition.value?.sidebarCounters ?? []).map(
-        (counter: DashboardModuleSidebarCounter): [UiSidebarCounterKey, UiSidebarCounter] => [
-          counter.key,
-          counter.read(),
-        ],
-      ),
-    )
-    return {
-      pendingLeads: {
-        count: pendingLeadCount,
-        description: pendingLeadCount > 1 ? `${pendingLeadCount} leads à valider` : '1 lead à valider',
-      },
-      ...moduleCounters,
-    }
-  },
-)
 
 /** The active module (drives the switcher label and the primary CTA). */
 const activeModule: ComputedRef<DlhModule> = computed((): DlhModule => moduleStore.activeModule)

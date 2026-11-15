@@ -16,6 +16,7 @@ from schemas.product_module import (
     ProductModuleSwitchRequest,
 )
 from services.auth_service import get_current_active_user, require_super_admin
+from services.campaign_offers import CampaignOffers
 from services.product_module_service import (
     BaseModuleNotSwitchableError,
     ProductModuleNotInstalledError,
@@ -31,9 +32,15 @@ async def list_enabled_product_modules(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[EnabledProductModuleResponse]:
-    """The optional modules installed and switched on, for the module switcher of the dashboard."""
+    """The optional modules installed and switched on, with what each one writes, for the dashboard's menus."""
     return [
-        EnabledProductModuleResponse.model_validate(module) for module in product_module_service.enabled_modules(db)
+        EnabledProductModuleResponse(
+            key=module.key,
+            label=module.label,
+            has_email_templates=CampaignOffers.has_email_templates(module),
+            has_sms_templates=CampaignOffers.has_sms_templates(module),
+        )
+        for module in product_module_service.enabled_modules(db)
     ]
 
 

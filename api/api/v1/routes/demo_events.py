@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.product_modules.module_at_work import ModuleAtWork
 from core.product_modules.registry import product_module_registry
 from enums.demo_site_status import DemoSiteStatus
 from models.demo_site import DemoSite
@@ -114,7 +115,8 @@ async def ingest_demo_event(payload: DemoEventIn, db: Session = Depends(get_db))
         prefix: str | None = product_module.demo_beacon_prefix
         if prefix and payload.event.startswith(prefix):
             if product_module_service.is_enabled(db, product_module.key):
-                await product_module.handle_demo_beacon(db, payload)
+                with ModuleAtWork.during(product_module.key):
+                    await product_module.handle_demo_beacon(db, payload)
             return
     site = db.execute(
         select(DemoSite).where(

@@ -164,11 +164,13 @@ import { formatEuros } from '~/utils/currency'
 import { formatCompactDateTime } from '~/utils/date'
 import { isPlatformAdmin } from '~/utils/userRoles'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
 /** Persistent drawer stack (the SMS composer lives there). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 const toast: UseToastReturn = useToast()
 /** Current user — the smsmode balance is an account-level fact, admins only. */
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
@@ -249,22 +251,21 @@ async function markPendingReplyHandled(item: PendingReply): Promise<void> {
   }
 }
 
-/** Refresh the « à traiter » queue for SMS-only prospects. */
+/** Refresh the open module's « à traiter » queue for SMS-only prospects. */
 async function loadPendingReplies(): Promise<void> {
-  pendingReplies.value = await SmsService.getPendingReplies().catch((): { count: number; items: PendingReply[] } => ({
-    count: 0,
-    items: [],
-  }))
+  pendingReplies.value = await SmsService.getPendingReplies(moduleStore.activeKey).catch(
+    (): { count: number; items: PendingReply[] } => ({ count: 0, items: [] }),
+  )
 }
 
-/** Fetch SMS history, stats and the pending demo-message queue. */
+/** Fetch the open module's SMS history, stats and the pending demo-message queue. */
 async function loadAll(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
     const [list, statsRes]: [SmsMessagesResponse, SmsStats] = await Promise.all([
-      SmsService.listMessages(500),
-      SmsService.getStats(),
+      SmsService.listMessages(moduleStore.activeKey),
+      SmsService.getStats(moduleStore.activeKey),
     ])
     messages.value = list.messages
     stats.value = statsRes

@@ -9,6 +9,7 @@ from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
+from core.product_modules.contract import WEBSITES_MODULE_KEY
 from enums.email_status import EmailStatus
 
 if TYPE_CHECKING:
@@ -99,6 +100,9 @@ class EmailLog(Base):
     # Direct answer to a prospect's reply (threaded conversation, not outreach) —
     # excluded from the outreach funnel stats.
     is_conversation_reply: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    module_key: Mapped[str] = mapped_column(
+        String(64), default=WEBSITES_MODULE_KEY, server_default=WEBSITES_MODULE_KEY, nullable=False, index=True
+    )
 
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     extra_metadata: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string

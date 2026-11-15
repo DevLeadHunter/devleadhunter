@@ -121,7 +121,8 @@
               Le modèle choisi part vers chaque prospect mobile avec le lien de son site démo. Pas d'A/B : le message et
               la mention « STOP » sont rendus automatiquement (tu peux le changer ensuite sur la campagne). L'expéditeur
               se règle dans Paramètres
-              <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> Relance SMS.
+              <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" />
+              {{ smsSettingsPageLabel }}.
             </p>
           </div>
 
@@ -140,7 +141,7 @@
               <UiTemplateSelect
                 v-else
                 :model-value="form.templateIdA"
-                :templates="templates"
+                :templates="moduleEmailTemplates"
                 allow-create
                 @update:model-value="form.templateIdA = $event"
                 @create="openCreateTemplate('a')"
@@ -160,7 +161,7 @@
               <UiTemplateSelect
                 v-else
                 :model-value="form.templateIdB"
-                :templates="templates"
+                :templates="moduleEmailTemplates"
                 allow-create
                 @update:model-value="form.templateIdB = $event"
                 @create="openCreateTemplate('b')"
@@ -193,8 +194,10 @@ import type { EmailTemplate } from '~/types'
 import type { CampaignDetailResponse } from '~/services/campaignService'
 import type { CampaignFormDrawerMode } from '~/types/DrawerStack'
 import type { SelectFieldOption } from '~/types/SelectField'
+import { SMS_SETTINGS_PAGE_LABEL, SMS_SETTINGS_PAGE_LABEL_OUTSIDE_WEBSITES_MODULE } from '~/constants/settingsNav'
 import { useCampaignsStore } from '~/stores/campaigns'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useToast } from '~/composables/useToast'
 import { CampaignService } from '~/services/campaignService'
 import { EmailTemplatesService } from '~/services/emailTemplatesService'
@@ -224,6 +227,7 @@ const emit: EmitFn<UiCampaignDrawerEmits> = defineEmits<UiCampaignDrawerEmits>()
 
 const campaignsStore: ReturnType<typeof useCampaignsStore> = useCampaignsStore()
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 const toast: UseToastReturn = useToast()
 
 /** Whether the create or update request is in flight. */
@@ -245,9 +249,34 @@ const templates: Ref<EmailTemplate[]> = ref([])
 /** First-contact SMS library templates, for the SMS-channel picker. */
 const smsTemplates: Ref<SmsTemplate[]> = ref([])
 
+const moduleEmailTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] => {
+  if (!moduleStore.hasEmailTemplates(moduleStore.activeKey)) {
+    return templates.value
+  }
+  return templates.value.filter(
+    (template: EmailTemplate): boolean =>
+      template.module === moduleStore.activeKey ||
+      template.id === form.value.templateIdA ||
+      template.id === form.value.templateIdB,
+  )
+})
+
+const moduleSmsTemplates: ComputedRef<SmsTemplate[]> = computed((): SmsTemplate[] => {
+  if (!moduleStore.hasSmsTemplates(moduleStore.activeKey)) {
+    return smsTemplates.value
+  }
+  return smsTemplates.value.filter((template: SmsTemplate): boolean => template.module === moduleStore.activeKey)
+})
+
+const smsSettingsPageLabel: ComputedRef<string> = computed((): string =>
+  moduleStore.isSmsPageLimitedToSenderName(moduleStore.activeKey)
+    ? SMS_SETTINGS_PAGE_LABEL_OUTSIDE_WEBSITES_MODULE
+    : SMS_SETTINGS_PAGE_LABEL,
+)
+
 /** Options for the SMS template picker. */
 const smsTemplateOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] =>
-  smsTemplates.value.map(
+  moduleSmsTemplates.value.map(
     (template: SmsTemplate): SelectFieldOption<string> => ({
       value: template.key,
       label: template.name,
@@ -298,7 +327,8 @@ async function loadSmsTemplates(): Promise<void> {
   smsTemplates.value = await SmsService.listTemplates('first_contact').catch((): SmsTemplate[] => [])
   if (!form.value.smsTemplateKey) {
     const preselected: SmsTemplate | undefined =
-      smsTemplates.value.find((template: SmsTemplate): boolean => template.is_default) ?? smsTemplates.value[0]
+      moduleSmsTemplates.value.find((template: SmsTemplate): boolean => template.is_default) ??
+      moduleSmsTemplates.value[0]
     if (preselected) form.value.smsTemplateKey = preselected.key
   }
 }

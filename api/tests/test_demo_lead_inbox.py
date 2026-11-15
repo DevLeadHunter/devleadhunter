@@ -63,6 +63,14 @@ def test_pending_routes_sms_only_prospect_to_sms_channel(db: Session) -> None:
     assert sms_items[0]["subject"] == "Message depuis la démo"
 
 
+def test_a_demo_message_waits_in_the_websites_module_only(db: Session) -> None:
+    prospect = _prospect(db, email="garage@example.com", phone=None)
+    _lead(db, prospect.id)
+
+    assert len(demo_lead_inbox_service.pending_items(db, 7, "email", module_key="websites")) == 1
+    assert demo_lead_inbox_service.pending_items(db, 7, "email", module_key="missions") == []
+
+
 def test_mark_handled_for_prospect_clears_all(db: Session) -> None:
     prospect = _prospect(db, email="a@b.com", phone=None)
     lead = _lead(db, prospect.id)

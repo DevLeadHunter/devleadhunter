@@ -1,17 +1,12 @@
 <template>
   <div class="max-w-3xl space-y-6">
-    <UiPageHeader
-      eyebrow="Réglages"
-      title="Relance SMS"
-      description="Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration. L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), ne vise que des mobiles du pays du prospect (France ou Suisse), et porte toujours la mention de désinscription."
-    />
+    <UiPageHeader eyebrow="Réglages" :title="pageTitle" :description="pageDescription" />
 
     <section class="app-card p-5">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Votre expéditeur</h2>
       <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
         Le nom affiché sur le téléphone du prospect (3 à 11 caractères, lettres et chiffres). Renseigner un expéditeur
-        active le canal SMS. Les prospects ne peuvent pas répondre à un SMS : ils reviennent vers vous depuis le bandeau
-        de leur site de démonstration.
+        active le canal SMS. {{ replyChannelSentence }}
       </p>
 
       <div
@@ -43,7 +38,7 @@
       </div>
     </section>
 
-    <section class="app-card p-5">
+    <section v-if="!isPageLimitedToSenderName" class="app-card p-5">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Automatisation</h2>
       <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
         Désactivée par défaut : vous gardez la main en manuel. Activez-la pour laisser DevLeadHunter envoyer tout seul,
@@ -77,7 +72,7 @@
       </div>
     </section>
 
-    <section class="app-card p-5">
+    <section v-if="!isPageLimitedToSenderName" class="app-card p-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="text-sm font-semibold text-[var(--app-ink)]">Prospects à relancer</h2>
@@ -168,7 +163,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { SmsCandidateRow } from '~/types/SmsSettingsPage'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { SmsConfig, SmsRelanceCandidate, SmsSendResult, SmsTemplate } from '~/services/smsService'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
+import { SMS_SETTINGS_PAGE_LABEL, SMS_SETTINGS_PAGE_LABEL_OUTSIDE_WEBSITES_MODULE } from '~/constants/settingsNav'
 import { SmsService } from '~/services/smsService'
+import { useModuleStore } from '~/stores/moduleStore'
 import { SmsVariables } from '~/utils/smsVariables'
 import { useToast } from '~/composables/useToast'
 
@@ -179,6 +177,16 @@ definePageMeta({
 
 const toast: UseToastReturn = useToast()
 const { user }: UseAuthReturn = useAuth()
+
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+
+const RELANCE_SENTENCE: string =
+  "Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration."
+
+const LEGAL_SENDING_SENTENCE: string =
+  "L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), ne vise que des mobiles du pays du prospect (France ou Suisse), et porte toujours la mention de désinscription."
+
+const NO_REPLY_SENTENCE: string = 'Les prospects ne peuvent pas répondre à un SMS'
 
 const config: Ref<SmsConfig | null> = ref(null)
 const sender: Ref<string> = ref('')
@@ -198,6 +206,24 @@ const isLoadingCandidates: Ref<boolean> = ref(false)
 
 const relancePreviewSegmentCount: Ref<SmsSegmentCount | null> = ref(null)
 
+const isPageLimitedToSenderName: ComputedRef<boolean> = computed((): boolean =>
+  moduleStore.isSmsPageLimitedToSenderName(moduleStore.activeKey),
+)
+
+const pageTitle: ComputedRef<string> = computed((): string =>
+  isPageLimitedToSenderName.value ? SMS_SETTINGS_PAGE_LABEL_OUTSIDE_WEBSITES_MODULE : SMS_SETTINGS_PAGE_LABEL,
+)
+
+const pageDescription: ComputedRef<string> = computed((): string =>
+  isPageLimitedToSenderName.value ? LEGAL_SENDING_SENTENCE : `${RELANCE_SENTENCE} ${LEGAL_SENDING_SENTENCE}`,
+)
+
+const replyChannelSentence: ComputedRef<string> = computed((): string =>
+  isPageLimitedToSenderName.value
+    ? `${NO_REPLY_SENTENCE}.`
+    : `${NO_REPLY_SENTENCE} : ils reviennent vers vous depuis le bandeau de leur site de démonstration.`,
+)
+
 /** Whether sends are possible (a sender is configured + the server key is ready). */
 const canSend: ComputedRef<boolean> = computed(
   (): boolean => Boolean(config.value?.sender) && Boolean(config.value?.provider_ready),
@@ -206,8 +232,15 @@ const canSend: ComputedRef<boolean> = computed(
 /** Live preview of the sender name as it will appear. */
 const senderPreview: ComputedRef<string> = computed((): string => sender.value.trim())
 
+const demoSiteRelanceTemplates: ComputedRef<SmsTemplate[]> = computed((): SmsTemplate[] =>
+  relanceTemplates.value.filter(
+    (template: SmsTemplate): boolean =>
+      template.module === WEBSITES_MODULE_KEY || template.key === relanceTemplateKey.value,
+  ),
+)
+
 const relanceTemplateOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] =>
-  relanceTemplates.value.map(
+  demoSiteRelanceTemplates.value.map(
     (template: SmsTemplate): SelectFieldOption<string> => ({ value: template.key, label: template.name }),
   ),
 )

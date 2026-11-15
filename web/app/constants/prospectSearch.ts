@@ -20,6 +20,8 @@ export const PROSPECT_SEARCH_PAGE_PATH: string = '/dashboard/search-prospects'
 
 export const MY_PROSPECTS_PAGE_PATH: string = '/dashboard/my-prospects'
 
+export const PROSPECT_SEARCH_PENDING_LEADS_COUNTER_KEY: string = 'pendingLeads'
+
 export const PROSPECT_SEARCH_REQUEST_COST_DOLLARS: number = 0.0015
 
 export const PROSPECT_SEARCH_BASE_REQUEST_COUNT: number = 60

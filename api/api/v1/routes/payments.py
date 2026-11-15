@@ -143,10 +143,12 @@ async def stripe_webhook(
 
         # A product module's own subscriptions (the receptionist, the loyalty cards…), whether it is on or off:
         # billing follows Stripe in every case.
+        from core.product_modules.module_at_work import ModuleAtWork
         from core.product_modules.registry import product_module_registry
 
         for product_module in product_module_registry.installed():
-            module_message: str | None = await product_module.handle_stripe_event(db, event)
+            with ModuleAtWork.during(product_module.key):
+                module_message: str | None = await product_module.handle_stripe_event(db, event)
             if module_message is not None:
                 return {"status": "success", "message": module_message}
 

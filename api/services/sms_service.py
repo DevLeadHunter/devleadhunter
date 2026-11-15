@@ -16,10 +16,12 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.product_modules.contract import WEBSITES_MODULE_KEY
+from core.product_modules.module_at_work import ModuleAtWork
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from models.prospect_db import ProspectDB
@@ -404,6 +406,7 @@ class SmsService:
             status=SmsStatus.PENDING.value,
             segments=segments,
             kind=touch.value,
+            module_key=CampaignOffers.sms_template_module(template),
         )
         outcome = await self._send_and_log(db, message=message, opt_out_mention=True)
         if outcome.sent:
@@ -422,6 +425,7 @@ class SmsService:
         text: str,
         prospect_id: int | None = None,
         recipient_name: str | None = None,
+        written_from_module_key: str | None = None,
     ) -> SmsSendOutcome:
         """Send one free-text SMS to a number (manual composer / self-test), smsmode's opt-out mention included.
 
@@ -437,6 +441,7 @@ class SmsService:
             text: Free-text body (smsmode appends the opt-out mention).
             prospect_id: Prospect id, when the number belongs to a saved prospect.
             recipient_name: Display label when there is no saved prospect.
+            written_from_module_key: The module open in the dashboard when the SMS was written.
 
         Returns:
             The send outcome (``sent`` + reason when skipped).
@@ -482,6 +487,7 @@ class SmsService:
             segments=segment_count_with_reserve(body, reserved_characters),
             kind=SmsMessageKind.PROSPECTING.value,
         )
+        message.module_key = self._free_text_module_key(message, written_from_module_key)
         outcome = await self._send_and_log(db, message=message, opt_out_mention=True)
         # A manual contact supersedes the campaigns: nothing automated may double it.
         if outcome.sent and prospect_id is not None:
@@ -540,6 +546,7 @@ class SmsService:
             segments=segment_count_with_reserve(body, 0),
             kind=SmsMessageKind.SERVICE.value,
         )
+        message.module_key = self._free_text_module_key(message)
         return await self._send_and_log(db, message=message, opt_out_mention=False)
 
     def _channel_refusal(self, config: SmsConfig) -> str | None:
@@ -609,6 +616,26 @@ class SmsService:
             limit = "1 seul" if maximum_segments == 1 else str(maximum_segments)
             return f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en {limit}."
         return None
+
+    @staticmethod
+    def _free_text_module_key(message: SmsMessage, written_from_module_key: str | None = None) -> str:
+        """
+        The module an SMS sent without a library template is filed under.
+
+        Args:
+            message: The SMS about to leave, its body and kind set.
+            written_from_module_key: The module open in the dashboard when the SMS was written, if any.
+
+        Returns:
+            The module at work (a module's own route or loop), else the module whose links or service
+            messages the SMS carries, else the module it was written from, else the websites module.
+        """
+        return (
+            ModuleAtWork.key()
+            or CampaignOffers.module_key_of_sms(message)
+            or written_from_module_key
+            or WEBSITES_MODULE_KEY
+        )
 
     @staticmethod
     def module_key_of(message: SmsMessage) -> str | None:
@@ -889,13 +916,16 @@ class SmsService:
         db.commit()
         return True
 
-    def list_messages(self, db: Session, user_id: int, *, limit: int = 500) -> list[tuple[SmsMessage, str | None]]:
+    def list_messages(
+        self, db: Session, user_id: int, *, limit: int = 500, module_key: str | None = None
+    ) -> list[tuple[SmsMessage, str | None]]:
         """Return the user's sent SMS (newest first) with the prospect name resolved.
 
         Args:
             db: Active database session.
             user_id: Owner.
             limit: Max rows to return.
+            module_key: Keep the SMS filed under this module only; None keeps them all.
 
         Returns:
             ``(message, prospect_name)`` pairs; the name is ``None`` for a manual send.
@@ -903,29 +933,31 @@ class SmsService:
         rows = db.execute(
             select(SmsMessage, ProspectDB.name)
             .join(ProspectDB, ProspectDB.id == SmsMessage.prospect_id, isouter=True)
-            .where(SmsMessage.user_id == user_id)
+            .where(*self._message_conditions(user_id, module_key))
             .order_by(SmsMessage.created_at.desc())
             .limit(limit)
         ).all()
         return [(row[0], row[1]) for row in rows]
 
-    def stats(self, db: Session, user_id: int) -> dict[str, int]:
+    def stats(self, db: Session, user_id: int, *, module_key: str | None = None) -> dict[str, int]:
         """Aggregate counts + total cost of the user's SMS.
 
         Args:
             db: Active database session.
             user_id: Owner.
+            module_key: Count the SMS filed under this module only; None counts them all.
 
         Returns:
             Totals keyed by ``total``, ``sent``, ``delivered``, ``failed``, ``pending``, ``cost_cents``.
         """
+        message_conditions = self._message_conditions(user_id, module_key)
         counts = dict(
             db.execute(
-                select(SmsMessage.status, func.count()).where(SmsMessage.user_id == user_id).group_by(SmsMessage.status)
+                select(SmsMessage.status, func.count()).where(*message_conditions).group_by(SmsMessage.status)
             ).all()
         )
         cost = db.execute(
-            select(func.coalesce(func.sum(SmsMessage.price_cents), 0)).where(SmsMessage.user_id == user_id)
+            select(func.coalesce(func.sum(SmsMessage.price_cents), 0)).where(*message_conditions)
         ).scalar_one()
         sent = int(counts.get(SmsStatus.SENT.value, 0))
         delivered = int(counts.get(SmsStatus.DELIVERED.value, 0))
@@ -938,6 +970,23 @@ class SmsService:
             "pending": int(counts.get(SmsStatus.PENDING.value, 0)),
             "cost_cents": int(cost or 0),
         }
+
+    @staticmethod
+    def _message_conditions(user_id: int, module_key: str | None) -> list[ColumnElement[bool]]:
+        """
+        The conditions that keep a user's SMS, one module's when named.
+
+        Args:
+            user_id: Owner.
+            module_key: The module whose SMS are kept; None keeps every module's.
+
+        Returns:
+            The conditions of a query on the SMS log.
+        """
+        conditions: list[ColumnElement[bool]] = [SmsMessage.user_id == user_id]
+        if module_key is not None:
+            conditions.append(SmsMessage.module_key == module_key)
+        return conditions
 
 
 sms_service = SmsService()

@@ -119,6 +119,7 @@ import { ref, watch } from 'vue'
 import { ApiClient } from '~/services/api'
 import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useToast } from '~/composables/useToast'
 
 /** Drawer to compose and send a one-off email. */
@@ -147,6 +148,8 @@ const toast: UseToastReturn = useToast()
 
 /** Persistent drawer stack (to stack the signatures manager on top). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
 /** Whether the quick-send request is in flight. */
 const isSending: Ref<boolean> = ref(false)
@@ -229,6 +232,7 @@ async function handleSend(): Promise<void> {
       body_html: `<p>${form.value.body.replace(/\n/g, '<br>')}</p>`,
       signature_id: signatureId.value ?? undefined,
       prospect_id: recipientProspectId.value ?? undefined,
+      module_key: moduleStore.activeKey,
     })
     toast.success('Email envoyé avec succès')
     emit('sent')

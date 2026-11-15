@@ -5,6 +5,8 @@ export type ProductModuleKey = string
 export type EnabledProductModule = {
   key: ProductModuleKey
   label: string
+  has_email_templates: boolean
+  has_sms_templates: boolean
 }
 
 /** One row of the super admin's module list (`GET /api/v1/admin/product-modules`). */

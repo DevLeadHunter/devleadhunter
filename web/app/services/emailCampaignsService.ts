@@ -14,6 +14,7 @@ export class EmailCampaignsService {
     campaign_id?: string
     prospect_id?: string
     status?: string
+    module_key?: string
     limit?: number
     offset?: number
   }): Promise<{ total: number; logs: EmailLog[] }> {
@@ -38,12 +39,16 @@ export class EmailCampaignsService {
   }
 
   /**
-   * Get email statistics
+   * Get email statistics of one product module
+   * @param moduleKey - The module whose emails are counted.
+   * @param campaignId - Count the emails of this campaign only.
+   * @returns The totals and rates of those emails.
    */
-  static async getEmailStats(campaignId?: string): Promise<EmailStats> {
+  static async getEmailStats(moduleKey: string, campaignId?: string): Promise<EmailStats> {
     try {
-      const params: { campaign_id: string } | undefined = campaignId ? { campaign_id: campaignId } : undefined
-      return await ApiClient.get<EmailStats>('/api/v1/emails/stats', { params })
+      return await ApiClient.get<EmailStats>('/api/v1/emails/stats', {
+        params: { module_key: moduleKey, campaign_id: campaignId },
+      })
     } catch (error) {
       console.error('Failed to get email stats:', error)
       throw error

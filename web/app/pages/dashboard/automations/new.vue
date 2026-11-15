@@ -401,6 +401,7 @@ import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { DEFAULT_DEMO_SITE_THEME, DemoSiteService } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
+import { WEBSITES_MODULE_KEY } from '~/constants/productModules'
 import { PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 import { useDashboardScroll } from '~/composables/useDashboardScroll'
 import { useToast } from '~/composables/useToast'
@@ -973,7 +974,10 @@ function openSendPolicyDrawer(): void {
  */
 async function reloadEmailTemplates(): Promise<void> {
   const emailList: EmailTemplate[] = await EmailTemplatesService.getEmailTemplates()
-  emailTemplates.value = emailList.map(
+  const demoSiteEmailTemplates: EmailTemplate[] = emailList.filter(
+    (template: EmailTemplate): boolean => template.module === WEBSITES_MODULE_KEY,
+  )
+  emailTemplates.value = demoSiteEmailTemplates.map(
     (t: EmailTemplate): TemplateSelectOption => ({
       id: t.id,
       name: t.name,
