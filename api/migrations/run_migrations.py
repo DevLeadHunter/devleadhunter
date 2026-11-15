@@ -180,6 +180,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_campaign_scheduled_launch", "migrations.add_campaign_scheduled_launch"),
     ("add_email_log_module_key", "migrations.add_email_log_module_key"),
     ("add_sms_message_module_key", "migrations.add_sms_message_module_key"),
+    ("clear_delivered_at_of_delayed_emails", "migrations.clear_delivered_at_of_delayed_emails"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

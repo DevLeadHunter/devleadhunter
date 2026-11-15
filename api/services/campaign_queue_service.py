@@ -76,6 +76,7 @@ _NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON = "Pas de vidéo prête pour la relance"
 _NO_SITE_VIDEO_SKIP_REASON = "Pas de vidéo prête"
 _REPLIED_SKIP_REASON = "Le prospect a répondu"
 _UNDELIVERABLE_SKIP_REASON = "Adresse en échec (rebond)"
+_BOUNCED_FIRST_EMAIL_SKIP_REASON = "Premier mail rejeté, relance replanifiée après le renvoi"
 
 
 @dataclass
@@ -1002,13 +1003,20 @@ class CampaignQueueService:
         ).scalar_one_or_none()
 
     def _has_follow_ups(self, campaign_id: int, prospect_id: int) -> bool:
-        """Return True when a follow-up queue row already exists for this campaign/prospect."""
+        """Return True when a follow-up queue row already exists for this campaign/prospect.
+
+        The follow-ups of a first email that bounced do not count: the re-sent first email arms its own.
+        """
         count: int = (
             self.db.execute(
                 select(func.count()).where(
                     EmailQueue.campaign_id == campaign_id,
                     EmailQueue.prospect_id == prospect_id,
                     EmailQueue.queue_type == "followup",
+                    or_(
+                        EmailQueue.skip_reason.is_(None),
+                        EmailQueue.skip_reason != _BOUNCED_FIRST_EMAIL_SKIP_REASON,
+                    ),
                 )
             ).scalar()
             or 0
@@ -1897,6 +1905,40 @@ class CampaignQueueService:
             self.db.commit()
             logger.info(
                 "[Queue] Held back %d pending email(s) of prospect %d whose address bounced", len(items), prospect_id
+            )
+        return len(items)
+
+    def hold_back_follow_ups_of_bounced_first_email(self, campaign_id: int, prospect_id: int) -> int:
+        """Hold back the pending follow-ups armed by a first email that bounced and is re-sent to another address.
+
+        The re-sent first email arms its own follow-ups when it leaves, counted from that send.
+
+        Args:
+            campaign_id: The campaign whose first email bounced.
+            prospect_id: The prospect that first email was sent to.
+
+        Returns:
+            The number of follow-ups held back.
+        """
+        items: list[EmailQueue] = list(
+            self.db.execute(
+                select(EmailQueue).where(
+                    EmailQueue.campaign_id == campaign_id,
+                    EmailQueue.prospect_id == prospect_id,
+                    EmailQueue.queue_type == "followup",
+                    EmailQueue.status == _STATUS_PENDING,
+                )
+            ).scalars()
+        )
+        for item in items:
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = _BOUNCED_FIRST_EMAIL_SKIP_REASON
+        if items:
+            self.db.commit()
+            logger.info(
+                "[Queue] Held back %d follow-up(s) of prospect %d, armed by a first email that bounced",
+                len(items),
+                prospect_id,
             )
         return len(items)
 
