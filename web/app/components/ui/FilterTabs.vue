@@ -32,7 +32,7 @@
 <script lang="ts" setup>
 import type { PropType, Ref } from 'vue'
 import type { UiFilterTab, UiFilterTabsProps } from '~/types/UiFilterTabs'
-import { nextTick, ref, watch } from 'vue'
+import { useSelectedTabReveal } from '~/composables/useSelectedTabReveal'
 
 /**
  * Compact underlined tabs that slice the list below them. Deliberately lighter
@@ -56,7 +56,7 @@ const emit: {
   (e: 'update:modelValue', key: string): void
 }>()
 
-const tabListElement: Ref<HTMLElement | null> = ref(null)
+const tabListElement: Ref<HTMLElement | null> = useSelectedTabReveal((): string => props.modelValue)
 
 /**
  * Resolve the classes of a tab button for a given selected state.
@@ -68,29 +68,4 @@ function tabClass(active: boolean): string {
     'relative shrink-0 cursor-pointer px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ink-soft)] rounded-t'
   return active ? `${base} text-[var(--app-ink)]` : `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
 }
-
-/**
- * Slide the row so the selected tab is fully visible, without moving the page.
- * @returns A promise resolved once the row is in place.
- */
-async function revealSelectedTab(): Promise<void> {
-  await nextTick()
-  const tabList: HTMLElement | null = tabListElement.value
-  const selectedTab: HTMLElement | null = tabList?.querySelector<HTMLElement>('[aria-selected="true"]') ?? null
-  if (tabList === null || selectedTab === null) return
-  const rowBox: DOMRect = tabList.getBoundingClientRect()
-  const tabBox: DOMRect = selectedTab.getBoundingClientRect()
-  if (tabBox.left < rowBox.left) {
-    tabList.scrollBy({ left: tabBox.left - rowBox.left, behavior: 'smooth' })
-  } else if (tabBox.right > rowBox.right) {
-    tabList.scrollBy({ left: tabBox.right - rowBox.right, behavior: 'smooth' })
-  }
-}
-
-watch(
-  (): string => props.modelValue,
-  (): void => {
-    revealSelectedTab()
-  },
-)
 </script>

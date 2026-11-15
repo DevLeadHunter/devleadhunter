@@ -101,6 +101,8 @@ export type UseHorizontalSwipeReturn = {
 
 export type DragToReorderAxis = 'vertical' | 'grid'
 
+export type TabRowHiddenSides = 'none' | 'left' | 'right' | 'both'
+
 export type DragToReorderGhostFrame = 'card' | 'none'
 
 /** The container must be the offsetParent of its `data-reorder-key` items (`relative`, or the `<table>` for rows). */
