@@ -1185,6 +1185,17 @@ class CampaignQueueService:
         )
         return self._campaign_module(self._campaign_email_templates(campaign, template_a, template_b))
 
+    def email_campaign_module_key(self, campaign: Campaign) -> str:
+        """The module the emails of a campaign are filed under, the one its contact lock is stored under.
+
+        Args:
+            campaign: An email campaign.
+
+        Returns:
+            The module key, ``MODULE_WEBSITES`` for a website campaign.
+        """
+        return self._email_campaign_module(campaign)
+
     @classmethod
     def sms_template_module(cls, sms_template: SmsTemplate | None) -> str:
         """The module an SMS template sells: an SMS campaign's module is read from its first-contact template.
@@ -1195,8 +1206,7 @@ class CampaignQueueService:
         Returns:
             The key of the module whose offer the template sells, else ``MODULE_WEBSITES``.
         """
-        offer = CampaignOffers.sms_offer_of(sms_template)
-        return offer.module_key if offer is not None else MODULE_WEBSITES
+        return CampaignOffers.sms_template_module(sms_template)
 
     def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
         """Latest ACTIVE demo site of a prospect (or None)."""
@@ -1457,6 +1467,7 @@ class CampaignQueueService:
             prospect_id=str(prospect.id),
             campaign_id=str(item.campaign_id),
             ab_variant=item.ab_variant,
+            module_key=module,
         )
 
         item.email_log_id = result.get("email_log_id")
@@ -1780,6 +1791,7 @@ class CampaignQueueService:
             body_html=body_html,
             prospect_id=str(prospect_id),
             campaign_id=str(campaign.id),
+            module_key=self.email_campaign_module_key(campaign),
         )
 
     def cancel_campaign_queue(self, campaign_id: int) -> int:

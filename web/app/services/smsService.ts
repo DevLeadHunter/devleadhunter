@@ -94,6 +94,7 @@ export type SmsManualSendPayload = {
   text: string
   prospect_id?: number | null
   recipient_name?: string | null
+  module_key?: string
 }
 
 /** Payload to consign an SMS reply received on the operator's phone. */
@@ -220,20 +221,22 @@ export class SmsService {
   }
 
   /**
-   * Fetch the sent-SMS history (newest first).
+   * Fetch the sent-SMS history of one product module (newest first).
+   * @param moduleKey - The module whose SMS are listed.
    * @param limit - Maximum rows to return.
    * @returns The history page.
    */
-  static async listMessages(limit: number = 500): Promise<SmsMessagesResponse> {
-    return ApiClient.get<SmsMessagesResponse>(`/api/v1/sms/messages?limit=${limit}`)
+  static async listMessages(moduleKey: string, limit: number = 500): Promise<SmsMessagesResponse> {
+    return ApiClient.get<SmsMessagesResponse>('/api/v1/sms/messages', { params: { limit, module_key: moduleKey } })
   }
 
   /**
-   * Fetch the aggregate counters of the SMS channel.
+   * Fetch the aggregate counters of the SMS channel, for one product module.
+   * @param moduleKey - The module whose SMS are counted.
    * @returns The stats.
    */
-  static async getStats(): Promise<SmsStats> {
-    return ApiClient.get<SmsStats>('/api/v1/sms/stats')
+  static async getStats(moduleKey: string): Promise<SmsStats> {
+    return ApiClient.get<SmsStats>('/api/v1/sms/stats', { params: { module_key: moduleKey } })
   }
 
   /**
@@ -330,9 +333,13 @@ export class SmsService {
     })
   }
 
-  /** Demo-banner messages awaiting an answer (SMS-only prospects). */
-  static async getPendingReplies(): Promise<{ count: number; items: PendingReply[] }> {
-    return ApiClient.get('/api/v1/sms/replies/pending')
+  /**
+   * Demo-banner messages awaiting an answer (SMS-only prospects), for one product module.
+   * @param moduleKey - The module whose queue is read; only the websites module has demo messages.
+   * @returns Count + items.
+   */
+  static async getPendingReplies(moduleKey: string): Promise<{ count: number; items: PendingReply[] }> {
+    return ApiClient.get('/api/v1/sms/replies/pending', { params: { module_key: moduleKey } })
   }
 
   /** Mark a demo-banner message as dealt with (SMS inbox). */

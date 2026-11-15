@@ -5,8 +5,15 @@ export type CommandPaletteAction = {
   icon: string
   meta?: string
   keywords?: string
+  requiredPagePath?: string
   run: () => void
   flatIndex: number
+}
+
+export type CommandPalettePage = {
+  to: string
+  label: string
+  icon: string
 }
 
 /** One displayed group of palette rows. */

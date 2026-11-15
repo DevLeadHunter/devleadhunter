@@ -21,6 +21,7 @@ from schemas.email_template import (
     EmailTemplateResponse,
     EmailTemplateUpdate,
 )
+from services.campaign_offers import CampaignOffers
 from services.email_layout import EmailLayout
 from services.email_signatures import preferred_signature_id, render_signature_html
 from services.email_variables import EmailVariables
@@ -155,6 +156,7 @@ def to_response(template: EmailTemplate) -> EmailTemplateResponse:
         is_library=template.is_library,
         is_fork=template.library_source_id is not None,
         library_source_id=template.library_source_id,
+        module=CampaignOffers.email_template_module(template),
         created_at=template.created_at,
         updated_at=template.updated_at,
     )

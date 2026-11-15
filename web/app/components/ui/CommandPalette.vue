@@ -68,16 +68,24 @@
 
 <script lang="ts" setup>
 import type { AppTheme } from '~/types/AppTheme'
-import type { CommandPaletteAction, CommandPaletteGroup } from '~/types/UiCommandPalette'
+import type { UseModuleNavigationReturn } from '~/types/Composables'
+import type { SettingsNavGroup, SettingsNavLink } from '~/types/SettingsNav'
+import type { CommandPaletteAction, CommandPaletteGroup, CommandPalettePage } from '~/types/UiCommandPalette'
+import type { UiSidebarGroup, UiSidebarLink } from '~/types/UiSidebar'
 import type { ComputedRef, Ref } from 'vue'
 import type { CampaignResponse } from '~/services/campaignService'
 import type { Prospect } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { CAMPAIGNS_PAGE_PATH, DEMO_SITES_PAGE_PATH, EMAIL_TEMPLATES_PAGE_PATH } from '~/constants/dashboardPages'
+import { MY_PROSPECTS_PAGE_PATH, PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
+import { useModuleNavigation } from '~/composables/useModuleNavigation'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+
+const PROSPECT_SEARCH_PAGE_KEYWORDS: string = 'trouver rechercher prospects leads'
 
 const { isOpen, close }: { isOpen: Ref<boolean, boolean>; open: () => void; close: () => void; toggle: () => void } =
   useCommandPalette()
@@ -86,6 +94,10 @@ const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore(
 
 const { toggleTheme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } =
   useAppTheme()
+
+const { navGroups, moduleSettingsLinks, tabBar }: UseModuleNavigationReturn = useModuleNavigation()
+
+const { settingsGroups }: ReturnType<typeof useSettingsNav> = useSettingsNav()
 
 const query: Ref<string> = ref('')
 const activeIndex: Ref<number> = ref(0)
@@ -97,21 +109,31 @@ const prospects: Ref<Prospect[]> = ref([])
 const campaigns: Ref<CampaignResponse[]> = ref([])
 const hasLoadedSources: Ref<boolean> = ref(false)
 
-/** Static navigation entries. */
-const PAGES: { label: string; icon: string; to: string }[] = [
-  { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
-  { label: 'Mes prospects', icon: 'i-lucide-users', to: '/dashboard/my-prospects' },
-  { label: 'Carte de prospection', icon: 'i-lucide-map', to: '/dashboard/coverage' },
-  { label: 'Trouver des prospects', icon: 'i-lucide-search', to: '/dashboard/search-prospects' },
-  { label: 'Sites démo', icon: 'i-lucide-app-window', to: '/dashboard/demo-sites' },
-  { label: 'Campagnes', icon: 'i-lucide-megaphone', to: '/dashboard/campaigns' },
-  { label: 'Suivi des emails', icon: 'i-lucide-send', to: '/dashboard/emails' },
-  { label: 'Suivi des SMS', icon: 'i-lucide-message-square-text', to: '/dashboard/sms' },
-  { label: "Modèles d'email", icon: 'i-lucide-layout-template', to: '/dashboard/email-templates' },
-  { label: 'Ventes', icon: 'i-lucide-banknote', to: '/dashboard/orders' },
-  { label: 'Support', icon: 'i-lucide-life-buoy', to: '/dashboard/support' },
-  { label: "Configuration d'envoi", icon: 'i-lucide-mail-open', to: '/dashboard/settings/sending' },
-]
+const modulePages: ComputedRef<CommandPalettePage[]> = computed((): CommandPalettePage[] => {
+  const menuPages: CommandPalettePage[] = navGroups.value.flatMap(
+    (group: UiSidebarGroup): UiSidebarLink[] => group.links,
+  )
+  const settingsPages: CommandPalettePage[] = settingsGroups.value.flatMap(
+    (group: SettingsNavGroup): SettingsNavLink[] => group.entries,
+  )
+  const candidatePages: CommandPalettePage[] = [...menuPages]
+
+  if (tabBar.value.mainAction) {
+    candidatePages.push(tabBar.value.mainAction)
+  }
+  candidatePages.push(...moduleSettingsLinks.value, ...settingsPages)
+
+  const pages: CommandPalettePage[] = []
+
+  for (const candidatePage of candidatePages) {
+    const isAlreadyListed: boolean = pages.some((page: CommandPalettePage): boolean => page.to === candidatePage.to)
+
+    if (!isAlreadyListed) {
+      pages.push(candidatePage)
+    }
+  }
+  return pages
+})
 
 /**
  * Normalize a string for accent-insensitive matching.
@@ -136,6 +158,15 @@ function matches(label: string, keywords: string = ''): boolean {
     .every((word: string): boolean => haystack.includes(word))
 }
 
+/**
+ * Whether the open module has a page, so the actions and searches that live on it are offered.
+ * @param pagePath - The page's path.
+ * @returns True when the module's menu or its settings hold the page.
+ */
+function hasModulePage(pagePath: string): boolean {
+  return modulePages.value.some((page: CommandPalettePage): boolean => page.to === pagePath)
+}
+
 /** Groups currently displayed (filtered by the query, flat-indexed). */
 const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPaletteGroup[] => {
   const groups: CommandPaletteGroup[] = []
@@ -150,7 +181,9 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
   function pushGroup(key: string, heading: string, items: Array<Omit<CommandPaletteAction, 'flatIndex'>>): void {
     const kept: CommandPaletteAction[] = items
       .filter(
-        (item: Omit<CommandPaletteAction, 'flatIndex'>): boolean => !query.value || matches(item.label, item.keywords),
+        (item: Omit<CommandPaletteAction, 'flatIndex'>): boolean =>
+          (item.requiredPagePath === undefined || hasModulePage(item.requiredPagePath)) &&
+          (!query.value || matches(item.label, item.keywords)),
       )
       .map(
         (item: Omit<CommandPaletteAction, 'flatIndex'>): CommandPaletteAction => ({ ...item, flatIndex: flatIndex++ }),
@@ -164,6 +197,7 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
       label: 'Créer un site',
       icon: 'i-lucide-plus',
       keywords: 'website builder tunnel démo',
+      requiredPagePath: DEMO_SITES_PAGE_PATH,
       run: (): void => {
         navigateTo('/dashboard/demo-sites/create')
       },
@@ -182,6 +216,7 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
       label: "Nouveau modèle d'email",
       icon: 'i-lucide-layout-template',
       keywords: 'template',
+      requiredPagePath: EMAIL_TEMPLATES_PAGE_PATH,
       run: (): void => {
         drawerStack.push({ kind: 'email-template', mode: 'create', template: null })
       },
@@ -191,6 +226,7 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
       label: 'Ajouter un prospect',
       icon: 'i-lucide-user-plus',
       keywords: 'nouveau manuel',
+      requiredPagePath: MY_PROSPECTS_PAGE_PATH,
       run: (): void => {
         drawerStack.push({ kind: 'add-prospect' })
       },
@@ -200,6 +236,7 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
       label: 'Nouvelle campagne',
       icon: 'i-lucide-megaphone',
       keywords: 'créer cold email',
+      requiredPagePath: CAMPAIGNS_PAGE_PATH,
       run: (): void => {
         drawerStack.push({ kind: 'campaign-form', mode: 'create', campaign: null })
       },
@@ -236,11 +273,12 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
   pushGroup(
     'pages',
     'Pages',
-    PAGES.map((page: { label: string; icon: string; to: string }): Omit<CommandPaletteAction, 'flatIndex'> => {
+    modulePages.value.map((page: CommandPalettePage): Omit<CommandPaletteAction, 'flatIndex'> => {
       return {
         id: `page-${page.to}`,
         label: page.label,
         icon: page.icon,
+        keywords: page.to === PROSPECT_SEARCH_PAGE_PATH ? PROSPECT_SEARCH_PAGE_KEYWORDS : undefined,
         run: (): void => {
           navigateTo(page.to)
         },
@@ -248,7 +286,7 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
     }),
   )
 
-  if (query.value) {
+  if (query.value && hasModulePage(MY_PROSPECTS_PAGE_PATH)) {
     pushGroup(
       'prospects',
       'Prospects',
@@ -265,7 +303,9 @@ const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPa
         }
       }),
     )
+  }
 
+  if (query.value && hasModulePage(CAMPAIGNS_PAGE_PATH)) {
     pushGroup(
       'campaigns',
       'Campagnes',

@@ -1,11 +1,12 @@
 """Mounts the routers of the installed product modules, closed while their module is switched off."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.product_modules.module_at_work import ModuleAtWork
 from core.product_modules.registry import product_module_registry
 from services.product_module_service import product_module_service
 
@@ -31,14 +32,35 @@ def module_switch_dependency(module_key: str) -> Callable[[Session], None]:
     return require_module_switched_on
 
 
+def module_at_work_dependency(module_key: str) -> Callable[[], Awaitable[None]]:
+    """
+    Build the dependency that names the module at work on every route of a module.
+
+    Keep it a coroutine: FastAPI runs a plain function in a worker thread, and the route would not see the module
+    it names.
+
+    Args:
+        module_key: The module the routes belong to.
+
+    Returns:
+        The FastAPI dependency.
+    """
+
+    async def name_module_at_work() -> None:
+        ModuleAtWork.begin(module_key)
+
+    return name_module_at_work
+
+
 def include_product_module_routers(router: APIRouter) -> None:
     """
-    Mount, in order, the routers of every installed module behind its switch.
+    Mount, in order, the routers of every installed module behind its switch, each naming its module at work.
 
     Args:
         router: The API v1 router.
     """
     for module in product_module_registry.installed():
-        dependency: Callable[[Session], None] = module_switch_dependency(module.key)
+        switch_dependency: Callable[[Session], None] = module_switch_dependency(module.key)
+        at_work_dependency: Callable[[], Awaitable[None]] = module_at_work_dependency(module.key)
         for module_router in module.routers():
-            router.include_router(module_router, dependencies=[Depends(dependency)])
+            router.include_router(module_router, dependencies=[Depends(switch_dependency), Depends(at_work_dependency)])

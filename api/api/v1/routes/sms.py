@@ -56,6 +56,7 @@ from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
+from services.product_module_service import product_module_service
 from services.prospect_phones import first_mobile_e164
 from services.sms.dlr import (
     classify_dlr,
@@ -289,6 +290,7 @@ async def reschedule_auto_sms(
 
 @router.get("/replies/pending")
 async def get_sms_pending_replies(
+    module_key: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -296,7 +298,7 @@ async def get_sms_pending_replies(
     from schemas.email_sending import PendingRepliesResponse
     from services.demo_lead_inbox_service import demo_lead_inbox_service
 
-    items = demo_lead_inbox_service.pending_items(db, current_user.id, "sms")
+    items = demo_lead_inbox_service.pending_items(db, current_user.id, "sms", module_key=module_key)
     return PendingRepliesResponse(count=len(items), items=items)
 
 
@@ -316,11 +318,12 @@ async def mark_sms_demo_lead_handled(
 @router.get("/messages", response_model=SmsMessagesResponse)
 async def list_messages(
     limit: int = 500,
+    module_key: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SmsMessagesResponse:
-    """Return the current user's sent SMS (newest first) — the « Suivi des SMS » history."""
-    rows = sms_service.list_messages(db, current_user.id, limit=limit)
+    """Return the current user's sent SMS (newest first), one module's when named — the « Suivi des SMS » history."""
+    rows = sms_service.list_messages(db, current_user.id, limit=limit, module_key=module_key)
     messages = [
         SmsMessageResponse(
             id=message.id,
@@ -416,9 +419,13 @@ async def get_sms_thread(
 
 
 @router.get("/stats", response_model=SmsStatsResponse)
-async def get_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> SmsStatsResponse:
-    """Return aggregate counters of the current user's SMS channel."""
-    return SmsStatsResponse(**sms_service.stats(db, current_user.id))
+async def get_stats(
+    module_key: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsStatsResponse:
+    """Return aggregate counters of the current user's SMS channel, one module's when named."""
+    return SmsStatsResponse(**sms_service.stats(db, current_user.id, module_key=module_key))
 
 
 @router.get("/credit", response_model=SmsCreditResponse)
@@ -556,6 +563,7 @@ async def send_manual_sms(
         text=payload.text,
         prospect_id=payload.prospect_id,
         recipient_name=payload.recipient_name,
+        written_from_module_key=product_module_service.enabled_key(db, payload.module_key),
     )
     if outcome.sent and payload.prospect_id:
         from services.demo_lead_inbox_service import demo_lead_inbox_service

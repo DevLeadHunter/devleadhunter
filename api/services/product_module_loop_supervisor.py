@@ -14,7 +14,8 @@ from collections.abc import Callable
 from sqlalchemy.orm import Session
 
 from core.database import SessionLocal
-from core.product_modules.contract import ProductModule
+from core.product_modules.contract import BackgroundLoop, ProductModule
+from core.product_modules.module_at_work import ModuleAtWork
 from core.product_modules.registry import ProductModuleRegistry, product_module_registry
 from services.product_module_service import ProductModuleService, product_module_service
 
@@ -72,9 +73,16 @@ class ProductModuleLoopSupervisor:
         if tasks:
             logger.warning("[ProductModules] A loop of %s stopped; starting its loops again", module.key)
             self._stop(module.key)
-        self._tasks[module.key] = [asyncio.create_task(loop()) for loop in module.background_loops()]
+        self._tasks[module.key] = [
+            asyncio.create_task(self._run_module_loop(module.key, loop)) for loop in module.background_loops()
+        ]
         if self._tasks[module.key]:
             logger.info("[ProductModules] %s: %d loop(s) started", module.key, len(self._tasks[module.key]))
+
+    @staticmethod
+    async def _run_module_loop(module_key: str, loop: BackgroundLoop) -> None:
+        ModuleAtWork.begin(module_key)
+        await loop()
 
     def _stop(self, key: str) -> None:
         tasks: list[asyncio.Task[None]] = self._tasks.pop(key, [])

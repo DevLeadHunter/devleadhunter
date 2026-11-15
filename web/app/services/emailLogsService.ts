@@ -29,11 +29,12 @@ export class EmailLogsService {
   }
 
   /**
-   * Fetch the « à traiter » queue: human replies not yet answered.
+   * Fetch the « à traiter » queue of one product module: human replies not yet answered.
+   * @param moduleKey The module whose emails were replied to.
    * @returns Count + items, newest first.
    */
-  static async getPendingReplies(): Promise<{ count: number; items: PendingReply[] }> {
-    return ApiClient.get('/api/v1/emails/replies/pending')
+  static async getPendingReplies(moduleKey: string): Promise<{ count: number; items: PendingReply[] }> {
+    return ApiClient.get('/api/v1/emails/replies/pending', { params: { module_key: moduleKey } })
   }
 
   /**

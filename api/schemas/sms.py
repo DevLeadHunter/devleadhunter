@@ -114,6 +114,7 @@ class SmsManualSendRequest(BaseModel):
     )
     prospect_id: int | None = Field(default=None, description="Linked prospect, when the number belongs to one")
     recipient_name: str | None = Field(default=None, max_length=255, description="Display label for a bare number")
+    module_key: str | None = Field(default=None, description="Module open in the dashboard when the SMS was written")
 
 
 class SmsMessageResponse(BaseModel):

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.product_modules.contract import WEBSITES_MODULE_KEY
 from enums.email_template_category import EmailTemplateCategory
 from enums.email_template_layout import EmailTemplateLayout
 
@@ -72,6 +73,10 @@ class EmailTemplateResponse(BaseModel):
     is_library: bool = False
     is_fork: bool = False
     library_source_id: int | None = None
+    module: str = Field(
+        default=WEBSITES_MODULE_KEY,
+        description="Key of the module the template sells, read from its variables as a campaign reads it",
+    )
     created_at: datetime
     updated_at: datetime | None = None
 

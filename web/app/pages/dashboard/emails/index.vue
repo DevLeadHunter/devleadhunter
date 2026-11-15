@@ -251,11 +251,13 @@ import type { CampaignListResponse, CampaignResponse } from '~/services/campaign
 import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useModuleStore } from '~/stores/moduleStore'
 import { ApiClient } from '~/services/api'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
 const toast: UseToastReturn = useToast()
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 const logs: Ref<EmailLog[]> = ref([])
 const campaigns: Ref<CampaignResponse[]> = ref([])
 
@@ -302,9 +304,17 @@ const statusOptions: { value: string; label: string }[] = [
   { value: 'complained', label: 'Spam' },
 ]
 
+const campaignsOfListedEmails: ComputedRef<CampaignResponse[]> = computed((): CampaignResponse[] => {
+  const listedCampaignIds: Set<string> = new Set(logs.value.map((log: EmailLog): string => String(log.campaign_id)))
+  return campaigns.value.filter((campaign: CampaignResponse): boolean => listedCampaignIds.has(String(campaign.id)))
+})
+
 const campaignOptions: ComputedRef<SelectFieldOption[]> = computed(() => [
   { value: 'all', label: 'Toutes les campagnes' },
-  ...campaigns.value.map((campaign: CampaignResponse) => ({ value: String(campaign.id), label: campaign.name })),
+  ...campaignsOfListedEmails.value.map((campaign: CampaignResponse) => ({
+    value: String(campaign.id),
+    label: campaign.name,
+  })),
 ])
 
 const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
@@ -497,19 +507,20 @@ async function loadCampaignLabels(): Promise<void> {
   }
 }
 
-/** Fetch logs (limit 500) and stats — the two payloads the page cannot render without. */
+/** Fetch the open module's logs (limit 500) and stats — the two payloads the page cannot render without. */
 async function loadLogs(): Promise<void> {
   isLoading.value = true
   error.value = null
+  const moduleKey: string = moduleStore.activeKey
   try {
     const [logsRes, statsRes, pendingRes]: [
       { total: number; logs: EmailLog[] },
       EmailStats,
       { count: number; items: PendingReply[] },
     ] = await Promise.all([
-      EmailCampaignsService.getEmailLogs({ limit: 500 }),
-      EmailCampaignsService.getEmailStats(),
-      EmailLogsService.getPendingReplies().catch((err: unknown): { count: number; items: PendingReply[] } => {
+      EmailCampaignsService.getEmailLogs({ limit: 500, module_key: moduleKey }),
+      EmailCampaignsService.getEmailStats(moduleKey),
+      EmailLogsService.getPendingReplies(moduleKey).catch((err: unknown): { count: number; items: PendingReply[] } => {
         console.error('[Suivi des emails] File à traiter indisponible:', err)
         return { count: 0, items: [] }
       }),

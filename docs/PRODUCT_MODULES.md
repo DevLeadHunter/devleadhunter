@@ -49,8 +49,12 @@ import Base`…) : il tourne toujours avec la racine `api/` du cœur dans le `sy
 
 ### Routes HTTP du cœur liées aux modules
 
-- `GET /api/v1/product-modules` (tout utilisateur connecté) → `[{ "key": "ai-assistant", "label": "Réceptionniste IA" }]`
+- `GET /api/v1/product-modules` (tout utilisateur connecté) →
+  `[{ "key": "ai-assistant", "label": "Réceptionniste IA", "has_email_templates": true, "has_sms_templates": true }]`
   : les modules installés **et** activés (le module Sites web n'y figure pas, il est toujours là).
+  `has_email_templates` : l'offre du module apporte des variables qu'un modèle d'email peut utiliser ;
+  `has_sms_templates` : elle ajoute au moins un modèle à la bibliothèque de SMS. Un module qui écrit ses messages
+  lui-même (Entretien de sites, Missions) renvoie `false` aux deux.
 - `GET /api/v1/admin/product-modules` (super admin) → `[{ key, label, description, is_installed, is_enabled,
   is_switchable, load_error, updated_at }]` : Sites web en premier (non commutable), puis les modules installés,
   puis les interrupteurs d'un module non installé.
@@ -68,6 +72,9 @@ import Base`…) : il tourne toujours avec la racine `api/` du cœur dans le `sy
   `GET/PUT /api/v1/ai-assistants/pricing` → `{ monthly_price_cents, annual_free_months }`.
 - Modèles SMS (`GET /sms/templates`) : `module` vaut la clé du module vendu (`websites`, `ai-assistant`,
   `apple-wallet`).
+- Modèles d'email (`GET /email-templates` et chaque réponse qui renvoie un modèle) : `module` vaut la clé du module
+  que le modèle vend, lue dans ses variables comme une campagne la lit (`{lien_assistant}` → `ai-assistant`, aucune
+  variable de module → `websites`). Rien n'est stocké : changer le texte d'un modèle peut le changer de module.
 - Les routes de la réceptionniste gardent leurs chemins (`/ai-assistants/…`, `/public/{slug}/…`, `/client/{token}/…`).
 
 ## Web et demo-host — layers Nuxt
@@ -83,6 +90,44 @@ du cœur. Jamais de fichier de layer au même chemin qu'un fichier du cœur : l'
 
 `DLH_PRODUCT_MODULES_DISABLED=1` construit une application sans aucun layer, le cœur seul : c'est la preuve que le
 cœur ne dépend d'aucun fichier de module.
+
+### Ce que le dashboard montre du module ouvert
+
+Un module ne déclare que son menu (`navGroups`, `home`, `primaryCta`, `settingsLinks`) ; le cœur en déduit le reste
+(`web/app/utils/moduleNavigation.ts`, `web/app/composables/useModuleNavigation.ts`, `useSettingsNav.ts`).
+
+- **Menu de gauche** : le menu du module, sans le lien vers `/dashboard`, qui est le tableau de bord des Sites web.
+  Avec un autre module ouvert, `/dashboard` mène à l'accueil de ce module (middleware `websites-dashboard`). Un
+  module qui a son propre tableau de bord le met dans son menu, à sa propre adresse.
+- **« Paramètres »** : les pages communes (envoi, santé email, compte, aide, administration) se voient partout. Une
+  page du cœur qui porte `requiredModuleFeature` (`web/app/constants/settingsNav.ts`) ne se voit que dans les modules qui s'en
+  servent : « Modèles d'email » (`has_email_templates`), « Relance SMS » (`has_sms_templates` ; hors Sites web elle
+  s'appelle « Expéditeur SMS » et ne garde que le nom d'expéditeur), « Vidéo de prospection » (le module a une prise
+  dans `PresenterVideoAdapterRegistry`). Une page inscrite par un module (`SettingsNavRegistry.register`) ne se voit
+  que dans ce module. La page ouverte garde toujours son lien, quel que soit le module.
+- **Pages filtrées** : « Modèles d'email » liste les modèles du module ouvert, « Vidéo de prospection » sa prise.
+  Ouvertes par leur adresse dans un module qui ne s'en sert pas, elles montrent tout.
+- **« Suivi des emails » et « Suivi des SMS »** : la liste, les chiffres et les réponses à traiter sont ceux du
+  module ouvert (`?module_key=` sur `/emails/logs`, `/emails/stats`, `/emails/replies/pending`, `/sms/messages`,
+  `/sms/stats`, `/sms/replies/pending`). Chaque envoi est rangé sous un module à sa création
+  (`email_logs.module_key`, `sms_messages.module_key`), sans que le module ait à le dire : le cœur note quel module
+  travaille à chaque entrée dans son code (`ModuleAtWork` : ses routes, ses boucles, ses événements Stripe, les
+  balises de ses démos). Un email de campagne prend le module de sa campagne, une réponse celui de l'email
+  d'origine, un email écrit à la main celui du module ouvert dans le dashboard. Un SMS prend le module de son
+  modèle ; écrit à la main, celui dont il porte les liens (`owns_sms_message`), sinon celui du module ouvert. Le
+  reste va aux Sites web. Un message laissé sur un site démo n'apparaît dans les réponses à traiter que dans les
+  Sites web.
+- **Création de campagne** (volet « Nouvelle campagne ») : les modèles d'email et de SMS proposés sont ceux du
+  module ouvert ; un module sans modèles à lui les voit tous. Le tunnel d'automatisation, qui crée des sites démo, ne
+  propose que les modèles des Sites web.
+- **Palette Ctrl+K** : les pages listées sont celles du module ouvert (son menu, son bouton principal, ses réglages,
+  puis les pages de « Paramètres » qu'il voit). Une action ou une recherche liée à une page (« Créer un site »,
+  « Nouvelle campagne », recherche de prospects ou de campagnes) n'apparaît que si le module a cette page.
+- **Barre du bas** (application installée) : au centre le `primaryCta` du module (aucun bouton sans `primaryCta`) ;
+  autour, les pages du module (les liens de son menu sous `home`), puis « Notifications », puis les pages communes
+  de prospection que son menu contient (Campagnes, Suivi des emails, Suivi des SMS, Mes prospects). Quatre onglets
+  sur téléphone, six sur iPad, avec les compteurs du menu. Seule la barre des Sites web est écrite à la main
+  (`web/app/constants/mobileTabBar.ts`).
 
 ## Déploiement
 

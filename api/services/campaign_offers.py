@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from core.product_modules.campaign_offer import CampaignOffer, OfferLifetime, PreviewThumbnail
-from core.product_modules.contract import ProductModule
+from core.product_modules.contract import WEBSITES_MODULE_KEY, ProductModule
 from core.product_modules.registry import product_module_registry
 from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
@@ -115,6 +115,48 @@ class CampaignOffers:
         return next((offer for offer in cls.installed() if cls._email_uses_offer(template, offer)), None)
 
     @classmethod
+    def email_template_module(cls, template: EmailTemplate | None) -> str:
+        """
+        The module an email template belongs to, read from its variables as a campaign reads it.
+
+        Args:
+            template: The template, or None.
+
+        Returns:
+            The key of the module whose offer the template sells, else the websites module's.
+        """
+        offer: CampaignOffer | None = cls.email_offer_of(template)
+        return offer.module_key if offer is not None else WEBSITES_MODULE_KEY
+
+    @staticmethod
+    def has_email_templates(module: ProductModule) -> bool:
+        """
+        Whether a module has email templates of its own: its offer brings variables an email template can use.
+
+        Args:
+            module: An installed module.
+
+        Returns:
+            True when an email template can sell the module's offer.
+        """
+        offer: CampaignOffer | None = module.campaign_offer()
+        return offer is not None and bool(offer.email_link_variables or offer.email_offer_variables)
+
+    @staticmethod
+    def has_sms_templates(module: ProductModule) -> bool:
+        """
+        Whether a module has SMS templates of its own in the library.
+
+        Args:
+            module: An installed module.
+
+        Returns:
+            True when the module's offer adds at least one SMS template.
+        """
+        offer: CampaignOffer | None = module.campaign_offer()
+        return offer is not None and bool(offer.sms_templates())
+
+    @classmethod
     def email_link_offer_of(cls, template: EmailTemplate | None) -> CampaignOffer | None:
         """
         The module offer whose demo an email template links (its link, video or thumbnail).
@@ -139,6 +181,20 @@ class CampaignOffers:
             The offer, or None for a websites SMS.
         """
         return next((offer for offer in cls.installed() if cls._sms_uses_offer(sms_template, offer)), None)
+
+    @classmethod
+    def sms_template_module(cls, sms_template: SmsTemplate | None) -> str:
+        """
+        The module an SMS template belongs to, read from its variables as a campaign reads it.
+
+        Args:
+            sms_template: The SMS template, or None when its key is unknown.
+
+        Returns:
+            The key of the module whose offer the template sells, else the websites module's.
+        """
+        offer: CampaignOffer | None = cls.sms_offer_of(sms_template)
+        return offer.module_key if offer is not None else WEBSITES_MODULE_KEY
 
     @classmethod
     def sms_link_offer_of(cls, sms_template: SmsTemplate | None) -> CampaignOffer | None:

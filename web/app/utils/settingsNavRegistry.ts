@@ -1,5 +1,5 @@
 import type { ProductModuleKey } from '~/types/ProductModule'
-import type { ModuleSettingsNavEntry, SettingsNavGroup } from '~/types/SettingsNav'
+import type { ModuleSettingsNavEntry, SettingsNavGroup, SettingsNavLink } from '~/types/SettingsNav'
 
 const registeredEntries: Map<string, ModuleSettingsNavEntry> = new Map()
 
@@ -38,10 +38,12 @@ export class SettingsNavRegistry {
         (candidate: SettingsNavGroup): boolean => candidate.heading === moduleEntry.groupHeading,
       )
 
+      const ownedEntry: SettingsNavLink = { ...moduleEntry.entry, ownerModuleKey: moduleEntry.moduleKey }
+
       if (group) {
-        group.entries.push(moduleEntry.entry)
+        group.entries.push(ownedEntry)
       } else {
-        mergedGroups.push({ heading: moduleEntry.groupHeading, entries: [moduleEntry.entry] })
+        mergedGroups.push({ heading: moduleEntry.groupHeading, entries: [ownedEntry] })
       }
     }
     return mergedGroups

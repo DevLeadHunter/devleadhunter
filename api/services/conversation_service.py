@@ -242,30 +242,28 @@ class ConversationService:
     # « À traiter » queue
     # ------------------------------------------------------------------ #
 
-    def pending_replies(self, db: Session, user_id: int) -> list[dict[str, Any]]:
+    def pending_replies(self, db: Session, user_id: int, *, module_key: str | None = None) -> list[dict[str, Any]]:
         """
         Human replies still awaiting an answer, newest first.
 
         Args:
             db: Active database session.
             user_id: Owner of the replies.
+            module_key: Keep the replies to the emails of this module only; None keeps them all.
 
         Returns:
             One item per pending reply, with prospect name when known.
         """
-        rows = (
-            db.execute(
-                select(EmailReply)
-                .where(
-                    EmailReply.user_id == user_id,
-                    EmailReply.handled_at.is_(None),
-                    EmailReply.is_auto_reply.is_(False),
-                )
-                .order_by(EmailReply.id.desc())
-            )
-            .scalars()
-            .all()
+        statement = select(EmailReply).where(
+            EmailReply.user_id == user_id,
+            EmailReply.handled_at.is_(None),
+            EmailReply.is_auto_reply.is_(False),
         )
+        if module_key is not None:
+            statement = statement.join(EmailLog, EmailLog.id == EmailReply.email_log_id).where(
+                EmailLog.module_key == module_key
+            )
+        rows = db.execute(statement.order_by(EmailReply.id.desc())).scalars().all()
         prospect_ids = [reply.prospect_id for reply in rows if reply.prospect_id]
         prospects: dict[int, str] = {}
         if prospect_ids:
@@ -356,6 +354,7 @@ class ConversationService:
             is_conversation_reply=True,
             thread_headers=thread_headers_for(reply),
             bcc=bcc,
+            module_key=original.module_key if original else None,
         )
 
         if result.get("success"):

@@ -1,4 +1,4 @@
-"""Unit tests for conversation replies — signature append and inbox BCC."""
+"""Unit tests for conversation replies — signature append, inbox BCC and the module the answer is filed under."""
 
 from __future__ import annotations
 
@@ -33,12 +33,13 @@ def _get_side_effect(_model: type, pk: int) -> SimpleNamespace | None:
             handled_at=None,
         )
     if pk == 5:
-        return SimpleNamespace(id=5, user_id=1, subject="Site web")
+        return SimpleNamespace(id=5, user_id=1, subject="Site web", module_key="writing-module")
     return None
 
 
-def test_send_reply_appends_signature_and_bcc(db: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Drawer answers include the default signature and a BCC inbox copy."""
+@pytest.fixture
+def sent_answer(db: MagicMock, monkeypatch: pytest.MonkeyPatch) -> dict:
+    """What the drawer hands to the sending service when it answers reply 10."""
     monkeypatch.setattr(conv, "render_default_signature_html", lambda _db, _uid: "<div>Sig</div>")
     monkeypatch.setattr(
         conv,
@@ -65,7 +66,17 @@ def test_send_reply_appends_signature_and_bcc(db: MagicMock, monkeypatch: pytest
     result = asyncio.run(service.send_reply(db, user_id=1, reply_id=10, body_html="<p>Merci</p>"))
 
     assert result["success"] is True
-    assert captured["body_html"] == "<p>Merci</p><div>Sig</div>"
-    assert captured["bcc"] == ["leo@mail.dibodev.fr"]
-    assert captured["is_conversation_reply"] is True
-    assert captured["recipient_email"] == "prospect@example.fr"
+    return captured
+
+
+def test_send_reply_appends_signature_and_bcc(sent_answer: dict) -> None:
+    """Drawer answers include the default signature and a BCC inbox copy."""
+    assert sent_answer["body_html"] == "<p>Merci</p><div>Sig</div>"
+    assert sent_answer["bcc"] == ["leo@mail.dibodev.fr"]
+    assert sent_answer["is_conversation_reply"] is True
+    assert sent_answer["recipient_email"] == "prospect@example.fr"
+
+
+def test_send_reply_is_filed_under_the_module_of_the_email_replied_to(sent_answer: dict) -> None:
+    """An answer stays in the email tracking of the module whose email the prospect replied to."""
+    assert sent_answer["module_key"] == "writing-module"

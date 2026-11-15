@@ -309,7 +309,7 @@ import { PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 
 definePageMeta({
   layout: 'dashboard',
-  middleware: ['auth'],
+  middleware: ['auth', 'websites-dashboard'],
 })
 
 /** Shortcuts of the quick-actions card (the search one opens a drawer instead). */
