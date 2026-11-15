@@ -4,7 +4,7 @@
     {
       "key": "ai-assistant",
       "repository": "DevLeadHunter/devleadhunter-module-receptionist",
-      "ref": "v1.0.0",
+      "ref": "v1.0.1",
       "python_distribution": "devleadhunter-receptionist",
       "layers": ["web", "demo-host"]
     },
