@@ -18,14 +18,14 @@
     {
       "key": "site-care",
       "repository": "DevLeadHunter/devleadhunter-module-site-care",
-      "ref": "v1.2.0",
+      "ref": "v1.2.1",
       "python_distribution": "devleadhunter-site-care",
       "layers": ["web", "demo-host"]
     },
     {
       "key": "missions",
       "repository": "DevLeadHunter/devleadhunter-module-missions",
-      "ref": "v1.0.5",
+      "ref": "v1.0.6",
       "python_distribution": "devleadhunter-missions",
       "layers": ["web"],
       "private": true
