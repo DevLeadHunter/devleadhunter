@@ -276,22 +276,23 @@ async def ticket_websocket(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
+    # Closed before the socket waits: kept for the socket's life, a session holds one pooled connection per open tab.
     db: Session = SessionLocal()
     try:
         user = AuthService.resolve_user_from_token(token, db)
-        ticket = support_service.get_ticket(db, ticket_id, user)
-
-        await connection_manager.connect(ticket.id, websocket)
-        try:
-            while True:
-                await websocket.receive_text()
-        except WebSocketDisconnect:
-            connection_manager.disconnect(ticket.id, websocket)
-        except Exception:
-            connection_manager.disconnect(ticket.id, websocket)
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        authorized_ticket_id: int = support_service.get_ticket(db, ticket_id, user).id
     finally:
         db.close()
+
+    await connection_manager.connect(authorized_ticket_id, websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        connection_manager.disconnect(authorized_ticket_id, websocket)
+    except Exception:
+        connection_manager.disconnect(authorized_ticket_id, websocket)
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
 
 @router.websocket("/tickets/ws")
@@ -309,18 +310,16 @@ async def global_tickets_websocket(
 
     db: Session = SessionLocal()
     try:
-        # Verify user authentication
-        user = AuthService.resolve_user_from_token(token, db)
-
-        await global_connection_manager.connect(websocket)
-        try:
-            while True:
-                # Keep connection alive
-                await websocket.receive_text()
-        except WebSocketDisconnect:
-            global_connection_manager.disconnect(websocket)
-        except Exception:
-            global_connection_manager.disconnect(websocket)
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        AuthService.resolve_user_from_token(token, db)
     finally:
         db.close()
+
+    await global_connection_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        global_connection_manager.disconnect(websocket)
+    except Exception:
+        global_connection_manager.disconnect(websocket)
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
