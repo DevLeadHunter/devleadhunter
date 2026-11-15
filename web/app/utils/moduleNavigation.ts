@@ -1,5 +1,5 @@
 import type { UiMobileTabBarLink, UiMobileTabBarNavigation, UiMobileTabBarPagePlacement } from '~/types/UiMobileTabBar'
-import type { DlhModule, UiSidebarGroup, UiSidebarLink } from '~/types/UiSidebar'
+import type { DlhModule, DlhModulePrimaryCta, UiSidebarGroup, UiSidebarLink } from '~/types/UiSidebar'
 import {
   MOBILE_TAB_BAR_CAPTIONS,
   MOBILE_TAB_BAR_MAXIMUM_PHONE_LINK_COUNT,
@@ -63,7 +63,7 @@ export class ModuleNavigation {
   /**
    * A module's bottom bar, read from its menu.
    * @param module - The module the user has open.
-   * @returns The bar's links in order, and the action of its middle button.
+   * @returns The bar's links in order, and the action of its middle button, whose page is never also a tab.
    */
   static buildTabBar(module: DlhModule): UiMobileTabBarNavigation {
     const menuLinks: UiSidebarLink[] = module.navGroups.flatMap((group: UiSidebarGroup): UiSidebarLink[] => group.links)
@@ -74,9 +74,11 @@ export class ModuleNavigation {
         mainAction: MOBILE_TAB_BAR_WEBSITES_MAIN_ACTION,
       }
     }
+    const mainAction: DlhModulePrimaryCta | null = module.tabBarMainAction ?? module.primaryCta
+    const tabLinks: UiSidebarLink[] = menuLinks.filter((link: UiSidebarLink): boolean => link.to !== mainAction?.to)
     return {
-      links: ModuleNavigation.buildProductModuleTabBarLinks(menuLinks, module.home),
-      mainAction: module.primaryCta,
+      links: ModuleNavigation.buildProductModuleTabBarLinks(tabLinks, module.home),
+      mainAction,
     }
   }
 

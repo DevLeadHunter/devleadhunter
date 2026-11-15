@@ -64,6 +64,7 @@ function toSwitcherEntry(definition: DashboardModuleDefinition): DlhModule {
     locked: false,
     home: definition.home,
     primaryCta: definition.primaryCta,
+    tabBarMainAction: definition.tabBarMainAction ?? null,
     navGroups: ModuleNavigation.removeWebsitesDashboardLink(definition.navGroups),
   }
 }

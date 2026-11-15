@@ -64,16 +64,19 @@ const mainAction: ComputedRef<DlhModulePrimaryCta | null> = computed(
   (): DlhModulePrimaryCta | null => tabBar.value.mainAction,
 )
 
-const activeLinkPath: ComputedRef<string | null> = computed((): string | null =>
-  ModuleNavigation.electActivePath(
-    route.path,
-    shownLinks.value.map((link: UiMobileTabBarLink): string => link.to),
-  ),
-)
-
 const isMainActionPageOpen: ComputedRef<boolean> = computed(
   (): boolean => mainAction.value !== null && ModuleNavigation.isPathAtOrUnder(route.path, mainAction.value.to),
 )
+
+const activeLinkPath: ComputedRef<string | null> = computed((): string | null => {
+  if (isMainActionPageOpen.value) {
+    return null
+  }
+  return ModuleNavigation.electActivePath(
+    route.path,
+    shownLinks.value.map((link: UiMobileTabBarLink): string => link.to),
+  )
+})
 
 const linkCounters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>> = computed(
   (): Record<UiSidebarCounterKey, UiSidebarCounter> => {

@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Assistant d’un module, accueil</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.app{--bg:#f4f1e9;--surface:#fbf9f3;--surface2:#ede9de;--ink:#1d1a14;--soft:#6a6356;--line:#e1dbcc;--accent:#e8a33c;--on-accent:#1b1508;--amber:#85590c;--amber-soft:rgba(232,163,60,.18);--green:#2a7146;--green-soft:rgba(47,125,78,.13);--red:#a23f29;--red-soft:rgba(191,77,51,.13);--ring-low:#f2bd73;--ring-high:#9fd0ad;--btn:#1d1a14;--btn-text:#fbf9f3;--t-blue:#dde8f3;--i-blue:#3f5f85;--t-violet:#e6e0f3;--i-violet:#66509a;--t-amber:#f8e7c4;--i-amber:#85590c;--t-green:#dcebd9;--i-green:#2a7146;--t-red:#f6dfd8;--i-red:#a23f29;width:390px;height:844px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.app.wide{width:820px;height:1180px}
+.app.dark{--bg:#131312;--surface:#1b1b1a;--surface2:#242423;--ink:#f0efeb;--soft:#a8a7a1;--line:#2f2f2d;--amber:#ecb865;--amber-soft:rgba(232,163,60,.15);--green:#6cba8c;--green-soft:rgba(85,168,120,.16);--red:#e08a77;--red-soft:rgba(215,106,85,.16);--btn:#f0efeb;--btn-text:#131312;--t-blue:rgba(96,140,200,.2);--i-blue:#9dbbe6;--t-violet:rgba(160,130,255,.18);--i-violet:#b7a5e0;--t-amber:rgba(232,163,60,.16);--i-amber:#ecb865;--t-green:rgba(85,168,120,.18);--i-green:#6cba8c;--t-red:rgba(215,106,85,.18);--i-red:#e08a77}
+.app *{box-sizing:border-box}
+.app button{font:inherit;color:inherit}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.s24{width:24px;height:24px}.ic.s28{width:28px;height:28px}.ic.s16{width:16px;height:16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.top{display:flex;align-items:center;justify-content:space-between;height:57px;padding:0 4px 0 16px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:var(--soft);cursor:pointer}
+.iconbtn.menu{margin-left:-12px}
+.brand{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.topspace{width:44px}
+.scroll{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto}
+.inner{width:100%;max-width:720px;margin:0 auto}
+.home{display:flex;flex-direction:column;gap:20px;padding:20px 16px}
+.title{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.sub{margin:6px 0 0;font-size:14px;color:var(--soft)}
+.slabel{margin:0 0 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.ideas{display:flex;flex-direction:column;gap:12px}
+.idea{display:flex;align-items:center;gap:14px;width:100%;min-height:64px;padding:12px 16px 12px 12px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:left;cursor:pointer;box-shadow:0 1px 0 var(--line)}
+.idea:hover{border-color:var(--soft)}
+.idea .arrow{color:var(--soft)}
+.tile{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;flex:none}
+.tile.blue{background:var(--t-blue);color:var(--i-blue)}
+.tile.violet{background:var(--t-violet);color:var(--i-violet)}
+.tile.amber{background:var(--t-amber);color:var(--i-amber)}
+.tile.green{background:var(--t-green);color:var(--i-green)}
+.tile.red{background:var(--t-red);color:var(--i-red)}
+.itext{flex:1;min-width:0;font-size:14px;font-weight:400;line-height:1.5;color:var(--ink)}
+.thread{display:flex;flex-direction:column;gap:28px;padding:20px 16px}
+.turn{display:flex;flex-direction:column;gap:16px}
+.turn.last{min-height:560px}
+.user{align-self:flex-end;max-width:86%;margin:0;padding:9px 14px;border-radius:18px 18px 4px 18px;background:var(--surface2);font-size:14px}
+.answer{display:flex;flex-direction:column;gap:14px}
+.working{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--soft)}
+.spin{animation:spin .8s linear infinite}
+.rise{display:flex;flex-direction:column;gap:14px;animation:rise .28s ease-out both}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rise,.spin{animation:none}}
+.text{margin:0;font-size:15px;line-height:1.5}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.app.wide .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{display:flex;flex-direction:column;gap:4px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.ctop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.budget{font-size:16px;font-weight:600}
+.badge{display:inline-flex;align-items:center;align-self:flex-start;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.badge.amber{background:var(--amber-soft);color:var(--amber)}
+.badge.green{background:var(--green-soft);color:var(--green)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.ctitle{margin:0;font-size:16px;font-weight:600;line-height:1.35}
+.meta{font-size:14px;color:var(--soft)}
+.lead{display:flex;align-items:center;gap:12px;margin-top:auto;padding-top:12px}
+.sep{height:1px;margin-top:12px;background:var(--line)}
+.init{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:var(--surface2);color:var(--soft);font-size:13px;font-weight:600;flex:none}
+.who{flex:1;min-width:0}
+.who b{display:block;font-size:14px;font-weight:600}
+.who span{display:block;font-size:14px;color:var(--soft)}
+.ring{display:inline-flex;align-items:center;justify-content:center;width:84px;height:84px;border-radius:999px;flex:none}
+.ringin{display:flex;flex-direction:column;align-items:center;justify-content:center;width:70px;height:70px;border-radius:999px;background:var(--surface);line-height:1.15}
+.ringin b{font-size:19px;font-weight:600}
+.ringin i{font-style:normal;font-size:12px;color:var(--soft)}
+.price{text-align:right;flex:none}
+.price b{display:block;font-size:16px;font-weight:600;line-height:1.2}
+.price span{display:block;font-size:12px;color:var(--soft)}
+.all{align-self:flex-start;min-height:44px;padding:0;border:0;background:transparent;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.btitle{margin:0 0 10px;font-size:16px;font-weight:600}
+.bar{display:grid;grid-template-columns:138px minmax(0,1fr) 38px;align-items:center;gap:10px;min-height:34px;font-size:14px}
+.blabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btrack{display:block;height:8px;border-radius:999px;background:var(--surface2);overflow:hidden}
+.bfill{display:block;height:8px;border-radius:999px;background:var(--ink)}
+.bvalue{font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:right}
+.quote{margin:8px 0 0;font-size:14px;line-height:1.5}
+.mailbody{margin:8px 0 0;font-size:14px;line-height:1.55;white-space:pre-line}
+.app .send{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:16px;border:0;border-radius:999px;background:var(--btn);color:var(--btn-text);font-size:14px;font-weight:600;cursor:pointer}
+.sent{display:flex;align-items:center;gap:8px;margin:16px 0 0;font-size:14px;font-weight:500;color:var(--green)}
+.next{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.chip{min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:14px;text-align:left;cursor:pointer}
+.composer{flex:none;padding:8px 12px 12px}
+.field{display:flex;align-items:center;gap:6px;min-height:50px;padding:0 6px 0 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.field:focus-within{border-color:var(--soft)}
+.input{flex:1;min-width:0;height:44px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none}
+.input::placeholder{color:var(--soft)}
+.app .go{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:999px;background:var(--btn);color:var(--btn-text);cursor:pointer;flex:none}
+.tabbar{flex:none;border-top:1px solid var(--line);background:var(--surface);padding:4px 0 24px}
+.barrow{display:flex;height:56px;align-items:stretch;max-width:720px;margin:0 auto}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;border:0;background:transparent;color:var(--soft)}
+.tlabel{display:none;font-size:11px;font-weight:500;line-height:12px}
+.app.wide .tlabel{display:block}
+.mainslot{width:88px;flex:none;display:flex;align-items:center;justify-content:center}
+.app .mainbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:60px;height:60px;border:0;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:600;transform:translateY(-10px)}
+.mainlabel{display:none}
+.app.wide .mainslot{width:auto;padding:0 8px}
+.app.wide .mainbtn{width:auto;height:44px;padding:0 20px;transform:none}
+.app.wide .mainbtn .ic{width:20px;height:20px}
+.app.wide .mainlabel{display:inline}
+</style>
+</helmet>
+<div class="{{appClass}}">
+<header class="top">
+<button class="iconbtn menu" type="button" aria-label="Ouvrir le menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M4 6h16M4 18h16"/></svg></button>
+<span class="brand">devleadhunter</span>
+<sc-if value="{{isThread}}" hint-placeholder-val="{{false}}">
+<button class="iconbtn" type="button" aria-label="Nouvelle conversation" onClick="{{restart}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+</sc-if>
+<sc-if value="{{isHome}}" hint-placeholder-val="{{true}}"><span class="topspace" aria-hidden="true"></span></sc-if>
+</header>
+
+<div class="scroll" ref="{{setScroller}}">
+<div class="inner">
+<sc-if value="{{isHome}}" hint-placeholder-val="{{true}}">
+<div class="home">
+<div>
+<h1 class="title">Assistant</h1>
+<p class="sub">{{homeLead}}</p>
+</div>
+<div>
+<p class="slabel">Suggestions</p>
+<div class="ideas">
+<sc-for list="{{ideas}}" as="idea" hint-placeholder-count="4">
+<button class="idea" type="button" onClick="{{idea.pick}}">
+<span class="{{idea.tileCls}}" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="{{idea.icon}}"></path></svg></span>
+<span class="itext">{{idea.label}}</span>
+<svg class="ic s16 arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>
+</button>
+</sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isThread}}" hint-placeholder-val="{{false}}">
+<div class="thread">
+<sc-for list="{{turns}}" as="turn" hint-placeholder-count="0">
+<section class="{{turn.cls}}">
+<p class="user" id="{{turn.domId}}">{{turn.question}}</p>
+<div class="answer">
+<sc-if value="{{turn.isRunning}}" hint-placeholder-val="{{false}}">
+<div class="working" role="status"><svg class="ic s16 spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>{{workingLabel}}</div>
+</sc-if>
+<sc-if value="{{turn.isDone}}" hint-placeholder-val="{{false}}">
+<div class="rise">
+<p class="text">{{turn.text}}</p>
+
+<sc-if value="{{turn.hasCards}}" hint-placeholder-val="{{false}}">
+<div class="cards">
+<sc-for list="{{turn.missions}}" as="card" hint-placeholder-count="0">
+<article class="card">
+<div class="ctop"><span class="budget">{{card.budget}}</span><span class="{{card.badgeCls}}">{{card.state}}</span></div>
+<h2 class="ctitle">{{card.title}}</h2>
+<span class="meta">{{card.meta}}</span>
+<div class="sep"></div>
+<div class="lead"><span class="init" aria-hidden="true">{{card.initials}}</span><span class="who"><b>{{card.name}}</b><span>{{card.description}}</span></span><span class="ring" role="img" aria-label="{{card.ringAria}}" style="background: conic-gradient({{card.ringColor}} {{card.ringPct}}, var(--surface2) 0)"><span class="ringin"><b>{{card.scoreLabel}}</b><i>{{card.word}}</i></span></span></div>
+</article>
+</sc-for>
+<sc-for list="{{turn.sites}}" as="site" hint-placeholder-count="0">
+<article class="card">
+<span class="{{site.badgeCls}}">{{site.kind}}</span>
+<h2 class="ctitle" style="margin-top: 8px">{{site.title}}</h2>
+<span class="meta">{{site.also}}</span>
+<div class="sep"></div>
+<div class="lead"><span class="init" aria-hidden="true">{{site.initials}}</span><span class="who"><b>{{site.name}}</b><span>{{site.place}}</span></span><span class="price"><b>{{site.price}}</b><span>à proposer</span></span></div>
+</article>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{turn.hasAll}}" hint-placeholder-val="{{false}}"><button class="all" type="button">{{turn.allLabel}}</button></sc-if>
+
+<sc-if value="{{turn.hasBars}}" hint-placeholder-val="{{false}}">
+<div class="card" role="img" aria-label="{{turn.barsAria}}">
+<h2 class="btitle">{{turn.barsTitle}}</h2>
+<sc-for list="{{turn.bars}}" as="bar" hint-placeholder-count="5">
+<div class="bar"><span class="blabel">{{bar.label}}</span><span class="btrack"><span class="bfill" style="width: {{bar.width}}"></span></span><span class="bvalue">{{bar.value}}</span></div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{turn.hasQuote}}" hint-placeholder-val="{{false}}">
+<div class="card">
+<div class="ctop"><span class="budget">{{turn.quoteName}}</span><span class="badge green">{{turn.quoteBadge}}</span></div>
+<span class="meta">{{turn.quoteMeta}}</span>
+<p class="quote">{{turn.quoteText}}</p>
+</div>
+</sc-if>
+
+<sc-if value="{{turn.hasMail}}" hint-placeholder-val="{{false}}">
+<div class="card">
+<span class="meta">À {{turn.mailTo}}</span>
+<h2 class="ctitle">{{turn.mailSubject}}</h2>
+<p class="mailbody">{{turn.mailBody}}</p>
+<sc-if value="{{turn.isPending}}" hint-placeholder-val="{{true}}"><button class="send" type="button" onClick="{{turn.send}}">Envoyer</button></sc-if>
+<sc-if value="{{turn.isSent}}" hint-placeholder-val="{{false}}"><p class="sent" role="status"><svg class="ic s16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Envoyé à l’instant.</p></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{turn.hasNext}}" hint-placeholder-val="{{false}}">
+<div class="next">
+<sc-for list="{{turn.next}}" as="idea" hint-placeholder-count="2">
+<button class="chip" type="button" onClick="{{idea.pick}}">{{idea.label}}</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</section>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</div>
+
+<form class="composer" onSubmit="{{submit}}">
+<label class="sr" for="{{inputId}}">Votre question</label>
+<div class="field inner">
+<input id="{{inputId}}" class="input" type="text" placeholder="Posez votre question" value="{{draft}}" onChange="{{typeDraft}}">
+<button class="go" type="submit" aria-label="Envoyer la question"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
+</div>
+</form>
+
+<nav class="tabbar" aria-label="Navigation rapide">
+<div class="barrow">
+<sc-for list="{{tabsBefore}}" as="tab" hint-placeholder-count="2">
+<button class="tab" type="button" aria-label="{{tab.label}}"><svg class="ic s24" viewBox="0 0 24 24" aria-hidden="true"><path d="{{tab.icon}}"></path></svg><span class="tlabel" aria-hidden="true">{{tab.label}}</span></button>
+</sc-for>
+<div class="mainslot"><button class="mainbtn" type="button" aria-label="Assistant" aria-current="page"><svg class="ic s28" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="mainlabel">Assistant</span></button></div>
+<sc-for list="{{tabsAfter}}" as="tab" hint-placeholder-count="2">
+<button class="tab" type="button" aria-label="{{tab.label}}"><svg class="ic s24" viewBox="0 0 24 24" aria-hidden="true"><path d="{{tab.icon}}"></path></svg><span class="tlabel" aria-hidden="true">{{tab.label}}</span></button>
+</sc-for>
+</div>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"module":{"editor":"enum","options":["missions","site-care"],"default":"missions"},"start":{"editor":null,"default":""},"wide":{"editor":null,"default":""},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  icons() {
+    return {
+      search: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.3-4.3',
+      chart: 'M18 20V10M12 20V4M6 20v-6',
+      mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
+      pen: 'M12 20h9M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z',
+      shield: 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM12 8v4M12 16h.01',
+      pin: 'M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+      briefcase: 'M12 12h.01M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M22 13a18.15 18.15 0 0 1-20 0M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z',
+      kanban: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 7v7M12 7v4M16 7v9',
+      bell: 'M10.27 21a2 2 0 0 0 3.46 0M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33',
+      users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+      repeat: 'm17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3'
+    };
+  }
+
+  modules() {
+    return {
+      missions: {
+        lead: 'Posez une question sur vos missions, ou touchez une suggestion pour l’envoyer.',
+        working: 'Je cherche dans vos missions',
+        tabs: [['Missions', 'briefcase'], ['Contactées', 'kanban'], ['Notifications', 'bell'], ['Emails', 'mail']],
+        ideas: ['budget', 'dept', 'replies', 'ready'],
+        scripts: {
+          budget: { kind: 'Chercher', tone: 'blue', icon: 'search', question: 'Les missions de 2 000 € et plus cette semaine', text: '12 missions de 2 000 € et plus depuis lundi. Voici les plus récentes.', missions: ['escalade', 'architecte', 'voile'], all: 'Voir les 12 missions', next: ['ready', 'dept'] },
+          dept: { kind: 'Compter', tone: 'violet', icon: 'chart', question: 'Combien de missions par département ?', text: '52 missions lues ce mois-ci. Paris en donne le plus.', barsTitle: 'Missions par département', bars: [['Paris (75)', 11], ['Gironde (33)', 7], ['Rhône (69)', 6], ['Loire-Atlantique (44)', 5], ['Ille-et-Vilaine (35)', 4]], next: ['budget'] },
+          replies: { kind: 'Suivre', tone: 'green', icon: 'mail', question: 'Qui m’a répondu ?', text: 'Une réponse attend la vôtre, sur 6 missions contactées.', quote: ['Menuiserie Aubrée', 'Réponse', 'Outil de devis en ligne · hier à 16 h 10', '« Bonjour, oui le projet est toujours ouvert. Vous êtes disponible quand pour en parler ? »'], next: ['write'] },
+          ready: { kind: 'Rédiger', tone: 'amber', icon: 'pen', question: 'Quelles missions sont prêtes à écrire ?', text: 'Deux missions sont prêtes : la piste est sûre et le message est écrit.', missions: ['architecte', 'voile'], next: ['replies'] },
+          write: { question: 'Prépare ma réponse', text: 'Voici un brouillon. Rien ne part sans votre accord.', mail: ['Menuiserie Aubrée', 'Re : Outil de devis en ligne', 'Bonjour Monsieur Aubrée,\n\nMerci pour votre réponse. Je suis disponible mardi 17 ou jeudi 19 novembre, entre 9 h et 12 h.\n\nBonne journée,\nLéo Guillaume'], next: [] }
+        }
+      },
+      'site-care': {
+        lead: 'Posez une question sur les sites de vos prospects, ou touchez une suggestion pour l’envoyer.',
+        working: 'Je cherche dans vos prospects',
+        tabs: [['Prospects', 'users'], ['Veille', 'bell'], ['Emails', 'mail'], ['Suivis', 'repeat']],
+        ideas: ['hacked', 'kinds', 'local', 'opened'],
+        scripts: {
+          hacked: { kind: 'Chercher', tone: 'red', icon: 'shield', question: 'Les sites piratés', text: '5 sites piratés, dont 3 avec une adresse e-mail. Voici ceux à qui vous pouvez écrire.', sites: ['bellanger', 'morin', 'royer'], next: ['write', 'kinds'] },
+          kinds: { kind: 'Compter', tone: 'violet', icon: 'chart', question: 'Quels soucis reviennent le plus ?', text: '2 865 sites regardés. Le souci le plus fréquent : une version de PHP qui n’est plus suivie.', barsTitle: 'Sites par type de souci', bars: [['Version à risque', 1221], ['Sécurité', 465], ['Mise à jour en retard', 316], ['E-mails', 240], ['Site piraté', 5]], next: ['hacked'] },
+          local: { kind: 'Chercher', tone: 'blue', icon: 'pin', question: 'Les sites à écrire en Ille-et-Vilaine', text: '38 sites à écrire en Ille-et-Vilaine. Voici les plus urgents.', sites: ['tessier', 'guillot', 'lac'], all: 'Voir les 38 sites', next: ['kinds'] },
+          opened: { kind: 'Suivre', tone: 'green', icon: 'mail', question: 'Qui a lu mon message ?', text: '4 messages envoyés. Un prospect a ouvert le sien trois fois.', quote: ['Jardins Imbert', 'Ouvert 3 fois', 'Paysagiste · Reims · écrit mardi', 'Pas encore de réponse. Dernière ouverture ce matin à 8 h 40.'], next: ['hacked'] },
+          write: { question: 'Prépare le message pour Bellanger Électricité', text: 'Voici un brouillon. Rien ne part sans votre accord.', mail: ['Bellanger Électricité', 'Des liens de casino sur votre site', 'Bonjour,\n\nJe suis Léo Guillaume, développeur web à Rennes. Sur votre page d’accueil, des liens cachés mènent à des sites de casino : votre site a très probablement été piraté.\n\nLe nettoyage coûte 390 €, une seule fois.\n\nBonne journée,\nLéo Guillaume'], next: [] }
+        }
+      }
+    };
+  }
+
+  cardData() {
+    return {
+      voile: { budget: '5 000 à 10 000 €', score: 91, ready: true, title: 'Interface d’administration pour une école de voile', meta: 'La Rochelle (17) · hier', initials: 'CO', name: 'Cap Ouest Voile', description: 'École de voile à La Rochelle' },
+      escalade: { budget: '5 000 à 10 000 €', score: 86, ready: false, title: 'Application de réservation pour une salle d’escalade', meta: 'Annecy (74) · aujourd’hui', initials: 'VB', name: 'Vertical Bloc', description: 'Salle d’escalade à Annecy' },
+      architecte: { budget: '2 000 à 5 000 €', score: 96, ready: true, title: 'Refonte du site d’un atelier d’architecture', meta: 'Tours (37) · aujourd’hui', initials: 'AB', name: 'Atelier Brun Architectes', description: 'Agence d’architecture à Tours' },
+      bellanger: { kind: 'Site piraté', tone: 'red', title: 'Liens cachés vers des sites de casino', also: 'Aussi : présentation dans Google', initials: 'BÉ', name: 'Bellanger Électricité', place: 'Électricien · Mulhouse', price: '390 €' },
+      morin: { kind: 'Site piraté', tone: 'red', title: 'Texte de paris en ligne caché en bas de page', also: 'Aussi : version à risque (PHP 7.4)', initials: 'AM', name: 'Atelier Paysage Morin', place: 'Paysagiste · Castres', price: '390 €' },
+      royer: { kind: 'Site piraté', tone: 'red', title: 'Liens cachés vers des sites de casino', also: 'Aussi : e-mails', initials: 'ER', name: 'Entreprise Royer', place: 'Électricien · Germaine', price: '390 €' },
+      tessier: { kind: 'Sécurité', tone: 'red', title: 'Pas de cadenas : le navigateur affiche « Non sécurisé »', also: 'Aussi : e-mails', initials: 'ÉT', name: 'Élagage Tessier', place: 'Paysagiste · Vitré', price: '90 €' },
+      guillot: { kind: 'Version à risque · PHP 7.1', tone: 'amber', title: 'Plus de correctif de sécurité depuis 2019', also: 'Aussi : mise à jour en retard (WordPress 4.9)', initials: 'JG', name: 'Jardins Guillot', place: 'Paysagiste · Fougères', price: '190 €' },
+      lac: { kind: 'Sécurité', tone: 'red', title: 'Certificat invalide : avertissement avant d’entrer', also: 'Aussi : affichage sur téléphone', initials: 'JL', name: 'Les Jardins du Lac', place: 'Paysagiste · Redon', price: '90 €' }
+    };
+  }
+
+  moduleKey() { return this.props.module === 'site-care' ? 'site-care' : 'missions'; }
+
+  currentTurns() {
+    if (this.state && this.state.turns) return this.state.turns;
+    const scripts = this.modules()[this.moduleKey()].scripts;
+    const start = this.props.start;
+    return start && scripts[start] ? [{ key: start, question: scripts[start].question, done: true }] : [];
+  }
+
+  ask(key, question) {
+    const turns = this.currentTurns();
+    if (turns.length && !turns[turns.length - 1].done) return;
+    const index = turns.length;
+    this.pendingScroll = true;
+    this.setState({ turns: turns.concat([{ key: key, question: question, done: false }]), draft: '' });
+    setTimeout(() => this.patch(index, { done: true }), 1000);
+  }
+
+  patch(index, change) {
+    const turns = this.currentTurns().slice();
+    if (!turns[index]) return;
+    turns[index] = Object.assign({}, turns[index], change);
+    this.setState({ turns: turns });
+  }
+
+  componentDidUpdate() {
+    if (!this.pendingScroll || !this.scroller) return;
+    this.pendingScroll = false;
+    const anchor = this.scroller.querySelector('[data-last-question]') || this.scroller.querySelector('.turn.last .user');
+    if (anchor) this.scroller.scrollTo({ top: Math.max(anchor.offsetTop - 16, 0), behavior: 'smooth' });
+  }
+
+  renderVals() {
+    const key = this.moduleKey();
+    const module = this.modules()[key];
+    const scripts = module.scripts;
+    const icons = this.icons();
+    const data = this.cardData();
+    const turns = this.currentTurns();
+    const draft = (this.state && this.state.draft) || '';
+    const isWide = Boolean(this.props.wide);
+    const pick = (scriptKey) => () => {
+      this.setState({ draft: scripts[scriptKey].question });
+      setTimeout(() => this.ask(scriptKey, scripts[scriptKey].question), 450);
+    };
+    const tabs = module.tabs.map((tab) => ({ label: tab[0], icon: icons[tab[1]] }));
+    return {
+      appClass: 'app' + (isWide ? ' wide' : '') + (this.props.dark ? ' dark' : ''),
+      isHome: turns.length === 0,
+      isThread: turns.length > 0,
+      homeLead: module.lead,
+      workingLabel: module.working,
+      inputId: key + '-question-' + (this.props.start || 'home') + (isWide ? '-wide' : ''),
+      setScroller: (element) => { if (element) this.scroller = element; },
+      restart: () => this.setState({ turns: [], draft: '' }),
+      ideas: module.ideas.map((scriptKey) => ({ kind: scripts[scriptKey].kind, label: scripts[scriptKey].question, tileCls: 'tile ' + scripts[scriptKey].tone, icon: icons[scripts[scriptKey].icon], pick: pick(scriptKey) })),
+      tabsBefore: tabs.slice(0, 2),
+      tabsAfter: tabs.slice(2),
+      draft: draft,
+      typeDraft: (event) => this.setState({ draft: event.target.value }),
+      submit: (event) => {
+        if (event && event.preventDefault) event.preventDefault();
+        const text = draft.trim();
+        if (text) this.ask(module.ideas[0], text);
+      },
+      turns: turns.map((turn, index) => {
+        const script = scripts[turn.key];
+        const isLast = index === turns.length - 1;
+        const bars = script.bars || [];
+        const missions = (script.missions || []).map((cardKey) => {
+          const mission = data[cardKey];
+          const isSure = mission.score >= 90;
+          return Object.assign({}, mission, {
+            state: mission.ready ? 'Prête à écrire' : 'Piste à confirmer',
+            badgeCls: mission.ready ? 'badge green' : 'badge amber',
+            scoreLabel: mission.score + ' %',
+            word: isSure ? 'sûr' : 'probable',
+            ringColor: isSure ? 'var(--ring-high)' : 'var(--ring-low)',
+            ringPct: mission.score + '%',
+            ringAria: 'Piste ' + (isSure ? 'sûre' : 'probable') + ' à ' + mission.score + ' %'
+          });
+        });
+        const sites = (script.sites || []).map((cardKey) => Object.assign({}, data[cardKey], { badgeCls: 'badge ' + data[cardKey].tone }));
+        const quote = script.quote || ['', '', '', ''];
+        const mail = script.mail || ['', '', ''];
+        return {
+          question: turn.question,
+          domId: key + '-turn-' + index,
+          cls: isLast ? 'turn last' : 'turn',
+          isRunning: !turn.done,
+          isDone: Boolean(turn.done),
+          text: script.text,
+          hasCards: missions.length + sites.length > 0,
+          missions: missions,
+          sites: sites,
+          hasAll: Boolean(script.all),
+          allLabel: script.all || '',
+          hasBars: bars.length > 0,
+          barsTitle: script.barsTitle || '',
+          barsAria: bars.map((bar) => bar[0] + ' : ' + bar[1]).join(', '),
+          bars: bars.map((bar) => ({ label: bar[0], value: bar[1].toLocaleString('fr-FR'), width: Math.max(Math.round((bar[1] / bars[0][1]) * 100), 2) + '%' })),
+          hasQuote: Boolean(script.quote),
+          quoteName: quote[0],
+          quoteBadge: quote[1],
+          quoteMeta: quote[2],
+          quoteText: quote[3],
+          hasMail: Boolean(script.mail),
+          mailTo: mail[0],
+          mailSubject: mail[1],
+          mailBody: mail[2],
+          isPending: !turn.sent,
+          isSent: Boolean(turn.sent),
+          send: () => this.patch(index, { sent: true }),
+          hasNext: isLast && script.next.length > 0,
+          next: script.next.map((scriptKey) => ({ label: scripts[scriptKey].question, pick: pick(scriptKey) }))
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

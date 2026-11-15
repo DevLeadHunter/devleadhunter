@@ -48,6 +48,7 @@ export type DlhModule = {
   locked: boolean
   home: string
   primaryCta: DlhModulePrimaryCta | null
+  tabBarMainAction: DlhModulePrimaryCta | null
   navGroups: UiSidebarGroup[]
 }
 
@@ -69,6 +70,7 @@ export type DashboardModuleDefinition = {
   icon: string
   home: string
   primaryCta: DlhModulePrimaryCta | null
+  tabBarMainAction?: DlhModulePrimaryCta
   navGroups: UiSidebarGroup[]
   settingsLinks?: UiSidebarLink[]
   sidebarStatus?: DashboardModuleSidebarStatus

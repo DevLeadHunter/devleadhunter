@@ -78,4 +78,5 @@ Le dossier vit dans [le dépôt du module](https://github.com/DevLeadHunter/devl
 | Fichier | Ce qu'il montre | Devenu |
 |---|---|---|
 | `campaign-results-tab.html` | L'onglet « Résultats » d'une campagne (maquette v4) | Codé et en prod le 03/10 |
+| `module-assistant/` (canevas https://claude.ai/artifact/8qtVr3pvwG4h1Xk3Q1Jmky, note dans `NOTE.md`) | La page « Assistant » des modules Missions et Entretien de sites : suggestions à toucher, réponses en cartes, graphique ou réponse reçue, bouton orange au centre de la barre du bas | Codée le 16/11 ; restes listés dans la note (réponse écrite depuis le chat, nom des départements) |
 | `electrician-template/electricien-v5.html` | La nouvelle template électricien (cinquième version) | Template `electrician-eclat` (dépôt `devleadhunter-template-electrician-eclat`), codée le 05/10 |

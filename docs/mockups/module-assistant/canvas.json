@@ -1,0 +1,139 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-15T21:40:00Z"
+  },
+  "title": "Assistant IA des modules",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : accueil (à essayer)",
+      "is_interactive": true
+    },
+    "MissionsCartes.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : une recherche",
+      "is_interactive": true
+    },
+    "MissionsGraphique.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : un graphique",
+      "is_interactive": true
+    },
+    "MissionsReponse.dc.html": {
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : une réponse reçue",
+      "is_interactive": true
+    },
+    "MissionsBrouillon.dc.html": {
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : un brouillon",
+      "is_interactive": true
+    },
+    "MissionsSombre.dc.html": {
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Missions : accueil en sombre",
+      "is_interactive": true
+    },
+    "MissionsIpad.dc.html": {
+      "x": 2820,
+      "y": 0,
+      "w": 820,
+      "h": 1180,
+      "title": "Missions : une recherche sur iPad",
+      "is_interactive": true
+    },
+    "EntretienAccueil.dc.html": {
+      "x": 0,
+      "y": 1400,
+      "w": 390,
+      "h": 844,
+      "title": "Entretien de sites : accueil",
+      "is_interactive": true
+    },
+    "EntretienCartes.dc.html": {
+      "x": 470,
+      "y": 1400,
+      "w": 390,
+      "h": 844,
+      "title": "Entretien de sites : une recherche",
+      "is_interactive": true
+    },
+    "EntretienGraphique.dc.html": {
+      "x": 940,
+      "y": 1400,
+      "w": 390,
+      "h": 844,
+      "title": "Entretien de sites : un graphique",
+      "is_interactive": true
+    },
+    "EntretienBrouillon.dc.html": {
+      "x": 1410,
+      "y": 1400,
+      "w": 390,
+      "h": 844,
+      "title": "Entretien de sites : un brouillon",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "MissionsCartes.dc.html",
+    "MissionsGraphique.dc.html",
+    "MissionsReponse.dc.html",
+    "MissionsBrouillon.dc.html",
+    "MissionsSombre.dc.html",
+    "MissionsIpad.dc.html",
+    "EntretienAccueil.dc.html",
+    "EntretienCartes.dc.html",
+    "EntretienGraphique.dc.html",
+    "EntretienBrouillon.dc.html"
+  ],
+  "notes": {
+    "titreMissions": {
+      "x": 0,
+      "y": -300,
+      "text": "Assistant du module Missions",
+      "kind": "title1",
+      "maxW": 3200
+    },
+    "titreEntretien": {
+      "x": 0,
+      "y": 1100,
+      "text": "Le même assistant dans Entretien de sites",
+      "kind": "title1",
+      "maxW": 1800
+    },
+    "commentLire": {
+      "x": 1960,
+      "y": 1400,
+      "w": 400,
+      "fill": "orange",
+      "text": "Comment essayer\n\nAppuyez sur Lecture sur un écran, puis touchez une idée ou une question suivante.\n\nLe bouton orange du milieu ouvre l'assistant du module ouvert.\n\nDonnées inventées."
+    }
+  },
+  "designSystems": []
+}

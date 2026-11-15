@@ -47,6 +47,7 @@ export const WEBSITES_DASHBOARD_MODULE: DlhModule = {
   locked: false,
   home: WEBSITES_DASHBOARD_PATH,
   primaryCta: { label: 'Créer une automatisation', to: '/dashboard/automations/new', icon: 'i-lucide-plus' },
+  tabBarMainAction: null,
   navGroups: WEBSITES_NAV,
 }
 
