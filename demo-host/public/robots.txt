@@ -1,0 +1,3 @@
+# Demo and widget pages carry their own noindex: crawlers must be able to read them, so nothing is disallowed.
+User-agent: *
+Allow: /
