@@ -180,7 +180,7 @@
         </p>
 
         <NuxtLink
-          v-if="!isMobile"
+          v-if="!isMobile && !userStore.hasUnlimitedCredits"
           to="/dashboard/buy-credits"
           :class="moduleStatusLine ? '' : 'mt-auto'"
           class="group flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
@@ -189,8 +189,7 @@
             <span class="app-label !text-[0.6rem]">Crédits</span>
             <span class="flex items-center gap-2">
               <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
-              <UIcon v-if="hasUnlimitedCredits" name="i-lucide-infinity" class="h-5 w-5 text-[var(--app-ink)]" />
-              <span v-else class="font-label text-lg leading-tight font-semibold text-[var(--app-ink)]">{{
+              <span class="font-label text-lg leading-tight font-semibold text-[var(--app-ink)]">{{
                 creditBalanceLabel
               }}</span>
             </span>
@@ -496,23 +495,14 @@ const userInitials: ComputedRef<string> = computed((): string => {
   return name.substring(0, 2).toUpperCase()
 })
 
-/** Raw credit balance (null when the field is missing). */
-const creditBalance: ComputedRef<number | null> = computed((): number | null => {
-  return userStore.user?.credits_available ?? userStore.user?.credit_balance ?? null
-})
-
-/** Whether the account has an unlimited plan. */
-const hasUnlimitedCredits: ComputedRef<boolean> = computed((): boolean => creditBalance.value === -1)
-
-/** Credits balance shown in the credits card (the unlimited case renders an infinity icon instead). */
+/** Credits balance shown in the credits card, which an unlimited plan does not show. */
 const creditBalanceLabel: ComputedRef<string> = computed((): string => {
-  return (creditBalance.value ?? 0).toString()
+  return (userStore.creditBalance ?? 0).toString()
 })
 
 /** Semantic dot colour next to the credits counter. */
 const creditDotColor: ComputedRef<string> = computed((): string => {
-  if (hasUnlimitedCredits.value) return 'var(--app-ink-soft)'
-  const credits: number | null = creditBalance.value
+  const credits: number | null = userStore.creditBalance
   if (credits === null || credits === 0 || credits <= 10) return 'var(--app-red)'
   return 'var(--app-green)'
 })

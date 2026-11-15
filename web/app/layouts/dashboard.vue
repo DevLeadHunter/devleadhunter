@@ -32,7 +32,8 @@
               devleadhunter
             </span>
 
-            <div class="relative z-50">
+            <span v-if="userStore.hasUnlimitedCredits" class="w-8" aria-hidden="true"></span>
+            <div v-else class="relative z-50">
               <button
                 class="flex h-10 items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-3.5 [-webkit-tap-highlight-color:transparent]"
                 @click.stop="toggleCreditsPopover"
@@ -186,25 +187,13 @@ const shouldFillDashboardViewport: ComputedRef<boolean> = computed(
   (): boolean => route.meta.shouldFillDashboardViewport === true,
 )
 
-/** Credits counter shown in the pill ("∞" when unlimited). */
-const creditIconValue: ComputedRef<string> = computed((): string => {
-  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === null || credits === undefined) {
-    return '0'
-  }
-  if (credits === -1) {
-    return '∞'
-  }
-  return credits.toString()
-})
+/** Credits counter shown in the pill, which an unlimited plan does not show. */
+const creditIconValue: ComputedRef<string> = computed((): string => (userStore.creditBalance ?? 0).toString())
 
 /** Semantic dot colour next to the credits counter. */
 const creditDotColor: ComputedRef<string> = computed((): string => {
-  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === -1) {
-    return 'var(--app-ink-soft)'
-  }
-  if (credits === null || credits === undefined || credits === 0 || credits <= 10) {
+  const credits: number | null = userStore.creditBalance
+  if (credits === null || credits === 0 || credits <= 10) {
     return 'var(--app-red)'
   }
   return 'var(--app-green)'

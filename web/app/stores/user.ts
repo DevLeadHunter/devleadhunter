@@ -25,6 +25,8 @@ export const useUserStore = defineStore('user', () => {
   const TOKEN_RENEWED_AT_KEY: string = 'token_renewed_at'
   let isRenewingToken: boolean = false
 
+  const UNLIMITED_CREDIT_BALANCE: number = -1
+
   // Getters
   const isAuthenticated: ComputedRef<boolean> = computed(() => {
     return user.value !== null && token.value !== null
@@ -37,6 +39,15 @@ export const useUserStore = defineStore('user', () => {
   const userEmail: ComputedRef<string> = computed(() => {
     return user.value?.email ?? ''
   })
+
+  /** Credits left on the account: -1 for an unlimited plan (admins), null while the profile does not carry them. */
+  const creditBalance: ComputedRef<number | null> = computed((): number | null => {
+    return user.value?.credits_available ?? user.value?.credit_balance ?? null
+  })
+
+  const hasUnlimitedCredits: ComputedRef<boolean> = computed(
+    (): boolean => creditBalance.value === UNLIMITED_CREDIT_BALANCE,
+  )
 
   /**
    * Login user with credentials
@@ -333,6 +344,8 @@ export const useUserStore = defineStore('user', () => {
     isAuthenticated,
     userName,
     userEmail,
+    creditBalance,
+    hasUnlimitedCredits,
     // Actions
     login,
     signup,
