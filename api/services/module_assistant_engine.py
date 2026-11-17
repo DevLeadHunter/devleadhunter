@@ -97,6 +97,8 @@ class AssistantToolResult:
         cards: The module's records to draw, as the module's own card schema.
         chart: A chart to draw, None when the result has none.
         highlight: One thing to look at first, None when there is none.
+        is_selection: Whether the cards are a choice the model made: they then stand alone, in their order, in place
+            of the cards an earlier call of the turn found.
     """
 
     facts: dict[str, object]
@@ -104,6 +106,7 @@ class AssistantToolResult:
     cards: Sequence[object] = ()
     chart: AssistantChart | None = None
     highlight: AssistantHighlight | None = None
+    is_selection: bool = False
 
 
 @dataclass(frozen=True)
@@ -152,11 +155,13 @@ class ModuleAssistantEngine:
 
     MAXIMUM_TOOL_CALLS: ClassVar[int] = 6
     HISTORY_KEPT: ClassVar[int] = 6
-    FACTS_MAXIMUM_LENGTH: ClassVar[int] = 6000
+    FACTS_MAXIMUM_LENGTH: ClassVar[int] = 30000
     NEXT_QUESTIONS_KEPT: ClassVar[int] = 3
     NEXT_QUESTION_MAXIMUM_LENGTH: ClassVar[int] = 90
     ANSWER_MAXIMUM_LENGTH: ClassVar[int] = 1500
     CONTEXT_MAXIMUM_LENGTH: ClassVar[int] = 3000
+    NOTE_FACTS_LENGTH: ClassVar[int] = 800
+    NOTES_KEPT: ClassVar[int] = 3
     MAXIMUM_OUTPUT_TOKENS: ClassVar[int] = 4000
     REQUEST_TIMEOUT_SECONDS: ClassVar[float] = 60.0
     REFUSAL_FALLBACK_BETA: ClassVar[str] = "server-side-fallback-2026-07-01"
@@ -192,6 +197,8 @@ class ModuleAssistantEngine:
         "- Écris en français simple, au vouvoiement, en deux ou trois phrases courtes, soixante mots au plus : il "
         "lit sur son téléphone, entre deux tâches. Pas de titre, pas de liste à puces, pas de gras. Donne les "
         "chiffres tels que les outils les donnent.\n"
+        "- Les « id » des résultats servent à tes appels d’outils : ne les écris jamais dans ta réponse. Quand ta "
+        "réponse porte sur des fiches précises, rappelle l’outil qui les affiche pour qu’il les ait sous les yeux.\n"
         "- Tu lis ses données, tu n’agis pas : tu ne peux ni envoyer ni modifier un message. Pour agir, il ouvre "
         "la fiche que la page affiche ; ne propose donc pas d’envoyer ou d’écrire à sa place.\n"
         "- Si ses données ne permettent pas de répondre, dis-le franchement et propose ce que tu peux regarder à "
@@ -212,7 +219,7 @@ class ModuleAssistantEngine:
         "arrondi ou une estimation de ta part). Redonne-la en ne gardant que les nombres écrits tels quels dans "
         "les résultats des outils ; pour un total ou un écart, appelle l’outil qui le donne."
     )
-    CARDS_KEPT: ClassVar[int] = 6
+    CARDS_KEPT: ClassVar[int] = 12
 
     def __init__(self) -> None:
         self._client: anthropic.AsyncAnthropic | None = None
@@ -402,7 +409,8 @@ class ModuleAssistantEngine:
         if len(facts) > self.FACTS_MAXIMUM_LENGTH:
             facts = facts[: self.FACTS_MAXIMUM_LENGTH] + "… (coupé)"
         content: str = f"{facts}\nEn une phrase : {result.sentence}"
-        read_notes.append(f"{tool.name}({json.dumps(arguments, ensure_ascii=False)}) → {content}")
+        note_facts: str = facts if len(facts) <= self.NOTE_FACTS_LENGTH else facts[: self.NOTE_FACTS_LENGTH] + "…"
+        read_notes.append(f"{tool.name}({json.dumps(arguments, ensure_ascii=False)}) → {result.sentence} {note_facts}")
         return {"type": "tool_result", "tool_use_id": block.id, "content": content}
 
     @staticmethod
@@ -423,7 +431,7 @@ class ModuleAssistantEngine:
         """An earlier answer as the model reads it again, with what its tools had read."""
         if not past.context:
             return past.answer
-        return f"{past.answer}\n\nDonnées lues pour cette réponse :\n{past.context[-self.CONTEXT_MAXIMUM_LENGTH :]}"
+        return f"{past.answer}\n\nDonnées lues pour cette réponse :\n{past.context[: self.CONTEXT_MAXIMUM_LENGTH]}"
 
     def _outcome(
         self,
@@ -466,7 +474,7 @@ class ModuleAssistantEngine:
             chart=next((result.chart for result in reversed(results) if result.chart is not None), None),
             highlight=next((result.highlight for result in reversed(results) if result.highlight is not None), None),
             next_questions=next_questions,
-            context="\n".join(read_notes)[-self.CONTEXT_MAXIMUM_LENGTH :],
+            context="\n".join(read_notes[-self.NOTES_KEPT :])[: self.CONTEXT_MAXIMUM_LENGTH],
         )
 
     @classmethod
@@ -476,11 +484,13 @@ class ModuleAssistantEngine:
 
         Returns:
             Those of the last call that found some, joined by the earlier calls of the same turn that hold cards of
-            the same kind (two searches for two words), each card once, six at most.
+            the same kind (two searches for two words), each card once, twelve at most.
         """
         with_cards: list[AssistantToolResult] = [result for result in results if result.cards]
         if not with_cards:
             return []
+        if with_cards[-1].is_selection:
+            return list(with_cards[-1].cards)[: cls.CARDS_KEPT]
         kind: type = type(with_cards[-1].cards[0])
         drawn: list[object] = []
         for result in with_cards:
