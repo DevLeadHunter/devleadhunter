@@ -82,7 +82,7 @@
         </p>
 
         <div v-else class="flex flex-col gap-3.5">
-          <p class="text-[15px] leading-normal text-[var(--app-ink)]">{{ exchange.answer.text }}</p>
+          <p class="text-[15px] leading-normal whitespace-pre-line text-[var(--app-ink)]">{{ exchange.answer.text }}</p>
 
           <div v-if="exchange.answer.cards.length > 0" class="grid grid-cols-1 gap-3.5 @2xl:grid-cols-2">
             <template v-for="(card, cardIndex) in exchange.answer.cards" :key="cardIndex">
@@ -151,10 +151,16 @@
 
 <script lang="ts" setup generic="AnswerCard">
 import type { ComputedRef, PropType, Ref, ShallowRef } from 'vue'
-import type { ModuleAssistantAnswer, ModuleAssistantExchange, ModuleAssistantHome } from '~/types/ModuleAssistant'
+import type {
+  ModuleAssistantAnswer,
+  ModuleAssistantExchange,
+  ModuleAssistantHome,
+  ModuleAssistantPastExchange,
+} from '~/types/ModuleAssistant'
 import type { UiModuleAssistantChatProps } from '~/types/UiModuleAssistantChat'
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
 import {
+  MODULE_ASSISTANT_HISTORY_MAXIMUM_LENGTH,
   MODULE_ASSISTANT_LABEL,
   MODULE_ASSISTANT_QUESTION_MAXIMUM_LENGTH,
   MODULE_ASSISTANT_TONE_CLASSES,
@@ -162,12 +168,18 @@ import {
 
 /** The chat of a module's assistant; the `card` slot draws one record of an answer, with the module's own card. */
 const props: UiModuleAssistantChatProps<AnswerCard> = defineProps({
+  conversationKey: {
+    type: String,
+    required: true,
+  },
   loadHome: {
     type: Function as PropType<() => Promise<ModuleAssistantHome>>,
     required: true,
   },
   askQuestion: {
-    type: Function as PropType<(question: string) => Promise<ModuleAssistantAnswer<AnswerCard>>>,
+    type: Function as PropType<
+      (question: string, history: ModuleAssistantPastExchange[]) => Promise<ModuleAssistantAnswer<AnswerCard>>
+    >,
     required: true,
   },
 })
@@ -178,11 +190,12 @@ defineSlots<{
 
 const exchangeElements: Readonly<ShallowRef<HTMLElement[] | null>> = useTemplateRef<HTMLElement[]>('exchangeElements')
 
-let lastExchangeId: number = 0
-
 const home: Ref<ModuleAssistantHome | null> = ref(null)
 const isLoadingHome: Ref<boolean> = ref(true)
-const exchanges: Ref<ModuleAssistantExchange<AnswerCard>[]> = ref([])
+const exchanges: Ref<ModuleAssistantExchange<AnswerCard>[]> = useState(
+  `module-assistant-conversation:${props.conversationKey}`,
+  (): ModuleAssistantExchange<AnswerCard>[] => [],
+)
 const draftQuestion: Ref<string> = ref('')
 
 const hasStartedConversation: ComputedRef<boolean> = computed((): boolean => exchanges.value.length > 0)
@@ -221,6 +234,26 @@ async function revealLastExchange(): Promise<void> {
 }
 
 /**
+ * The answered exchanges that came before one, as the API reads the conversation so far.
+ * @param exchangeId - The exchange being asked.
+ * @returns Their questions and the words of their answers, oldest first.
+ */
+function listPastExchanges(exchangeId: number): ModuleAssistantPastExchange[] {
+  const pastExchanges: ModuleAssistantPastExchange[] = []
+
+  for (const exchange of exchanges.value) {
+    if (exchange.id < exchangeId && exchange.answer !== null) {
+      pastExchanges.push({
+        question: exchange.question,
+        answer: exchange.answer.text,
+        context: exchange.answer.context,
+      })
+    }
+  }
+  return pastExchanges.slice(-MODULE_ASSISTANT_HISTORY_MAXIMUM_LENGTH)
+}
+
+/**
  * Ask the question of an exchange and store its answer.
  * @param exchangeId - The exchange awaiting its answer.
  * @param question - The question to ask.
@@ -229,7 +262,7 @@ async function revealLastExchange(): Promise<void> {
 async function answerExchange(exchangeId: number, question: string): Promise<void> {
   let answer: ModuleAssistantAnswer<AnswerCard> | null = null
   try {
-    answer = await props.askQuestion(question)
+    answer = await props.askQuestion(question, listPastExchanges(exchangeId))
   } catch {
     answer = null
   }
@@ -255,8 +288,8 @@ async function sendQuestion(question: string): Promise<void> {
   if (trimmedQuestion.length === 0 || isAwaitingAnswer.value) {
     return
   }
-  lastExchangeId += 1
-  const exchangeId: number = lastExchangeId
+  const exchangeId: number =
+    Math.max(0, ...exchanges.value.map((exchange: ModuleAssistantExchange<AnswerCard>): number => exchange.id)) + 1
   exchanges.value.push({ id: exchangeId, question: trimmedQuestion, answer: null, hasFailed: false })
   draftQuestion.value = ''
   revealLastExchange()

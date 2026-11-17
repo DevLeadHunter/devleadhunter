@@ -2,6 +2,8 @@
 Configuration settings for the Prospect Tool API.
 """
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -256,6 +258,26 @@ class Settings(BaseSettings):
         default="openai/gpt-oss-20b",
         alias="GROQ_FALLBACK_MODEL",
         description="Groq model answering in place of GROQ_MODEL while its daily quota is spent (empty to turn off)",
+    )
+    # Claude: the assistant of the product modules, which holds a conversation and calls tools. Kept apart from
+    # Groq, whose free quota (8,000 tokens a minute) the pipeline needs for itself.
+    anthropic_api_key: str | None = Field(
+        default=None,
+        alias="ANTHROPIC_API_KEY",
+        description="Claude API key for the modules' assistant (without it the assistant answers by rules alone)",
+    )
+    assistant_model: str = Field(
+        default="claude-haiku-5-5",
+        alias="ASSISTANT_MODEL",
+        description=(
+            "Claude model id holding the modules' assistant conversations. Measured on 2026-11-17 over the same 23 "
+            "questions: Haiku 5.5 answered as rightly as Opus 5.5, faster, for about one fortieth of the price"
+        ),
+    )
+    assistant_effort: Literal["low", "medium", "high"] = Field(
+        default="low",
+        alias="ASSISTANT_EFFORT",
+        description="How long Claude thinks before a tool call or an answer (low, medium, high): low keeps a chat fast",
     )
     # Vision model (photo labelling). Only a preference: the service checks it against the account's
     # live model list and falls back to the next known vision model, so a decommission never leaves

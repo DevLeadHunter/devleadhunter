@@ -36,6 +36,7 @@ export type ModuleAssistantAnswer<AnswerCard> = {
   chart: ModuleAssistantChart | null
   highlight: ModuleAssistantHighlight | null
   next_questions: string[]
+  context: string
   cards: AnswerCard[]
 }
 
@@ -45,4 +46,11 @@ export type ModuleAssistantExchange<AnswerCard> = {
   question: string
   answer: ModuleAssistantAnswer<AnswerCard> | null
   hasFailed: boolean
+}
+
+/** A question already asked in the conversation with the answer it got, sent along so a follow-up keeps its thread. */
+export type ModuleAssistantPastExchange = {
+  question: string
+  answer: string
+  context: string
 }

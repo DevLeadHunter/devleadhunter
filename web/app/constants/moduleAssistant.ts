@@ -6,6 +6,9 @@ export const MODULE_ASSISTANT_ICON: string = 'i-lucide-message-circle'
 
 export const MODULE_ASSISTANT_QUESTION_MAXIMUM_LENGTH: number = 500
 
+/** How many past exchanges go with a question: the six the assistant reads again (`HISTORY_KEPT` in the API). */
+export const MODULE_ASSISTANT_HISTORY_MAXIMUM_LENGTH: number = 6
+
 /** The colours of a suggestion's icon tile. */
 export const MODULE_ASSISTANT_TONE_CLASSES: Record<ModuleAssistantTone, string> = {
   blue: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)]',

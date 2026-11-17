@@ -37,15 +37,32 @@ class AssistantHome(BaseModel):
     suggestions: list[AssistantSuggestion]
 
 
+class AssistantPastExchange(BaseModel):
+    """
+    A question already asked in the conversation, with the answer it got.
+
+    Attributes:
+        question: The owner's words.
+        answer: The answer in words, as the page showed it.
+        context: What the tools read to write it, as the answer handed it to the page.
+    """
+
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(max_length=2000)
+    context: str = Field(default="", max_length=4000)
+
+
 class AssistantQuestion(BaseModel):
     """
     A question asked to the assistant.
 
     Attributes:
         question: The owner's words.
+        history: The conversation so far, oldest first, so a follow-up question keeps its thread.
     """
 
     question: str = Field(min_length=1, max_length=500)
+    history: list[AssistantPastExchange] = Field(default_factory=list[AssistantPastExchange], max_length=12)
 
 
 class AssistantBar(BaseModel):
@@ -104,9 +121,11 @@ class AssistantAnswer(BaseModel):
         chart: A chart, None when the answer has none.
         highlight: One thing to look at first, None when there is none.
         next_questions: Questions to carry on with.
+        context: What the tools read, in short; the page sends it back with the next question and never shows it.
     """
 
     text: str
     chart: AssistantChart | None = None
     highlight: AssistantHighlight | None = None
-    next_questions: list[str] = Field(default_factory=list)
+    next_questions: list[str] = Field(default_factory=list[str])
+    context: str = ""

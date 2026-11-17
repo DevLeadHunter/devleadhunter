@@ -17,15 +17,18 @@ Un chat « un peu comme celui de PostHog » : du texte, des cartes (les mêmes q
 - Icône du bouton central : une bulle de message (l'étoile a été refusée).
 - Validée le 16/11/2026 : « tu peux implémenter ça dans le code ».
 
-## Codé le 16/11/2026
+## Codé le 16/11/2026, conversation avec Claude le 17/11/2026
 
-- Cœur : composant `UiModuleAssistantChat` et bouton central par module (`tabBarMainAction`).
+- Cœur : composant `UiModuleAssistantChat`, bouton central par module (`tabBarMainAction`) et moteur de conversation `services/module_assistant_engine.py`.
 - Missions : `/dashboard/missions/assistant`. Entretien de sites : `/dashboard/site-care/assistant`.
-- Le modèle de langage traduit seulement la question en requête ; chaque chiffre et chaque phrase viennent de la base.
+- Claude (clé `ANTHROPIC_API_KEY`, modèle `ASSISTANT_MODEL`, Haiku 5.5 par défaut) tient la conversation et appelle les outils de chaque module ; chaque chiffre, carte et graphique vient de la base. Le fil est gardé d'une question à l'autre et quand on change de page.
+- Mesuré le 17/11 sur 23 questions : Haiku 5.5 environ 0,0005 $ et 3 secondes par question, Opus 5.5 environ 0,02 $ et 5 secondes, pour des réponses aussi justes.
+- Groq n'est pas utilisé par le chat : son quota gratuit (8 000 jetons par minute) ne tient pas une conversation.
 
 ## Dans la maquette mais pas encore codé
 
-- Écrire et envoyer une réponse depuis le chat (la planche « Brouillon ») : pour l'instant la carte renvoie vers la page où l'on répond.
+- Écrire et envoyer une réponse depuis le chat (la planche « Brouillon ») : l'assistant lit, il n'agit pas ; la carte renvoie vers la page où l'on répond.
 - Le nom des départements dans le graphique (« Paris (75) ») : le code affiche « Département 75 ».
 - La recherche de sites par département (les sites n'ont que leur ville).
-- Le lien « Voir les 12 missions » sous les cartes.
+- Le lien « Voir les 12 missions » sous les cartes : six cartes au plus sont montrées, sans lien vers la liste.
+- La conversation n'est pas gardée après un rechargement complet de la page.
