@@ -25,7 +25,7 @@
     {
       "key": "missions",
       "repository": "DevLeadHunter/devleadhunter-module-missions",
-      "ref": "v1.6.1",
+      "ref": "v1.7.0",
       "python_distribution": "devleadhunter-missions",
       "layers": ["web"],
       "private": true
