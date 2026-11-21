@@ -19,14 +19,16 @@ sqlalchemy_dialects_logger = logging.getLogger("sqlalchemy.dialects")
 sqlalchemy_dialects_logger.setLevel(logging.ERROR)
 sqlalchemy_dialects_logger.propagate = False
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from core.config import settings
+from core.database_host_resolver import database_host_resolver
 
 # Create database engine
 # echo=False to disable SQL query logging (we handle logging separately)
 engine = create_engine(settings.database_url, pool_pre_ping=True, pool_recycle=300, echo=False)
+event.listen(engine, "do_connect", database_host_resolver.fall_back_to_last_known_address)
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
