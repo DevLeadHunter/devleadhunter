@@ -118,6 +118,13 @@ _storyblok_swap_locks: dict[int, asyncio.Lock] = {}
 # Sentinel expiry while the demo link has not been emailed yet (TTL not started).
 _PENDING_TTL_EXPIRES: datetime = datetime(2099, 12, 31, 23, 59, 59, tzinfo=UTC)
 
+_OFFLINE_DEMO_STATUSES: tuple[str, ...] = (
+    DemoSiteStatus.DELETED.value,
+    DemoSiteStatus.DELIVERED.value,
+    DemoSiteStatus.EXPIRED.value,
+)
+_WITHDRAWN_DEMO_STATUSES: tuple[str, ...] = (DemoSiteStatus.DELETED.value, DemoSiteStatus.EXPIRED.value)
+
 AVAILABLE_TEMPLATES: list[dict[str, object]] = template_registry.AVAILABLE_TEMPLATES
 
 
@@ -1527,21 +1534,22 @@ class DemoSiteService:
         site (status DELIVERED), a deleted one, or a **dormant** one (EXPIRED, kept
         for a possible SMS relance) is taken down here (404) until it is sold or
         revived — a sold site then lives only on the client's own domain. A demo whose client works in
-        the CMS space is never taken down by its date.
+        the CMS space is never taken down by its date. The old link of a withdrawn demo serves the demo
+        regenerated for the same prospect, when there is one.
         """
         now: datetime = datetime.now(UTC)
         site: DemoSite | None = (
             db.query(DemoSite)
             .filter(
                 DemoSite.slug == slug,
-                DemoSite.status.notin_(
-                    [DemoSiteStatus.DELETED.value, DemoSiteStatus.DELIVERED.value, DemoSiteStatus.EXPIRED.value]
-                ),
+                DemoSite.status.notin_(_OFFLINE_DEMO_STATUSES),
                 DemoSite.content_json.isnot(None),
             )
             .first()
         )
-        if not site:
+        if site is None:
+            site = self._regenerated_demo_of_withdrawn_slug(db, slug)
+        if site is None:
             return None
 
         if site.demo_link_sent_at is not None and not self.is_kept_alive_by_client(site):
@@ -1553,6 +1561,46 @@ class DemoSiteService:
                 return None
 
         return site
+
+    @staticmethod
+    def _regenerated_demo_of_withdrawn_slug(db: Session, slug: str) -> DemoSite | None:
+        """
+        Find the demo regenerated for the prospect whose withdrawn demo holds this slug.
+
+        A withdrawn demo keeps its slug, so the site regenerated for the same prospect lives under
+        another one while the mails he already received still carry the old link.
+
+        Args:
+            db: Active database session.
+            slug: The slug of the old link.
+
+        Returns:
+            The prospect's newest servable demo, or None when the slug is no withdrawn demo or
+            nothing was regenerated since.
+        """
+        withdrawn_demo: DemoSite | None = (
+            db.query(DemoSite)
+            .filter(
+                DemoSite.slug == slug,
+                DemoSite.status.in_(_WITHDRAWN_DEMO_STATUSES),
+                DemoSite.prospect_id.isnot(None),
+            )
+            .first()
+        )
+        if withdrawn_demo is None:
+            return None
+        return (
+            db.query(DemoSite)
+            .filter(
+                DemoSite.prospect_id == withdrawn_demo.prospect_id,
+                DemoSite.user_id == withdrawn_demo.user_id,
+                DemoSite.id != withdrawn_demo.id,
+                DemoSite.status.notin_(_OFFLINE_DEMO_STATUSES),
+                DemoSite.content_json.isnot(None),
+            )
+            .order_by(DemoSite.id.desc())
+            .first()
+        )
 
     def get_withdrawn_by_slug(self, db: Session, slug: str) -> DemoSite | None:
         """
